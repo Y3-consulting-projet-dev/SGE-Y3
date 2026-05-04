@@ -1,0 +1,35 @@
+@import url("https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* SHADCN VARIABLES */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+  }
+
+  body {
+    @apply m-0 bg-background text-foreground;
+    font-family: "Work Sans", sans-serif;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font-family: "Work Sans", sans-serif;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+}
