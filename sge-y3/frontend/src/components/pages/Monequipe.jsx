@@ -17,7 +17,7 @@ const teamMembers = [
     status: "En cours",
     score: "",
     action: "Voir",
-    actionTarget: "team-evaluate",
+    actionTarget: "team",
   },
   {
     name: "Orlane Kone",
@@ -26,7 +26,7 @@ const teamMembers = [
     status: "En cours",
     score: "",
     action: "Voir",
-    actionTarget: "team-evaluate",
+    actionTarget: "team",
   },
   {
     name: "Yasmine K",
@@ -48,8 +48,9 @@ const teamMembers = [
   },
 ];
 
-function Monequipe({ searchTerm, onSearchChange, onAction }) {
-  const rows = teamMembers.filter((member) => {
+function Monequipe({ searchTerm, onSearchChange, onAction, onEvaluate, onRelance, relanceMessage, extraMembers = [] }) {
+  const allMembers = [...teamMembers, ...extraMembers];
+  const rows = allMembers.filter((member) => {
     const query = searchTerm.trim().toLowerCase();
     if (!query) return true;
     return (
@@ -75,6 +76,11 @@ function Monequipe({ searchTerm, onSearchChange, onAction }) {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
+        {relanceMessage ? (
+          <p className="w-full rounded-md bg-[#DCECCB] px-4 py-3 text-sm font-semibold text-[#184D2E]">
+            {relanceMessage}
+          </p>
+        ) : null}
         <div className="relative w-full max-w-[360px]">
           <input
             type="text"
@@ -101,7 +107,11 @@ function Monequipe({ searchTerm, onSearchChange, onAction }) {
           </thead>
           <tbody>
             {rows.map((member) => (
-              <tr key={member.name} className="border-b border-slate-100 text-[#0F3A63] last:border-0">
+              <tr
+                key={member.name}
+                onClick={() => onEvaluate(member)}
+                className="cursor-pointer border-b border-slate-100 text-[#0F3A63] transition hover:bg-slate-50 last:border-0"
+              >
                 <td className="px-4 py-4 font-semibold">{member.name}</td>
                 <td className="px-4 py-4">{member.role}</td>
                 <td className="px-4 py-4">{member.seniority}</td>
@@ -115,7 +125,14 @@ function Monequipe({ searchTerm, onSearchChange, onAction }) {
                 <td className="px-4 py-4 font-semibold">{member.score || "-"}</td>
                 <td className="px-4 py-4">
                   <button
-                    onClick={() => onAction(member.actionTarget)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (member.actionTarget === "notifications") {
+                        onRelance(member);
+                        return;
+                      }
+                      onEvaluate(member);
+                    }}
                     className={`font-semibold hover:underline ${actionClass(member.action)}`}
                   >
                     {member.action}

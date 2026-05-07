@@ -69,7 +69,93 @@ const exportsList = [
   },
 ];
 
+function downloadFile(filename, content, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function buildCsvReport() {
+  const header = ["Collaborateur", "Technique", "Savoir-etre", "Objectifs", "Score final", "Recommandation"];
+  const rows = collaboratorScores.map((row) => [
+    row.name,
+    row.technique,
+    row.behavior,
+    row.goals,
+    row.finalScore,
+    row.recommendation,
+  ]);
+
+  return [header, ...rows].map((line) => line.map((cell) => `"${cell}"`).join(";")).join("\n");
+}
+
+function buildPrintableReport(title) {
+  const rows = collaboratorScores
+    .map(
+      (row) => `
+        <tr>
+          <td>${row.name}</td>
+          <td>${row.technique}</td>
+          <td>${row.behavior}</td>
+          <td>${row.goals}</td>
+          <td>${row.finalScore}</td>
+          <td>${row.recommendation}</td>
+        </tr>`
+    )
+    .join("");
+
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>${title}</title>
+    <style>
+      body { font-family: Arial, sans-serif; color: #0F3A63; padding: 24px; }
+      h1 { font-size: 22px; margin-bottom: 8px; }
+      p { color: #475569; }
+      table { width: 100%; border-collapse: collapse; margin-top: 24px; font-size: 13px; }
+      th { background: #003B63; color: white; text-align: left; padding: 10px; }
+      td { border-bottom: 1px solid #e2e8f0; padding: 10px; }
+    </style>
+  </head>
+  <body>
+    <h1>${title}</h1>
+    <p>Reporting equipe - Cycle 2026</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Collaborateur</th>
+          <th>Technique</th>
+          <th>Savoir-etre</th>
+          <th>Objectifs</th>
+          <th>Score final</th>
+          <th>Recommandation</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </body>
+</html>`;
+}
+
 function Rapportsequipe() {
+  const handleExport = (item) => {
+    const slug = item.title.toLowerCase().replaceAll(" ", "-");
+
+    if (item.action.includes("Excel")) {
+      downloadFile(`${slug}.csv`, buildCsvReport(), "text/csv;charset=utf-8");
+      return;
+    }
+
+    downloadFile(`${slug}.html`, buildPrintableReport(item.title), "text/html;charset=utf-8");
+  };
+
   return (
     <div className="space-y-5">
       <p className="text-xs font-semibold text-slate-400">Reporting - Cycle 2026</p>
@@ -136,10 +222,15 @@ function Rapportsequipe() {
             <article key={item.title} className="rounded-md bg-slate-50 px-3 py-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-3xl font-extrabold text-[#79B742]">{item.title}</p>
+                  <p className="text-sm font-bold text-[#79B742]">{item.title}</p>
                   <p className="mt-1 text-sm font-semibold text-[#0F3A63]">{item.subtitle}</p>
                 </div>
-                <button className={`rounded-md px-5 py-2 text-xs font-semibold ${item.actionClass}`}>{item.action}</button>
+                <button
+                  onClick={() => handleExport(item)}
+                  className={`rounded-md px-5 py-2 text-xs font-semibold ${item.actionClass}`}
+                >
+                  {item.action}
+                </button>
               </div>
             </article>
           ))}

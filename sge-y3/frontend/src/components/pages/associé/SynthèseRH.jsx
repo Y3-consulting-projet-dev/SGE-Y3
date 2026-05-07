@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Bell, ChevronDown } from "lucide-react";
+import { Bell } from "lucide-react";
 
 const rows = [
   {
@@ -85,18 +85,6 @@ function SyntheseRH() {
     [decisionFilter, roleFilter],
   );
 
-  const cycleRoleFilter = () => {
-    const options = ["Tous les roles", "Manager", "Senior", "Collab"];
-    const nextIndex = (options.indexOf(roleFilter) + 1) % options.length;
-    setRoleFilter(options[nextIndex]);
-  };
-
-  const cycleDecisionFilter = () => {
-    const options = ["Toutes les decisions", "A decider", "Augmentation", "Maintien", "Sans decision"];
-    const nextIndex = (options.indexOf(decisionFilter) + 1) % options.length;
-    setDecisionFilter(options[nextIndex]);
-  };
-
   const handleRowAction = (row) => {
     setSelectedRow(row.name);
     window.alert(`${row.action} : ${row.name}`);
@@ -122,14 +110,27 @@ function SyntheseRH() {
 
       <section className="rounded-xl bg-white p-3 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
-          <button onClick={cycleRoleFilter} className="inline-flex items-center gap-2 rounded-lg bg-[#7EB83E] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#73AB39]">
-            {roleFilter}
-            <ChevronDown size={14} />
-          </button>
-          <button onClick={cycleDecisionFilter} className="inline-flex items-center gap-2 rounded-lg bg-[#7EB83E] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#73AB39]">
-            {decisionFilter}
-            <ChevronDown size={14} />
-          </button>
+          <select
+            value={roleFilter}
+            onChange={(event) => setRoleFilter(event.target.value)}
+            className="h-9 rounded-lg border border-[#0C4B6C] bg-white px-3 text-xs font-bold text-[#0C4B6C] outline-none transition hover:bg-[#0C4B6C] hover:text-white focus:bg-[#0C4B6C] focus:text-white"
+          >
+            <option>Tous les roles</option>
+            <option>Manager</option>
+            <option>Senior</option>
+            <option>Collab</option>
+          </select>
+          <select
+            value={decisionFilter}
+            onChange={(event) => setDecisionFilter(event.target.value)}
+            className="h-9 rounded-lg border border-[#0C4B6C] bg-white px-3 text-xs font-bold text-[#0C4B6C] outline-none transition hover:bg-[#0C4B6C] hover:text-white focus:bg-[#0C4B6C] focus:text-white"
+          >
+            <option>Toutes les decisions</option>
+            <option>A decider</option>
+            <option>Augmentation</option>
+            <option>Maintien</option>
+            <option>Sans decision</option>
+          </select>
         </div>
 
         <div className="overflow-x-auto">

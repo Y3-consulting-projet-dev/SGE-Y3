@@ -51,6 +51,7 @@ function LoginPage({ onLoginSuccess }) {
                 className="h-14 w-full rounded-xl border border-[#9CC86D] bg-transparent px-5 text-sm tracking-wide text-[#27415B] outline-none focus:ring-2 focus:ring-[#76B82A]/30"
               >
                 <option value="manager">Profil: Manager</option>
+                <option value="senior">Profil: Senior</option>
                 <option value="collaborator">Profil: Collaborateur</option>
                 <option value="associate">Profil: Associe</option>
               </select>

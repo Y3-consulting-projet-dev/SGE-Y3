@@ -1,24 +1,56 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 
-const sectionCards = [
-  { title: "Section 1", subtitle: "Savoir-etre", footer: "Complete", progress: 100, done: true },
-  { title: "Section 2", subtitle: "Competences tech.", footer: "En cours -> 40%", progress: 40, done: false },
-  { title: "Section 3", subtitle: "Objectifs atteints", footer: "A faire", progress: 0, done: false },
-  { title: "Section 4", subtitle: "Evolution souhaitee", footer: "A faire", progress: 0, done: false },
-];
-
-const criteria = [
-  { label: "Maitrise des outils comptables (CEGID, Sage)", selected: 3, note: "" },
-  { label: "Redaction des rapports d'audit", selected: 4, note: "" },
-  { label: "Analyse et interpretation des donnees financieres", selected: 2, note: "2 questions restantes dans cette section" },
-];
-
-const summary = [
-  { label: "Ponctualite & fiabilite", value: "4/5" },
-  { label: "Travail en equipe", value: "4/5" },
-  { label: "Communication", value: "3/5" },
-  { label: "Adaptabilite", value: "4/5" },
+const initialSections = [
+  {
+    id: 1,
+    title: "Section 1",
+    subtitle: "Savoir-etre",
+    status: "Complete",
+    comment: "Je communique regulierement avec l'equipe et je respecte les delais fixes.",
+    criteria: [
+      { label: "Ponctualite & fiabilite", score: 4 },
+      { label: "Travail en equipe", score: 4 },
+      { label: "Communication", score: 3 },
+      { label: "Adaptabilite", score: 4 },
+    ],
+  },
+  {
+    id: 2,
+    title: "Section 2",
+    subtitle: "Competences tech.",
+    status: "En cours",
+    comment: "",
+    criteria: [
+      { label: "Maitrise des outils comptables (CEGID, Sage)", score: null },
+      { label: "Redaction des rapports d'audit", score: null },
+      { label: "Analyse et interpretation des donnees financieres", score: null },
+    ],
+  },
+  {
+    id: 3,
+    title: "Section 3",
+    subtitle: "Objectifs atteints",
+    status: "A faire",
+    comment: "",
+    criteria: [
+      { label: "Respect des objectifs fixes en debut de cycle", score: null },
+      { label: "Contribution aux livrables de mission", score: null },
+      { label: "Qualite des resultats obtenus", score: null },
+    ],
+  },
+  {
+    id: 4,
+    title: "Section 4",
+    subtitle: "Evolution souhaitee",
+    status: "A faire",
+    comment: "",
+    criteria: [
+      { label: "Competences a developper", score: null },
+      { label: "Projection professionnelle", score: null },
+      { label: "Besoins de formation", score: null },
+    ],
+  },
 ];
 
 const gradingHelp = [
@@ -29,7 +61,12 @@ const gradingHelp = [
   { level: "5", text: "Excellent - reference dans l'equipe", color: "text-[#76B82A]" },
 ];
 
-function ScoreRow({ label, selected, note }) {
+function getSectionProgress(section) {
+  const answered = section.criteria.filter((criterion) => criterion.score).length;
+  return Math.round((answered / section.criteria.length) * 100);
+}
+
+function ScoreRow({ label, selected, onSelect }) {
   return (
     <div className="space-y-2">
       <p className="text-[12px] font-semibold text-[#0F3A63]">{label}</p>
@@ -37,21 +74,88 @@ function ScoreRow({ label, selected, note }) {
         {[1, 2, 3, 4, 5].map((score) => (
           <button
             key={score}
+            onClick={() => onSelect(score)}
             className={`inline-flex h-6 w-8 items-center justify-center rounded text-[12px] font-bold ${
-              selected === score ? "bg-[#0B4C7A] text-white" : "bg-slate-200 text-slate-500"
+              selected === score ? "bg-[#0B4C7A] text-white" : "bg-slate-200 text-slate-500 hover:bg-slate-300"
             }`}
           >
             {score}
           </button>
         ))}
       </div>
-      {note ? <p className="text-[9px] text-slate-400">{note}</p> : null}
+      <div className="flex items-center gap-2">
+        <div className="h-[3px] w-28 rounded-full bg-slate-300">
+          <div className="h-[3px] rounded-full bg-[#76B82A]" style={{ width: `${selected ? selected * 20 : 0}%` }} />
+        </div>
+        <span className={`text-[10px] font-semibold ${selected ? "text-[#76B82A]" : "text-slate-400"}`}>
+          {selected ? `${selected * 20}%` : "--%"}
+        </span>
+      </div>
     </div>
   );
 }
 
 function Monautoevaluation() {
+  const [sections, setSections] = useState(initialSections);
+  const [activeSectionId, setActiveSectionId] = useState(2);
   const [saved, setSaved] = useState(false);
+  const [savedComments, setSavedComments] = useState({ 1: initialSections[0].comment });
+
+  const activeSection = sections.find((section) => section.id === activeSectionId) || sections[1];
+  const completedSections = sections.filter((section) => section.status === "Complete").length;
+  const globalProgress = Math.round((sections.reduce((total, section) => total + getSectionProgress(section), 0) / sections.length));
+  const averageScore = useMemo(() => {
+    const scores = activeSection.criteria.map((criterion) => criterion.score).filter(Boolean);
+    if (!scores.length) return "--";
+    return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
+  }, [activeSection]);
+
+  const updateScore = (criterionLabel, score) => {
+    setSections((currentSections) =>
+      currentSections.map((section) => {
+        if (section.id !== activeSectionId) return section;
+        return {
+          ...section,
+          status: "En cours",
+          criteria: section.criteria.map((criterion) =>
+            criterion.label === criterionLabel ? { ...criterion, score } : criterion
+          ),
+        };
+      })
+    );
+    setSaved(false);
+  };
+
+  const updateComment = (comment) => {
+    setSections((currentSections) =>
+      currentSections.map((section) => (section.id === activeSectionId ? { ...section, comment, status: "En cours" } : section))
+    );
+    setSaved(false);
+  };
+
+  const saveSection = () => {
+    const isComplete = activeSection.criteria.every((criterion) => criterion.score);
+    const trimmedComment = activeSection.comment.trim();
+
+    setSections((currentSections) =>
+      currentSections.map((section) =>
+        section.id === activeSectionId ? { ...section, status: isComplete ? "Complete" : "En cours" } : section
+      )
+    );
+
+    if (trimmedComment) {
+      setSavedComments((comments) => ({ ...comments, [activeSectionId]: trimmedComment }));
+    }
+    setSaved(true);
+  };
+
+  const goToSection = (direction) => {
+    const nextId = activeSectionId + direction;
+    if (nextId >= 1 && nextId <= sections.length) {
+      setActiveSectionId(nextId);
+      setSaved(false);
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -60,40 +164,62 @@ function Monautoevaluation() {
       <div className="flex flex-wrap items-center justify-between gap-3 text-[12px]">
         <p className="font-semibold text-[#0F3A63]">Derniere sauvegarde automatique : il y a 2 min</p>
         <div className="flex items-center gap-4">
-          <span className="font-semibold text-[#0F3A63]">Section 2 / 4</span>
-          <button className="font-semibold text-[#76B82A] hover:underline">Sauvegarder maintenant</button>
+          <span className="font-semibold text-[#0F3A63]">Section {activeSectionId} / 4</span>
+          <button onClick={saveSection} className="font-semibold text-[#76B82A] hover:underline">Sauvegarder maintenant</button>
         </div>
       </div>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {sectionCards.map((card) => (
-          <article key={card.title} className="rounded-md bg-[#003B63] px-3 py-2 text-white">
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-[12px] font-bold">{card.title}</h2>
-              {card.done ? <Check size={14} className="text-white" /> : null}
-            </div>
-            <p className="text-[12px] font-semibold">{card.subtitle}</p>
-            <div className="mt-3 h-1.5 rounded-full bg-slate-200">
-              <div
-                className={`h-1.5 rounded-full ${card.progress === 100 ? "bg-[#7BC443]" : "bg-[#D6DCE2]"}`}
-                style={{ width: `${card.progress}%` }}
-              />
-            </div>
-            <p className="mt-1.5 text-[10px] font-semibold text-slate-200">{card.footer}</p>
-          </article>
-        ))}
+        {sections.map((section) => {
+          const progress = getSectionProgress(section);
+          const done = section.status === "Complete";
+          return (
+            <button
+              key={section.id}
+              onClick={() => {
+                setActiveSectionId(section.id);
+                setSaved(false);
+              }}
+              className={`rounded-md bg-[#003B63] px-3 py-2 text-left text-white transition ${
+                activeSectionId === section.id ? "ring-2 ring-[#76B82A]" : "hover:bg-[#0B4C7A]"
+              }`}
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-[12px] font-bold">{section.title}</h2>
+                {done ? <Check size={14} className="text-white" /> : null}
+              </div>
+              <p className="text-[12px] font-semibold">{section.subtitle}</p>
+              <div className="mt-3 h-1.5 rounded-full bg-slate-200">
+                <div className={`h-1.5 rounded-full ${done ? "bg-[#7BC443]" : "bg-[#D6DCE2]"}`} style={{ width: `${progress}%` }} />
+              </div>
+              <p className="mt-1.5 text-[10px] font-semibold text-slate-200">
+                {done ? "Complete" : progress ? `En cours -> ${progress}%` : "A faire"}
+              </p>
+            </button>
+          );
+        })}
       </section>
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr_1fr]">
         <article className="rounded-md bg-white p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-[30px] font-bold leading-none text-[#0F3A63]">Section 2 - Competences techniques</h3>
-            <span className="text-[16px] font-bold text-[#32B3E0]">En cours</span>
+            <div>
+              <h3 className="text-[30px] font-bold leading-none text-[#0F3A63]">
+                {activeSection.title} - {activeSection.subtitle}
+              </h3>
+              <p className="mt-2 text-[12px] font-semibold text-slate-500">Score moyen : {averageScore} / 5</p>
+            </div>
+            <span className="text-[16px] font-bold text-[#32B3E0]">{activeSection.status}</span>
           </div>
 
           <div className="space-y-3.5">
-            {criteria.map((item) => (
-              <ScoreRow key={item.label} label={item.label} selected={item.selected} note={item.note} />
+            {activeSection.criteria.map((item) => (
+              <ScoreRow
+                key={item.label}
+                label={item.label}
+                selected={item.score}
+                onSelect={(score) => updateScore(item.label, score)}
+              />
             ))}
           </div>
 
@@ -101,26 +227,38 @@ function Monautoevaluation() {
             <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire de section (facultatif)</p>
             <textarea
               rows={4}
+              value={activeSection.comment}
+              onChange={(event) => updateComment(event.target.value)}
               placeholder="Points forts, exemples concrets, contexte..."
               className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
             />
           </div>
 
+          {savedComments[activeSectionId] ? (
+            <div className="mt-3 rounded-sm bg-[#DCECCB] px-3 py-2">
+              <p className="text-[10px] font-bold text-[#5A8A3A]">Commentaire sauvegarde</p>
+              <p className="mt-1 text-[11px] font-semibold text-[#0F3A63]">{savedComments[activeSectionId]}</p>
+            </div>
+          ) : null}
+
           <div className="mt-3 rounded-sm bg-[#DCECCB] px-3 py-2 text-[10px] font-semibold text-[#5A8A3A]">
-            Les questions obligatoires (sans reponse) bloqueront la soumission. Les questions avec etoile * sont
-            requises.
+            Les questions obligatoires (sans reponse) bloqueront la soumission. Les questions avec etoile * sont requises.
           </div>
 
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
             <button
-              onClick={() => setSaved(false)}
-              className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500"
+              onClick={() => goToSection(-1)}
+              disabled={activeSectionId === 1}
+              className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ChevronLeft size={14} />
               Section precedente
             </button>
             <button
-              onClick={() => setSaved(true)}
+              onClick={() => {
+                saveSection();
+                goToSection(1);
+              }}
               className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
             >
               Sauvegarder et continuer
@@ -133,23 +271,19 @@ function Monautoevaluation() {
         <div className="space-y-4">
           <article className="rounded-md bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-[22px] font-bold text-[#0F3A63]">Section 1 - Savoir-etre</h3>
-              <Check size={16} className="text-[#7BC443]" />
+              <h3 className="text-[22px] font-bold text-[#0F3A63]">Progression globale</h3>
+              <span className="text-[13px] font-bold text-[#76B82A]">{globalProgress}%</span>
             </div>
-            <p className="mb-4 text-[12px] font-semibold text-[#76B82A]">Complete</p>
+            <p className="mb-4 text-[12px] font-semibold text-[#76B82A]">{completedSections} section(s) complete(s)</p>
 
             <div className="space-y-3">
-              {summary.map((item) => (
-                <div key={item.label} className="flex items-center justify-between text-[12px]">
-                  <p className="font-semibold text-[#0F3A63]">{item.label}</p>
-                  <span className="font-bold text-[#76B82A]">{item.value}</span>
+              {sections.map((section) => (
+                <div key={section.id} className="flex items-center justify-between text-[12px]">
+                  <p className="font-semibold text-[#0F3A63]">{section.subtitle}</p>
+                  <span className="font-bold text-[#76B82A]">{getSectionProgress(section)}%</span>
                 </div>
               ))}
             </div>
-
-            <button className="mx-auto mt-4 block rounded-md bg-[#DCECCB] px-8 py-1.5 text-[12px] font-semibold text-[#76B82A]">
-              Modifier
-            </button>
           </article>
 
           <article className="rounded-md bg-white p-4 shadow-sm">

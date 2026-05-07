@@ -56,6 +56,7 @@ const departmentScores = [
 
 function Vuecabinet({ onLogout }) {
   const [activeSection, setActiveSection] = useState("vue-cabinet");
+  const [selectedDecision, setSelectedDecision] = useState(null);
   const handleTopAction = (label) => window.alert(`${label} bientot disponible.`);
 
   const pageTitle = useMemo(() => {
@@ -185,7 +186,10 @@ function Vuecabinet({ onLogout }) {
                             <p className="text-2xl font-extrabold leading-none text-[#79B742]">{item.score}</p>
                           </div>
                           <button
-                            onClick={() => setActiveSection("decisions")}
+                            onClick={() => {
+                              setSelectedDecision(item);
+                              setActiveSection("decisions");
+                            }}
                             className="rounded-lg bg-[#7EB83E] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#70A436]"
                           >
                             Decider
@@ -215,7 +219,7 @@ function Vuecabinet({ onLogout }) {
           ) : activeSection === "syntheses-rh" ? (
             <SyntheseRH />
           ) : activeSection === "decisions" ? (
-            <Prendredecision />
+            <Prendredecision candidate={selectedDecision} />
           ) : activeSection === "autoeval-managers" ? (
             <Autoevamanager />
           ) : activeSection === "history" ? (

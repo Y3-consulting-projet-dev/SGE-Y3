@@ -2,6 +2,7 @@ import { useState } from "react";
 import LoginPage from "@/components/pages/auth/LoginPage";
 import ManagerDashboard from "@/components/pages/dashboard/ManagerDashboard";
 import CollaboratorDashboard from "@/components/pages/dashboard/CollaboratorDashboard";
+import SeniorDashboard from "@/components/pages/dashboard/SeniorDashboard";
 import Vuecabinet from "@/components/pages/associé/Vuecabinet";
 
 function App() {
@@ -11,6 +12,9 @@ function App() {
   if (isAuthenticated) {
     if (userRole === "collaborator") {
       return <CollaboratorDashboard onLogout={() => setIsAuthenticated(false)} />;
+    }
+    if (userRole === "senior") {
+      return <SeniorDashboard onLogout={() => setIsAuthenticated(false)} />;
     }
     if (userRole === "associate") {
       return <Vuecabinet onLogout={() => setIsAuthenticated(false)} />;

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { BarChart3, ClipboardCheck, FileBarChart2, FolderKanban, LayoutDashboard, LogOut, Users } from "lucide-react";
+import { BarChart3, FileBarChart2, FolderKanban, LayoutDashboard, LogOut, Users, X } from "lucide-react";
 import Monequipe from "@/components/pages/Monequipe";
 import Evaluermonequipe from "@/components/pages/Evaluermonequipe";
 import Objectifsequipe from "@/components/pages/Objectifsequipe";
@@ -15,8 +15,8 @@ const statusBars = [
 ];
 
 const requiredActions = [
-  { id: "OK", title: "Verifier auto-eval - Kone K.", subtitle: "Senior - Soumise le 18/04", target: "team-review" },
-  { id: 2, title: "Evaluer Traore M.", subtitle: "Collaborateur - Auto-eval recue", target: "team-evaluate" },
+  { id: "OK", title: "Verifier auto-eval - Kone K.", subtitle: "Senior - Soumise le 18/04", target: "team" },
+  { id: 2, title: "Evaluer Traore M.", subtitle: "Collaborateur - Auto-eval recue", target: "team" },
   {
     id: 3,
     title: "Completer mon auto-evaluation",
@@ -31,7 +31,6 @@ const sidebarSections = [
     group: "Equipe",
     items: [
       { key: "team", label: "Mon equipe", icon: Users },
-      { key: "team-evaluate", label: "Evaluer mon equipe", icon: ClipboardCheck },
       { key: "team-goals", label: "Objectifs equipe", icon: FolderKanban },
     ],
   },
@@ -39,12 +38,11 @@ const sidebarSections = [
   { group: "Reporting", items: [{ key: "reports", label: "Rapports equipe", icon: FileBarChart2 }] },
 ];
 
-const availableSections = new Set(["overview", "team", "team-evaluate", "team-goals", "self-evaluation", "reports", "actions"]);
+const availableSections = new Set(["overview", "team", "team-goals", "self-evaluation", "reports", "actions"]);
 
 const sectionContent = {
   notifications: "Consulte les dernieres notifications et relance les collaborateurs en attente.",
   team: "Visualise la liste des membres, leurs roles et leurs avancements.",
-  "team-evaluate": "Demarre ou reprends les evaluations de ton equipe.",
   "team-review": "Verifie les auto-evaluations soumises avant validation.",
   "team-goals": "Suis les objectifs de l'equipe et ajuste les priorites.",
   "self-evaluation": "Complete ou mets a jour ton auto-evaluation manager.",
@@ -71,6 +69,20 @@ function SectionPanel({ title, description, onBack }) {
 function ManagerDashboard({ onLogout }) {
   const [activeSection, setActiveSection] = useState("overview");
   const [searchTerm, setSearchTerm] = useState("");
+  const [evaluationMember, setEvaluationMember] = useState(null);
+  const [evaluationStatus, setEvaluationStatus] = useState("");
+  const [evaluationHistory, setEvaluationHistory] = useState([]);
+  const [relanceMessage, setRelanceMessage] = useState("");
+  const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
+  const [createGoalSignal, setCreateGoalSignal] = useState(0);
+  const [memberStatus, setMemberStatus] = useState("");
+  const [extraTeamMembers, setExtraTeamMembers] = useState([]);
+  const [memberForm, setMemberForm] = useState({
+    name: "",
+    role: "",
+    seniority: "",
+    status: "Brouillon",
+  });
   const canOpenSection = (sectionKey) => availableSections.has(sectionKey);
   const goToSection = (sectionKey) => {
     if (canOpenSection(sectionKey)) setActiveSection(sectionKey);
@@ -79,7 +91,6 @@ function ManagerDashboard({ onLogout }) {
   const pageTitle = useMemo(() => {
     if (activeSection === "overview") return "VUE D'ENSEMBLE";
     if (activeSection === "team") return "MON EQUIPE";
-    if (activeSection === "team-evaluate") return "EVALUER MON EQUIPE";
     if (activeSection === "team-goals") return "OBJECTIFS EQUIPE";
     if (activeSection === "self-evaluation") return "MON AUTO-EVALUATION";
     if (activeSection === "reports") return "RAPPORTS EQUIPE";
@@ -88,6 +99,71 @@ function ManagerDashboard({ onLogout }) {
   }, [activeSection]);
 
   const showOverview = activeSection === "overview";
+
+  const openEvaluation = (member) => {
+    setEvaluationMember(member);
+    setEvaluationStatus("");
+  };
+
+  const relanceMember = (member) => {
+    setRelanceMessage(`Relance envoyee a ${member.name} pour finaliser son evaluation.`);
+  };
+
+  const handleMemberFieldChange = (field, value) => {
+    setMemberForm((form) => ({ ...form, [field]: value }));
+    setMemberStatus("");
+  };
+
+  const saveMember = () => {
+    const name = memberForm.name.trim();
+    const role = memberForm.role.trim();
+    const seniority = memberForm.seniority.trim();
+
+    if (!name || !role || !seniority) {
+      setMemberStatus("missing");
+      return;
+    }
+
+    setExtraTeamMembers((members) => [
+      ...members,
+      {
+        name,
+        role,
+        seniority,
+        status: memberForm.status,
+        score: "",
+        action: "Voir",
+        actionTarget: "team",
+      },
+    ]);
+    setMemberForm({ name: "", role: "", seniority: "", status: "Brouillon" });
+    setMemberStatus("saved");
+    setIsMemberModalOpen(false);
+  };
+
+  const saveEvaluation = (nextStatus) => {
+    if (!evaluationMember) return;
+
+    const now = new Date();
+    const savedAt = now.toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+    setEvaluationHistory((history) => [
+      {
+        id: `${evaluationMember.name}-${Date.now()}`,
+        collaborator: evaluationMember.name,
+        role: evaluationMember.role,
+        score: evaluationMember.score || "A completer",
+        status: nextStatus,
+        savedAt,
+      },
+      ...history,
+    ]);
+    setEvaluationStatus(nextStatus);
+  };
 
   return (
     <div className="min-h-screen bg-[#EEF2F6] text-[#0E2B4F]">
@@ -148,20 +224,14 @@ function ManagerDashboard({ onLogout }) {
                 >
                   Notifications
                 </button>
-                <button className="rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-semibold text-white">
-                  Ajouter un membre
-                </button>
-              </div>
-            ) : activeSection === "team-evaluate" ? (
-              <div className="flex items-center gap-3">
                 <button
-                  disabled
-                  className="text-sm font-semibold text-[#0F3A63] underline-offset-4 hover:underline"
+                  onClick={() => {
+                    setIsMemberModalOpen(true);
+                    setMemberStatus("");
+                  }}
+                  className="rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-semibold text-white"
                 >
-                  Notifications
-                </button>
-                <button className="rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-semibold text-white">
-                  Soumettre a la RH
+                  Enregistrer un membre
                 </button>
               </div>
             ) : activeSection === "team-goals" ? (
@@ -172,7 +242,10 @@ function ManagerDashboard({ onLogout }) {
                 >
                   Notifications
                 </button>
-                <button className="rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-semibold text-white">
+                <button
+                  onClick={() => setCreateGoalSignal((value) => value + 1)}
+                  className="rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-semibold text-white"
+                >
                   Creer un objectif
                 </button>
               </div>
@@ -209,10 +282,10 @@ function ManagerDashboard({ onLogout }) {
                   Notifications
                 </button>
                 <button
-                  onClick={() => setActiveSection("team-evaluate")}
+                  onClick={() => setActiveSection("team")}
                   className="rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-semibold text-[#0B2F4F]"
                 >
-                  Evaluer l'equipe
+                  Ouvrir l'equipe
                 </button>
               </div>
             )}
@@ -245,7 +318,7 @@ function ManagerDashboard({ onLogout }) {
                 </article>
 
                 <button
-                  onClick={() => goToSection("team-evaluate")}
+                  onClick={() => goToSection("team")}
                   className="rounded-lg bg-[#003B63] p-5 text-left text-white transition hover:bg-[#0B4C7A]"
                 >
                   <div className="mb-4 flex items-start justify-between">
@@ -316,13 +389,67 @@ function ManagerDashboard({ onLogout }) {
                   </button>
                 </div>
               </section>
+
+              <section className="mt-6 rounded-xl bg-white p-5 shadow-sm">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="text-sm font-semibold text-[#0F3A63]">Historique des evaluations Manager</h2>
+                  <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">
+                    {evaluationHistory.length} enregistrement(s)
+                  </span>
+                </div>
+
+                {evaluationHistory.length ? (
+                  <div className="overflow-hidden rounded-md border border-slate-100">
+                    <table className="w-full border-collapse text-sm">
+                      <thead>
+                        <tr className="bg-[#003B63] text-left text-white">
+                          <th className="px-4 py-3 font-semibold">Collaborateur</th>
+                          <th className="px-4 py-3 font-semibold">Role</th>
+                          <th className="px-4 py-3 font-semibold">Score</th>
+                          <th className="px-4 py-3 font-semibold">Statut</th>
+                          <th className="px-4 py-3 font-semibold">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {evaluationHistory.map((item) => (
+                          <tr key={item.id} className="border-b border-slate-100 text-[#0F3A63] last:border-0">
+                            <td className="px-4 py-3 font-bold">{item.collaborator}</td>
+                            <td className="px-4 py-3">{item.role}</td>
+                            <td className="px-4 py-3 font-semibold text-[#76B82A]">{item.score}</td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
+                                  item.status === "sent" ? "bg-[#76B82A] text-white" : "bg-slate-100 text-[#0F3A63]"
+                                }`}
+                              >
+                                {item.status === "sent" ? "Transmise a la RH" : "Enregistree"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">{item.savedAt}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+                    Aucune evaluation sauvegardee pour le moment. Les evaluations apparaitront ici apres enregistrement.
+                  </p>
+                )}
+              </section>
             </>
           ) : activeSection === "team" ? (
-            <Monequipe searchTerm={searchTerm} onSearchChange={setSearchTerm} onAction={goToSection} />
-          ) : activeSection === "team-evaluate" ? (
-            <Evaluermonequipe />
+            <Monequipe
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              onAction={goToSection}
+              onEvaluate={openEvaluation}
+              onRelance={relanceMember}
+              relanceMessage={relanceMessage}
+              extraMembers={extraTeamMembers}
+            />
           ) : activeSection === "team-goals" ? (
-            <Objectifsequipe />
+            <Objectifsequipe createSignal={createGoalSignal} />
           ) : activeSection === "self-evaluation" ? (
             <Monautoevaluation />
           ) : activeSection === "reports" ? (
@@ -340,6 +467,159 @@ function ManagerDashboard({ onLogout }) {
           )}
         </main>
       </div>
+
+      {evaluationMember ? (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0B1F33]/60 px-4 py-6"
+          onClick={() => setEvaluationMember(null)}
+        >
+          <section
+            className="w-full max-w-6xl rounded-lg bg-[#EEF2F6] p-5 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
+              <div>
+                <p className="text-xs font-bold text-[#79B742]">Evaluation Manager</p>
+                <h2 className="text-2xl font-black text-[#0F3A63]">{evaluationMember.name}</h2>
+                <p className="text-sm font-semibold text-slate-500">
+                  {evaluationMember.role} - {evaluationMember.status} - Score auto-eval {evaluationMember.score || "-"}
+                </p>
+              </div>
+              <button
+                onClick={() => setEvaluationMember(null)}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#0F3A63] shadow-sm hover:bg-slate-100"
+                aria-label="Fermer la modal"
+              >
+                <X size={18} />
+              </button>
+            </header>
+
+            <Evaluermonequipe member={evaluationMember} />
+
+            <footer className="mt-5 flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
+              <button
+                onClick={() => saveEvaluation("saved")}
+                className="rounded-md bg-slate-200 px-5 py-2 text-sm font-bold text-[#0F3A63]"
+              >
+                Enregistrer
+              </button>
+              <button
+                onClick={() => saveEvaluation("sent")}
+                className="rounded-md bg-[#76B82A] px-5 py-2 text-sm font-bold text-white"
+              >
+                Transmettre a la RH
+              </button>
+              {evaluationStatus ? (
+                <p className="w-full text-right text-xs font-bold text-[#76B82A]">
+                  {evaluationStatus === "sent" ? "Evaluation transmise a la RH." : "Evaluation enregistree."}
+                </p>
+              ) : null}
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
+      {isMemberModalOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0B1F33]/60 px-4 py-8"
+          onClick={() => setIsMemberModalOpen(false)}
+        >
+          <section
+            className="w-full max-w-xl rounded-lg bg-white p-5 shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="mb-5 flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <p className="text-xs font-bold text-[#79B742]">Equipe</p>
+                <h2 className="text-2xl font-black text-[#0F3A63]">Enregistrer un membre</h2>
+              </div>
+              <button
+                onClick={() => setIsMemberModalOpen(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-[#0F3A63] hover:bg-slate-200"
+                aria-label="Fermer le formulaire"
+              >
+                <X size={18} />
+              </button>
+            </header>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label htmlFor="member-name" className="mb-2 block text-xs font-bold text-[#0F3A63]">
+                  Nom du collaborateur
+                </label>
+                <input
+                  id="member-name"
+                  value={memberForm.name}
+                  onChange={(event) => handleMemberFieldChange("name", event.target.value)}
+                  className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-[#0F3A63] outline-none"
+                  placeholder="Ex: Aminata Konan"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label htmlFor="member-role" className="mb-2 block text-xs font-bold text-[#0F3A63]">
+                    Role
+                  </label>
+                  <input
+                    id="member-role"
+                    value={memberForm.role}
+                    onChange={(event) => handleMemberFieldChange("role", event.target.value)}
+                    className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-[#0F3A63] outline-none"
+                    placeholder="Ex: collaborateur"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="member-seniority" className="mb-2 block text-xs font-bold text-[#0F3A63]">
+                    Anciennete
+                  </label>
+                  <input
+                    id="member-seniority"
+                    value={memberForm.seniority}
+                    onChange={(event) => handleMemberFieldChange("seniority", event.target.value)}
+                    className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-[#0F3A63] outline-none"
+                    placeholder="Ex: 1 an"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="member-status" className="mb-2 block text-xs font-bold text-[#0F3A63]">
+                  Statut evaluation
+                </label>
+                <select
+                  id="member-status"
+                  value={memberForm.status}
+                  onChange={(event) => handleMemberFieldChange("status", event.target.value)}
+                  className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-[#0F3A63] outline-none"
+                >
+                  <option value="Brouillon">Brouillon</option>
+                  <option value="En cours">En cours</option>
+                  <option value="Soumise">Soumise</option>
+                </select>
+              </div>
+            </div>
+
+            <footer className="mt-5 flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 pt-4">
+              <button
+                onClick={() => setIsMemberModalOpen(false)}
+                className="rounded-md bg-slate-200 px-5 py-2 text-sm font-bold text-[#0F3A63]"
+              >
+                Annuler
+              </button>
+              <button onClick={saveMember} className="rounded-md bg-[#76B82A] px-5 py-2 text-sm font-bold text-white">
+                Enregistrer le membre
+              </button>
+              {memberStatus === "missing" ? (
+                <p className="w-full text-right text-xs font-bold text-[#A4252F]">
+                  Renseignez le nom, le role et l'anciennete avant d'enregistrer.
+                </p>
+              ) : null}
+            </footer>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

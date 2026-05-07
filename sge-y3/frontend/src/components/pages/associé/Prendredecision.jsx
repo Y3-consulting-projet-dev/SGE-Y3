@@ -20,7 +20,7 @@ const historyRows = [
   { cycle: "Cycle 2023", decision: "Promotion -> Manager", tone: "text-[#0F4A72]" },
 ];
 
-function Prendredecision() {
+function Prendredecision({ candidate }) {
   const [decisionType, setDecisionType] = useState("Promotion");
   const [grade, setGrade] = useState("Manager Senior");
   const [increase, setIncrease] = useState("");
@@ -35,11 +35,17 @@ function Prendredecision() {
 
   const saveDraft = () => setStatus("Brouillon enregistre.");
   const closeAndNotify = () => setStatus("Decision cloturee et notification envoyee.");
+  const person = candidate || { initials: "RO", name: "Revita OULE", role: "Manager - Auto-eval", score: "4.1 / 5" };
 
   return (
     <div className="space-y-3">
       <header className="flex items-center justify-between">
-        <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">Prendre une decision</h1>
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">Prendre une decision</h1>
+          <p className="mt-1 text-sm font-semibold text-slate-500">
+            {person.name} - {person.role} - Score RH valide {person.score}
+          </p>
+        </div>
         <div className="flex items-center gap-3">
           <button onClick={() => window.alert("Notifications bientot disponibles.")} className="rounded-full p-2 text-slate-500 hover:bg-slate-200/70">
             <Bell size={15} />
@@ -52,6 +58,16 @@ function Prendredecision() {
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.45fr_1fr]">
         <article className="rounded-lg bg-white p-4">
+          <div className="mb-4 flex items-center gap-3 rounded-md bg-[#DCECD7] px-3 py-3">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#1F4A72] text-xs font-bold text-white">
+              {person.initials}
+            </span>
+            <div>
+              <p className="text-sm font-black text-[#0F3A63]">{person.name}</p>
+              <p className="text-xs font-semibold text-slate-600">{person.role}</p>
+            </div>
+          </div>
+
           <div className="mb-4 flex items-start gap-3">
             <div className="grid flex-1 grid-cols-1 gap-5 md:grid-cols-2">
               {scoreItems.map((item) => (
