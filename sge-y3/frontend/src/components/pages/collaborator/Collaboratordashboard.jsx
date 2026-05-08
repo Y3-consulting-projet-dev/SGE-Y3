@@ -1,36 +1,58 @@
 import { CheckCircle2 } from "lucide-react";
 
-const topCards = [
-  { title: "Auto-evaluation", line1: "En cours", line2: "Section 2 / 4 - 40%" },
-  { title: "Mes objectifs", line1: "3", line2: "1 atteint, 2 en cours" },
-  { title: "Formation planifiee", line1: "--", line2: "Mai 2026" },
-];
-
-const progressSteps = [
-  { id: 1, title: "Section 1 completee", subtitle: "Leadership & savoir-etre", done: true },
-  { id: 2, title: "Section 2 en cours", subtitle: "Competences techniques", done: false },
-  { id: 3, title: "Section 3 a faire", subtitle: "Objectifs atteints", done: false },
-  { id: 4, title: "Section 4 a faire", subtitle: "Souhaits d'evolution", done: false },
-];
-
-const validationSteps = [
-  { id: 1, title: "Je soumets mon auto-evaluation", subtitle: "En attente de ma soumission" },
-  { id: 2, title: "Mon Manager evalue & corrige", subtitle: "Droit feedback" },
-  { id: 3, title: "Validation RH", subtitle: "Validation RH" },
-  { id: 4, title: "Decision de l'Associe", subtitle: "Resultat communique ensuite" },
-];
-
 const reminders = [
-  { label: "Soumettre l'auto-evaluation", date: "18-04-2026" },
+  { label: "Soumettre l'auto-évaluation", date: "18-04-2026" },
   { label: "Entretien annuel Manager", date: "22-04-2026" },
   { label: "Revue objectifs Q2", date: "30-04-2026" },
 ];
 
-function MonTableauDeBord() {
+function formatProgressSubtitle(evaluation) {
+  const completed = evaluation?.summary?.completedSections || 0;
+  const total = evaluation?.summary?.totalSections || 4;
+  const progress = evaluation?.summary?.globalProgress || 0;
+
+  return `Section ${Math.min(completed + 1, total)} / ${total} - ${progress}%`;
+}
+
+function getSectionStepTitle(section) {
+  const status = section.status === "Complete" ? "completée" : section.status === "En cours" ? "en cours" : "à faire";
+  return `${section.title} ${status}`;
+}
+
+function getEvaluationStatusLabel(status) {
+  if (status === "Soumis a RH") return "Soumise à la RH";
+  if (status === "Brouillon") return "Brouillon";
+  return "En cours";
+}
+
+function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
+  const topCards = [
+    {
+      title: "Auto-évaluation",
+      line1: getEvaluationStatusLabel(evaluation?.evaluation?.status),
+      line2: formatProgressSubtitle(evaluation),
+    },
+    { title: "Mes objectifs", line1: "3", line2: "1 atteint, 2 en cours" },
+    { title: "Formation planifiée", line1: "--", line2: "Mai 2026" },
+  ];
+
+  const progressSteps =
+    evaluation?.evaluation?.sections?.map((section) => ({
+      id: section.id,
+      title: getSectionStepTitle(section),
+      subtitle: section.subtitle,
+      done: section.status === "Complete",
+    })) || [];
+
+  const globalProgress = evaluation?.summary?.globalProgress || 0;
+  const completedSections = evaluation?.summary?.completedSections || 0;
+
   return (
     <div className="space-y-4">
       <div className="rounded-sm bg-[#BFE2B9] px-3 py-2 text-[11px] font-semibold text-[#114F35]">
-        Auto-evaluation en cours - a soumettre avant le 18/04/2026. Sauvegarde automatique activee.
+        {evaluation?.evaluation?.status === "Soumis a RH"
+          ? "Auto-évaluation soumise à la RH. En attente de traitement."
+          : "Auto-évaluation en cours - sauvegarde progressive activee avant transmission à la RH."}
       </div>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(3,minmax(0,240px))] md:justify-between md:gap-5">
@@ -45,7 +67,7 @@ function MonTableauDeBord() {
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.8fr_1fr]">
         <article className="rounded-lg bg-white p-5 xl:col-span-1">
-          <h2 className="mb-4 text-[24px] font-bold leading-tight text-[#0F3A63]">Ou en suis-je ?</h2>
+          <h2 className="mb-4 text-[24px] font-bold leading-tight text-[#0F3A63]">Où en suis-je ?</h2>
 
           <div className="space-y-3">
             {progressSteps.map((step) => (
@@ -68,15 +90,19 @@ function MonTableauDeBord() {
           <div className="mt-8">
             <div className="mb-2 flex items-center justify-between">
               <h3 className="text-[22px] font-bold leading-tight text-[#0F3A63]">Progression globale</h3>
-              <span className="text-[22px] font-bold text-[#F34D4D]">40%</span>
+              <span className="text-[22px] font-bold text-[#F34D4D]">{globalProgress}%</span>
             </div>
             <div className="h-2.5 rounded-full bg-slate-200">
-              <div className="h-2.5 w-2/5 rounded-full bg-[#2FB6D9]" />
+              <div className="h-2.5 rounded-full bg-[#2FB6D9]" style={{ width: `${globalProgress}%` }} />
             </div>
           </div>
 
-          <button className="mt-5 w-full rounded-md bg-[#003B63] py-3 text-[22px] font-semibold leading-none text-white hover:bg-[#0B4C7A]">
-            Continuer l'evaluation
+          <button
+            onClick={onContinue}
+            disabled={isLoading}
+            className="mt-5 w-full rounded-md bg-[#003B63] py-3 text-[22px] font-semibold leading-none text-white hover:bg-[#0B4C7A] disabled:opacity-60"
+          >
+            Continuer l'évaluation
           </button>
         </article>
 
@@ -84,7 +110,12 @@ function MonTableauDeBord() {
           <article className="rounded-lg bg-white p-5">
             <h2 className="mb-4 text-[24px] font-bold leading-tight text-[#0F3A63]">Circuit de validation</h2>
             <div className="space-y-3">
-              {validationSteps.map((step) => (
+              {[
+                { id: 1, title: "Je soumets mon auto-évaluation", subtitle: evaluation?.evaluation?.status === "Soumis a RH" ? "Deja transmise" : "En attente de ma soumission" },
+                { id: 2, title: "Mon Manager évalue & corrige", subtitle: "Droit feedback" },
+                { id: 3, title: "Validation RH / Capital Humain", subtitle: "Validation métier" },
+                { id: 4, title: "Decision de l'Associé", subtitle: "Résultat communiqué ensuite" },
+              ].map((step) => (
                 <div key={step.id} className="flex items-start gap-2">
                   <span className="mt-1 inline-flex h-4.5 w-4.5 items-center justify-center rounded-full bg-slate-100 text-[9px] font-bold text-slate-500">
                     {step.id}
@@ -99,7 +130,7 @@ function MonTableauDeBord() {
           </article>
 
           <article className="rounded-lg bg-white p-5">
-            <h2 className="mb-4 text-[24px] font-bold leading-tight text-[#0F3A63]">Rappels & echeances</h2>
+            <h2 className="mb-4 text-[24px] font-bold leading-tight text-[#0F3A63]">Rappels & échéances</h2>
             <div className="space-y-3">
               {reminders.map((item) => (
                 <div key={item.label} className="flex items-center justify-between gap-3 text-[12px]">
@@ -108,6 +139,9 @@ function MonTableauDeBord() {
                 </div>
               ))}
             </div>
+            <p className="mt-4 text-[11px] font-semibold text-[#0F3A63]">
+              {completedSections} section(s) completée(s) sur {evaluation?.summary?.totalSections || 4}.
+            </p>
           </article>
         </div>
       </section>

@@ -21,13 +21,25 @@ const CATEGORY_BY_GRADE = {
   'Assistant manager': '9B',
   Manager: '10B',
   'Senior manager': '10C',
-  Associe: '11',
+  Associé: '11',
 };
 
 const ALLOWED_GRADES = Object.keys(CATEGORY_BY_GRADE);
 
+function normalizeText(value = '') {
+  return String(value).replace(/\s+/g, ' ').trim();
+}
+
+function normalizeDepartment(value = '') {
+  return normalizeText(value).toUpperCase();
+}
+
 function normalizeCategory(value = '') {
   return String(value).replace(/\s+/g, '').toUpperCase();
+}
+
+function normalizeEmail(value = '') {
+  return normalizeText(value).toLowerCase();
 }
 
 function getGradeFromCategory(rawCategory) {
@@ -40,31 +52,39 @@ function getGradeFromCategory(rawCategory) {
   return GRADE_BY_CATEGORY[category] || null;
 }
 
-function getRoleFromGrade(grade) {
-  return ROLE_BY_GRADE[grade] || 'collaborator';
-}
-
 function getCategoryFromGrade(grade) {
   return CATEGORY_BY_GRADE[normalizeText(grade)] || null;
 }
 
-function normalizeText(value = '') {
-  return String(value).replace(/\s+/g, ' ').trim();
+function getRoleFromGrade(grade) {
+  return ROLE_BY_GRADE[normalizeText(grade)] || 'collaborator';
 }
 
-function normalizeDepartment(value = '') {
-  return normalizeText(value).toUpperCase();
-}
+function getPermissionRole(user = {}) {
+  const grade = normalizeText(user.grade || '');
+  const department = normalizeDepartment(user.department || '');
 
-function normalizeEmail(value = '') {
-  return normalizeText(value).toLowerCase();
+  if (grade === 'Associé' || department === 'RH' || department === 'CAPITAL HUMAIN') {
+    return 'admin';
+  }
+
+  if (grade === 'Assistant manager' || grade === 'Manager' || grade === 'Senior manager') {
+    return 'manager';
+  }
+
+  if (grade === 'Assistant' || grade === 'Senior') {
+    return 'collaborator';
+  }
+
+  return 'collaborator';
 }
 
 module.exports = {
   ALLOWED_GRADES,
   CATEGORY_BY_GRADE,
-  getGradeFromCategory,
   getCategoryFromGrade,
+  getGradeFromCategory,
+  getPermissionRole,
   getRoleFromGrade,
   normalizeCategory,
   normalizeDepartment,

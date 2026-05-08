@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
+const collaboratorRoutes = require('./routes/collaboratorRoutes');
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.get('/api/health', (_request, response) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/collaborator', collaboratorRoutes);
 
 app.use((error, _request, response, _next) => {
   console.error(error);
