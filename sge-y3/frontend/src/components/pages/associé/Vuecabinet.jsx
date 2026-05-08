@@ -1,10 +1,22 @@
 ﻿import { useMemo, useState } from "react";
-import { Bell, CircleHelp, FileChartColumnIncreasing, FileStack, LayoutDashboard, LogOut, MonitorCheck, UsersRound } from "lucide-react";
+import {
+  Bell,
+  CircleHelp,
+  FileChartColumnIncreasing,
+  FileStack,
+  LayoutDashboard,
+  LogOut,
+  MonitorCheck,
+  Settings2,
+  UsersRound,
+} from "lucide-react";
 import SyntheseRH from "@/components/pages/associé/SynthèseRH";
 import Prendredecision from "@/components/pages/associé/Prendredecision";
 import Autoevamanager from "@/components/pages/associé/autoevamanager";
 import Histoireanalytique from "@/components/pages/associé/Histoireanalytique";
+import ProfilePanel from "@/components/profile/ProfilePanel";
 import logoY3 from "@/assets/logo-y3.png";
+import { getDisplayName, getInitials } from "@/lib/userPresentation";
 
 const sideMenu = [
   {
@@ -25,6 +37,10 @@ const sideMenu = [
   {
     title: "Reporting",
     items: [{ key: "history", label: "Historique & analytics", icon: FileChartColumnIncreasing }],
+  },
+  {
+    title: "Compte",
+    items: [{ key: "profile", label: "Profil", icon: Settings2 }],
   },
 ];
 
@@ -54,9 +70,12 @@ const departmentScores = [
   { label: "Conseil Operationnel", score: "3", width: "44%" },
 ];
 
-function Vuecabinet({ onLogout }) {
+function Vuecabinet({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("vue-cabinet");
   const [selectedDecision, setSelectedDecision] = useState(null);
+  const displayName = getDisplayName(user);
+  const initials = getInitials(user);
+  const profileKey = [user?.id, user?.email, user?.first_name, user?.last_name, user?.grade, user?.department].join("|");
   const handleTopAction = (label) => window.alert(`${label} bientôt disponible.`);
 
   const pageTitle = useMemo(() => {
@@ -64,6 +83,7 @@ function Vuecabinet({ onLogout }) {
     if (activeSection === "decisions") return "Décisions en attente";
     if (activeSection === "autoeval-managers") return "Auto-éval Managers";
     if (activeSection === "history") return "Historique & analytics";
+    if (activeSection === "profile") return "Mon profil";
     return "Vue cabinet";
   }, [activeSection]);
 
@@ -119,7 +139,9 @@ function Vuecabinet({ onLogout }) {
               <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
-                  <p className="text-sm text-slate-500">Associe - Cycle 2026 - Synthese globale</p>
+                  <p className="text-sm text-slate-500">
+                    {displayName} - {user?.grade} - Cycle 2026 - Synthese globale
+                  </p>
                 </div>
 
                 <div className="flex items-center gap-5">
@@ -130,10 +152,10 @@ function Vuecabinet({ onLogout }) {
                     <CircleHelp size={18} />
                   </button>
                   <div className="flex items-center gap-2">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1F4A72] text-xs font-bold text-white">YD</div>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1F4A72] text-xs font-bold text-white">{initials}</div>
                     <div className="text-xs">
-                      <p className="font-semibold text-[#73AF2E]">Yves DODO</p>
-                      <p className="font-semibold text-[#0F3A63]">Associe</p>
+                      <p className="font-semibold text-[#73AF2E]">{displayName}</p>
+                      <p className="font-semibold text-[#0F3A63]">{user?.grade}</p>
                     </div>
                   </div>
                 </div>
@@ -224,6 +246,8 @@ function Vuecabinet({ onLogout }) {
             <Autoevamanager />
           ) : activeSection === "history" ? (
             <Histoireanalytique />
+          ) : activeSection === "profile" ? (
+            <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />
           ) : (
             <section className="rounded-xl bg-white p-6 shadow-sm">
               <h2 className="text-2xl font-extrabold text-[#0F3A63]">{pageTitle}</h2>

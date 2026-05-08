@@ -1,11 +1,13 @@
-﻿import { useMemo, useState } from "react";
-import { BarChart3, FileBarChart2, FolderKanban, LayoutDashboard, LogOut, Users, X } from "lucide-react";
-import Monequipe from "@/components/pages/Monequipe";
-import Evaluermonequipe from "@/components/pages/Evaluermonequipe";
-import Objectifsequipe from "@/components/pages/Objectifsequipe";
-import Monautoevaluation from "@/components/pages/Monautoevaluation";
-import Rapportsequipe from "@/components/pages/Rapportsequipe";
+import { useMemo, useState } from "react";
+import { BarChart3, FileBarChart2, FolderKanban, LayoutDashboard, LogOut, Settings2, Users, X } from "lucide-react";
+import Monequipe from "@/components/pages/manager/Monequipe";
+import Evaluermonequipe from "@/components/pages/manager/Evaluermonequipe";
+import Objectifsequipe from "@/components/pages/manager/Objectifsequipe";
+import Monautoevaluation from "@/components/pages/manager/Monautoevaluation";
+import Rapportsequipe from "@/components/pages/manager/Rapportsequipe";
+import ProfilePanel from "@/components/profile/ProfilePanel";
 import logoY3 from "@/assets/logo-y3.png";
+import { getDisplayName, getInitials } from "@/lib/userPresentation";
 
 const statusBars = [
   { label: "Brouillon", value: 45, count: 2, color: "bg-slate-500" },
@@ -34,11 +36,12 @@ const sidebarSections = [
       { key: "team-goals", label: "Objectifs d'équipe", icon: FolderKanban },
     ],
   },
-  { group: "Mon évaluation", items: [{ key: "self-evaluation", label: "Mon auto-évaluation", icon: BarChart3 }] },
-  { group: "Reporting", items: [{ key: "reports", label: "Rapports d'équipe", icon: FileBarChart2 }] },
+  { group: "Mon evaluation", items: [{ key: "self-evaluation", label: "Mon auto-evaluation", icon: BarChart3 }] },
+  { group: "Reporting", items: [{ key: "reports", label: "Rapports equipe", icon: FileBarChart2 }] },
+  { group: "Compte", items: [{ key: "profile", label: "Profil", icon: Settings2 }] },
 ];
 
-const availableSections = new Set(["overview", "team", "team-goals", "self-evaluation", "reports", "actions"]);
+const availableSections = new Set(["overview", "team", "team-goals", "self-evaluation", "reports", "actions", "profile"]);
 
 const sectionContent = {
   notifications: "Consulte les dernieres notifications et relance les collaborateurs en attente.",
@@ -66,7 +69,7 @@ function SectionPanel({ title, description, onBack }) {
   );
 }
 
-function ManagerDashboard({ onLogout }) {
+function ManagerDashboard({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
   const [searchTerm, setSearchTerm] = useState("");
   const [evaluationMember, setEvaluationMember] = useState(null);
@@ -95,10 +98,14 @@ function ManagerDashboard({ onLogout }) {
     if (activeSection === "self-evaluation") return "MON AUTO-ÉVALUATION";
     if (activeSection === "reports") return "RAPPORTS EQUIPE";
     if (activeSection === "actions") return "ACTIONS REQUISES";
+    if (activeSection === "profile") return "MON PROFIL";
     return "WORKFLOW MANAGER";
   }, [activeSection]);
 
   const showOverview = activeSection === "overview";
+  const displayName = getDisplayName(user);
+  const initials = getInitials(user);
+  const profileKey = [user?.id, user?.email, user?.first_name, user?.last_name, user?.grade, user?.department].join("|");
 
   const openEvaluation = (member) => {
     setEvaluationMember(member);
@@ -203,6 +210,18 @@ function ManagerDashboard({ onLogout }) {
               </div>
             ))}
 
+            <div className="mb-6 rounded-2xl bg-[#F5F8FB] p-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#0F3A63] text-sm font-bold text-white">
+                {initials}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-[#0F3A63]">{displayName}</p>
+                <p className="text-xs text-slate-500">{user?.grade}</p>
+              </div>
+            </div>
+          </div>
+
             <button
               onClick={onLogout}
               className="flex items-center gap-2 pt-6 text-left font-medium text-[#0F3A63] hover:text-[#0E4A6B]"
@@ -215,7 +234,10 @@ function ManagerDashboard({ onLogout }) {
 
         <main className="flex-1 p-5 md:p-8">
           <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
+            <div>
+              <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
+              {showOverview ? <p className="mt-1 text-sm text-slate-500">{displayName} - {user?.grade}</p> : null}
+            </div>
             {activeSection === "team" ? (
               <div className="flex items-center gap-3">
                 <button
@@ -273,7 +295,7 @@ function ManagerDashboard({ onLogout }) {
                   Exporter PDF
                 </button>
               </div>
-            ) : (
+            ) : activeSection === "profile" ? null : (
               <div className="flex items-center gap-3">
                 <button
                   disabled
@@ -454,6 +476,8 @@ function ManagerDashboard({ onLogout }) {
             <Monautoevaluation />
           ) : activeSection === "reports" ? (
             <Rapportsequipe />
+          ) : activeSection === "profile" ? (
+            <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />
           ) : (
             <SectionPanel
               title={
