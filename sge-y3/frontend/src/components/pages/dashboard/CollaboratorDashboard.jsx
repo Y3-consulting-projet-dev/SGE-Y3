@@ -1,11 +1,23 @@
 ﻿import { useMemo, useState } from "react";
-import { ChevronsLeft, ClipboardList, LayoutDashboard, LineChart, LogOut, Target, TrendingUp, User } from "lucide-react";
+import {
+  ChevronsLeft,
+  ClipboardList,
+  LayoutDashboard,
+  LineChart,
+  LogOut,
+  Settings2,
+  Target,
+  TrendingUp,
+  User,
+} from "lucide-react";
 import logoY3 from "@/assets/logo-y3.png";
 import MonTableauDeBord from "@/components/pages/collaborator/Collaboratordashboard";
 import Monautoevaluation from "@/components/pages/collaborator/Monautoevaluation";
 import Mesresultats from "@/components/pages/collaborator/Mesresultats";
 import Mesobjectifs from "@/components/pages/collaborator/Mesobjectifs";
 import Mondeveloppement from "@/components/pages/collaborator/Mondeveloppement";
+import ProfilePanel from "@/components/profile/ProfilePanel";
+import { getDisplayName, getInitials } from "@/lib/userPresentation";
 
 const menuGroups = [
   {
@@ -26,10 +38,17 @@ const menuGroups = [
       { key: "development", label: "Mon développement", icon: TrendingUp },
     ],
   },
+  {
+    title: "Compte",
+    items: [{ key: "profile", label: "Profil", icon: Settings2 }],
+  },
 ];
 
-function CollaboratorDashboard({ onLogout }) {
+function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("dashboard");
+  const displayName = getDisplayName(user);
+  const profileKey = [user?.id, user?.email, user?.first_name, user?.last_name, user?.grade, user?.department].join("|");
+  const initials = getInitials(user);
 
   const pageTitle = useMemo(() => {
     if (activeSection === "dashboard") return "TABLEAU DE BORD";
@@ -37,28 +56,29 @@ function CollaboratorDashboard({ onLogout }) {
     if (activeSection === "results") return "MES RESULTATS";
     if (activeSection === "goals") return "MES OBJECTIFS";
     if (activeSection === "development") return "MON DEVELOPPEMENT";
+    if (activeSection === "profile") return "MON PROFIL";
     return "ESPACE COLLABORATEUR";
   }, [activeSection]);
 
-  const handleHeaderAction = () => {
-    if (activeSection === "self-evaluation") {
-      setActiveSection("results");
-      return;
-    }
-    if (activeSection === "results") {
-      window.print();
-      return;
-    }
-    if (activeSection === "goals") {
-      setActiveSection("development");
-      return;
-    }
-    if (activeSection === "development") {
-      setActiveSection("results");
-      return;
-    }
-    setActiveSection("self-evaluation");
-  };
+  // const handleHeaderAction = () => {
+  //   if (activeSection === "self-evaluation") {
+  //     setActiveSection("results");
+  //     return;
+  //   }
+  //   if (activeSection === "results") {
+  //     window.print();
+  //     return;
+  //   }
+  //   if (activeSection === "goals") {
+  //     setActiveSection("development");
+  //     return;
+  //   }
+  //   if (activeSection === "development") {
+  //     setActiveSection("results");
+  //     return;
+  //   }
+  //   setActiveSection("self-evaluation");
+  // };
 
   return (
     <div className="min-h-screen bg-[#EBEFF3] text-[#0E2B4F]">
@@ -111,8 +131,8 @@ function CollaboratorDashboard({ onLogout }) {
                 <User size={15} />
               </div>
               <div>
-                <p className="text-xs font-semibold text-[#0F3A63]">Amelie KOUADIO</p>
-                <p className="text-xs text-slate-500">Collaborateur</p>
+                <p className="text-xs font-semibold text-[#0F3A63]">{displayName}</p>
+                <p className="text-xs text-slate-500">{user?.grade}</p>
               </div>
             </div>
           </div>
@@ -128,24 +148,36 @@ function CollaboratorDashboard({ onLogout }) {
 
         <main className="relative flex-1 p-4 md:p-6">
           <header className="mb-5 flex flex-wrap items-center justify-between gap-4">
-            <h1 className="text-[34px] font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
-            <div className="flex items-center gap-4">
-              <button className="text-[11px] font-semibold text-[#0F3A63]">Aide</button>
-              <button
-                onClick={handleHeaderAction}
-                className="rounded-full bg-[#8BC53F] px-4 py-2 text-[11px] font-bold text-white"
-              >
-                {activeSection === "self-evaluation"
-                  ? "Soumettre"
-                  : activeSection === "results"
-                    ? "Télécharger mon rapport"
-                    : activeSection === "goals"
-                      ? "Voir mon plan de dev"
-                      : activeSection === "development"
-                        ? "Voir mes resultats"
-                      : "Compléter mon évaluation"}
-              </button>
+            <div>
+              <h1 className="text-[34px] font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
+              {activeSection === "dashboard" ? <p className="mt-1 text-sm text-slate-500">{displayName} - {user?.grade}</p> : null}
             </div>
+            {activeSection !== "profile" ? (
+              <div className="flex items-center gap-4">
+                {/* <button
+                  onClick={handleHeaderAction}
+                  className="rounded-full bg-[#8BC53F] px-4 py-2 text-[11px] font-bold text-white"
+                >
+                  {activeSection === "self-evaluation"
+                    ? "Soumettre"
+                    : activeSection === "results"
+                      ? "Telecharger mon rapport"
+                      : activeSection === "goals"
+                        ? "Voir mon plan de dev"
+                        : activeSection === "development"
+                          ? "Voir mes resultats"
+                          : "Completer mon evaluation"}
+                </button> */}
+                <div className="flex items-center gap-2">
+                               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1F4A72] text-xs font-bold text-white">{initials}</div>
+                               <div className="text-xs">
+                                 <p className="font-semibold text-[#73AF2E]">{displayName}</p>
+                                 <p className="font-semibold text-[#0F3A63]">{user?.grade}</p>
+                               </div>
+                             </div>
+              </div>
+
+            ) : null}
           </header>
 
           {activeSection === "dashboard" ? (
@@ -156,8 +188,10 @@ function CollaboratorDashboard({ onLogout }) {
             <Mesresultats />
           ) : activeSection === "goals" ? (
             <Mesobjectifs />
-          ) : (
+          ) : activeSection === "development" ? (
             <Mondeveloppement />
+          ) : (
+            <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />
           )}
         </main>
       </div>
