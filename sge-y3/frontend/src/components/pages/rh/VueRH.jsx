@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Bell, CircleHelp, LogOut, UserRound } from "lucide-react";
 import logoY3 from "@/assets/logo-y3.png";
 import { rhMenuGroups } from "@/components/pages/rh/rhData";
@@ -10,9 +10,13 @@ import CalibrationRH from "@/components/pages/rh/CalibrationRH";
 import EvaluationsDepartementRH from "@/components/pages/rh/EvaluationsDepartementRH";
 import PopulationRH from "@/components/pages/rh/PopulationRH";
 import RapportsRH from "@/components/pages/rh/RapportsRH";
+import ProfilePanel from "@/components/profile/ProfilePanel";
+import { getDisplayName } from "@/lib/userPresentation";
 
-function VueRH({ onLogout }) {
+function VueRH({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
+  const displayName = getDisplayName(user);
+  const profileKey = [user?.id, user?.email, user?.first_name, user?.last_name, user?.grade, user?.department].join("|");
 
   const pageTitle = useMemo(() => {
     if (activeSection === "validations") return "VALIDATIONS RH";
@@ -22,8 +26,45 @@ function VueRH({ onLogout }) {
     if (activeSection === "department-evaluations") return "ÉVALUATIONS PAR DÉPARTEMENT";
     if (activeSection === "population") return "ÉQUIPE";
     if (activeSection === "reports") return "RAPPORTS RH";
+    if (activeSection === "profile") return "MON PROFIL";
     return "TABLEAU DE BORD RH";
   }, [activeSection]);
+
+  const renderContent = () => {
+    if (activeSection === "overview") {
+      return <TableauRH onOpen={setActiveSection} />;
+    }
+
+    if (activeSection === "validations") {
+      return <ValidationsRH />;
+    }
+
+    if (activeSection === "questionnaire") {
+      return <QuestionnaireRH />;
+    }
+
+    if (activeSection === "syntheses") {
+      return <SynthesesRH />;
+    }
+
+    if (activeSection === "calibration") {
+      return <CalibrationRH />;
+    }
+
+    if (activeSection === "department-evaluations") {
+      return <EvaluationsDepartementRH />;
+    }
+
+    if (activeSection === "population") {
+      return <PopulationRH />;
+    }
+
+    if (activeSection === "profile") {
+      return <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />;
+    }
+
+    return <RapportsRH />;
+  };
 
   return (
     <div className="min-h-screen bg-[#EEF2F6] text-[#0E2B4F]">
@@ -68,8 +109,8 @@ function VueRH({ onLogout }) {
                 <UserRound size={15} />
               </div>
               <div>
-                <p className="text-xs font-bold text-[#0F3A63]">Isabella Beda</p>
-                <p className="text-xs text-slate-500">Responsable RH</p>
+                <p className="text-xs font-bold text-[#0F3A63]">{displayName}</p>
+                <p className="text-xs text-slate-500">{user?.grade || user?.department || "RH"}</p>
               </div>
             </div>
           </div>
@@ -96,32 +137,18 @@ function VueRH({ onLogout }) {
               <button onClick={() => window.alert("Aide RH bientôt disponible.")} className="text-slate-500 hover:text-[#0F3A63]">
                 <CircleHelp size={18} />
               </button>
-              <button
-                onClick={() => setActiveSection(activeSection === "overview" ? "validations" : "overview")}
-                className="rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-bold text-white"
-              >
-                {activeSection === "overview" ? "Traiter validations" : "Retour dashboard"}
-              </button>
+              {activeSection !== "profile" ? (
+                <button
+                  onClick={() => setActiveSection(activeSection === "overview" ? "validations" : "overview")}
+                  className="rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-bold text-white"
+                >
+                  {activeSection === "overview" ? "Traiter validations" : "Retour dashboard"}
+                </button>
+              ) : null}
             </div>
           </header>
 
-          {activeSection === "overview" ? (
-            <TableauRH onOpen={setActiveSection} />
-          ) : activeSection === "validations" ? (
-            <ValidationsRH />
-          ) : activeSection === "questionnaire" ? (
-            <QuestionnaireRH />
-          ) : activeSection === "syntheses" ? (
-            <SynthesesRH />
-          ) : activeSection === "calibration" ? (
-            <CalibrationRH />
-          ) : activeSection === "department-evaluations" ? (
-            <EvaluationsDepartementRH />
-          ) : activeSection === "population" ? (
-            <PopulationRH />
-          ) : (
-            <RapportsRH />
-          )}
+          {renderContent()}
         </main>
       </div>
     </div>
