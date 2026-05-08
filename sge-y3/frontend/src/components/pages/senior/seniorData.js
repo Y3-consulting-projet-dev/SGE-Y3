@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardCheck, FileText, LayoutDashboard, Target, Users } from "lucide-react";
+import { BarChart3, ClipboardCheck, FileText, LayoutDashboard, Settings2, Target, Users } from "lucide-react";
 
 export const menuGroups = [
   {
@@ -20,6 +20,10 @@ export const menuGroups = [
   {
     title: "Mon evaluation",
     items: [{ key: "self-evaluation", label: "Mon auto-evaluation", icon: BarChart3 }],
+  },
+  {
+    title: "Compte",
+    items: [{ key: "profile", label: "Profil", icon: Settings2 }],
   },
 ];
 

@@ -8,9 +8,14 @@ import Evaluerassistants from "@/components/pages/senior/Evaluerassistants";
 import MesresultatsSenior from "@/components/pages/senior/MesresultatsSenior";
 import MesobjectifsSenior from "@/components/pages/senior/MesobjectifsSenior";
 import MonautoevaluationSenior from "@/components/pages/senior/MonautoevaluationSenior";
+import ProfilePanel from "@/components/profile/ProfilePanel";
+import { getDisplayName, getInitials } from "@/lib/userPresentation";
 
-function VueSenior({ onLogout }) {
+function VueSenior({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
+  const displayName = getDisplayName(user);
+  const profileKey = [user?.id, user?.email, user?.first_name, user?.last_name, user?.grade, user?.department].join("|");
+  const initials = getInitials(user);
 
   const pageTitle = useMemo(() => {
     if (activeSection === "assistants") return "MES ASSISTANTS";
@@ -18,6 +23,7 @@ function VueSenior({ onLogout }) {
     if (activeSection === "results") return "SYNTHESES TRANSMISES";
     if (activeSection === "goals") return "MISSIONS COMMUNES";
     if (activeSection === "self-evaluation") return "MON AUTO-EVALUATION";
+    if (activeSection === "profile") return "MON PROFIL";
     return "TABLEAU DE BORD SENIOR";
   }, [activeSection]);
 
@@ -58,18 +64,6 @@ function VueSenior({ onLogout }) {
             ))}
           </nav>
 
-          <div className="mt-10 rounded-xl bg-[#F3F4F6] px-3 py-3 shadow-sm">
-            <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#8BC53F] text-white">
-                <UserRound size={15} />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-[#0F3A63]">Yasmine KOUAME</p>
-                <p className="text-xs text-slate-500">Senior</p>
-              </div>
-            </div>
-          </div>
-
           <button
             onClick={onLogout}
             className="mt-6 flex items-center gap-2 text-left text-sm font-medium text-[#0F3A63] hover:text-[#0E4A6B]"
@@ -81,13 +75,21 @@ function VueSenior({ onLogout }) {
 
         <main className="flex-1 p-5 md:p-8">
           <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
-            <button
-              onClick={() => setActiveSection(activeSection === "overview" ? "reviews" : "overview")}
-              className="rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-bold text-white"
-            >
-              {activeSection === "overview" ? "Evaluer assistants" : "Retour dashboard"}
-            </button>
+            <div>
+              <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
+              {activeSection === "overview" ? <p className="mt-1 text-sm text-slate-500">{displayName} - {user?.grade}</p> : null}
+            </div>
+            
+           <div className="flex items-center gap-5">
+                            
+                             <div className="flex items-center gap-2">
+                               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1F4A72] text-xs font-bold text-white">{initials}</div>
+                               <div className="text-xs">
+                                 <p className="font-semibold text-[#73AF2E]">{displayName}</p>
+                                 <p className="font-semibold text-[#0F3A63]">{user?.grade}</p>
+                               </div>
+                             </div>
+                           </div>
           </header>
 
           {activeSection === "overview" ? (
@@ -102,6 +104,8 @@ function VueSenior({ onLogout }) {
             <MesobjectifsSenior />
           ) : activeSection === "self-evaluation" ? (
             <MonautoevaluationSenior />
+          ) : activeSection === "profile" ? (
+            <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />
           ) : (
             <Vueensemble onOpen={setActiveSection} />
           )}

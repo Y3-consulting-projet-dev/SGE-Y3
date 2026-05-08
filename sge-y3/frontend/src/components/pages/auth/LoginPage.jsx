@@ -6,12 +6,29 @@ function LoginPage({ onLoginSuccess }) {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("manager");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!email.trim() || !password.trim()) return;
-    onLoginSuccess?.(role);
+
+    if (!email.trim() || !password.trim()) {
+      setErrorMessage("Veuillez renseigner votre email et votre mot de passe.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setErrorMessage("");
+      await onLoginSuccess?.({
+        email: email.trim(),
+        password,
+      });
+    } catch (error) {
+      setErrorMessage(error.message || "Connexion impossible pour le moment.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -23,7 +40,7 @@ function LoginPage({ onLoginSuccess }) {
 
           <div className="mx-auto flex h-full w-full max-w-[420px] flex-col justify-center">
             <p className="mb-8 max-w-[330px] text-lg font-medium leading-7 tracking-wide text-white/95">
-              BIENVENUE SUR L&apos;OUTIL DE SYSTEME DE GESTION DES EVALUATIONS
+              BIENVENUE SUR L'OUTIL DE SYSTEME DE GESTION DES EVALUATIONS
             </p>
 
             <img
@@ -33,7 +50,7 @@ function LoginPage({ onLoginSuccess }) {
             />
 
             <p className="max-w-[320px] text-2xl leading-8 text-white/95">
-              Un outil au service de la performance et de la réussite
+              Un outil au service de la performance et de la reussite
             </p>
           </div>
         </section>
@@ -45,17 +62,6 @@ function LoginPage({ onLoginSuccess }) {
             </h1>
 
             <form className="mx-auto max-w-[400px] space-y-7" onSubmit={handleSubmit}>
-              <select
-                value={role}
-                onChange={(event) => setRole(event.target.value)}
-                className="h-14 w-full rounded-xl border border-[#9CC86D] bg-transparent px-5 text-sm tracking-wide text-[#27415B] outline-none focus:ring-2 focus:ring-[#76B82A]/30"
-              >
-                <option value="manager">Profil: Manager</option>
-                <option value="senior">Profil: Senior</option>
-                <option value="collaborator">Profil: Collaborateur</option>
-                <option value="associate">Profil: Associe</option>
-              </select>
-
               <input
                 type="email"
                 value={email}
@@ -87,11 +93,18 @@ function LoginPage({ onLoginSuccess }) {
                 <p className="mt-2 text-right text-xs font-semibold text-[#0E4A6B]">Mot de passe oublie ?</p>
               </div>
 
+              {errorMessage ? (
+                <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {errorMessage}
+                </p>
+              ) : null}
+
               <button
                 type="submit"
-                className="mx-auto block h-14 w-full max-w-[210px] rounded-2xl bg-[#76B82A] text-lg font-bold text-white transition hover:bg-[#6EAD28]"
+                disabled={isSubmitting}
+                className="mx-auto block h-14 w-full max-w-[210px] rounded-2xl bg-[#76B82A] text-lg font-bold text-white transition hover:bg-[#6EAD28] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                Se Connecter
+                {isSubmitting ? "Connexion..." : "Se Connecter"}
               </button>
             </form>
           </div>

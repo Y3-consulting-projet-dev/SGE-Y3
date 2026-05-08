@@ -4,28 +4,73 @@ import ManagerDashboard from "@/components/pages/dashboard/ManagerDashboard";
 import CollaboratorDashboard from "@/components/pages/dashboard/CollaboratorDashboard";
 import SeniorDashboard from "@/components/pages/dashboard/SeniorDashboard";
 import Vuecabinet from "@/components/pages/associé/Vuecabinet";
+import { clearSession, loadSession, loginUser, saveSession } from "@/lib/auth";
+
+function getInitialAuthState() {
+  const session = loadSession();
+
+  if (!session?.user?.role) {
+    return {
+      isAuthenticated: false,
+      userRole: "manager",
+      currentUser: null,
+    };
+  }
+
+  return {
+    isAuthenticated: true,
+    userRole: session.user.role,
+    currentUser: session.user,
+  };
+}
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState("manager");
+  const [authState, setAuthState] = useState(getInitialAuthState);
+
+  const { isAuthenticated, userRole, currentUser } = authState;
+
+  const handleLogout = () => {
+    clearSession();
+    setAuthState({
+      isAuthenticated: false,
+      userRole: "manager",
+      currentUser: null,
+    });
+  };
+
+  const applySession = (session) => {
+    saveSession(session);
+    setAuthState({
+      isAuthenticated: true,
+      userRole: session.user.role || "manager",
+      currentUser: session.user,
+    });
+  };
+
+  const handleLoginSuccess = async (credentials) => {
+    const session = await loginUser(credentials);
+    applySession(session);
+  };
+
+  const handleSessionRefresh = (session) => {
+    applySession(session);
+  };
 
   if (isAuthenticated) {
     if (userRole === "collaborator") {
-      return <CollaboratorDashboard onLogout={() => setIsAuthenticated(false)} />;
+      return <CollaboratorDashboard user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
     }
     if (userRole === "senior") {
-      return <SeniorDashboard onLogout={() => setIsAuthenticated(false)} />;
+      return <SeniorDashboard user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
     }
     if (userRole === "associate") {
-      return <Vuecabinet onLogout={() => setIsAuthenticated(false)} />;
+      return <Vuecabinet user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
     }
-    return <ManagerDashboard onLogout={() => setIsAuthenticated(false)} />;
+
+    return <ManagerDashboard user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
   }
 
-  return <LoginPage onLoginSuccess={(role) => {
-    setUserRole(role || "manager");
-    setIsAuthenticated(true);
-  }} />;
+  return <LoginPage onLoginSuccess={handleLoginSuccess} />;
 }
 
 export default App;
