@@ -1,57 +1,6 @@
 import { useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
-
-const initialSections = [
-  {
-    id: 1,
-    title: "Section 1",
-    subtitle: "Savoir-etre",
-    status: "Complete",
-    comment: "Je communique régulièrement avec l'équipe et je respecte les délais fixés.",
-    criteria: [
-      { label: "Ponctualite & fiabilite", score: 4 },
-      { label: "Travail en équipe", score: 4 },
-      { label: "Communication", score: 3 },
-      { label: "Adaptabilite", score: 4 },
-    ],
-  },
-  {
-    id: 2,
-    title: "Section 2",
-    subtitle: "Competences tech.",
-    status: "En cours",
-    comment: "",
-    criteria: [
-      { label: "Maitrise des outils comptables (CEGID, Sage)", score: null },
-      { label: "Redaction des rapports d'audit", score: null },
-      { label: "Analyse et interprétation des données financières", score: null },
-    ],
-  },
-  {
-    id: 3,
-    title: "Section 3",
-    subtitle: "Objectifs atteints",
-    status: "A faire",
-    comment: "",
-    criteria: [
-      { label: "Respect des objectifs fixes en debut de cycle", score: null },
-      { label: "Contribution aux livrables de mission", score: null },
-      { label: "Qualite des resultats obtenus", score: null },
-    ],
-  },
-  {
-    id: 4,
-    title: "Section 4",
-    subtitle: "Evolution souhaitee",
-    status: "A faire",
-    comment: "",
-    criteria: [
-      { label: "Competences a developper", score: null },
-      { label: "Projection professionnelle", score: null },
-      { label: "Besoins de formation", score: null },
-    ],
-  },
-];
+import { saveMyAssistantEvaluation, submitMyAssistantEvaluation } from "@/lib/collaboratorEvaluation";
 
 const gradingHelp = [
   { level: "1", text: "Insuffisant - objectif non atteint", color: "text-[#FF7A00]" },
@@ -62,7 +11,7 @@ const gradingHelp = [
 ];
 
 function getSectionProgress(section) {
-  const answered = section.criteria.filter((criterion) => criterion.score).length;
+  const answered = section.criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
   return Math.round((answered / section.criteria.length) * 100);
 }
 
@@ -95,58 +44,92 @@ function ScoreRow({ label, selected, onSelect }) {
   );
 }
 
-function Monautoevaluation() {
-  const [sections, setSections] = useState(initialSections);
-  const [activeSectionId, setActiveSectionId] = useState(2);
+function Monautoevaluation({ evaluationData, onEvaluationChange, onSubmitted }) {
+  const [sections, setSections] = useState(() => evaluationData?.evaluation?.sections || []);
+  const [activeSectionId, setActiveSectionId] = useState(Number(evaluationData?.evaluation?.activeSectionId || 1));
   const [saved, setSaved] = useState(false);
-  const [savedComments, setSavedComments] = useState({ 1: initialSections[0].comment });
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackTone, setFeedbackTone] = useState("success");
+  const [savedComments, setSavedComments] = useState(() =>
+    Object.fromEntries(
+      (evaluationData?.evaluation?.sections || [])
+        .filter((section) => section.comment?.trim())
+        .map((section) => [section.id, section.comment.trim()])
+    )
+  );
 
-  const activeSection = sections.find((section) => section.id === activeSectionId) || sections[1];
+  const activeSection = sections.find((section) => Number(section.id) === Number(activeSectionId)) || sections[0];
   const completedSections = sections.filter((section) => section.status === "Complete").length;
-  const globalProgress = Math.round((sections.reduce((total, section) => total + getSectionProgress(section), 0) / sections.length));
+  const globalProgress = Math.round(
+    sections.reduce((total, section) => total + getSectionProgress(section), 0) / (sections.length || 1)
+  );
   const averageScore = useMemo(() => {
-    const scores = activeSection.criteria.map((criterion) => criterion.score).filter(Boolean);
+    const scores = activeSection?.criteria?.map((criterion) => criterion.score).filter((score) => typeof score === "number") || [];
     if (!scores.length) return "--";
     return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
   }, [activeSection]);
 
-  const updateScore = (criterionLabel, score) => {
-    setSections((currentSections) =>
-      currentSections.map((section) => {
-        if (section.id !== activeSectionId) return section;
+  const syncSections = (updater) => {
+    setSections((currentSections) => {
+      const nextSections = typeof updater === "function" ? updater(currentSections) : updater;
+      return nextSections.map((section) => {
+        const progress = getSectionProgress(section);
         return {
           ...section,
-          status: "En cours",
+          status: progress === 0 ? "A faire" : progress === 100 ? "Complete" : "En cours",
+        };
+      });
+    });
+    setSaved(false);
+    setFeedbackMessage("");
+  };
+
+  const updateScore = (criterionLabel, score) => {
+    syncSections((currentSections) =>
+      currentSections.map((section) => {
+        if (Number(section.id) !== Number(activeSectionId)) return section;
+        return {
+          ...section,
           criteria: section.criteria.map((criterion) =>
             criterion.label === criterionLabel ? { ...criterion, score } : criterion
           ),
         };
       })
     );
-    setSaved(false);
   };
 
   const updateComment = (comment) => {
-    setSections((currentSections) =>
-      currentSections.map((section) => (section.id === activeSectionId ? { ...section, comment, status: "En cours" } : section))
+    syncSections((currentSections) =>
+      currentSections.map((section) => (Number(section.id) === Number(activeSectionId) ? { ...section, comment } : section))
     );
-    setSaved(false);
   };
 
-  const saveSection = () => {
-    const isComplete = activeSection.criteria.every((criterion) => criterion.score);
-    const trimmedComment = activeSection.comment.trim();
+  const persistSections = async (nextSections = sections) => {
+    setIsSaving(true);
 
-    setSections((currentSections) =>
-      currentSections.map((section) =>
-        section.id === activeSectionId ? { ...section, status: isComplete ? "Complete" : "En cours" } : section
-      )
-    );
+    try {
+      const response = await saveMyAssistantEvaluation(nextSections);
+      setSections(response.evaluation.sections);
+      setSaved(true);
+      setFeedbackTone("success");
+      setFeedbackMessage(response.message || "Sauvegarde réussie.");
 
-    if (trimmedComment) {
-      setSavedComments((comments) => ({ ...comments, [activeSectionId]: trimmedComment }));
+        const currentSection = response.evaluation.sections.find((section) => Number(section.id) === Number(activeSectionId));
+      if (currentSection?.comment?.trim()) {
+        setSavedComments((comments) => ({ ...comments, [activeSectionId]: currentSection.comment.trim() }));
+      }
+
+      onEvaluationChange?.(response);
+      return response;
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedbackMessage(error.message || "Sauvegarde impossible.");
+      return null;
+    } finally {
+      setIsSaving(false);
     }
-    setSaved(true);
   };
 
   const goToSection = (direction) => {
@@ -154,18 +137,68 @@ function Monautoevaluation() {
     if (nextId >= 1 && nextId <= sections.length) {
       setActiveSectionId(nextId);
       setSaved(false);
+      setFeedbackMessage("");
     }
   };
 
+  const handleSaveAndContinue = async () => {
+    const response = await persistSections(sections);
+    if (response) {
+      goToSection(1);
+    }
+  };
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+
+    try {
+      const savedResponse = await persistSections(sections);
+      if (!savedResponse) {
+        return;
+      }
+
+      const submittedResponse = await submitMyAssistantEvaluation();
+      setSections(submittedResponse.evaluation.sections);
+      setFeedbackTone("success");
+      setFeedbackMessage(submittedResponse.message || "Auto-évaluation soumise.");
+      onEvaluationChange?.(submittedResponse);
+      onSubmitted?.(submittedResponse);
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedbackMessage(error.message || "Soumission impossible.");
+
+      const firstMissingSection = error?.details?.missingAnswers?.[0]?.sectionId;
+      if (firstMissingSection) {
+        setActiveSectionId(Number(firstMissingSection));
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!activeSection) {
+    return (
+      <div className="rounded-md bg-white p-4 shadow-sm text-sm font-semibold text-slate-500">
+        Chargement de l'auto-évaluation...
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
-      <div className="text-[10px] text-slate-500">Cycle 2025 - Formulaire en cours - Sauvegarde auto activee</div>
+      <div className="text-[10px] text-slate-500">
+        {evaluationData?.assignee?.current_cycle || "Cycle 2026"} - Formulaire en cours - Sauvegarde progressive activée
+      </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 text-[12px]">
-        <p className="font-semibold text-[#0F3A63]">Derniere sauvegarde automatique : il y a 2 min</p>
+        <p className="font-semibold text-[#0F3A63]">
+          Dernière sauvegarde : {evaluationData?.evaluation?.last_saved_at ? "enregistrée" : "non disponible"}
+        </p>
         <div className="flex items-center gap-4">
           <span className="font-semibold text-[#0F3A63]">Section {activeSectionId} / 4</span>
-          <button onClick={saveSection} className="font-semibold text-[#76B82A] hover:underline">Sauvegarder maintenant</button>
+          <button onClick={() => persistSections(sections)} className="font-semibold text-[#76B82A] hover:underline">
+            {isSaving ? "Sauvegarde..." : "Sauvegarder maintenant"}
+          </button>
         </div>
       </div>
 
@@ -177,18 +210,21 @@ function Monautoevaluation() {
             <button
               key={section.id}
               onClick={() => {
-                setActiveSectionId(section.id);
+                setActiveSectionId(Number(section.id));
                 setSaved(false);
+                setFeedbackMessage("");
               }}
-              className={`rounded-md bg-[#003B63] px-3 py-2 text-left text-white transition ${
-                activeSectionId === section.id ? "ring-2 ring-[#76B82A]" : "hover:bg-[#0B4C7A]"
+              className={`rounded-md border px-3 py-2 text-left text-white transition focus:outline-none ${
+                Number(activeSectionId) === Number(section.id)
+                  ? "border-[#76B82A] bg-[#003B63] shadow-[0_0_0_1px_#76B82A]"
+                  : "border-transparent bg-[#003B63] hover:bg-[#0B4C7A]"
               }`}
             >
               <div className="mb-2 flex items-center justify-between">
-                <h2 className="text-[12px] font-bold">{section.title}</h2>
+                <h2 className="text-[12px] font-bold">{section.title || `Section ${section.id}`}</h2>
                 {done ? <Check size={14} className="text-white" /> : null}
               </div>
-              <p className="text-[12px] font-semibold">{section.subtitle}</p>
+              <p className="text-[12px] font-semibold">{section.subtitle || "A compléter"}</p>
               <div className="mt-3 h-1.5 rounded-full bg-slate-200">
                 <div className={`h-1.5 rounded-full ${done ? "bg-[#7BC443]" : "bg-[#D6DCE2]"}`} style={{ width: `${progress}%` }} />
               </div>
@@ -205,7 +241,7 @@ function Monautoevaluation() {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="text-[30px] font-bold leading-none text-[#0F3A63]">
-                {activeSection.title} - {activeSection.subtitle}
+                {(activeSection.title || `Section ${activeSection.id}`)} - {(activeSection.subtitle || "A compléter")}
               </h3>
               <p className="mt-2 text-[12px] font-semibold text-slate-500">Score moyen : {averageScore} / 5</p>
             </div>
@@ -236,13 +272,13 @@ function Monautoevaluation() {
 
           {savedComments[activeSectionId] ? (
             <div className="mt-3 rounded-sm bg-[#DCECCB] px-3 py-2">
-              <p className="text-[10px] font-bold text-[#5A8A3A]">Commentaire sauvegarde</p>
+              <p className="text-[10px] font-bold text-[#5A8A3A]">Commentaire sauvegardé</p>
               <p className="mt-1 text-[11px] font-semibold text-[#0F3A63]">{savedComments[activeSectionId]}</p>
             </div>
           ) : null}
 
           <div className="mt-3 rounded-sm bg-[#DCECCB] px-3 py-2 text-[10px] font-semibold text-[#5A8A3A]">
-            Les questions obligatoires (sans reponse) bloqueront la soumission. Les questions avec etoile * sont requises.
+            Les questions obligatoires sans réponse bloqueront la soumission à la RH.
           </div>
 
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
@@ -252,20 +288,38 @@ function Monautoevaluation() {
               className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ChevronLeft size={14} />
-              Section precedente
+              Section précédente
             </button>
-            <button
-              onClick={() => {
-                saveSection();
-                goToSection(1);
-              }}
-              className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
-            >
-              Sauvegarder et continuer
-              <ChevronRight size={14} />
-            </button>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {activeSectionId < sections.length ? (
+                <button
+                  onClick={handleSaveAndContinue}
+                  disabled={isSaving || isSubmitting}
+                  className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                >
+                  Sauvegarder et continuer
+                  <ChevronRight size={14} />
+                </button>
+              ) : (
+                <button
+                  onClick={handleSubmit}
+                  disabled={isSaving || isSubmitting || evaluationData?.evaluation?.status === "Soumis a RH"}
+                  className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                >
+                  {isSubmitting ? "Soumission..." : "Soumettre à la RH"}
+                </button>
+              )}
+            </div>
           </div>
-          {saved ? <p className="mt-2 text-right text-[11px] font-semibold text-[#76B82A]">Sauvegarde reussie.</p> : null}
+
+          {feedbackMessage ? (
+            <p className={`mt-2 text-right text-[11px] font-semibold ${feedbackTone === "error" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>
+              {feedbackMessage}
+            </p>
+          ) : saved ? (
+            <p className="mt-2 text-right text-[11px] font-semibold text-[#76B82A]">Sauvegarde réussie.</p>
+          ) : null}
         </article>
 
         <div className="space-y-4">
@@ -274,7 +328,7 @@ function Monautoevaluation() {
               <h3 className="text-[22px] font-bold text-[#0F3A63]">Progression globale</h3>
               <span className="text-[13px] font-bold text-[#76B82A]">{globalProgress}%</span>
             </div>
-            <p className="mb-4 text-[12px] font-semibold text-[#76B82A]">{completedSections} section(s) complete(s)</p>
+            <p className="mb-4 text-[12px] font-semibold text-[#76B82A]">{completedSections} section(s) completé(s)</p>
 
             <div className="space-y-3">
               {sections.map((section) => (
