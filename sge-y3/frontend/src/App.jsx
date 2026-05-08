@@ -7,6 +7,24 @@ import Vuecabinet from "@/components/pages/associé/Vuecabinet";
 import VueRH from "@/components/pages/rh/VueRH";
 import { clearSession, loadSession, loginUser, saveSession } from "@/lib/auth";
 
+function normalizeDepartment(value = "") {
+  return String(value).replace(/\s+/g, " ").trim().toUpperCase();
+}
+
+function getDashboardRole(user) {
+  const department = normalizeDepartment(user?.department);
+
+  if (user?.permission_role === "admin" && (department === "RH" || department === "CAPITAL HUMAIN")) {
+    return "rh";
+  }
+
+  if (user?.role === "associate") {
+    return "associate";
+  }
+
+  return user?.role || "manager";
+}
+
 function getInitialAuthState() {
   const session = loadSession();
 
@@ -20,7 +38,7 @@ function getInitialAuthState() {
 
   return {
     isAuthenticated: true,
-    userRole: session.user.role,
+    userRole: getDashboardRole(session.user),
     currentUser: session.user,
   };
 }
@@ -43,7 +61,7 @@ function App() {
     saveSession(session);
     setAuthState({
       isAuthenticated: true,
-      userRole: session.user.role || "manager",
+      userRole: getDashboardRole(session.user),
       currentUser: session.user,
     });
   };
@@ -61,12 +79,15 @@ function App() {
     if (userRole === "collaborator") {
       return <CollaboratorDashboard user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
     }
+
     if (userRole === "senior") {
       return <SeniorDashboard user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
     }
+
     if (userRole === "associate") {
       return <Vuecabinet user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
     }
+
     if (userRole === "rh") {
       return <VueRH user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
     }
