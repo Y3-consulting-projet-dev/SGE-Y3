@@ -1,27 +1,64 @@
 ﻿import { useState } from "react";
 
-const topCards = [
-  { title: "Score final", value: "3.6/5", subtitle: "Calcule automatiquement" },
-  { title: "Décision RH", value: "Maintien", subtitle: "avec plan de formation" },
-  { title: "Comparaison équipe", value: "+0.1", subtitle: "Au-dessus de la moyenne" },
-];
+function formatScore(score) {
+  return typeof score === "number" ? score.toFixed(1) : "0.0";
+}
 
-const sectionScores = [
-  { label: "Savoir-etre", score: 3.8, percent: 78 },
-  { label: "Compétences techniques", score: 3.3, percent: 66 },
-  { label: "Objectifs atteints", score: 3.5, percent: 70 },
-];
-
-function Mesresultats() {
+function Mesresultats({ resultsData, isLoading, errorMessage }) {
   const [reportDownloaded, setReportDownloaded] = useState(false);
+
+  if (isLoading) {
+    return (
+      <div className="rounded-md bg-white p-4 text-sm font-semibold text-slate-500 shadow-sm">
+        Chargement des résultats...
+      </div>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <div className="rounded-md bg-white p-4 text-sm font-semibold text-red-600 shadow-sm">
+        {errorMessage}
+      </div>
+    );
+  }
+
+  const scoreFinal = resultsData?.kpis?.scoreFinal;
+  const moyenneEquipe = resultsData?.kpis?.moyenneEquipe;
+  const assistantsEvalues = resultsData?.kpis?.assistantsEvalues || 0;
+  const comparaisonEquipeLabel = resultsData?.kpis?.comparaisonEquipeLabel || "0.0";
+  const comparaisonEquipeSubtitle = resultsData?.kpis?.comparaisonEquipeSubtitle || "Égal à la moyenne";
+  const sectionScores = resultsData?.sectionScores || [];
+
+  const topCards = [
+    {
+      title: "Score final",
+      value: `${formatScore(scoreFinal)}/5`,
+      subtitle: "Calculé automatiquement",
+    },
+    {
+      title: "Décision RH",
+      value: "Maintien",
+      subtitle: "avec plan de formation",
+    },
+    {
+      title: "Comparaison équipe",
+      value: comparaisonEquipeLabel,
+      subtitle: comparaisonEquipeSubtitle,
+    },
+  ];
 
   return (
     <div className="space-y-4">
-      <p className="text-[12px] font-semibold text-slate-500">Cycle 2026 - Résultats disponibles</p>
+      <p className="text-[12px] font-semibold text-slate-500">
+        {resultsData?.cycle_label || "Cycle 2026"} - Résultats disponibles
+      </p>
 
-      <div className="rounded-sm bg-[#BFE2B9] px-4 py-3 text-[12px] font-semibold text-[#114F35]">
-        Évaluation clôturée le 02/05/2026. La décision de l'Associé a été communiquée.
-      </div>
+      {/* <div className="rounded-sm bg-[#BFE2B9] px-4 py-3 text-[12px] font-semibold text-[#114F35]">
+        {resultsData?.status === "Soumis a RH"
+          ? "Évaluation transmise à la RH / Capital Humain. Résultats issus de l'auto-évaluation."
+          : "Résultats provisoires issus de l'auto-évaluation en cours."}
+      </div> */}
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
         {topCards.map((card) => (
@@ -36,26 +73,32 @@ function Mesresultats() {
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1.05fr]">
         <div className="space-y-4">
           <article className="rounded-md bg-white p-4 shadow-sm">
-            <h3 className="mb-4 text-[14px] font-bold text-[#0F3A63]">Detail des scores par section</h3>
+            <h3 className="mb-4 text-[14px] font-bold text-[#0F3A63]">Détail des scores par section</h3>
             <div className="space-y-4">
               {sectionScores.map((item) => (
-                <div key={item.label}>
-                  <div className="mb-1 flex items-center justify-between text-[13px] font-semibold text-[#0F3A63]">
-                    <p>{item.label}</p>
-                    <span>{item.score}</span>
+                <div key={item.sectionId || item.label}>
+                  <div className="mb-1 flex items-center justify-between gap-3 text-[13px] font-semibold text-[#0F3A63]">
+                    <div>
+                      <p>{item.title || `Section ${item.sectionId}`}</p>
+                      <p className="text-[11px] font-medium text-slate-500">{item.label}</p>
+                    </div>
+                    <span>{typeof item.score === "number" ? item.score.toFixed(1) : "--"}</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-slate-300">
-                    <div className="h-1.5 rounded-full bg-[#76B82A]" style={{ width: `${item.percent}%` }} />
+                    <div className="h-1.5 rounded-full bg-[#76B82A]" style={{ width: `${item.percent || 0}%` }} />
                   </div>
                 </div>
               ))}
               <div>
                 <div className="mb-1 flex items-center justify-between text-[13px] font-bold text-[#0F3A63]">
                   <p>Score final pondere</p>
-                  <span className="text-[#76B82A]">3.6 / 5</span>
+                  <span className="text-[#76B82A]">{formatScore(scoreFinal)} / 5</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-300">
-                  <div className="h-1.5 w-[72%] rounded-full bg-[#76B82A]" />
+                  <div
+                    className="h-1.5 rounded-full bg-[#76B82A]"
+                    style={{ width: `${resultsData?.kpis?.scoreFinalPercent || 0}%` }}
+                  />
                 </div>
               </div>
             </div>
@@ -91,11 +134,11 @@ function Mesresultats() {
                 "Bon potentiel. Une étape supplémentaire pour confirmer la maîtrise technique avant toute évolution."
               </p>
             </div>
-            <p className="mt-2 text-right text-[11px] font-semibold text-slate-400">Decision prise le 05/05/2026</p>
+            <p className="mt-2 text-right text-[11px] font-semibold text-slate-400">Décision prise le 05/05/2026</p>
           </article>
 
           <article className="rounded-md bg-white p-4 shadow-sm">
-            <h3 className="mb-4 text-[20px] font-bold text-[#0F3A63]">Evolution sur 2 cycles</h3>
+            <h3 className="mb-4 text-[20px] font-bold text-[#0F3A63]">Évolution sur 2 cycles</h3>
             <div className="space-y-3 text-[13px] font-semibold">
               <div className="flex items-center justify-between text-[#0F3A63]">
                 <p>Cycle 2025</p>
@@ -103,10 +146,15 @@ function Mesresultats() {
               </div>
               <div className="flex items-center justify-between text-[#76B82A]">
                 <p>Cycle 2026</p>
-                <p>3.6 / 5 - Maintien</p>
+                <p>{formatScore(scoreFinal)} / 5 - Maintien</p>
               </div>
             </div>
-            <p className="mt-3 text-[13px] font-bold text-[#76B82A]">Progression de +0.4 point en 1 an</p>
+            <p className="mt-3 text-[13px] font-bold text-[#76B82A]">
+              Moyenne équipe : {formatScore(moyenneEquipe)} / 5
+            </p>
+            <p className="mt-1 text-[12px] font-semibold text-[#0F3A63]">
+              Comparaison basée sur les scores de {assistantsEvalues} autre(s) Assistant(s).
+            </p>
           </article>
 
           <button

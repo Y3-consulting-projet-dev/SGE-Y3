@@ -5,6 +5,7 @@ const User = require('../models/User');
 const {
   ALLOWED_GRADES,
   getCategoryFromGrade,
+  getPermissionRole,
   getRoleFromGrade,
   normalizeDepartment,
   normalizeEmail,
@@ -13,11 +14,14 @@ const {
 
 function buildAuthResponse(user) {
   const role = getRoleFromGrade(user.grade);
+  const permissionRole = getPermissionRole(user);
+
   const token = jwt.sign(
     {
       sub: user._id.toString(),
       email: user.email,
       role,
+      permission_role: permissionRole,
       grade: user.grade,
       code_categorie: user.code_categorie,
     },
@@ -32,6 +36,7 @@ function buildAuthResponse(user) {
     user: {
       ...user.toSafeObject(),
       role,
+      permission_role: permissionRole,
     },
   };
 }
@@ -155,6 +160,7 @@ async function updatePassword(request, response) {
 }
 
 module.exports = {
+  buildAuthResponse,
   login,
   updatePassword,
   updateProfile,

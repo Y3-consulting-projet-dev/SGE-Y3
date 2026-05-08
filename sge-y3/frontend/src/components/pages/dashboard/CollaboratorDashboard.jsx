@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import {
   ChevronsLeft,
   ClipboardList,
@@ -17,7 +17,8 @@ import Mesresultats from "@/components/pages/collaborator/Mesresultats";
 import Mesobjectifs from "@/components/pages/collaborator/Mesobjectifs";
 import Mondeveloppement from "@/components/pages/collaborator/Mondeveloppement";
 import ProfilePanel from "@/components/profile/ProfilePanel";
-import { getDisplayName, getInitials } from "@/lib/userPresentation";
+import { getDisplayName } from "@/lib/userPresentation";
+import { getMyAssistantEvaluation, getMyAssistantResults } from "@/lib/collaboratorEvaluation";
 
 const menuGroups = [
   {
@@ -46,9 +47,88 @@ const menuGroups = [
 
 function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("dashboard");
+  const [evaluationData, setEvaluationData] = useState(null);
+  const [evaluationError, setEvaluationError] = useState("");
+  const [isLoadingEvaluation, setIsLoadingEvaluation] = useState(true);
+  const [resultsData, setResultsData] = useState(null);
+  const [resultsError, setResultsError] = useState("");
+  const [isLoadingResults, setIsLoadingResults] = useState(true);
   const displayName = getDisplayName(user);
   const profileKey = [user?.id, user?.email, user?.first_name, user?.last_name, user?.grade, user?.department].join("|");
-  const initials = getInitials(user);
+
+  async function refreshAssistantResults() {
+    if (user?.grade !== "Assistant") {
+      setResultsData(null);
+      setResultsError("");
+      setIsLoadingResults(false);
+      return null;
+    }
+
+    setIsLoadingResults(true);
+    setResultsError("");
+
+    try {
+      const resultsResponse = await getMyAssistantResults();
+      setResultsData(resultsResponse);
+      return resultsResponse;
+    } catch (error) {
+      setResultsError(error.message || "Chargement des résultats impossible.");
+      return null;
+    } finally {
+      setIsLoadingResults(false);
+    }
+  }
+
+  function handleEvaluationUpdate(nextEvaluationData) {
+    setEvaluationData(nextEvaluationData);
+    refreshAssistantResults();
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadEvaluation() {
+      if (user?.grade !== "Assistant") {
+        setIsLoadingEvaluation(false);
+        setEvaluationData(null);
+        setIsLoadingResults(false);
+        setResultsData(null);
+        return;
+      }
+
+      try {
+        setIsLoadingEvaluation(true);
+        setIsLoadingResults(true);
+        setEvaluationError("");
+        setResultsError("");
+        const [evaluationResponse, resultsResponse] = await Promise.all([
+          getMyAssistantEvaluation(),
+          getMyAssistantResults(),
+        ]);
+
+        if (!cancelled) {
+          setEvaluationData(evaluationResponse);
+          setResultsData(resultsResponse);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setEvaluationError(error.message || "Chargement de l'auto-évaluation impossible.");
+          setResultsError(error.message || "Chargement des résultats impossible.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingEvaluation(false);
+          setIsLoadingResults(false);
+        }
+      }
+    }
+
+    loadEvaluation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.grade]);
 
   const pageTitle = useMemo(() => {
     if (activeSection === "dashboard") return "TABLEAU DE BORD";
@@ -60,25 +140,63 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
     return "ESPACE COLLABORATEUR";
   }, [activeSection]);
 
-  // const handleHeaderAction = () => {
-  //   if (activeSection === "self-evaluation") {
-  //     setActiveSection("results");
-  //     return;
-  //   }
-  //   if (activeSection === "results") {
-  //     window.print();
-  //     return;
-  //   }
-  //   if (activeSection === "goals") {
-  //     setActiveSection("development");
-  //     return;
-  //   }
-  //   if (activeSection === "development") {
-  //     setActiveSection("results");
-  //     return;
-  //   }
-  //   setActiveSection("self-evaluation");
-  // };
+  const renderMainContent = () => {
+    if (user?.grade !== "Assistant" && activeSection === "dashboard") {
+      return (
+        <section className="rounded-lg bg-white p-5 shadow-sm">
+          <h2 className="text-xl font-bold text-[#0F3A63]">Parcours collaborateur en préparation</h2>
+          <p className="mt-3 text-sm text-slate-600">
+            Cette premiere phase est activée uniquement pour les Assistants. Les autres profils collaborateurs seront branchés ensuite.
+          </p>
+        </section>
+      );
+    }
+
+    if (activeSection === "dashboard") {
+      if (isLoadingEvaluation) {
+        return <section className="rounded-lg bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement du tableau de bord...</section>;
+      }
+
+      if (evaluationError) {
+        return <section className="rounded-lg bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">{evaluationError}</section>;
+      }
+
+      return <MonTableauDeBord evaluation={evaluationData} onContinue={() => setActiveSection("self-evaluation")} isLoading={isLoadingEvaluation} />;
+    }
+
+    if (activeSection === "self-evaluation") {
+      if (isLoadingEvaluation) {
+        return <section className="rounded-lg bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement de l'auto-évaluation...</section>;
+      }
+
+      if (evaluationError) {
+        return <section className="rounded-lg bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">{evaluationError}</section>;
+      }
+
+      return (
+        <Monautoevaluation
+          key={evaluationData?.evaluation?.id || "assistant-evaluation"}
+          evaluationData={evaluationData}
+          onEvaluationChange={handleEvaluationUpdate}
+          onSubmitted={handleEvaluationUpdate}
+        />
+      );
+    }
+
+    if (activeSection === "results") {
+      return <Mesresultats resultsData={resultsData} isLoading={isLoadingResults} errorMessage={resultsError} />;
+    }
+
+    if (activeSection === "goals") {
+      return <Mesobjectifs />;
+    }
+
+    if (activeSection === "development") {
+      return <Mondeveloppement />;
+    }
+
+    return <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />;
+  };
 
   return (
     <div className="min-h-screen bg-[#EBEFF3] text-[#0E2B4F]">
@@ -152,47 +270,9 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
               <h1 className="text-[34px] font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
               {activeSection === "dashboard" ? <p className="mt-1 text-sm text-slate-500">{displayName} - {user?.grade}</p> : null}
             </div>
-            {activeSection !== "profile" ? (
-              <div className="flex items-center gap-4">
-                {/* <button
-                  onClick={handleHeaderAction}
-                  className="rounded-full bg-[#8BC53F] px-4 py-2 text-[11px] font-bold text-white"
-                >
-                  {activeSection === "self-evaluation"
-                    ? "Soumettre"
-                    : activeSection === "results"
-                      ? "Telecharger mon rapport"
-                      : activeSection === "goals"
-                        ? "Voir mon plan de dev"
-                        : activeSection === "development"
-                          ? "Voir mes resultats"
-                          : "Completer mon evaluation"}
-                </button> */}
-                <div className="flex items-center gap-2">
-                               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1F4A72] text-xs font-bold text-white">{initials}</div>
-                               <div className="text-xs">
-                                 <p className="font-semibold text-[#73AF2E]">{displayName}</p>
-                                 <p className="font-semibold text-[#0F3A63]">{user?.grade}</p>
-                               </div>
-                             </div>
-              </div>
-
-            ) : null}
           </header>
 
-          {activeSection === "dashboard" ? (
-            <MonTableauDeBord />
-          ) : activeSection === "self-evaluation" ? (
-            <Monautoevaluation />
-          ) : activeSection === "results" ? (
-            <Mesresultats />
-          ) : activeSection === "goals" ? (
-            <Mesobjectifs />
-          ) : activeSection === "development" ? (
-            <Mondeveloppement />
-          ) : (
-            <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />
-          )}
+          {renderMainContent()}
         </main>
       </div>
     </div>
