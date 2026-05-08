@@ -7,10 +7,10 @@ const initialSections = [
     title: "Section 1",
     subtitle: "Savoir-etre",
     status: "Complete",
-    comment: "Je communique regulierement avec l'equipe et je respecte les delais fixes.",
+    comment: "Je communique régulièrement avec l'équipe et je respecte les délais fixés.",
     criteria: [
       { label: "Ponctualite & fiabilite", score: 4 },
-      { label: "Travail en equipe", score: 4 },
+      { label: "Travail en équipe", score: 4 },
       { label: "Communication", score: 3 },
       { label: "Adaptabilite", score: 4 },
     ],
@@ -24,7 +24,7 @@ const initialSections = [
     criteria: [
       { label: "Maitrise des outils comptables (CEGID, Sage)", score: null },
       { label: "Redaction des rapports d'audit", score: null },
-      { label: "Analyse et interpretation des donnees financieres", score: null },
+      { label: "Analyse et interprétation des données financières", score: null },
     ],
   },
   {
@@ -58,7 +58,7 @@ const gradingHelp = [
   { level: "2", text: "En progression - a ameliorer", color: "text-[#0F3A63]" },
   { level: "3", text: "Satisfaisant - niveau attendu", color: "text-[#0F3A63]" },
   { level: "4", text: "Bon - depasse les attentes", color: "text-[#0F3A63]" },
-  { level: "5", text: "Excellent - reference dans l'equipe", color: "text-[#76B82A]" },
+  { level: "5", text: "Excellent - référence dans l'équipe", color: "text-[#76B82A]" },
 ];
 
 function getSectionProgress(section) {
@@ -287,7 +287,7 @@ function Monautoevaluation() {
           </article>
 
           <article className="rounded-md bg-white p-4 shadow-sm">
-            <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">Aide a la notation</h3>
+            <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">Aide à la notation</h3>
             <div className="space-y-2">
               {gradingHelp.map((item) => (
                 <div key={item.level} className="flex items-center gap-2 text-[12px]">

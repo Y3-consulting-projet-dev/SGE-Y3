@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import heroImg from "@/assets/hero.png";
 
@@ -23,7 +23,7 @@ function LoginPage({ onLoginSuccess }) {
 
           <div className="mx-auto flex h-full w-full max-w-[420px] flex-col justify-center">
             <p className="mb-8 max-w-[330px] text-lg font-medium leading-7 tracking-wide text-white/95">
-              BIENVENUE SUR L&apos;OUTIL DE SYSTEME DE GESTION DES EVALUATIONS
+              BIENVENUE SUR L&apos;OUTIL DE SYSTÈME DE GESTION DES ÉVALUATIONS
             </p>
 
             <img
@@ -50,10 +50,11 @@ function LoginPage({ onLoginSuccess }) {
                 onChange={(event) => setRole(event.target.value)}
                 className="h-14 w-full rounded-xl border border-[#9CC86D] bg-transparent px-5 text-sm tracking-wide text-[#27415B] outline-none focus:ring-2 focus:ring-[#76B82A]/30"
               >
-                <option value="manager">Profil: Manager</option>
-                <option value="senior">Profil: Senior</option>
-                <option value="collaborator">Profil: Collaborateur</option>
-                <option value="associate">Profil: Associe</option>
+                <option value="manager">Profil : Manager</option>
+                <option value="senior">Profil : Senior</option>
+                <option value="collaborator">Profil : Collaborateur</option>
+                <option value="rh">Profil : RH</option>
+                <option value="associate">Profil : Associé</option>
               </select>
 
               <input
@@ -84,14 +85,14 @@ function LoginPage({ onLoginSuccess }) {
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
-                <p className="mt-2 text-right text-xs font-semibold text-[#0E4A6B]">Mot de passe oublie ?</p>
+                <p className="mt-2 text-right text-xs font-semibold text-[#0E4A6B]">Mot de passe oublié ?</p>
               </div>
 
               <button
                 type="submit"
                 className="mx-auto block h-14 w-full max-w-[210px] rounded-2xl bg-[#76B82A] text-lg font-bold text-white transition hover:bg-[#6EAD28]"
               >
-                Se Connecter
+                Se connecter
               </button>
             </form>
           </div>

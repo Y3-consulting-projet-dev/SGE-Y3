@@ -1,27 +1,27 @@
-import { CheckCircle2 } from "lucide-react";
+﻿import { CheckCircle2 } from "lucide-react";
 
 const topCards = [
-  { title: "Auto-evaluation", line1: "En cours", line2: "Section 2 / 4 - 40%" },
+  { title: "Auto-évaluation", line1: "En cours", line2: "Section 2 / 4 - 40%" },
   { title: "Mes objectifs", line1: "3", line2: "1 atteint, 2 en cours" },
   { title: "Formation planifiee", line1: "--", line2: "Mai 2026" },
 ];
 
 const progressSteps = [
   { id: 1, title: "Section 1 completee", subtitle: "Leadership & savoir-etre", done: true },
-  { id: 2, title: "Section 2 en cours", subtitle: "Competences techniques", done: false },
+  { id: 2, title: "Section 2 en cours", subtitle: "Compétences techniques", done: false },
   { id: 3, title: "Section 3 a faire", subtitle: "Objectifs atteints", done: false },
   { id: 4, title: "Section 4 a faire", subtitle: "Souhaits d'evolution", done: false },
 ];
 
 const validationSteps = [
-  { id: 1, title: "Je soumets mon auto-evaluation", subtitle: "En attente de ma soumission" },
+  { id: 1, title: "Je soumets mon auto-évaluation", subtitle: "En attente de ma soumission" },
   { id: 2, title: "Mon Manager evalue & corrige", subtitle: "Droit feedback" },
   { id: 3, title: "Validation RH", subtitle: "Validation RH" },
-  { id: 4, title: "Decision de l'Associe", subtitle: "Resultat communique ensuite" },
+  { id: 4, title: "Décision de l'Associé", subtitle: "Resultat communique ensuite" },
 ];
 
 const reminders = [
-  { label: "Soumettre l'auto-evaluation", date: "18-04-2026" },
+  { label: "Soumettre l'auto-évaluation", date: "18-04-2026" },
   { label: "Entretien annuel Manager", date: "22-04-2026" },
   { label: "Revue objectifs Q2", date: "30-04-2026" },
 ];
@@ -30,7 +30,7 @@ function MonTableauDeBord() {
   return (
     <div className="space-y-4">
       <div className="rounded-sm bg-[#BFE2B9] px-3 py-2 text-[11px] font-semibold text-[#114F35]">
-        Auto-evaluation en cours - a soumettre avant le 18/04/2026. Sauvegarde automatique activee.
+        Auto-évaluation en cours - à soumettre avant le 18/04/2026. Sauvegarde automatique activée.
       </div>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(3,minmax(0,240px))] md:justify-between md:gap-5">
@@ -76,7 +76,7 @@ function MonTableauDeBord() {
           </div>
 
           <button className="mt-5 w-full rounded-md bg-[#003B63] py-3 text-[22px] font-semibold leading-none text-white hover:bg-[#0B4C7A]">
-            Continuer l'evaluation
+            Continuer l'évaluation
           </button>
         </article>
 

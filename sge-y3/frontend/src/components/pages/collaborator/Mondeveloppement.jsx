@@ -1,7 +1,7 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 
 const skills = [
-  { label: "Mes competences", score: "4/5", percent: 78 },
+  { label: "Mes compétences", score: "4/5", percent: 78 },
   { label: "Audit & commissariat", score: "3/5", percent: 63 },
   { label: "Outils CEGID", score: "2/5", percent: 40 },
   { label: "Communication client", score: "3/5", percent: 64 },
@@ -76,7 +76,7 @@ function Mondeveloppement() {
           </article>
 
           <div>
-            <h3 className="mb-2 text-[22px] font-bold leading-tight text-[#0F3A63]">Catalogue formations disponibles</h3>
+            <h3 className="mb-2 text-[22px] font-bold leading-tight text-[#0F3A63]">Catalogue des formations disponibles</h3>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <article className="rounded-md bg-white p-4 shadow-sm">
                 <div className="mb-2 flex items-start justify-between gap-3">
@@ -85,7 +85,7 @@ function Mondeveloppement() {
                     onClick={() => markRequested("audit-groupes")}
                     className="rounded-md bg-[#DCECCB] px-3 py-1 text-[12px] font-bold text-[#76B82A]"
                   >
-                    {requestedTrainings.includes("audit-groupes") ? "Demande envoyee" : "Demander"}
+                    {requestedTrainings.includes("audit-groupes") ? "Demande envoyée" : "Demander"}
                   </button>
                 </div>
                 <p className="text-[12px] font-semibold text-slate-500">IFACI - 3 jours - Certifiante</p>
@@ -98,7 +98,7 @@ function Mondeveloppement() {
                     onClick={() => markRequested("normes-ifrs")}
                     className="rounded-md bg-[#DCECCB] px-3 py-1 text-[12px] font-bold text-[#76B82A]"
                   >
-                    {requestedTrainings.includes("normes-ifrs") ? "Demande envoyee" : "Demander"}
+                    {requestedTrainings.includes("normes-ifrs") ? "Demande envoyée" : "Demander"}
                   </button>
                 </div>
                 <p className="text-[12px] font-semibold text-slate-500">CNCC - 2 jours - Certifiante</p>
@@ -111,7 +111,7 @@ function Mondeveloppement() {
                     onClick={() => markRequested("excel-tdb")}
                     className="rounded-md bg-[#DCECCB] px-3 py-1 text-[12px] font-bold text-[#76B82A]"
                   >
-                    {requestedTrainings.includes("excel-tdb") ? "Demande envoyee" : "Demander"}
+                    {requestedTrainings.includes("excel-tdb") ? "Demande envoyée" : "Demander"}
                   </button>
                 </div>
                 <p className="text-[12px] font-semibold text-slate-500">ENS - 1 jour</p>
@@ -146,7 +146,7 @@ function Mondeveloppement() {
               "Evoluer vers un poste de Senior d'ici 2027. Je souhaite me specialiser en audit des groupes consolides."
             </div>
             <p className="mt-4 text-[12px] font-semibold text-slate-500">
-              Saisi lors de l'auto-evaluation - visible par le Manager.
+              Saisi lors de l'auto-évaluation - visible par le Manager.
             </p>
           </article>
         </div>

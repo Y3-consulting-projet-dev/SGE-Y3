@@ -4,6 +4,7 @@ import ManagerDashboard from "@/components/pages/dashboard/ManagerDashboard";
 import CollaboratorDashboard from "@/components/pages/dashboard/CollaboratorDashboard";
 import SeniorDashboard from "@/components/pages/dashboard/SeniorDashboard";
 import Vuecabinet from "@/components/pages/associé/Vuecabinet";
+import VueRH from "@/components/pages/rh/VueRH";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -18,6 +19,9 @@ function App() {
     }
     if (userRole === "associate") {
       return <Vuecabinet onLogout={() => setIsAuthenticated(false)} />;
+    }
+    if (userRole === "rh") {
+      return <VueRH onLogout={() => setIsAuthenticated(false)} />;
     }
     return <ManagerDashboard onLogout={() => setIsAuthenticated(false)} />;
   }

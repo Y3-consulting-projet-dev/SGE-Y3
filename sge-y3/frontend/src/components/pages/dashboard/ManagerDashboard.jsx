@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { BarChart3, FileBarChart2, FolderKanban, LayoutDashboard, LogOut, Users, X } from "lucide-react";
 import Monequipe from "@/components/pages/Monequipe";
 import Evaluermonequipe from "@/components/pages/Evaluermonequipe";
@@ -15,12 +15,12 @@ const statusBars = [
 ];
 
 const requiredActions = [
-  { id: "OK", title: "Verifier auto-eval - Kone K.", subtitle: "Senior - Soumise le 18/04", target: "team" },
+  { id: "OK", title: "Vérifier l'auto-éval - Kone K.", subtitle: "Senior - Soumise le 18/04", target: "team" },
   { id: 2, title: "Evaluer Traore M.", subtitle: "Collaborateur - Auto-eval recue", target: "team" },
   {
     id: 3,
-    title: "Completer mon auto-evaluation",
-    subtitle: "Deadline 25/04 - Pour l'associe",
+    title: "Compléter mon auto-évaluation",
+    subtitle: "Deadline 25/04 - Pour l'associé",
     target: "self-evaluation",
   },
 ];
@@ -30,12 +30,12 @@ const sidebarSections = [
   {
     group: "Equipe",
     items: [
-      { key: "team", label: "Mon equipe", icon: Users },
-      { key: "team-goals", label: "Objectifs equipe", icon: FolderKanban },
+      { key: "team", label: "Mon équipe", icon: Users },
+      { key: "team-goals", label: "Objectifs d'équipe", icon: FolderKanban },
     ],
   },
-  { group: "Mon evaluation", items: [{ key: "self-evaluation", label: "Mon auto-evaluation", icon: BarChart3 }] },
-  { group: "Reporting", items: [{ key: "reports", label: "Rapports equipe", icon: FileBarChart2 }] },
+  { group: "Mon évaluation", items: [{ key: "self-evaluation", label: "Mon auto-évaluation", icon: BarChart3 }] },
+  { group: "Reporting", items: [{ key: "reports", label: "Rapports d'équipe", icon: FileBarChart2 }] },
 ];
 
 const availableSections = new Set(["overview", "team", "team-goals", "self-evaluation", "reports", "actions"]);
@@ -43,10 +43,10 @@ const availableSections = new Set(["overview", "team", "team-goals", "self-evalu
 const sectionContent = {
   notifications: "Consulte les dernieres notifications et relance les collaborateurs en attente.",
   team: "Visualise la liste des membres, leurs roles et leurs avancements.",
-  "team-review": "Verifie les auto-evaluations soumises avant validation.",
-  "team-goals": "Suis les objectifs de l'equipe et ajuste les priorites.",
-  "self-evaluation": "Complete ou mets a jour ton auto-evaluation manager.",
-  reports: "Genere et exporte les rapports de performance de l'equipe.",
+  "team-review": "Vérifie les auto-évaluations soumises avant validation.",
+  "team-goals": "Suis les objectifs de l'équipe et ajuste les priorités.",
+  "self-evaluation": "Complète ou mets à jour ton auto-évaluation manager.",
+  reports: "Génère et exporte les rapports de performance de l'équipe.",
   actions: "Retrouve toutes les actions prioritaires du workflow.",
 };
 
@@ -60,7 +60,7 @@ function SectionPanel({ title, description, onBack }) {
         onClick={onBack}
         className="rounded-lg bg-[#003B63] px-5 py-2 text-sm font-semibold text-white hover:bg-[#0B4C7A]"
       >
-        Retour a la vue d'ensemble
+        Retour à la vue d'ensemble
       </button>
     </section>
   );
@@ -92,7 +92,7 @@ function ManagerDashboard({ onLogout }) {
     if (activeSection === "overview") return "VUE D'ENSEMBLE";
     if (activeSection === "team") return "MON EQUIPE";
     if (activeSection === "team-goals") return "OBJECTIFS EQUIPE";
-    if (activeSection === "self-evaluation") return "MON AUTO-EVALUATION";
+    if (activeSection === "self-evaluation") return "MON AUTO-ÉVALUATION";
     if (activeSection === "reports") return "RAPPORTS EQUIPE";
     if (activeSection === "actions") return "ACTIONS REQUISES";
     return "WORKFLOW MANAGER";
@@ -106,7 +106,7 @@ function ManagerDashboard({ onLogout }) {
   };
 
   const relanceMember = (member) => {
-    setRelanceMessage(`Relance envoyee a ${member.name} pour finaliser son evaluation.`);
+    setRelanceMessage(`Relance envoyée a ${member.name} pour finaliser son évaluation.`);
   };
 
   const handleMemberFieldChange = (field, value) => {
@@ -156,7 +156,7 @@ function ManagerDashboard({ onLogout }) {
         id: `${evaluationMember.name}-${Date.now()}`,
         collaborator: evaluationMember.name,
         role: evaluationMember.role,
-        score: evaluationMember.score || "A completer",
+        score: evaluationMember.score || "À compléter",
         status: nextStatus,
         savedAt,
       },
@@ -208,7 +208,7 @@ function ManagerDashboard({ onLogout }) {
               className="flex items-center gap-2 pt-6 text-left font-medium text-[#0F3A63] hover:text-[#0E4A6B]"
             >
               <LogOut size={14} />
-              Deconnexion
+              Déconnexion
             </button>
           </nav>
         </aside>
@@ -258,7 +258,7 @@ function ManagerDashboard({ onLogout }) {
                   Notifications
                 </button>
                 <button className="rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-semibold text-white">
-                  Soumettre a la RH
+                  Soumettre à la RH
                 </button>
               </div>
             ) : activeSection === "reports" ? (
@@ -285,7 +285,7 @@ function ManagerDashboard({ onLogout }) {
                   onClick={() => setActiveSection("team")}
                   className="rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-semibold text-[#0B2F4F]"
                 >
-                  Ouvrir l'equipe
+                  Ouvrir l'équipe
                 </button>
               </div>
             )}
@@ -294,7 +294,7 @@ function ManagerDashboard({ onLogout }) {
           {showOverview ? (
             <>
               <div className="mb-7 border-l-4 border-[#7CB342] bg-[#DCECCB] px-4 py-3 text-sm font-semibold text-[#184D2E]">
-                Mon auto-evaluation est en attente - a soumettre avant le 25/04/2026.
+                Mon auto-évaluation est en attente - à soumettre avant le 25/04/2026.
               </div>
 
               <section className="mb-7 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -311,7 +311,7 @@ function ManagerDashboard({ onLogout }) {
 
                 <article className="rounded-lg bg-[#003B63] p-5 text-left text-white">
                   <div className="mb-4 flex items-start justify-between">
-                    <p className="text-sm">Auto-evals recues</p>
+                    <p className="text-sm">Auto-évals recues</p>
                     <p className="text-2xl font-extrabold">3/5</p>
                   </div>
                   <p className="text-sm text-slate-200">2 en attente</p>
@@ -339,7 +339,7 @@ function ManagerDashboard({ onLogout }) {
 
               <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
                 <div className="rounded-xl bg-white p-5 shadow-sm xl:col-span-2">
-                  <h2 className="mb-5 text-sm font-semibold text-[#0F3A63]">Statut des evaluations</h2>
+                  <h2 className="mb-5 text-sm font-semibold text-[#0F3A63]">Statut des évaluations</h2>
                   <div className="space-y-4">
                     {statusBars.map((item) => (
                       <div key={item.label} className="block w-full text-left">
@@ -392,7 +392,7 @@ function ManagerDashboard({ onLogout }) {
 
               <section className="mt-6 rounded-xl bg-white p-5 shadow-sm">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="text-sm font-semibold text-[#0F3A63]">Historique des evaluations Manager</h2>
+                  <h2 className="text-sm font-semibold text-[#0F3A63]">Historique des évaluations Manager</h2>
                   <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">
                     {evaluationHistory.length} enregistrement(s)
                   </span>
@@ -422,7 +422,7 @@ function ManagerDashboard({ onLogout }) {
                                   item.status === "sent" ? "bg-[#76B82A] text-white" : "bg-slate-100 text-[#0F3A63]"
                                 }`}
                               >
-                                {item.status === "sent" ? "Transmise a la RH" : "Enregistree"}
+                                {item.status === "sent" ? "Transmise à la RH" : "Enregistrée"}
                               </span>
                             </td>
                             <td className="px-4 py-3">{item.savedAt}</td>
@@ -433,7 +433,7 @@ function ManagerDashboard({ onLogout }) {
                   </div>
                 ) : (
                   <p className="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">
-                    Aucune evaluation sauvegardee pour le moment. Les evaluations apparaitront ici apres enregistrement.
+                    Aucune évaluation sauvegardée pour le moment. Les évaluations apparaîtront ici après enregistrement.
                   </p>
                 )}
               </section>
@@ -461,7 +461,7 @@ function ManagerDashboard({ onLogout }) {
                 sidebarSections.flatMap((group) => group.items).find((item) => item.key === activeSection)?.label ||
                 "Section Workflow"
               }
-              description={sectionContent[activeSection] || "Section en preparation. Le workflow est deja branché."}
+              description={sectionContent[activeSection] || "Section en préparation. Le workflow est déjà branché."}
               onBack={() => setActiveSection("overview")}
             />
           )}
@@ -507,11 +507,11 @@ function ManagerDashboard({ onLogout }) {
                 onClick={() => saveEvaluation("sent")}
                 className="rounded-md bg-[#76B82A] px-5 py-2 text-sm font-bold text-white"
               >
-                Transmettre a la RH
+                Transmettre à la RH
               </button>
               {evaluationStatus ? (
                 <p className="w-full text-right text-xs font-bold text-[#76B82A]">
-                  {evaluationStatus === "sent" ? "Evaluation transmise a la RH." : "Evaluation enregistree."}
+                  {evaluationStatus === "sent" ? "Évaluation transmise à la RH." : "Évaluation enregistrée."}
                 </p>
               ) : null}
             </footer>
@@ -586,7 +586,7 @@ function ManagerDashboard({ onLogout }) {
 
               <div>
                 <label htmlFor="member-status" className="mb-2 block text-xs font-bold text-[#0F3A63]">
-                  Statut evaluation
+                  Statut de l'évaluation
                 </label>
                 <select
                   id="member-status"
@@ -613,7 +613,7 @@ function ManagerDashboard({ onLogout }) {
               </button>
               {memberStatus === "missing" ? (
                 <p className="w-full text-right text-xs font-bold text-[#A4252F]">
-                  Renseignez le nom, le role et l'anciennete avant d'enregistrer.
+                  Renseignez le nom, le rôle et l'ancienneté avant d'enregistrer.
                 </p>
               ) : null}
             </footer>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 
 const initialSections = [
@@ -8,7 +8,7 @@ const initialSections = [
     status: "Complete",
     comment: "Equipe accompagnee sur les priorites du cycle.",
     criteria: [
-      { label: "Animation d'equipe", score: 4 },
+      { label: "Animation d'équipe", score: 4 },
       { label: "Gestion des conflits", score: 3 },
       { label: "Developpement des talents", score: 4 },
     ],
@@ -19,14 +19,14 @@ const initialSections = [
     status: "En cours",
     comment: "",
     criteria: [
-      { label: "Respect des delais de livraison", score: null },
+      { label: "Respect des délais de livraison", score: null },
       { label: "Qualite des rapports produits", score: null },
       { label: "Gestion du portefeuille clients", score: null },
     ],
   },
   {
     id: 3,
-    title: "Section 3 - Competences techniques",
+    title: "Section 3 - Compétences techniques",
     status: "A faire",
     comment: "",
     criteria: [
@@ -43,7 +43,7 @@ const initialSections = [
     criteria: [
       { label: "Progression sur les objectifs personnels", score: null },
       { label: "Contribution au partage de connaissances", score: null },
-      { label: "Preparation aux responsabilites futures", score: null },
+      { label: "Préparation aux responsabilités futures", score: null },
     ],
   },
 ];
@@ -162,7 +162,7 @@ function Monautoevaluation() {
       <p className="text-xs font-semibold text-slate-400">Axelle Armani - Manager - Cycle 2026</p>
 
       <div className="rounded-sm bg-[#DCECCB] px-4 py-3 text-xs font-semibold text-[#1E5B34]">
-        Cette auto-evaluation sera transmise a l'Associe apres validation RH. Soyez precis et factuel.
+        Cette auto-évaluation sera transmise à l'Associé après validation RH. Soyez précis et factuel.
       </div>
 
       <section className="rounded-md bg-white p-4 shadow-sm">
@@ -290,14 +290,14 @@ function Monautoevaluation() {
                 <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#DFECD4] text-[#79B742]">
                   OK
                 </span>
-                <p>Vous saisissez votre auto-evaluation</p>
+                <p>Vous saisissez votre auto-évaluation</p>
               </div>
               <div className="flex items-start gap-3">
                 <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#2AA7D6] text-white">
                   1
                 </span>
                 <div>
-                  <p>Soumission a la RH (vous)</p>
+                  <p>Soumission à la RH (vous)</p>
                   <p className="text-[11px] text-slate-400">Apres completion des 4 sections</p>
                 </div>
               </div>

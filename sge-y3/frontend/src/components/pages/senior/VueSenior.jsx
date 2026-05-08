@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { LogOut, UserRound } from "lucide-react";
 import logoY3 from "@/assets/logo-y3.png";
 import { menuGroups } from "@/components/pages/senior/seniorData";
@@ -17,7 +17,7 @@ function VueSenior({ onLogout }) {
     if (activeSection === "reviews") return "EVALUER ASSISTANTS";
     if (activeSection === "results") return "SYNTHESES TRANSMISES";
     if (activeSection === "goals") return "MISSIONS COMMUNES";
-    if (activeSection === "self-evaluation") return "MON AUTO-EVALUATION";
+    if (activeSection === "self-evaluation") return "MON AUTO-ÉVALUATION";
     return "TABLEAU DE BORD SENIOR";
   }, [activeSection]);
 
@@ -75,7 +75,7 @@ function VueSenior({ onLogout }) {
             className="mt-6 flex items-center gap-2 text-left text-sm font-medium text-[#0F3A63] hover:text-[#0E4A6B]"
           >
             <LogOut size={14} />
-            Deconnexion
+            Déconnexion
           </button>
         </aside>
 

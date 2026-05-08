@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { ChevronsLeft, ClipboardList, LayoutDashboard, LineChart, LogOut, Target, TrendingUp, User } from "lucide-react";
 import logoY3 from "@/assets/logo-y3.png";
 import MonTableauDeBord from "@/components/pages/collaborator/Collaboratordashboard";
@@ -15,7 +15,7 @@ const menuGroups = [
   {
     title: "Evaluation",
     items: [
-      { key: "self-evaluation", label: "Mon auto-evaluation", icon: ClipboardList },
+      { key: "self-evaluation", label: "Mon auto-évaluation", icon: ClipboardList },
       { key: "results", label: "Mes resultats", icon: LineChart },
     ],
   },
@@ -23,7 +23,7 @@ const menuGroups = [
     title: "Developpement",
     items: [
       { key: "goals", label: "Mes objectifs", icon: Target },
-      { key: "development", label: "Mon developpement", icon: TrendingUp },
+      { key: "development", label: "Mon développement", icon: TrendingUp },
     ],
   },
 ];
@@ -33,7 +33,7 @@ function CollaboratorDashboard({ onLogout }) {
 
   const pageTitle = useMemo(() => {
     if (activeSection === "dashboard") return "TABLEAU DE BORD";
-    if (activeSection === "self-evaluation") return "MON AUTO-EVALUATION";
+    if (activeSection === "self-evaluation") return "MON AUTO-ÉVALUATION";
     if (activeSection === "results") return "MES RESULTATS";
     if (activeSection === "goals") return "MES OBJECTIFS";
     if (activeSection === "development") return "MON DEVELOPPEMENT";
@@ -122,7 +122,7 @@ function CollaboratorDashboard({ onLogout }) {
             className="absolute bottom-5 left-4 flex items-center gap-2 text-left text-sm font-medium text-[#0F3A63] hover:text-[#0E4A6B]"
           >
             <LogOut size={14} />
-            Deconnexion
+            Déconnexion
           </button>
         </aside>
 
@@ -138,12 +138,12 @@ function CollaboratorDashboard({ onLogout }) {
                 {activeSection === "self-evaluation"
                   ? "Soumettre"
                   : activeSection === "results"
-                    ? "Telecharger mon rapport"
+                    ? "Télécharger mon rapport"
                     : activeSection === "goals"
                       ? "Voir mon plan de dev"
                       : activeSection === "development"
                         ? "Voir mes resultats"
-                      : "Completer mon evaluation"}
+                      : "Compléter mon évaluation"}
               </button>
             </div>
           </header>

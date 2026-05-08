@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { seniorSelfEvaluation } from "@/components/pages/senior/seniorData";
 
 function ScoreSelector({ selected }) {
@@ -24,7 +24,7 @@ function MonautoevaluationSenior() {
   return (
     <section className="space-y-5">
       <div className="rounded-lg bg-[#DCECCB] px-4 py-3 text-sm font-semibold text-[#184D2E]">
-        Le Senior s'auto-evalue lui-meme sur ses competences, son organisation, son comportement professionnel et son developpement.
+        Le Senior s'auto-évalue lui-même sur ses compétences, son organisation, son comportement professionnel et son développement.
       </div>
 
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.8fr_1.4fr]">
@@ -55,12 +55,12 @@ function MonautoevaluationSenior() {
           </div>
 
           <div className="mt-5 rounded-lg bg-slate-50 p-4 text-sm font-semibold text-[#0F3A63]">
-            Cette auto-evaluation personnelle sera envoyee au Manager pour completer l'appreciation du cycle.
+            Cette auto-évaluation personnelle sera envoyée au Manager pour compléter l'appréciation du cycle.
           </div>
         </article>
 
         <article className="rounded-xl bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-lg font-extrabold text-[#0F3A63]">Mon auto-evaluation</h2>
+          <h2 className="mb-4 text-lg font-extrabold text-[#0F3A63]">Mon auto-évaluation</h2>
           <div className="space-y-4">
             {seniorSelfEvaluation.sections.map((section) => (
               <div key={section.title} className="rounded-lg bg-slate-50 p-4">
@@ -98,7 +98,7 @@ function MonautoevaluationSenior() {
           </div>
           {status ? (
             <p className="mt-3 text-right text-xs font-bold text-[#76B82A]">
-              {status === "sent" ? "Auto-evaluation envoyee au Manager." : "Brouillon enregistre."}
+              {status === "sent" ? "Auto-évaluation envoyée au Manager." : "Brouillon enregistré."}
             </p>
           ) : null}
         </article>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { assistantEvaluations } from "@/components/pages/senior/seniorData";
 
 function MissionScoreRow({ item }) {
@@ -229,7 +229,7 @@ function Evaluerassistants() {
             <p className="mb-3 text-xs font-bold text-[#79B742]">Synthese pour le Manager</p>
             <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
               <div>
-                <p className="text-xs font-semibold text-slate-500">Missions evaluees</p>
+                <p className="text-xs font-semibold text-slate-500">Missions évaluées</p>
                 <p className="font-extrabold text-[#0F3A63]">{currentAssistant.missions.length}</p>
               </div>
               <div>
@@ -238,7 +238,7 @@ function Evaluerassistants() {
               </div>
               <div>
                 <p className="text-xs font-semibold text-slate-500">Statut avis</p>
-                <p className="font-extrabold text-[#F34D4D]">A valider</p>
+                <p className="font-extrabold text-[#F34D4D]">À valider</p>
               </div>
             </div>
           </div>
@@ -256,8 +256,8 @@ function Evaluerassistants() {
               {status === "missing-mission"
                 ? "Saisissez une mission avant d'enregistrer."
                 : status === "sent"
-                  ? "Evaluation transmise au Manager."
-                  : "Brouillon enregistre."}
+                  ? "Évaluation transmise au Manager."
+                  : "Brouillon enregistré."}
             </p>
           ) : null}
         </article>
@@ -286,7 +286,7 @@ function Evaluerassistants() {
           </div>
         ) : (
           <p className="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">
-            Aucune mission enregistree pour le moment.
+            Aucune mission enregistrée pour le moment.
           </p>
         )}
       </article>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { Bell } from "lucide-react";
 
 const rows = [
@@ -11,7 +11,7 @@ const rows = [
     score: "3.9/5",
     scoreClass: "text-[#7DBA45]",
     alert: "",
-    decision: "A decider",
+    decision: "À décider",
     decisionClass: "text-[#C53B3B]",
     action: "Ouvrir",
   },
@@ -71,15 +71,15 @@ const rows = [
 
 function SyntheseRH() {
   const [roleFilter, setRoleFilter] = useState("Tous les roles");
-  const [decisionFilter, setDecisionFilter] = useState("Toutes les decisions");
+  const [decisionFilter, setDecisionFilter] = useState("Toutes les décisions");
   const [selectedRow, setSelectedRow] = useState(null);
 
   const filteredRows = useMemo(
     () =>
       rows.filter((row) => {
         const roleMatch = roleFilter === "Tous les roles" || row.role === roleFilter;
-        const decisionValue = row.decision || "Sans decision";
-        const decisionMatch = decisionFilter === "Toutes les decisions" || decisionValue === decisionFilter;
+        const decisionValue = row.decision || "Sans décision";
+        const decisionMatch = decisionFilter === "Toutes les décisions" || decisionValue === decisionFilter;
         return roleMatch && decisionMatch;
       }),
     [decisionFilter, roleFilter],
@@ -93,19 +93,19 @@ function SyntheseRH() {
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">Syntheses validees RH</h1>
+        <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">Synthèses validées RH</h1>
         <div className="flex items-center gap-3">
-          <button onClick={() => window.alert("Notifications bientot disponibles.")} className="rounded-full p-2 text-slate-500 hover:bg-slate-200/70">
+          <button onClick={() => window.alert("Notifications bientôt disponibles.")} className="rounded-full p-2 text-slate-500 hover:bg-slate-200/70">
             <Bell size={16} />
           </button>
           <button onClick={() => window.print()} className="rounded-full bg-[#7EB83E] px-4 py-2 text-xs font-bold text-white hover:bg-[#73AB39]">
-            Exporter syntheses
+            Exporter les synthèses
           </button>
         </div>
       </header>
 
       <section className="rounded-md border-l-4 border-[#6FB33E] bg-[#DDECD8] px-4 py-3 text-sm font-semibold text-[#204B2E]">
-        Seules les evaluations au statut Valide RH sont visibles ici. Vous n'avez pas acces aux evaluations en cours de validation.
+        Seules les évaluations au statut Validé RH sont visibles ici. Vous n'avez pas accès aux évaluations en cours de validation.
       </section>
 
       <section className="rounded-xl bg-white p-3 shadow-sm">
@@ -125,11 +125,11 @@ function SyntheseRH() {
             onChange={(event) => setDecisionFilter(event.target.value)}
             className="h-9 rounded-lg border border-[#0C4B6C] bg-white px-3 text-xs font-bold text-[#0C4B6C] outline-none transition hover:bg-[#0C4B6C] hover:text-white focus:bg-[#0C4B6C] focus:text-white"
           >
-            <option>Toutes les decisions</option>
+            <option>Toutes les décisions</option>
             <option>A decider</option>
             <option>Augmentation</option>
             <option>Maintien</option>
-            <option>Sans decision</option>
+            <option>Sans décision</option>
           </select>
         </div>
 

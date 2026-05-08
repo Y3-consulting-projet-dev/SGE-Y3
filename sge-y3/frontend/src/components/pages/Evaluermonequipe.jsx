@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 
 function ScoreChip({ value, label, detail }) {
   return (
@@ -97,10 +97,10 @@ function Evaluermonequipe({ member }) {
           </div>
 
           <div className="rounded-lg bg-white p-4 shadow-sm">
-            <p className="mb-3 text-sm font-bold text-[#76B82A]">Auto-evaluation du collaborateur</p>
+            <p className="mb-3 text-sm font-bold text-[#76B82A]">Auto-évaluation du collaborateur</p>
             <div className="space-y-2 text-sm font-semibold text-[#0F3A63]">
               <div className="flex items-center justify-between">
-                <span>Competences techniques</span>
+                <span>Compétences techniques</span>
                 <span className="text-[#76B82A]">4 / 5</span>
               </div>
               <div className="flex items-center justify-between">
@@ -113,7 +113,7 @@ function Evaluermonequipe({ member }) {
               </div>
             </div>
             <p className="mt-4 border-t border-slate-100 pt-3 text-sm text-slate-500">
-              "Bonne maitrise des dossiers clients, souhaite evoluer vers un poste de Manager."
+              "Bonne maîtrise des dossiers clients, souhaite évoluer vers un poste de Manager."
             </p>
           </div>
 
@@ -182,11 +182,11 @@ function Evaluermonequipe({ member }) {
             >
               {hasGap
                 ? `Ecart detecte sur Savoir-etre : auto-eval 3/5, votre note ${behaviorScore}/5. Un commentaire est requis.`
-                : "Les notes saisies sont coherentes avec l'auto-evaluation du collaborateur."}
+                : "Les notes saisies sont cohérentes avec l'auto-évaluation du collaborateur."}
             </div>
 
             <div className="mb-3 flex flex-wrap items-center justify-between gap-4">
-              <ScoreButtons label="Competences techniques" selected={technicalScore} onSelect={setTechnicalScore} />
+              <ScoreButtons label="Compétences techniques" selected={technicalScore} onSelect={setTechnicalScore} />
               <ScoreButtons label="Savoir-etre" selected={behaviorScore} onSelect={setBehaviorScore} />
               <ScoreButtons label="Objectifs atteints" selected={goalsScore} onSelect={setGoalsScore} />
             </div>

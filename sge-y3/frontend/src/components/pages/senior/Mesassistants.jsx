@@ -1,4 +1,4 @@
-import { assistantRows } from "@/components/pages/senior/seniorData";
+﻿import { assistantRows } from "@/components/pages/senior/seniorData";
 
 function Mesassistants({ onOpenReview }) {
   const statusClass = (status) => {
@@ -15,8 +15,8 @@ function Mesassistants({ onOpenReview }) {
             <th className="px-4 py-4 font-semibold">Assistant</th>
             <th className="px-4 py-4 font-semibold">Role</th>
             <th className="px-4 py-4 font-semibold">Missions communes</th>
-            <th className="px-4 py-4 font-semibold">Missions pretes</th>
-            <th className="px-4 py-4 font-semibold">Statut evaluation</th>
+            <th className="px-4 py-4 font-semibold">Missions prêtes</th>
+            <th className="px-4 py-4 font-semibold">Statut de l'évaluation</th>
             <th className="px-4 py-4 font-semibold">Prochaine action</th>
             <th className="px-4 py-4 font-semibold">Action</th>
           </tr>

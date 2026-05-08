@@ -1,4 +1,4 @@
-import { assistantEvaluations } from "@/components/pages/senior/seniorData";
+﻿import { assistantEvaluations } from "@/components/pages/senior/seniorData";
 
 function MesresultatsSenior() {
   return (
@@ -7,7 +7,7 @@ function MesresultatsSenior() {
         <thead>
           <tr className="bg-[#003B63] text-left text-white">
             <th className="px-4 py-4 font-semibold">Assistant</th>
-            <th className="px-4 py-4 font-semibold">Missions evaluees</th>
+            <th className="px-4 py-4 font-semibold">Missions évaluées</th>
             <th className="px-4 py-4 font-semibold">Score Senior moyen</th>
             <th className="px-4 py-4 font-semibold">Statut</th>
             <th className="px-4 py-4 font-semibold">Manager destinataire</th>

@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardCheck, FileText, LayoutDashboard, Target, Users } from "lucide-react";
+﻿import { BarChart3, ClipboardCheck, FileText, LayoutDashboard, Target, Users } from "lucide-react";
 
 export const menuGroups = [
   {
@@ -15,11 +15,11 @@ export const menuGroups = [
   },
   {
     title: "Suivi",
-    items: [{ key: "results", label: "Syntheses transmises", icon: FileText }],
+    items: [{ key: "results", label: "Synthèses transmises", icon: FileText }],
   },
   {
-    title: "Mon evaluation",
-    items: [{ key: "self-evaluation", label: "Mon auto-evaluation", icon: BarChart3 }],
+    title: "Mon évaluation",
+    items: [{ key: "self-evaluation", label: "Mon auto-évaluation", icon: BarChart3 }],
   },
 ];
 
@@ -38,7 +38,7 @@ export const assistantRows = [
     sharedMissions: "BTP Ivoire",
     readyMissions: "1 / 2",
     evaluationStatus: "En observation",
-    nextAction: "Completer la mission achats",
+    nextAction: "Compléter la mission achats",
   },
   {
     name: "Orlane Kone",
@@ -66,14 +66,14 @@ export const assistantEvaluations = [
         result: "Travaux finalises",
         context: "Mission realisee ensemble sur le controle des immobilisations et les tests de coherence.",
         facts: [
-          "Dossier de travail repris apres deux retours Senior.",
+          "Dossier de travail repris après deux retours Senior.",
           "Pieces justificatives bien classees sur la derniere semaine.",
-          "Retard constate sur la transmission des tests de depreciation.",
+          "Retard constaté sur la transmission des tests de dépréciation.",
         ],
         criteria: [
           { label: "Preparation des tests demandes par le Senior", assistant: 4, senior: 4 },
           { label: "Qualite des feuilles de travail remises", assistant: 4, senior: 4 },
-          { label: "Respect des delais convenus sur la mission", assistant: 4, senior: 2 },
+          { label: "Respect des délais convenus sur la mission", assistant: 4, senior: 2 },
           { label: "Prise en compte des corrections Senior", assistant: 3, senior: 4 },
         ],
       },
@@ -113,7 +113,7 @@ export const assistantEvaluations = [
         facts: [
           "Classement des factures lance mais encore incomplet.",
           "Points bloquants remontes tardivement.",
-          "Bonne comprehension des demandes apres cadrage Senior.",
+          "Bonne compréhension des demandes après cadrage Senior.",
         ],
         criteria: [
           { label: "Classement des pieces justificatives", assistant: 3, senior: 3 },
@@ -125,7 +125,7 @@ export const assistantEvaluations = [
         title: "Controle charges externes - BTP Ivoire",
         period: "Avril 2026",
         seniorRole: "Preparation de la revue analytique",
-        result: "A completer",
+        result: "À compléter",
         context: "Travaux prepares avec le Senior avant validation du dossier de revision.",
         facts: [
           "Justificatifs encore manquants sur trois fournisseurs.",
@@ -170,8 +170,8 @@ export const assistantEvaluations = [
 
 export const priorityActions = [
   { title: "Finaliser l'avis Senior - Habib Bah", subtitle: "Mission SUNU Assurances : ecart delais", target: "reviews" },
-  { title: "Completer l'observation - Kader Kone", subtitle: "Mission BTP Ivoire encore incomplete", target: "reviews" },
-  { title: "Completer mon auto-evaluation", subtitle: "Partie leadership Senior a 60%", target: "self-evaluation" },
+  { title: "Compléter l'observation - Kader Kone", subtitle: "Mission BTP Ivoire encore incomplète", target: "reviews" },
+  { title: "Compléter mon auto-évaluation", subtitle: "Partie leadership Senior à 60%", target: "self-evaluation" },
 ];
 
 export const seniorSelfEvaluation = {
@@ -183,10 +183,10 @@ export const seniorSelfEvaluation = {
   managerRecipient: "Diallo S.",
   sections: [
     {
-      title: "Mes competences techniques",
+      title: "Mes compétences techniques",
       status: "Complete",
       criteria: [
-        { label: "Je maitrise les dossiers qui me sont confies", score: 4 },
+        { label: "Je maîtrise les dossiers qui me sont confiés", score: 4 },
         { label: "Je produis des revues fiables et exploitables", score: 4 },
         { label: "J'identifie les risques importants sur mes missions", score: 3 },
       ],
@@ -198,27 +198,27 @@ export const seniorSelfEvaluation = {
       criteria: [
         { label: "Je respecte les delais de revue fixes avec le Manager", score: 3 },
         { label: "Je priorise correctement mes dossiers", score: 3 },
-        { label: "Je transmets des syntheses claires au Manager", score: 4 },
+        { label: "Je transmets des synthèses claires au Manager", score: 4 },
       ],
       comment: "",
     },
     {
       title: "Mon comportement professionnel",
-      status: "A completer",
+      status: "À compléter",
       criteria: [
-        { label: "Je communique clairement avec l'equipe", score: null },
+        { label: "Je communique clairement avec l'équipe", score: null },
         { label: "Je demande de l'aide au bon moment", score: null },
         { label: "Je garde une posture professionnelle avec les clients", score: null },
       ],
       comment: "",
     },
     {
-      title: "Mon developpement",
-      status: "A completer",
+      title: "Mon développement",
+      status: "À compléter",
       criteria: [
-        { label: "Je developpe mes competences techniques", score: null },
+        { label: "Je développe mes compétences techniques", score: null },
         { label: "Je prends du recul sur mes axes d'amelioration", score: null },
-        { label: "Je me prepare a prendre plus de responsabilites", score: null },
+        { label: "Je me prépare à prendre plus de responsabilités", score: null },
       ],
       comment: "",
     },
