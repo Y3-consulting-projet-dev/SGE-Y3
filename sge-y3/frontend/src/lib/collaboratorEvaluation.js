@@ -44,8 +44,9 @@ export function saveMyAssistantEvaluation(sections) {
   });
 }
 
-export function submitMyAssistantEvaluation() {
+export function submitMyAssistantEvaluation(payload = {}) {
   return request("/collaborator/evaluation/me/submit", {
     method: "POST",
+    body: JSON.stringify(payload),
   });
 }

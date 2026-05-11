@@ -7,7 +7,7 @@ function statusClass(status) {
   return "bg-[#E7EDF3] text-[#0F4A72]";
 }
 
-function ValidationsRH() {
+function ValidationsRH({ readOnly = false }) {
   return (
     <section className="rounded-xl bg-white p-5 shadow-sm">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -15,7 +15,14 @@ function ValidationsRH() {
           <h2 className="text-xl font-extrabold text-[#0F3A63]">Dossiers à valider</h2>
           <p className="text-sm font-semibold text-slate-500">Contrôle RH avant transmission ou décision finale.</p>
         </div>
-        <button className="rounded-full bg-[#8BC53F] px-4 py-2 text-xs font-bold text-white">Valider la sélection</button>
+        <button
+          disabled={readOnly}
+          className={`rounded-full px-4 py-2 text-xs font-bold ${
+            readOnly ? "cursor-not-allowed bg-slate-200 text-slate-500" : "bg-[#8BC53F] text-white"
+          }`}
+        >
+          {readOnly ? "Lecture seule" : "Valider la sélection"}
+        </button>
       </div>
 
       <div className="overflow-x-auto">

@@ -4,66 +4,79 @@ import logoY3 from "@/assets/logo-y3.png";
 import { rhMenuGroups } from "@/components/pages/rh/rhData";
 import TableauRH from "@/components/pages/rh/TableauRH";
 import ValidationsRH from "@/components/pages/rh/ValidationsRH";
+import MonautoevaluationAssistanteRH from "@/components/pages/rh/MonautoevaluationAssistanteRH";
+import MonautoevaluationRH from "@/components/pages/rh/MonautoevaluationRH";
 import QuestionnaireRH from "@/components/pages/rh/QuestionnaireRH";
 import SynthesesRH from "@/components/pages/rh/SynthesesRH";
 import CalibrationRH from "@/components/pages/rh/CalibrationRH";
 import EvaluationsDepartementRH from "@/components/pages/rh/EvaluationsDepartementRH";
 import PopulationRH from "@/components/pages/rh/PopulationRH";
 import RapportsRH from "@/components/pages/rh/RapportsRH";
+import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import { getDisplayName } from "@/lib/userPresentation";
 
-function VueRH({ onLogout, onUserUpdate, user }) {
+function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
   const displayName = getDisplayName(user);
   const profileKey = [user?.id, user?.email, user?.first_name, user?.last_name, user?.grade, user?.department].join("|");
 
   const pageTitle = useMemo(() => {
     if (activeSection === "validations") return "VALIDATIONS RH";
+    if (activeSection === "self-evaluation-rh") return assistantMode ? "MON AUTO-EVALUATION ASSISTANTE RH" : "MON AUTO-ÉVALUATION RH";
     if (activeSection === "questionnaire") return "SECTIONS & QUESTIONS";
     if (activeSection === "syntheses") return "SYNTHÈSES À TRANSMETTRE";
     if (activeSection === "calibration") return "CALIBRATION";
     if (activeSection === "department-evaluations") return "ÉVALUATIONS PAR DÉPARTEMENT";
     if (activeSection === "population") return "ÉQUIPE";
     if (activeSection === "reports") return "RAPPORTS RH";
+    if (activeSection === "committee") return "COMITE D'EVALUATION";
     if (activeSection === "profile") return "MON PROFIL";
     return "TABLEAU DE BORD RH";
-  }, [activeSection]);
+  }, [activeSection, assistantMode]);
 
   const renderContent = () => {
     if (activeSection === "overview") {
-      return <TableauRH onOpen={setActiveSection} />;
+      return <TableauRH onOpen={setActiveSection} readOnly={assistantMode} />;
     }
 
     if (activeSection === "validations") {
-      return <ValidationsRH />;
+      return <ValidationsRH readOnly={assistantMode} />;
+    }
+
+    if (activeSection === "self-evaluation-rh") {
+      return assistantMode ? <MonautoevaluationAssistanteRH /> : <MonautoevaluationRH />;
     }
 
     if (activeSection === "questionnaire") {
-      return <QuestionnaireRH />;
+      return <QuestionnaireRH assistantMode={assistantMode} />;
     }
 
     if (activeSection === "syntheses") {
-      return <SynthesesRH />;
+      return <SynthesesRH readOnly={assistantMode} />;
     }
 
     if (activeSection === "calibration") {
-      return <CalibrationRH />;
+      return <CalibrationRH readOnly={assistantMode} />;
     }
 
     if (activeSection === "department-evaluations") {
-      return <EvaluationsDepartementRH />;
+      return <EvaluationsDepartementRH readOnly={assistantMode} />;
     }
 
     if (activeSection === "population") {
-      return <PopulationRH />;
+      return <PopulationRH readOnly={assistantMode} />;
     }
 
     if (activeSection === "profile") {
       return <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />;
     }
 
-    return <RapportsRH />;
+    if (activeSection === "committee") {
+      return <ComiteEvaluation readOnly={assistantMode} />;
+    }
+
+    return <RapportsRH readOnly={assistantMode} />;
   };
 
   return (
@@ -110,7 +123,7 @@ function VueRH({ onLogout, onUserUpdate, user }) {
               </div>
               <div>
                 <p className="text-xs font-bold text-[#0F3A63]">{displayName}</p>
-                <p className="text-xs text-slate-500">{user?.grade || user?.department || "RH"}</p>
+                <p className="text-xs text-slate-500">{assistantMode ? "Assistante RH" : user?.grade || user?.department || "RH"}</p>
               </div>
             </div>
           </div>
@@ -128,7 +141,9 @@ function VueRH({ onLogout, onUserUpdate, user }) {
           <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
-              <p className="mt-1 text-sm font-semibold text-slate-500">Cycle 2026 - Pilotage des évaluations</p>
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                {assistantMode ? "Cycle 2026 - Consultation RH et gestion des questions" : "Cycle 2026 - Pilotage des évaluations"}
+              </p>
             </div>
             <div className="flex items-center gap-4">
               <button onClick={() => window.alert("Notifications RH bientôt disponibles.")} className="text-slate-500 hover:text-[#0F3A63]">
@@ -137,7 +152,11 @@ function VueRH({ onLogout, onUserUpdate, user }) {
               <button onClick={() => window.alert("Aide RH bientôt disponible.")} className="text-slate-500 hover:text-[#0F3A63]">
                 <CircleHelp size={18} />
               </button>
-              {activeSection !== "profile" ? (
+              {assistantMode ? (
+                <span className="rounded-full bg-[#E7EDF3] px-4 py-2 text-xs font-bold text-[#0F4A72]">
+                  Acces restreint
+                </span>
+              ) : activeSection !== "profile" ? (
                 <button
                   onClick={() => setActiveSection(activeSection === "overview" ? "validations" : "overview")}
                   className="rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-bold text-white"
