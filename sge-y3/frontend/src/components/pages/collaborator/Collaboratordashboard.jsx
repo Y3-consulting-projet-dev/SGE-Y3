@@ -1,4 +1,4 @@
-import { CheckCircle2 } from "lucide-react";
+﻿import { CheckCircle2 } from "lucide-react";
 
 const reminders = [
   { label: "Soumettre l'auto-évaluation", date: "18-04-2026" },
@@ -52,7 +52,7 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
       <div className="rounded-sm bg-[#BFE2B9] px-3 py-2 text-[11px] font-semibold text-[#114F35]">
         {evaluation?.evaluation?.status === "Soumis a RH"
           ? "Auto-évaluation soumise à la RH. En attente de traitement."
-          : "Auto-évaluation en cours - sauvegarde progressive activee avant transmission à la RH."}
+          : "Auto-évaluation en cours -  à soumettre avant le 18/04/2026. Sauvegarde automatique activée"}
       </div>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(3,minmax(0,240px))] md:justify-between md:gap-5">

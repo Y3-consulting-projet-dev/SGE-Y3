@@ -1,9 +1,9 @@
-import { Bell } from "lucide-react";
+﻿import { Bell } from "lucide-react";
 
 const stats = [
   { title: "Taux promotion (2026)", value: "18%", subtitle: "vs 12% en 2025" },
   { title: "Score moyen cabinet", value: "3.7/5", subtitle: "+0.3 vs 2025" },
-  { title: "Ecarts signales", value: "3", subtitle: "sur 24 evaluations" },
+  { title: "Écarts signalés", value: "3", subtitle: "sur 24 évaluations" },
   { title: "Formations decidees", value: "4", subtitle: "dont 2 certifiantes" },
 ];
 
@@ -22,9 +22,9 @@ const historyRows = [
 ];
 
 const exportsRows = [
-  { title: "Rapport consolide cabinet", subtitle: "Synthese complete — tous collaborateurs", type: "PDF" },
-  { title: "Suivi des decisions RH", subtitle: "Historique promotions & augmentations", type: "XLSX" },
-  { title: "Evolution des scores", subtitle: "Donnees brutes — cycles 2023-2026", type: "CSV" },
+  { title: "Rapport consolidé cabinet", subtitle: "Synthèse complète - tous collaborateurs", type: "PDF" },
+  { title: "Suivi des décisions RH", subtitle: "Historique promotions & augmentations", type: "XLSX" },
+  { title: "Évolution des scores", subtitle: "Données brutes - cycles 2023-2026", type: "CSV" },
 ];
 
 function Histoireanalytique() {
@@ -33,7 +33,7 @@ function Histoireanalytique() {
       <header className="flex items-center justify-between">
         <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">Historique & analytics</h1>
         <div className="flex items-center gap-3">
-          <button onClick={() => window.alert("Notifications bientot disponibles.")} className="rounded-full p-2 text-slate-500 hover:bg-slate-200/70">
+          <button onClick={() => window.alert("Notifications bientôt disponibles.")} className="rounded-full p-2 text-slate-500 hover:bg-slate-200/70">
             <Bell size={15} />
           </button>
           <button onClick={() => window.print()} className="rounded-full bg-[#7DBA45] px-4 py-2 text-xs font-bold text-white hover:bg-[#71AB3D]">
@@ -53,7 +53,7 @@ function Histoireanalytique() {
       </section>
 
       <section>
-        <p className="mb-2 text-sm font-bold text-[#78B843]">Evolution des scores — 3 cycles</p>
+        <p className="mb-2 text-sm font-bold text-[#78B843]">Évolution des scores - 3 cycles</p>
         <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
           <table className="min-w-[920px] w-full border-collapse">
             <thead>
@@ -90,7 +90,7 @@ function Histoireanalytique() {
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <article className="rounded-lg bg-white shadow-sm">
           <div className="border-b border-slate-100 px-4 py-3">
-            <p className="text-2xl font-black text-[#0F3A63]">Historique decisions RH prises</p>
+            <p className="text-2xl font-black text-[#0F3A63]">Historique des décisions RH prises</p>
             <p className="text-base font-bold text-[#0F4A72]">Cycle 2026 & anterieurs</p>
           </div>
           <div className="space-y-6 px-4 py-4">
@@ -109,7 +109,7 @@ function Histoireanalytique() {
         <article className="rounded-lg bg-white shadow-sm">
           <div className="border-b border-slate-100 px-4 py-3">
             <p className="text-2xl font-black text-[#0F3A63]">Exports disponibles</p>
-            <p className="text-base font-bold text-[#0F4A72]">Telecharger les donnees</p>
+            <p className="text-base font-bold text-[#0F4A72]">Télécharger les données</p>
           </div>
           <div className="space-y-6 px-4 py-4">
             {exportsRows.map((row) => (

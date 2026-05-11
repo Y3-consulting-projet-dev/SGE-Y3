@@ -1,5 +1,5 @@
-const reportCards = [
-  { title: "Score moyen equipe", value: "3.7", subtitle: "Sur 5", accent: "" },
+﻿const reportCards = [
+  { title: "Score moyen de l'équipe", value: "3.7", subtitle: "Sur 5", accent: "" },
   { title: "Taux completion", value: "80%", subtitle: "4/5 evalo soumises", accent: "" },
   { title: "Ecarts signales", value: "1", subtitle: "A justifier", accent: "text-[#F34D4D]" },
   { title: "Promos recommandees", value: "2", subtitle: "", accent: "" },
@@ -50,13 +50,13 @@ const collaboratorScores = [
 
 const exportsList = [
   {
-    title: "Rapport synthese equipe",
+    title: "Rapport de synthèse d'équipe",
     subtitle: "Scores, recommandations, objectifs - PDF",
     action: "Export PDF",
     actionClass: "bg-[#1E88F4] text-white",
   },
   {
-    title: "Donnees detaillees equipe",
+    title: "Données détaillées de l'équipe",
     subtitle: "Toutes les notes et reponses - Excel",
     action: "Export Excel",
     actionClass: "bg-[#EAF1F8] text-[#0F3A63]",
@@ -126,7 +126,7 @@ function buildPrintableReport(title) {
   </head>
   <body>
     <h1>${title}</h1>
-    <p>Reporting equipe - Cycle 2026</p>
+    <p>Reporting d'équipe - Cycle 2026</p>
     <table>
       <thead>
         <tr>

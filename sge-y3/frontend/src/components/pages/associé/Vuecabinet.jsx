@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import {
   Bell,
   CircleHelp,
@@ -26,13 +26,13 @@ const sideMenu = [
   {
     title: "Evaluations",
     items: [
-      { key: "syntheses-rh", label: "Syntheses validees RH", icon: FileStack },
-      { key: "decisions", label: "Decisions en attente", icon: MonitorCheck },
+      { key: "syntheses-rh", label: "Synthèses validées RH", icon: FileStack },
+      { key: "decisions", label: "Décisions en attente", icon: MonitorCheck },
     ],
   },
   {
     title: "Managers",
-    items: [{ key: "autoeval-managers", label: "Auto-eval Managers", icon: UsersRound }],
+    items: [{ key: "autoeval-managers", label: "Auto-éval Managers", icon: UsersRound }],
   },
   {
     title: "Reporting",
@@ -45,10 +45,10 @@ const sideMenu = [
 ];
 
 const summaryCards = [
-  { title: "Collaborateurs evalues", value: "18/24", subtitle: "75% du cabinet" },
-  { title: "Syntheses recues RH", value: "11", subtitle: "Pretes pour decision" },
-  { title: "Decisions en attente", value: "4", subtitle: "Action requise" },
-  { title: "Auto-evals Managers", value: "4", subtitle: "A examiner" },
+  { title: "Collaborateurs évalués", value: "18/24", subtitle: "75% du cabinet" },
+  { title: "Synthèses reçues RH", value: "11", subtitle: "Prêtes pour décision" },
+  { title: "Décisions en attente", value: "4", subtitle: "Action requise" },
+  { title: "Auto-évals Managers", value: "4", subtitle: "A examiner" },
 ];
 
 const decisionSplit = [
@@ -76,12 +76,12 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
   const displayName = getDisplayName(user);
   const initials = getInitials(user);
   const profileKey = [user?.id, user?.email, user?.first_name, user?.last_name, user?.grade, user?.department].join("|");
-  const handleTopAction = (label) => window.alert(`${label} bientot disponible.`);
+  const handleTopAction = (label) => window.alert(`${label} bientôt disponible.`);
 
   const pageTitle = useMemo(() => {
-    if (activeSection === "syntheses-rh") return "Syntheses validees RH";
-    if (activeSection === "decisions") return "Decisions en attente";
-    if (activeSection === "autoeval-managers") return "Auto-eval Managers";
+    if (activeSection === "syntheses-rh") return "Synthèses validées RH";
+    if (activeSection === "decisions") return "Décisions en attente";
+    if (activeSection === "autoeval-managers") return "Auto-éval Managers";
     if (activeSection === "history") return "Historique & analytics";
     if (activeSection === "profile") return "Mon profil";
     return "Vue cabinet";
@@ -129,7 +129,7 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
             className="mt-16 flex items-center gap-2 text-sm font-semibold text-[#0F3A63] hover:text-[#0E4A6B]"
           >
             <LogOut size={14} />
-            Deconnexion
+            Déconnexion
           </button>
         </aside>
 
@@ -173,7 +173,7 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
 
               <section className="mb-8 grid grid-cols-1 gap-5 xl:grid-cols-2">
                 <article className="rounded-xl bg-white p-5 shadow-sm">
-                  <h2 className="mb-4 text-2xl font-extrabold text-[#0F3A63]">Repartition des decisions prises</h2>
+                  <h2 className="mb-4 text-2xl font-extrabold text-[#0F3A63]">Répartition des décisions prises</h2>
                   <div className="space-y-4">
                     {decisionSplit.map((item) => (
                       <div key={item.label} className="grid grid-cols-[1fr_1.2fr_auto] items-center gap-4">
@@ -185,11 +185,11 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
                       </div>
                     ))}
                   </div>
-                  <p className="mt-5 text-xs font-semibold text-slate-500">7 decisions prises sur 11 syntheses</p>
+                  <p className="mt-5 text-xs font-semibold text-slate-500">7 décisions prises sur 11 synthèses</p>
                 </article>
 
                 <article className="rounded-xl bg-white p-5 shadow-sm">
-                  <h2 className="mb-4 text-2xl font-extrabold text-[#0F3A63]">Decisions urgentes</h2>
+                  <h2 className="mb-4 text-2xl font-extrabold text-[#0F3A63]">Décisions urgentes</h2>
                   <div className="space-y-4">
                     {urgentDecisions.map((item) => (
                       <div key={item.name} className="flex flex-wrap items-center justify-between gap-4 rounded-lg bg-slate-50 p-3">
@@ -204,7 +204,7 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
                         </div>
                         <div className="flex items-center gap-4">
                           <div>
-                            <p className="text-sm font-semibold text-slate-500">Score RH valide</p>
+                            <p className="text-sm font-semibold text-slate-500">Score RH validé</p>
                             <p className="text-2xl font-extrabold leading-none text-[#79B742]">{item.score}</p>
                           </div>
                           <button
@@ -224,7 +224,7 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
               </section>
 
               <section className="rounded-xl bg-white p-5 shadow-sm xl:max-w-[56%]">
-                <h2 className="mb-4 text-2xl font-extrabold text-[#0F3A63]">Score moyen par departement</h2>
+                <h2 className="mb-4 text-2xl font-extrabold text-[#0F3A63]">Score moyen par département</h2>
                 <div className="space-y-4">
                   {departmentScores.map((item) => (
                     <div key={item.label} className="grid grid-cols-[1fr_1.2fr_auto] items-center gap-4">
@@ -252,7 +252,7 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
             <section className="rounded-xl bg-white p-6 shadow-sm">
               <h2 className="text-2xl font-extrabold text-[#0F3A63]">{pageTitle}</h2>
               <p className="mt-3 text-sm text-slate-600">
-                Cette section sera disponible prochainement. Les donnees principales sont deja disponibles dans les autres vues.
+                Cette section sera disponible prochainement. Les données principales sont déjà disponibles dans les autres vues.
               </p>
             </section>
           )}

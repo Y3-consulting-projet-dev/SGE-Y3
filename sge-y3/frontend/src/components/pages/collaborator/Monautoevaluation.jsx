@@ -7,7 +7,7 @@ const gradingHelp = [
   { level: "2", text: "En progression - a ameliorer", color: "text-[#0F3A63]" },
   { level: "3", text: "Satisfaisant - niveau attendu", color: "text-[#0F3A63]" },
   { level: "4", text: "Bon - depasse les attentes", color: "text-[#0F3A63]" },
-  { level: "5", text: "Excellent - reference dans l'equipe", color: "text-[#76B82A]" },
+  { level: "5", text: "Excellent - référence dans l'équipe", color: "text-[#76B82A]" },
 ];
 
 function getSectionProgress(section) {

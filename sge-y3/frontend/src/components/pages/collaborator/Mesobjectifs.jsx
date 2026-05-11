@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 
 const topCards = [
   { title: "Objectifs actifs", value: "3", subtitle: "" },
@@ -67,7 +67,7 @@ function Mesobjectifs() {
             </button>
           </div>
           {updatedGoal === "objectif-principal" ? (
-            <p className="mt-2 text-[11px] font-semibold text-[#76B82A]">Mise a jour enregistree.</p>
+            <p className="mt-2 text-[11px] font-semibold text-[#76B82A]">Mise à jour enregistrée.</p>
           ) : null}
         </article>
 
@@ -85,7 +85,7 @@ function Mesobjectifs() {
           </div>
 
           <div className="mt-3 flex items-center justify-between text-[12px]">
-            <p className="font-semibold text-slate-500">Indicateur : certification validee avant fin mai 2026.</p>
+            <p className="font-semibold text-slate-500">Indicateur : certification validée avant fin mai 2026.</p>
             <span className="font-bold text-[#76B82A]">60%</span>
           </div>
 
@@ -98,7 +98,7 @@ function Mesobjectifs() {
             </button>
           </div>
           {updatedGoal === "objectif-cegid" ? (
-            <p className="mt-2 text-right text-[11px] font-semibold text-[#76B82A]">Mise a jour enregistree.</p>
+            <p className="mt-2 text-right text-[11px] font-semibold text-[#76B82A]">Mise à jour enregistrée.</p>
           ) : null}
         </article>
 
@@ -116,7 +116,7 @@ function Mesobjectifs() {
           </div>
 
           <div className="mt-3 flex items-center justify-between text-[12px]">
-            <p className="font-semibold text-slate-500">10/10 dossiers audites - valides par le Manager.</p>
+            <p className="font-semibold text-slate-500">10/10 dossiers audités - validés par le Manager.</p>
             <span className="font-bold text-[#76B82A]">100%</span>
           </div>
         </article>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 
 function formatScore(score) {
   return typeof score === "number" ? score.toFixed(1) : "0.0";
@@ -131,7 +131,7 @@ function Mesresultats({ resultsData, isLoading, errorMessage }) {
             <div className="mt-3 rounded-sm border-l-4 border-[#76B82A] bg-[#EAF5DF] px-3 py-2">
               <p className="text-[12px] font-bold text-[#0F3A63]">Commentaire de l'Associé</p>
               <p className="mt-1 text-[10px] text-slate-500">
-                "Bon potentiel. Une etape supplementaire pour confirmer la maitrise technique avant toute evolution."
+                "Bon potentiel. Une étape supplémentaire pour confirmer la maîtrise technique avant toute évolution."
               </p>
             </div>
             <p className="mt-2 text-right text-[11px] font-semibold text-slate-400">Décision prise le 05/05/2026</p>
@@ -164,7 +164,7 @@ function Mesresultats({ resultsData, isLoading, errorMessage }) {
             }}
             className="mx-auto block rounded-md bg-[#76B82A] px-5 py-2 text-[12px] font-bold text-white hover:bg-[#6EAD28]"
           >
-            Telecharger mon rapport pdf
+            Télécharger mon rapport PDF
           </button>
           {reportDownloaded ? (
             <p className="text-center text-[11px] font-semibold text-[#76B82A]">Rapport lance pour impression.</p>

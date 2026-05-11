@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import {
   ChevronsLeft,
   ClipboardList,
@@ -36,7 +36,7 @@ const menuGroups = [
     title: "Developpement",
     items: [
       { key: "goals", label: "Mes objectifs", icon: Target },
-      { key: "development", label: "Mon developpement", icon: TrendingUp },
+      { key: "development", label: "Mon développement", icon: TrendingUp },
     ],
   },
   {

@@ -1,10 +1,10 @@
-import { assistantRows, priorityActions } from "@/components/pages/senior/seniorData";
+﻿import { assistantRows, priorityActions } from "@/components/pages/senior/seniorData";
 
 function Vueensemble({ onOpen }) {
   return (
     <>
       <div className="mb-6 border-l-4 border-[#7CB342] bg-[#DCECCB] px-4 py-3 text-sm font-semibold text-[#184D2E]">
-        Le Senior evalue uniquement les assistants avec lesquels il a travaille, mission par mission, a partir des faits observes.
+        Le Senior évalue uniquement les assistants avec lesquels il a travaillé, mission par mission, à partir des faits observés.
       </div>
 
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -14,7 +14,7 @@ function Vueensemble({ onOpen }) {
           <p className="mt-2 text-sm text-slate-200">sur missions communes</p>
         </button>
         <button onClick={() => onOpen("reviews")} className="rounded-lg bg-[#003B63] p-5 text-left text-white">
-          <p className="text-sm">Missions a evaluer</p>
+          <p className="text-sm">Missions à évaluer</p>
           <p className="mt-3 text-3xl font-extrabold text-[#F34D4D]">2</p>
           <p className="mt-2 text-sm text-slate-200">avis Senior incomplets</p>
         </button>
@@ -24,9 +24,9 @@ function Vueensemble({ onOpen }) {
           <p className="mt-2 text-sm text-slate-200">dossiers partages</p>
         </button>
         <button onClick={() => onOpen("results")} className="rounded-lg bg-[#003B63] p-5 text-left text-white">
-          <p className="text-sm">Syntheses transmises</p>
+          <p className="text-sm">Synthèses transmises</p>
           <p className="mt-3 text-3xl font-extrabold text-[#7BC443]">1</p>
-          <p className="mt-2 text-sm text-slate-200">pretes pour Manager</p>
+          <p className="mt-2 text-sm text-slate-200">prêtes pour Manager</p>
         </button>
       </section>
 

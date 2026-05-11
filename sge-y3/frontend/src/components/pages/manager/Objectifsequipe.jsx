@@ -281,7 +281,7 @@ function Objectifsequipe({ createSignal = 0 }) {
           </button>
           {saveStatus ? (
             <p className={`w-full text-right text-xs font-bold ${saveStatus === "missing" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>
-              {saveStatus === "missing" ? "Renseignez l'objectif, l'indicateur et la date cible." : "Objectif enregistre dans le tableau."}
+              {saveStatus === "missing" ? "Renseignez l'objectif, l'indicateur et la date cible." : "Objectif enregistré dans le tableau."}
             </p>
           ) : null}
         </div>

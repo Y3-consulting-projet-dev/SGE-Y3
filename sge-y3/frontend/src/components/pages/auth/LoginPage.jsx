@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import heroImg from "@/assets/hero.png";
 
@@ -90,7 +90,7 @@ function LoginPage({ onLoginSuccess }) {
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
-                <p className="mt-2 text-right text-xs font-semibold text-[#0E4A6B]">Mot de passe oublie ?</p>
+                <p className="mt-2 text-right text-xs font-semibold text-[#0E4A6B]">Mot de passe oublié ?</p>
               </div>
 
               {errorMessage ? (
