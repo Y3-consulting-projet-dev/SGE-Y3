@@ -1,6 +1,26 @@
+function getSectionCriteria(section = {}) {
+  if (Array.isArray(section.criteria) && section.criteria.length) {
+    return section.criteria;
+  }
+
+  return (section.pages || []).flatMap((page) =>
+    (page.themes || []).map((theme) => ({
+      criterion_id: theme.theme_id || '',
+      label: `${theme.code}. ${theme.label}`,
+      statement: theme.statement || '',
+      page_id: page.page_id || '',
+      page_title: page.title || '',
+      theme_code: theme.code || '',
+      score: theme.score === null || theme.score === undefined ? null : Number(theme.score),
+      required: theme.required !== false,
+    }))
+  );
+}
+
 function getSectionProgress(section) {
-  const total = section.criteria.length;
-  const answered = section.criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
+  const criteria = getSectionCriteria(section);
+  const total = criteria.length;
+  const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
 
   if (!total) {
     return 0;
@@ -24,7 +44,9 @@ function getSectionStatus(section) {
 }
 
 function getAverageScore(section) {
-  const scores = section.criteria.map((criterion) => criterion.score).filter((score) => typeof score === 'number');
+  const scores = getSectionCriteria(section)
+    .map((criterion) => criterion.score)
+    .filter((score) => typeof score === 'number');
 
   if (!scores.length) {
     return null;
@@ -34,7 +56,9 @@ function getAverageScore(section) {
 }
 
 function getOverallAverageScore(sections = []) {
-  const scores = sections.flatMap((section) => section.criteria.map((criterion) => criterion.score)).filter((score) => typeof score === 'number');
+  const scores = sections
+    .flatMap((section) => getSectionCriteria(section).map((criterion) => criterion.score))
+    .filter((score) => typeof score === 'number');
 
   if (!scores.length) {
     return null;
@@ -45,11 +69,49 @@ function getOverallAverageScore(sections = []) {
 
 function normalizeSections(sections = []) {
   return sections.map((section) => {
-    const normalizedCriteria = (section.criteria || []).map((criterion) => ({
-      label: String(criterion.label || ''),
-      score: criterion.score === null || criterion.score === undefined ? null : Number(criterion.score),
-      required: criterion.required !== false,
+    const normalizedPages = (section.pages || []).map((page) => ({
+      page_id: String(page.page_id || ''),
+      title: String(page.title || ''),
+      source_sheet: String(page.source_sheet || ''),
+      source_label: String(page.source_label || ''),
+      comment: String(page.comment || ''),
+      themes: (page.themes || []).map((theme) => ({
+        theme_id: String(theme.theme_id || ''),
+        code: String(theme.code || ''),
+        label: String(theme.label || ''),
+        statement: String(theme.statement || ''),
+        score: theme.score === null || theme.score === undefined ? null : Number(theme.score),
+        required: theme.required !== false,
+      })),
     }));
+
+    const normalizedCriteria = normalizedPages.length
+      ? normalizedPages.flatMap((page) =>
+          page.themes.map((theme) => ({
+            criterion_id: theme.theme_id,
+            label: `${theme.code}. ${theme.label}`,
+            statement: theme.statement,
+            page_id: page.page_id,
+            page_title: page.title,
+            source_sheet: page.source_sheet,
+            source_label: page.source_label,
+            theme_code: theme.code,
+            score: theme.score,
+            required: theme.required,
+          }))
+        )
+      : (section.criteria || []).map((criterion) => ({
+          criterion_id: String(criterion.criterion_id || ''),
+          label: String(criterion.label || ''),
+          statement: String(criterion.statement || ''),
+          page_id: String(criterion.page_id || ''),
+          page_title: String(criterion.page_title || ''),
+          source_sheet: String(criterion.source_sheet || ''),
+          source_label: String(criterion.source_label || ''),
+          theme_code: String(criterion.theme_code || ''),
+          score: criterion.score === null || criterion.score === undefined ? null : Number(criterion.score),
+          required: criterion.required !== false,
+        }));
 
     const normalizedSection = {
       id: Number(section.id ?? section.section_id),
@@ -57,6 +119,7 @@ function normalizeSections(sections = []) {
       title: String(section.title || ''),
       subtitle: String(section.subtitle || ''),
       comment: String(section.comment || ''),
+      pages: normalizedPages,
       criteria: normalizedCriteria,
     };
 
@@ -84,11 +147,12 @@ function validateSectionsForSubmit(sections = []) {
   const missingAnswers = [];
 
   sections.forEach((section) => {
-    section.criteria.forEach((criterion) => {
+    getSectionCriteria(section).forEach((criterion) => {
       if (criterion.required && (criterion.score === null || criterion.score === undefined)) {
         missingAnswers.push({
           sectionId: section.id,
           sectionTitle: section.title,
+          pageTitle: criterion.page_title,
           label: criterion.label,
         });
       }
@@ -102,6 +166,7 @@ module.exports = {
   getAverageScore,
   getEvaluationSummary,
   getOverallAverageScore,
+  getSectionCriteria,
   getSectionProgress,
   getSectionStatus,
   normalizeSections,

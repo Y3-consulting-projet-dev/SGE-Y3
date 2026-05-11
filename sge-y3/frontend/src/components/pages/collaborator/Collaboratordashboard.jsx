@@ -20,6 +20,7 @@ function getSectionStepTitle(section) {
 }
 
 function getEvaluationStatusLabel(status) {
+  if (status === "Soumis au Manager") return "Soumise au(x) manager(s)";
   if (status === "Soumis a RH") return "Soumise à la RH";
   if (status === "Brouillon") return "Brouillon";
   return "En cours";
@@ -50,7 +51,9 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
   return (
     <div className="space-y-4">
       <div className="rounded-sm bg-[#BFE2B9] px-3 py-2 text-[11px] font-semibold text-[#114F35]">
-        {evaluation?.evaluation?.status === "Soumis a RH"
+        {evaluation?.evaluation?.status === "Soumis au Manager"
+          ? "Auto-évaluation soumise au(x) manager(s). En attente de traitement."
+          : evaluation?.evaluation?.status === "Soumis a RH"
           ? "Auto-évaluation soumise à la RH. En attente de traitement."
           : "Auto-évaluation en cours -  à soumettre avant le 18/04/2026. Sauvegarde automatique activée"}
       </div>
@@ -111,7 +114,7 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
             <h2 className="mb-4 text-[24px] font-bold leading-tight text-[#0F3A63]">Circuit de validation</h2>
             <div className="space-y-3">
               {[
-                { id: 1, title: "Je soumets mon auto-évaluation", subtitle: evaluation?.evaluation?.status === "Soumis a RH" ? "Deja transmise" : "En attente de ma soumission" },
+                { id: 1, title: "Je soumets mon auto-évaluation", subtitle: evaluation?.evaluation?.status === "Soumis au Manager" || evaluation?.evaluation?.status === "Soumis a RH" ? "Deja transmise" : "En attente de ma soumission" },
                 { id: 2, title: "Mon Manager évalue & corrige", subtitle: "Droit feedback" },
                 { id: 3, title: "Validation RH / Capital Humain", subtitle: "Validation métier" },
                 { id: 4, title: "Decision de l'Associé", subtitle: "Résultat communiqué ensuite" },
