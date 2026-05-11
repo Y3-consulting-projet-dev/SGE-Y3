@@ -1,0 +1,1806 @@
+{
+  "TRONC COMMUN": [
+    {
+      "key": "SAVOIR FAIRE",
+      "title": "SAVOIR FAIRE",
+      "pages": [
+        {
+          "title": "Etre orient\u00e9 r\u00e9sultats",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Avoir une vision strat\u00e9gique",
+              "statements": {
+                "Assistant": "Cherche \u00e0 comprendre les enjeux g\u00e9n\u00e9raux de la mission et comment il y contribue \u00e0 travers ses travaux.",
+                "Senior": "Communique et explique aux \u00e9quipes les enjeux g\u00e9n\u00e9raux de la mission et les r\u00e9sultats attendus pour cadrer leurs travaux.",
+                "Manager": "D\u00e9finit les enjeux g\u00e9n\u00e9raux de la mission.",
+                "Associ?": "\u00c9labore des plans strat\u00e9giques, anticipe les tendances du march\u00e9 et sait d\u00e9finir une culture d'entreprise forte."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Piloter par les objectifs",
+              "statements": {
+                "Assistant": "Est motiv\u00e9 par l\u2019obtention de r\u00e9sultats et l\u2019atteinte de ses objectifs.",
+                "Senior": "Fournit des travaux de qualit\u00e9, correspondant ou d\u00e9passant les attentes du client.",
+                "Manager": "Transmet \u00e0 ses \u00e9quipes la culture de l\u2019excellence. Prend les bonnes d\u00e9cisions avec les informations qui sont \u00e0 sa disposition, m\u00eame sous la pression, en prenant compte l\u2019impact de ses d\u00e9cisions sur les autres et sait les communiquer.",
+                "Associ?": "Fixe des objectifs clairs et mesurables, sait mettre en place des indicateurs de performance cl\u00e9s (KPI), et suit r\u00e9guli\u00e8rement les progr\u00e8s r\u00e9alis\u00e9s. Est capable d'adapter les strat\u00e9gies en fonction des r\u00e9sultats."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Savoir prendre des d\u00e9cisions",
+              "statements": {
+                "Assistant": "Prend conseil avant de faire des choix et sait expliciter de fa\u00e7on claire son raisonnement.",
+                "Senior": "Exprime ses recommandations et opinions pour aider \u00e0 prendre des d\u00e9cisions ; sait quand et aupr\u00e8s de quels collaborateurs prendre conseil ; formule des arguments persuasifs afin de faire valider sa proposition.",
+                "Manager": "Analyse rapidement les situations complexes et arbitre avec discernement pour d\u00e9bloquer les situations et faire avancer les projets.",
+                "Associ?": "Met en place de processus de contr\u00f4le qualit\u00e9, r\u00e9solution efficace des probl\u00e8mes clients, et l'am\u00e9lioration continue des services."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Optimiser le service au client",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Fournir un service de qualit\u00e9",
+              "statements": {
+                "Assistant": "Fournit au client un service de qualit\u00e9 en conformit\u00e9 avec les standards, normes et principes \u00e9thiques.",
+                "Senior": "S\u2019implique activement dans l\u2019atteinte des objectifs de la mission, et ce tout au long de la mission en faisant des points r\u00e9guliers avec le client et l\u2019\u00e9quipe Y3 Audit & Conseils. S\u2019assure de la qualit\u00e9 du service.",
+                "Manager": "S\u2019assure que les ressources Y3 Audit & Conseils utilis\u00e9es sur la mission sont appropri\u00e9es afin de d\u00e9livrer au client un service de qualit\u00e9 dans les d\u00e9lais et le budget impartis.",
+                "Associ?": "Communique de fa\u00e7on r\u00e9guli\u00e8re avec les clients, respecte ses engagements et est capable de r\u00e9soudre rapidement des litiges."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Savoir r\u00e9pondre aux attentes du client",
+              "statements": {
+                "Assistant": "Identifie les attentes du client et les probl\u00e8mes li\u00e9s \u00e0 la mission et les traite avec l\u2019accord pr\u00e9alable de son responsable sur la mission.",
+                "Senior": "Anticipe et g\u00e8re de fa\u00e7on proactive les probl\u00e8mes et attentes du client au regard du contrat.",
+                "Manager": "Anticipe et r\u00e9pond aux besoins du client en prenant en compte l\u2019int\u00e9r\u00eat g\u00e9n\u00e9ral de Y3 Audit & Conseils vis-\u00e0-vis de ce client.",
+                "Associ?": "\u00c9coute activement les clients, personnalise les offres, et assure un suivi de la satisfaction client."
+              }
+            },
+            {
+              "code": "C",
+              "label": "D\u00e9velopper une relation de confiance avec le client",
+              "statements": {
+                "Assistant": "Gagne la confiance du client en faisant preuve d\u2019interactions avec lui et en d\u00e9montrant une compr\u00e9hension rapide et pr\u00e9cise de ses enjeux, son activit\u00e9 et de la mission.",
+                "Senior": "Est identifi\u00e9 par le client comme interlocuteur sur la mission. Gagne le respect et la confiance du client en lui fournissant un service \u00e0 valeur ajout\u00e9e qui impacte son activit\u00e9 et qui r\u00e9pond \u00e0 ses enjeux sp\u00e9cifiques.",
+                "Manager": "Est pour le client un interlocuteur privil\u00e9gi\u00e9 apportant une forte valeur ajout\u00e9e \u00e0 long terme en lui donnant des informations et conseils objectifs et pertinents.",
+                "Associ?": "Communication r\u00e9guli\u00e8re avec les clients, respecte ses engagements, et sait r\u00e9soudre rapidement des litiges."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Etre orient\u00e9 solutions",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Identifier et cadrer les probl\u00e8mes",
+              "statements": {
+                "Assistant": "D\u00e9finit clairement un probl\u00e8me et sait le formuler simplement.",
+                "Senior": "Identifie et \u00e9value un probl\u00e8me en d\u00e9composant les diff\u00e9rentes causes.",
+                "Manager": "Sait expliquer de fa\u00e7on simple un probl\u00e8me complexe et chercher les causes profondes de celui-ci ; sait identifier les impacts du probl\u00e8me.",
+                "Associ?": "Analyse des situations complexes et d\u00e9finit des objectifs de r\u00e9solution rapidement."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Collecter les donn\u00e9es",
+              "statements": {
+                "Assistant": "Recueille les donn\u00e9es n\u00e9cessaires \u00e0 l\u2019analyse du probl\u00e8me.",
+                "Senior": "Dirige et organise la collecte de donn\u00e9es.",
+                "Manager": "Supervise la collecte de donn\u00e9es et s\u2019assure qu\u2019aucune information pertinente n\u2019a \u00e9t\u00e9 omise.",
+                "Associ?": "Met en \u0153uvre des m\u00e9thodes rigoureuses pour capturer et structurer les donn\u00e9es, favorisant ainsi une prise de d\u00e9cision \u00e9clair\u00e9e."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Savoir analyser les probl\u00e8mes",
+              "statements": {
+                "Assistant": "Analyse les donn\u00e9es brutes et en tire des premiers enseignements ; sait faire preuve de rigueur et pr\u00e9cision dans la restitution des r\u00e9sultats.",
+                "Senior": "Dirige l\u2019analyse des donn\u00e9es afin de clarifier le probl\u00e8me et d\u2019en identifier l\u2019origine ; pilote la restitution des r\u00e9sultats de l\u2019analyse.",
+                "Manager": "D\u00e9veloppe des approches innovantes permettant d\u2019analyser des donn\u00e9es et d\u2019en tirer des conclusions et sollicite un support si n\u00e9cessaire.",
+                "Associ?": "S'appuie sur une pens\u00e9e critique aiguis\u00e9e pour d\u00e9construire les probl\u00e8mes, identifier les opportunit\u00e9s et construire des solutions p\u00e9rennes."
+              }
+            },
+            {
+              "code": "D",
+              "label": "D\u00e9velopper des solutions",
+              "statements": {
+                "Assistant": "Contribue activement \u00e0 d\u00e9velopper et mettre en \u0153uvre des solutions.",
+                "Senior": "D\u00e9veloppe des solutions en capitalisant sur son exp\u00e9rience pass\u00e9e ainsi que sur des m\u00e9thodologies reconnues.",
+                "Manager": "D\u00e9veloppe et propose des solutions qui peuvent \u00eatre consid\u00e9r\u00e9es comme une best practice, partage ses conclusions.",
+                "Associ?": "Recherche de solutions alternatives, \u00e9valuation des impacts, mise en \u0153uvre des solutions."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Adopter une culture data",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Comprendre et adh\u00e9rer \u00e0 la vision data de l'entreprise",
+              "statements": {
+                "Assistant": "S'approprie les principes fondamentaux de la strat\u00e9gie data de l'entreprise et les met en \u0153uvre dans ses t\u00e2ches quotidiennes.",
+                "Senior": "Communique la vision data de l'entreprise \u00e0 son \u00e9quipe et s'assure de l'alignement des projets avec cette vision.",
+                "Manager": "D\u00e9finit des objectifs data clairs pour son \u00e9quipe, en coh\u00e9rence avec la strat\u00e9gie globale de l'entreprise.",
+                "Associ?": "Porte la vision data de l'entreprise en interne et en externe, et s'assure de l'alignement de toutes les initiatives avec cette vision."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Respecter la charte informatique - data - \u00e9thique",
+              "statements": {
+                "Assistant": "Respecte les r\u00e8gles de s\u00e9curit\u00e9 et de confidentialit\u00e9 des donn\u00e9es dans le cadre de ses activit\u00e9s.",
+                "Senior": "Veille au respect des normes de qualit\u00e9 des donn\u00e9es et contribue \u00e0 l'am\u00e9lioration continue des processus.",
+                "Manager": "S'assure que son \u00e9quipe respecte les r\u00e8gles de la charte data et met en place des contr\u00f4les pour garantir la conformit\u00e9.",
+                "Associ?": "Garantit la mise en \u0153uvre et le respect de la charte data dans toute l'entreprise et s'assure de son ad\u00e9quation avec l'\u00e9volution du contexte r\u00e9glementaire."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Encourager l'exp\u00e9rimentation",
+              "statements": {
+                "Assistant": "Est ouvert(e) aux nouvelles id\u00e9es et propose des am\u00e9liorations dans ses processus de travail.",
+                "Senior": "Encourage son \u00e9quipe \u00e0 explorer de nouvelles approches et \u00e0 tester de nouvelles solutions.",
+                "Manager": "Cr\u00e9e un environnement de travail favorisant l'innovation et l'exp\u00e9rimentation.",
+                "Associ?": "Investit dans des projets pilotes et encourage la prise de risque pour stimuler l'innovation."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SAVOIR ETRE",
+      "title": "SAVOIR ETRE",
+      "pages": [
+        {
+          "title": "Se d\u00e9velopper personnellement",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Conna\u00eetre ses forces et ses axes d'am\u00e9lioration",
+              "statements": {
+                "Assistant": "Sollicite de fa\u00e7on r\u00e9guli\u00e8re un feedback et des conseils \u00e0 ses sup\u00e9rieurs afin de mieux conna\u00eetre ses forces et ses axes d'am\u00e9lioration.",
+                "Senior": "Est conscient de ses forces et de ses axes d'am\u00e9lioration; sait modifier son comportement suite au feedback re\u00e7u afin d'am\u00e9liorer ses performances.",
+                "Manager": "Capitalise sur ses points forts et fait appel aux comp\u00e9tences d\u2019autrui sur les sujets moins ma\u00eetris\u00e9s.",
+                "Associ?": "Utilise des outils d'\u00e9valuation et de d\u00e9veloppement personnel pour identifier ses talents et ses potentiels de d\u00e9veloppement. Exerce un regard critique et constructif sur ses propres pratiques manag\u00e9riales."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Apprendre de ses exp\u00e9riences",
+              "statements": {
+                "Assistant": "Analyse ses exp\u00e9riences professionnelles et en tire des enseignements.",
+                "Senior": "Met en pratique les enseignements appris de ses exp\u00e9riences pass\u00e9es.",
+                "Manager": "Consid\u00e8re toute exp\u00e9rience comme une opportunit\u00e9 d\u2019am\u00e9lioration.",
+                "Associ?": "Favorise une culture d'apprentissage au sein de son \u00e9quipe en encourageant le partage d'exp\u00e9riences et le retour d'exp\u00e9rience."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Etre acteur de son d\u00e9veloppement personnel",
+              "statements": {
+                "Assistant": "Cherche de fa\u00e7on proactive toute opportunit\u00e9 de formation et de d\u00e9veloppement personnel.",
+                "Senior": "Cherche de nouvelles opportunit\u00e9s et missions stimulantes afin de poursuivre son d\u00e9veloppement personnel.",
+                "Manager": "Sugg\u00e8re de lui-m\u00eame des actions de d\u00e9veloppement personnel en phase avec ses objectifs de carri\u00e8re, ses points forts, ses axes d\u2019am\u00e9lioration.",
+                "Associ?": "D\u00e9finit un plan de d\u00e9veloppement personnalis\u00e9 en lien avec les objectifs de l'entreprise et ses propres aspirations."
+              }
+            },
+            {
+              "code": "D",
+              "label": "Ma\u00eetriser les comp\u00e9tences linguistiques",
+              "statements": {
+                "Assistant": "Utilise l'anglais de mani\u00e8re fonctionnelle dans un contexte professionnel pour r\u00e9pondre \u00e0 des courriels simples, participer \u00e0 des r\u00e9unions internationales et r\u00e9diger des rapports basiques.",
+                "Senior": "Communique couramment en anglais \u00e0 l'oral et \u00e0 l'\u00e9crit, participe activement \u00e0 des n\u00e9gociations commerciales et pr\u00e9sente des projets complexes \u00e0 un public international.",
+                "Manager": "Ma\u00eetrise l'anglais professionnel \u00e0 un niveau avanc\u00e9, anime des r\u00e9unions multilingues, n\u00e9gocie des accords strat\u00e9giques et repr\u00e9sente l'entreprise aupr\u00e8s de clients internationaux.",
+                "Associ?": "Communique de mani\u00e8re fluide et persuasive en anglais dans des contextes vari\u00e9s, tant \u00e0 l'oral qu'\u00e0 l'\u00e9crit, et repr\u00e9sente l'entreprise au plus haut niveau."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Sens de la communication",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Savoir communiquer \u00e0 l\u2019oral",
+              "statements": {
+                "Assistant": "S'exprime \u00e0 l'oral de fa\u00e7on claire, logique et succincte, avec un niveau de langage et un style de communication appropri\u00e9s.",
+                "Senior": "Choisit le style de communication orale le plus appropri\u00e9 \u00e0 la situation et \u00e0 son audience.",
+                "Manager": "Sait adapter imm\u00e9diatement son style de communication orale en fonction des r\u00e9actions de son audience.",
+                "Associ?": "Communique de mani\u00e8re claire, concise et convaincante \u00e0 l'oral, tant en public qu'en priv\u00e9, pour influencer et mobiliser les \u00e9quipes."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Savoir communiquer \u00e0 l'\u00e9crit",
+              "statements": {
+                "Assistant": "Sait r\u00e9diger un document de restitution (compte-rendu, synth\u00e8se) ; organise ses id\u00e9es suivant une logique et choisit le registre le plus appropri\u00e9 afin de r\u00e9diger un document.",
+                "Senior": "Sait exprimer \u00e0 l\u2019\u00e9crit des id\u00e9es complexes, de fa\u00e7on \u00e0 les rendre compr\u00e9hensibles par tous ; est capable de revoir/r\u00e9\u00e9crire un document.",
+                "Manager": "Ecrit des articles ou des documents de r\u00e9f\u00e9rence.",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "C",
+              "label": "Savoir pr\u00e9senter ses travaux",
+              "statements": {
+                "Assistant": "Pr\u00e9sente ses propres id\u00e9es et opinions avec confiance.",
+                "Senior": "Sait assurer des pr\u00e9sentations appropri\u00e9es \u00e0 toute audience.",
+                "Manager": "D\u00e9montre son leadership et ses talents de conviction \u00e0 travers ses pr\u00e9sentations.",
+                "Associ?": "Suscite l'engagement et la participation de son auditoire gr\u00e2ce \u00e0 des pr\u00e9sentations dynamiques et interactives."
+              }
+            },
+            {
+              "code": "D",
+              "label": "Ma\u00eetriser l\u2019\u00e9coute active",
+              "statements": {
+                "Assistant": "Fait preuve d\u2019une \u00e9coute de qualit\u00e9 en utilisant des techniques de communication verbales et non verbales.",
+                "Senior": "Pose des questions et reformule les propos de son interlocuteur afin de v\u00e9rifier sa compr\u00e9hension du message v\u00e9hicul\u00e9.",
+                "Manager": "Utilise ses talents d\u2019\u00e9coute et de questionnement pour influencer le d\u00e9bat.",
+                "Associ?": "Synth\u00e9tise les informations et les id\u00e9es exprim\u00e9es par les autres pour faciliter la prise de d\u00e9cision collective."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Esprit d'\u00e9quipe",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Collaborer efficacement avec les autres membres d'une \u00e9quipe, \u00e0 partager les connaissances et \u00e0 atteindre des objectifs communs",
+              "statements": {
+                "Assistant": "S'int\u00e8gre \u00e0 une \u00e9quipe, suit les instructions, participe aux t\u00e2ches collectives.",
+                "Senior": "Collabore activement avec les membres de l'\u00e9quipe, partage ses connaissances, contribue \u00e0 la r\u00e9solution de probl\u00e8mes communs.",
+                "Manager": "Anime et f\u00e9d\u00e8re une \u00e9quipe, favorise la collaboration, r\u00e9sout les conflits.",
+                "Associ?": "D\u00e9veloppe et maintient un esprit d'\u00e9quipe au sein du cabinet, encourage l'innovation et la transversalit\u00e9."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Esprit d'analyse",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Savoir d\u00e9composer une situation complexe en ses \u00e9l\u00e9ments constitutifs, \u00e0 identifier les causes et les effets, et \u00e0 prendre des d\u00e9cisions \u00e9clair\u00e9es",
+              "statements": {
+                "Assistant": "Recueille les informations n\u00e9cessaires, identifie les \u00e9l\u00e9ments cl\u00e9s d'une situation.",
+                "Senior": "Analyse des donn\u00e9es, identifie les tendances, propose des solutions simples.",
+                "Manager": "M\u00e8ne des analyses approfondies, prend des d\u00e9cisions strat\u00e9giques en s'appuyant sur des donn\u00e9es fiables.",
+                "Associ?": "Anticipe les \u00e9volutions du march\u00e9, d\u00e9finit une vision strat\u00e9gique pour le cabinet."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Esprit d'initiatives",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Prendre des d\u00e9cisions et \u00e0 engager des actions de mani\u00e8re autonome, en anticipant les besoins, en identifiant les opportunit\u00e9s et en proposant des solutions innovantes",
+              "statements": {
+                "Assistant": "Propose des am\u00e9liorations mineures dans le cadre de ses t\u00e2ches, signale des anomalies.",
+                "Senior": "Prend en charge de nouvelles missions, propose des solutions \u00e0 des probl\u00e8mes courants, identifie des opportunit\u00e9s d'am\u00e9lioration des processus.",
+                "Manager": "Lance de nouveaux projets, identifie de nouvelles opportunit\u00e9s de d\u00e9veloppement pour le cabinet, encourage l'innovation au sein de son \u00e9quipe.",
+                "Associ?": "D\u00e9finit la vision \u00e0 long terme du cabinet, prend des d\u00e9cisions audacieuses pour faire \u00e9voluer l'entreprise, encourage une culture d'entreprise innovante."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Autonomie",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Travailler de mani\u00e8re ind\u00e9pendante, \u00e0 organiser son travail et \u00e0 prendre des initiatives sans supervision constante",
+              "statements": {
+                "Assistant": "Ex\u00e9cute des t\u00e2ches simples sous la supervision d'un sup\u00e9rieur hi\u00e9rarchique.",
+                "Senior": "Analyse des donn\u00e9es, identifie les tendances, propose des solutions simples.",
+                "Manager": "M\u00e8ne des analyses approfondies, prend des d\u00e9cisions strat\u00e9giques en s'appuyant sur des donn\u00e9es fiables.",
+                "Associ?": "Anticipe les \u00e9volutions du march\u00e9, d\u00e9finit une vision strat\u00e9gique pour le cabinet."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Professionnalisme",
+          "themes": [
+            {
+              "code": "A",
+              "label": "R\u00e9aliser un travail soign\u00e9 et rigoureux, respecter les d\u00e9lais impartis et avoir le sens de la confidentialit\u00e9",
+              "statements": {
+                "Assistant": "Respecte les r\u00e8gles de base, suit les instructions, produit un travail de qualit\u00e9 correcte.",
+                "Senior": "Ma\u00eetrise les proc\u00e9dures internes, produit un travail de qualit\u00e9 constante, respecte les d\u00e9lais.",
+                "Manager": "Garant de la qualit\u00e9 et de la conformit\u00e9, encadre les \u00e9quipes sur les bonnes pratiques, assure le respect des normes.",
+                "Associ?": "Incarne les valeurs du cabinet, d\u00e9veloppe une culture d'excellence, est un mod\u00e8le pour les collaborateurs."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Engagement et implication",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Proposer des am\u00e9liorations, respecter ses engagements, participer \u00e0 des projets en dehors de son p\u00e9rim\u00e8tre, repr\u00e9senter le cabinet lors d'\u00e9v\u00e9nements externes. Partager les valeurs du cabinet",
+              "statements": {
+                "Assistant": "Participe aux t\u00e2ches collectives, montre de la motivation.",
+                "Senior": "S'investit dans ses missions, prend des initiatives pour am\u00e9liorer son travail, respecte les d\u00e9lais.",
+                "Manager": "S'implique dans la vie du cabinet, partage les valeurs de l'entreprise, d\u00e9veloppe l'esprit d'\u00e9quipe.",
+                "Associ?": "Porte les valeurs du cabinet, est un ambassadeur de l'entreprise, inspire les collaborateurs."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "AUDIT": [
+    {
+      "key": "SAVOIR FAIRE",
+      "title": "SAVOIR FAIRE",
+      "pages": [
+        {
+          "title": "M\u00e9thodologie du cabinet",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Conduite d'un entretien client",
+              "statements": {
+                "Assistant": "\u2022 Pr\u00e9pare les points sp\u00e9cifiques \u00e0 aborder selon les instructions du senior. \u2022 Assiste aux entretiens en prenant des notes d\u00e9taill\u00e9es. \u2022 Pose des questions simples sous la supervision du senior pour clarifier des points pr\u00e9cis.",
+                "Senior": "\u2022 Organise les entretiens avec les interlocuteurs cl\u00e9s identifi\u00e9s (DAF, contr\u00f4leurs, etc.). \u2022 M\u00e8ne les discussions sur des sections sp\u00e9cifiques du dossier avec assurance. \u2022 Reformule les r\u00e9ponses pour s'assurer de leur compr\u00e9hension et documente les points critiques. \u2022 Escalade les probl\u00e9matiques complexes au manager.",
+                "Manager": "\u2022 Planifie et structure les entretiens, en d\u00e9terminant les objectifs et les interlocuteurs pertinents. \u2022 Anime des discussions strat\u00e9giques pour clarifier les risques et valider les hypoth\u00e8ses. \u2022 Fournit un retour structur\u00e9 \u00e0 l\u2019\u00e9quipe sur les informations collect\u00e9es et ajuste les travaux d\u2019audit en cons\u00e9quence.",
+                "Associ?": "\u2022 Conduit des entretiens de haut niveau avec la direction g\u00e9n\u00e9rale ou les actionnaires. \u2022 Oriente les discussions vers les enjeux strat\u00e9giques et les impacts sur l\u2019opinion d\u2019audit. \u2022 Utilise les entretiens pour renforcer la relation de confiance et d\u00e9tecter les opportunit\u00e9s commerciales \u00e9ventuelles."
+              }
+            },
+            {
+              "code": "B",
+              "label": "R\u00e9alisation des travaux",
+              "statements": {
+                "Assistant": "Conna\u00eet et applique la m\u00e9thodologie : Prend connaissance des risques et de la strat\u00e9gie globale du dossier Comprend la d\u00e9marche d\u2019audit \u00e0 mettre en \u0153uvre sur les sections qui lui sont confi\u00e9es Applique les seuils de mat\u00e9rialit\u00e9 Met en \u0153uvre l\u2019approche d\u2019audit en respectant son programme de travail Conclut ses travaux Communique ses ajustements, points d\u2019audit ou de recommandations au Senior Compl\u00e8te les documents appropri\u00e9s (programme de travail)",
+                "Senior": "Participe \u00e0 mettre en \u00e9vidence les risques accrus Participe \u00e0 l\u2019\u00e9laboration de la strat\u00e9gie d\u2019audit (note de planification) D\u00e9termine le seuil de signification et la pr\u00e9cision mon\u00e9taire suivant la m\u00e9thodologie Y3 Audit & Conseils en liaison avec le Manager, et l\u2019applique Elabore les programmes de travail Met en \u0153uvre l\u2019approche d\u2019audit sur l\u2019ensemble des sections du dossier : proc\u00e9dures de contr\u00f4le interne, contr\u00f4les g\u00e9n\u00e9raux informatiques et lien avec les travaux du final, conform\u00e9ment \u00e0 la matrice des sources de confiance. Conclut ses travaux et synth\u00e9tise ceux de l\u2019ensemble de l\u2019\u00e9quipe (note de synth\u00e8se) Centralise l\u2019ensemble des ajustements Pr\u00e9pare l\u2019opinion en coh\u00e9rence avec les r\u00e9sultats des travaux",
+                "Manager": "Identifie de mani\u00e8re proactive les risques majeurs ou sp\u00e9cifiques li\u00e9s au secteur ou au client, et propose des ajustements \u00e0 la strat\u00e9gie d\u2019audit en cons\u00e9quence. Supervise la mise en \u0153uvre de la note de planification par l\u2019ensemble de l\u2019\u00e9quipe et ajuste les programmes de travail si n\u00e9cessaire. Valide le seuil de signification, la pr\u00e9cision mon\u00e9taire et les seuils de mat\u00e9rialit\u00e9 en concertation avec l\u2019associ\u00e9 en s\u2019assurant de leur pertinence selon les normes et le contexte. Revoit les travaux des auditeurs juniors et des seniors pour garantir la conformit\u00e9 \u00e0 la m\u00e9thodologie, tout en optimisant les approches pour gagner en efficacit\u00e9. Assure la supervision technique et m\u00e9thodologique des membres de l\u2019\u00e9quipe d\u2019audit, en apportant des conseils et un soutien continu. Revue des documents de synth\u00e8se pour les associ\u00e9s (notes de synth\u00e8se d\u00e9taill\u00e9es, points d\u2019audit, ajustements, et recommandations significatives). \u00c9tablit une communication structur\u00e9e avec les clients pour expliquer les risques identifi\u00e9s, r\u00e9pondre aux demandes et coordonner les travaux.",
+                "Associ?": "D\u00e9veloppe et finalise la strat\u00e9gie d\u2019audit, en int\u00e9grant les sp\u00e9cificit\u00e9s de l\u2019environnement client, des risques identifi\u00e9s et des exigences r\u00e9glementaires. D\u00e9finit les proc\u00e9dures d\u2019audit critiques \u00e0 appliquer et veille \u00e0 leur conformit\u00e9 avec la m\u00e9thodologie et les normes en vigueur (ISA, SYSCOHADA, etc.). Anticipe et \u00e9value les risques exceptionnels ou \u00e9mergents (secteur, r\u00e9glementation, fraude, etc.) et \u00e9labore des solutions adapt\u00e9es pour les traiter. Valide les conclusions d\u2019audit (y compris la note de synth\u00e8se et les rapports finaux) et propose l\u2019opinion d\u2019audit \u00e0 l\u2019associ\u00e9 en s\u2019assurant qu\u2019elle refl\u00e8te les r\u00e9sultats obtenus. Encadre et d\u00e9veloppe les comp\u00e9tences des membres de l\u2019\u00e9quipe d\u2019audit (formations, feedbacks continus, gestion des performances). Repr\u00e9sente l\u2019\u00e9quipe d\u2019audit lors des r\u00e9unions strat\u00e9giques avec le management client et participe \u00e0 la pr\u00e9sentation des r\u00e9sultats de l\u2019audit. Participe \u00e0 l\u2019am\u00e9lioration des m\u00e9thodologies internes d\u2019audit en capitalisant sur les retours d\u2019exp\u00e9rience des missions et en proposant des innovations ou des optimisations."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Normes professionnelles",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Normes d'exercice professionnel international (ISA)",
+              "statements": {
+                "Assistant": "Connaissance simplifi\u00e9e des normes d'exercice professionnel internationales",
+                "Senior": "Bonne maitrise des normes d'exercice professionnel internationales",
+                "Manager": "Connaissance avanc\u00e9e des normes d'exercice professionnel internationales",
+                "Associ?": "Expertise dans la connaissance des normes d'exercice professionnel internationales"
+              }
+            },
+            {
+              "code": "B",
+              "label": "R\u00e8glementation sp\u00e9cifique \u00e0 l'espace",
+              "statements": {
+                "Assistant": "Connaissance simplifi\u00e9e de la r\u00e8glementation sp\u00e9cifique \u00e0 l'espace en l'occurrence les actes uniformes du SYSCOHADA, le SYSCEBNL, le code fiscal en vigueur etc.",
+                "Senior": "Bonne maitrise de la r\u00e8glementation sp\u00e9cifique \u00e0 l'espace en l'occurrence les actes uniformes du SYSCOHADA, le SYSCEBNL, le code fiscal en vigueur etc.",
+                "Manager": "Connaissance avanc\u00e9e de la r\u00e8glementation sp\u00e9cifique \u00e0 l'espace en l'occurrence les actes uniformes du SYSCOHADA, le SYSCEBNL, le code fiscal en vigueur etc.",
+                "Associ?": "Expertise dans la connaissance de la r\u00e8glementation sp\u00e9cifique \u00e0 l'espace en l'occurrence les actes uniformes du SYSCOHADA, le SYSCEBNL, le code fiscal en vigueur etc."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Normes r\u00e9gissant les secteurs d'activit\u00e9",
+              "statements": {
+                "Assistant": "Connaissance simplifi\u00e9e des sp\u00e9cificit\u00e9s des secteurs d'activit\u00e9 des clients",
+                "Senior": "Bonne maitrise des sp\u00e9cificit\u00e9s des secteurs d'activit\u00e9 des clients",
+                "Manager": "Connaissance avanc\u00e9e des sp\u00e9cificit\u00e9s des secteurs d'activit\u00e9 des clients",
+                "Associ?": "Expertise dans la connaissance des sp\u00e9cificit\u00e9s des secteurs d'activit\u00e9 des clients"
+              }
+            }
+          ]
+        },
+        {
+          "title": "Technologies",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Maitrise du pack office (Outlook, Word, Excel, PowerPoint)",
+              "statements": {
+                "Assistant": "Bonne connaissance du pack office",
+                "Senior": "Maitrise du pack office dans la gestion des dossiers",
+                "Manager": "Connaissance avanc\u00e9e du pack office pour la revue des travaux",
+                "Associ?": "Expertise dans la connaissance du pack office pour la validation des travaux"
+              }
+            },
+            {
+              "code": "B",
+              "label": "Utilisation du logiciel d'audit Intelligent Audit",
+              "statements": {
+                "Assistant": "Connaissance simplifi\u00e9e du logiciel d'audit",
+                "Senior": "Maitrise et Utilisation fr\u00e9quente du logiciel d'audit pour la documentation des travaux",
+                "Manager": "Maitrise et Utilisation fr\u00e9quente du logiciel d'audit pour la revue des travaux",
+                "Associ?": "Maitrise et Utilisation fr\u00e9quente du logiciel d'audit pour la validation des travaux"
+              }
+            }
+          ]
+        },
+        {
+          "title": "Gestion de projets",
+          "themes": [
+            {
+              "code": "A",
+              "label": "La coordination des \u00e9quipes, le suivi des \u00e9ch\u00e9ances et la gestion des risques associ\u00e9s \u00e0 chaque mission.",
+              "statements": {
+                "Assistant": "o Collabore efficacement avec les membres de l\u2019\u00e9quipe pour accomplir les t\u00e2ches qui lui sont assign\u00e9es. o Participe aux r\u00e9unions de planification et suit les consignes donn\u00e9es par le senior ou le manager. o Communique ses avanc\u00e9es, difficult\u00e9s ou besoins sp\u00e9cifiques au senior pour assurer une bonne coordination. o Respecte scrupuleusement les d\u00e9lais qui lui sont assign\u00e9s dans le cadre de son programme de travail. o Anticipe les retards potentiels et les signale imm\u00e9diatement au senior. o Identifie les anomalies simples ou les \u00e9carts dans les travaux qui lui sont confi\u00e9s et les remonte rapidement. o Applique les proc\u00e9dures d\u2019audit pr\u00e9d\u00e9finies pour limiter les risques.",
+                "Senior": "o Organise et r\u00e9partit les t\u00e2ches entre les membres de l\u2019\u00e9quipe en fonction des comp\u00e9tences et des disponibilit\u00e9s. o Supervise les travaux des juniors pour s\u2019assurer de leur conformit\u00e9 avec les m\u00e9thodologies et les objectifs de la mission. o Fait le lien entre l\u2019\u00e9quipe d\u2019audit et le manager pour transmettre les retours et assurer une communication fluide. o \u00c9tablit un planning d\u00e9taill\u00e9 des travaux pour les sections du dossier dont il est responsable et s\u2019assure de sa mise \u00e0 jour r\u00e9guli\u00e8re. o Identifie les points critiques ou les retards potentiels, propose des ajustements au manager et aide \u00e0 r\u00e9soudre les blocages. o Rep\u00e8re les risques accrus ou non identifi\u00e9s en phase de planification et alerte le manager avec des propositions concr\u00e8tes. o Assure une documentation rigoureuse pour \u00e9viter des lacunes pouvant entra\u00eener des risques op\u00e9rationnels ou juridiques.",
+                "Manager": "o Planifie et pilote l\u2019ensemble des travaux de l\u2019\u00e9quipe d\u2019audit, en veillant \u00e0 une r\u00e9partition \u00e9quilibr\u00e9e des responsabilit\u00e9s. o Fournit des consignes claires et veille \u00e0 l\u2019harmonisation des pratiques entre les membres de l\u2019\u00e9quipe. o \u00c9tablit une communication r\u00e9guli\u00e8re avec les clients et les \u00e9quipes internes pour maintenir une collaboration efficace. o D\u00e9veloppe un calendrier global pour la mission, incluant les phases critiques (planification, travaux de terrain, revue finale). o Suit de pr\u00e8s l\u2019avancement de la mission et prend des mesures correctives en cas de d\u00e9viation par rapport au planning. o Identifie et \u00e9value les risques complexes, y compris les risques li\u00e9s \u00e0 la qualit\u00e9 des travaux et \u00e0 la satisfaction du client. o Met en place des m\u00e9canismes de contr\u00f4le (revues p\u00e9riodiques, points d\u2019\u00e9tape) pour minimiser les risques. o Escalade les probl\u00e9matiques critiques \u00e0 l\u2019associ\u00e9, en sugg\u00e9rant des solutions adapt\u00e9es.",
+                "Associ?": "o D\u00e9finit les objectifs strat\u00e9giques et alloue les ressources n\u00e9cessaires pour garantir le bon d\u00e9roulement des missions. o S\u2019assure que les managers appliquent une organisation efficace et que les \u00e9quipes fonctionnent en coh\u00e9sion. o \u00c9tablit des relations de confiance avec les clients pour anticiper leurs besoins et faciliter la coordination globale. o Valide les plannings \u00e9tablis par les managers et intervient en cas de d\u00e9viation majeure des \u00e9ch\u00e9ances. o Supervise les missions critiques pour s\u2019assurer que les d\u00e9lais strat\u00e9giques sont respect\u00e9s, notamment les livrables cl\u00e9s. o Assume la responsabilit\u00e9 ultime des risques strat\u00e9giques, financiers ou juridiques li\u00e9s \u00e0 la mission. o Valide les plans de gestion des risques propos\u00e9s par les managers et arbitre en cas de d\u00e9saccord. o Anticipe les risques r\u00e9putationnels li\u00e9s \u00e0 l\u2019audit et s\u2019assure que l\u2019ensemble des normes professionnelles est strictement respect\u00e9."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Gestion du risque et qualit\u00e9",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Etre en conformit\u00e9 avec les valeurs du code \u00e9thique, r\u00e8gles, normes et proc\u00e9dures",
+              "statements": {
+                "Assistant": "Comprend et respecte le code d\u2019\u00e9thique et les normes professionnelles de Y3 Audit & Conseils ; s\u2019assure de la qualit\u00e9 des travaux dont il est responsable. Veille \u00e0 la s\u00e9curit\u00e9 et la confidentialit\u00e9 des donn\u00e9es",
+                "Senior": "Dirige et assiste les membres de l\u2019\u00e9quipe afin de s\u2019assurer que sont respect\u00e9s : le code d\u2019\u00e9thique, les normes professionnelles de Y3 Audit & Conseils, la qualit\u00e9 des travaux et la s\u00e9curit\u00e9 des donn\u00e9es.",
+                "Manager": "Evalue les documents produits au regard de l\u2019application des normes Y3 Audit & Conseils et du risque professionnel ; entretient une culture qui promeut le respect du risque et de la qualit\u00e9.",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "B",
+              "label": "Utiliser les outils et la documentation",
+              "statements": {
+                "Assistant": "Utilise les outils et m\u00e9thodologies pr\u00e9conis\u00e9s afin de r\u00e9aliser ses travaux et de documenter le travail fourni selon les standards Y3 Audit & Conseils.",
+                "Senior": "Veille \u00e0 ce que chacun utilise les outils et m\u00e9thodologies de Y3 Audit & Conseils ou appropri\u00e9s ; s\u2019assure que les livrables sont conformes aux standards Y3 Audit & Conseils.",
+                "Manager": "Contribue \u00e0 la qualit\u00e9 et la bonne utilisation des outils et m\u00e9thodologies, ainsi qu\u2019\u00e0 l\u2019exhaustivit\u00e9 de la documentation afin d\u2019assurer la conformit\u00e9 des livrables aux standards Y3 Audit & Conseils.",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "C",
+              "label": "Avoir un r\u00e9flexe de consultation et d\u2019alerte",
+              "statements": {
+                "Assistant": "Remonte \u00e0 son responsable les probl\u00e8mes rencontr\u00e9s ou les incertitudes, avec le bon niveau d\u2019information et au bon moment afin de trouver une solution dans les meilleurs d\u00e9lais.",
+                "Senior": "Consulte son responsable ou la personne appropri\u00e9e en cas de probl\u00e8me ou d'incertitude et propose des plans.",
+                "Manager": "Est une r\u00e9f\u00e9rence en cas de probl\u00e8me ou d\u2019incertitude.",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "D",
+              "label": "Respecter les r\u00e8gles d\u2019ind\u00e9pendance et autres obligations r\u00e9glementaires",
+              "statements": {
+                "Assistant": "Respecte les r\u00e8gles d\u2019ind\u00e9pendance de Y3 Audit & Conseils et reste objectif dans le cadre de la mission ; s\u2019engage \u00e0 signaler toute modification de sa situation \u00e0 l\u2019\u00e9gard de ces r\u00e8gles ; se conforme aux obligations d\u2019ind\u00e9pendance fix\u00e9es par Y3 Audit & Conseils, li\u00e9es aux sujets tels que : l\u2019acceptation d\u2019un projet/d\u2019une mission, la relation au client etc.",
+                "Senior": "Identifie les probl\u00e8mes li\u00e9s \u00e0 l\u2019ind\u00e9pendance et agit de fa\u00e7on appropri\u00e9e.",
+                "Manager": "Conseille les collaborateurs sur les r\u00e8gles d\u2019ind\u00e9pendance et autres obligations r\u00e9glementaires.",
+                "Associ?": ""
+              }
+            }
+          ]
+        },
+        {
+          "title": "Prise en compte de l'environnement",
+          "themes": []
+        },
+        {
+          "title": "D\u00e9veloppement commercial",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Am\u00e9lioration de la performance du cabinet",
+              "statements": {
+                "Assistant": "Renforce la qualit\u00e9 des offres commerciales, teasers et notes d'information.",
+                "Senior": "Identifie des opportunit\u00e9s d'affaires.",
+                "Manager": "D\u00e9veloppe la relation client et prospecte pour d\u00e9velopper son portefeuille.",
+                "Associ?": "D\u00e9finit la strat\u00e9gie commerciale du cabinet."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Recouvrement",
+              "statements": {
+                "Assistant": "Soutient les activit\u00e9s de relance des paiements sous la direction d'un sup\u00e9rieur.",
+                "Senior": "Met en \u0153uvre des plans d\u2019action pour r\u00e9duire les retards de paiement.",
+                "Manager": "Pilote les strat\u00e9gies de recouvrement en collaboration avec les \u00e9quipes finance.",
+                "Associ?": "D\u00e9finit des politiques de recouvrement adapt\u00e9es aux diff\u00e9rents profils clients et repr\u00e9sente le cabinet dans les n\u00e9gociations strat\u00e9giques de recouvrement."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SAVOIR ETRE",
+      "title": "SAVOIR ETRE",
+      "pages": [
+        {
+          "title": "Management et Leadership",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Ma\u00eetrise de l'organisation et de la gestion du temps",
+              "statements": {
+                "Assistant": "Organise efficacement son travail quotidien et respecte les d\u00e9lais impartis.",
+                "Senior": "G\u00e8re simultan\u00e9ment plusieurs projets et ajuste ses priorit\u00e9s en fonction des besoins.",
+                "Manager": "Impl\u00e9mente des m\u00e9thodes de gestion de projet pour optimiser la performance de l'\u00e9quipe.",
+                "Associ?": "D\u00e9finit les priorit\u00e9s strat\u00e9giques de l'entreprise et alloue les ressources en cons\u00e9quence."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Aptitude \u00e0 l'apprentissage et au d\u00e9veloppement personnel",
+              "statements": {
+                "Assistant": "Est curieux et a envie d'apprendre.",
+                "Senior": "Recherche activement de nouvelles informations et de nouvelles comp\u00e9tences.",
+                "Manager": "Identifie les besoins de formation de ses collaborateurs.",
+                "Associ?": "Favorise une culture d'apprentissage au sein de l'entreprise et s'adapte aux \u00e9volutions du march\u00e9 et aux nouvelles technologies."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Sens des responsabilit\u00e9s et de l'engagement",
+              "statements": {
+                "Assistant": "Ex\u00e9cute les t\u00e2ches qui lui sont confi\u00e9es avec rigueur et ponctualit\u00e9, en s'assurant de respecter les consignes et d\u00e9lais. Il prend soin de v\u00e9rifier l\u2019exactitude de son travail et informe son sup\u00e9rieur en cas de besoin.",
+                "Senior": "Prendre en charge les projets de mani\u00e8re autonome, d\u00e9montre une capacit\u00e9 \u00e0 anticiper les besoins et \u00e0 garantir la qualit\u00e9 du travail fourni, et informe son sup\u00e9rieur en cas de difficult\u00e9s.",
+                "Manager": "Pilote les projets avec un fort engagement, veille \u00e0 la responsabilit\u00e9 de l\u2019\u00e9quipe, assure la r\u00e9partition des t\u00e2ches, et garanti le respect des d\u00e9lais et objectifs.",
+                "Associ?": "Incarne les valeurs de l\u2019entreprise, prend des d\u00e9cisions strat\u00e9giques, dirige les grandes orientations du cabinet, et assure la p\u00e9rennit\u00e9 des activit\u00e9s en d\u00e9veloppant de nouvelles opportunit\u00e9s."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Excellence du service",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Aisance relationnelle avec le client",
+              "statements": {
+                "Assistant": "Exprime clairement ses id\u00e9es et entretien une relation quotidienne avec le client et les interlocuteurs client sur la mission.",
+                "Senior": "Ecoute activement pour comprendre les besoins du client et reformule efficacement ses besoins pour les mettre en perspective. Exprime clairement ses id\u00e9es lors des r\u00e9unions de synth\u00e8se notamment.",
+                "Manager": "Communique efficacement avec les membres de l\u2019\u00e9quipe et le client et dispose d'une capacit\u00e9 de persuasion. Veille \u00e0 la bonne diffusion et au partage de l\u2019information. Entretient une relation de confiance avec le client et les interlocuteurs client appropri\u00e9s. Anime efficacement des pr\u00e9sentations orales.",
+                "Associ?": "N\u00e9gocie et conclut des partenariats strat\u00e9giques avec les clients. Anticipe les besoins des clients et les int\u00e8gre dans la strat\u00e9gie globale de l'entreprise. Repr\u00e9sente l'entreprise aupr\u00e8s des clients lors d'\u00e9v\u00e9nements importants."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Respect des d\u00e9lais et de la qualit\u00e9",
+              "statements": {
+                "Assistant": "Documente et identifie ses sources d\u2019informations.",
+                "Senior": "R\u00e9dige de fa\u00e7on structur\u00e9e, coh\u00e9rente et synth\u00e9tique, Est capable d'expliciter un texte ou des travaux dont il est charg\u00e9 ou faits par son \u00e9quipe.",
+                "Manager": "S\u2019attache \u00e0 g\u00e9rer la mission de fa\u00e7on \u00e0 respecter les engagements et \u00e0 anticiper tout probl\u00e8me potentiel. Obtient l\u2019\u00e9valuation de la performance de Y3 Audit & Conseils sur la mission aupr\u00e8s du client, de fa\u00e7on formelle ou non et prend rapidement les mesures appropri\u00e9es.",
+                "Associ?": "Fixe des objectifs de performance \u00e9lev\u00e9s en mati\u00e8re de qualit\u00e9 et de d\u00e9lais. Cultive une culture d'excellence op\u00e9rationnelle au sein de l'entreprise."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Satisfaction globale du client",
+              "statements": {
+                "Assistant": "Est ouvert et flexible face aux diff\u00e9rentes sollicitations du client.",
+                "Senior": "Contribue \u00e0 renforcer l'image du cabinet aupr\u00e8s du client.",
+                "Manager": "Constitue l\u2019\u00e9quipe la plus comp\u00e9tente possible en vue de proposer des services de qualit\u00e9 au client. Respecte des niveaux de prestations \u00e9lev\u00e9es.",
+                "Associ?": "D\u00e9finit une vision claire de l'exp\u00e9rience client et s'assure qu'elle est partag\u00e9e par tous les collaborateurs. Utilise la satisfaction client comme levier de croissance et de fid\u00e9lisation."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Adaptabilit\u00e9",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Ajustement efficace des m\u00e9thodes et comportements en r\u00e9ponse aux changements des priorit\u00e9s, aux attentes des clients et aux \u00e9volutions du march\u00e9, tout en maintenant une attitude proactive et orient\u00e9e vers la recherche de solutions.",
+              "statements": {
+                "Assistant": "S\u2019adapte aux instructions de l'\u00e9quipe, \u00eatre r\u00e9actif aux changements de priorit\u00e9s, et adopte une attitude d\u2019apprentissage pour d\u00e9velopper de nouvelles comp\u00e9tences.",
+                "Senior": "S\u2019adapte aux changements de projet et aux ajustements des directives, g\u00e8re des situations vari\u00e9es avec flexibilit\u00e9, et propose des solutions cr\u00e9atives en cas de probl\u00e8mes.",
+                "Manager": "Apporte des ajustements strat\u00e9giques en fonction des retours des clients et des \u00e9volutions du march\u00e9, encadre l\u2019\u00e9quipe pour faire face aux impr\u00e9vus, et r\u00e9oriente les efforts si n\u00e9cessaire.",
+                "Associ?": "S\u2019adapte rapidement aux tendances du secteur, promouvoir une culture de flexibilit\u00e9 au sein de l\u2019organisation, et anticipe les besoins futurs en comp\u00e9tences et ressources."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "EXPERTISE COMPTABLE": [
+    {
+      "key": "SAVOIR FAIRE",
+      "title": "SAVOIR FAIRE",
+      "pages": [
+        {
+          "title": "M\u00e9thodologie du cabinet",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Cahier des charges",
+              "statements": {
+                "Assistant": "R\u00e9dige des sp\u00e9cifications fonctionnelles et participe \u00e0 la r\u00e9daction d\u2019un cahier des charges.",
+                "Senior": "R\u00e9dige la totalit\u00e9 d\u2019un cahier des charges.",
+                "Manager": "G\u00e8re la construction du cahier des charges et la pr\u00e9sentation au client.",
+                "Associ?": ""
+              }
+            }
+          ]
+        },
+        {
+          "title": "Normes professionnelles",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Connaissance des secteurs d\u2019activit\u00e9",
+              "statements": {
+                "Assistant": "",
+                "Senior": "",
+                "Manager": "",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "B",
+              "label": "Comp\u00e9tences comptables",
+              "statements": {
+                "Assistant": "Acquiert une connaissance de base des r\u00e8gles de la comptabilit\u00e9.",
+                "Senior": "D\u00e9veloppe ses connaissances des normes et standards : comptables, IFRS, US GAAP, SOX\u2026",
+                "Manager": "A de bonnes connaissances des normes et standards.",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "C",
+              "label": "Comp\u00e9tences juridiques",
+              "statements": {
+                "Assistant": "Acquiert une connaissance de base des r\u00e8gles juridiques.",
+                "Senior": "Connait les principales r\u00e8gles juridiques pouvant impacter la mise en place d\u2019outsourcing de fonctions comptables ou administratives.",
+                "Manager": "A des connaissances en droit social permettant d\u2019aborder notamment les probl\u00e9matiques de transfert de personnel dans le cadre d\u2019externalisation.",
+                "Associ?": "Maitrise l\u2019ensemble des aspects juridiques entrant dans un projet de type BPO et peut le cas \u00e9ch\u00e9ant les appliquer dans le cadre d\u2019un CSP."
+              }
+            },
+            {
+              "code": "D",
+              "label": "Analyse et refonte des processus comptables",
+              "statements": {
+                "Assistant": "Acquiert une connaissance de base des processus comptables, op\u00e9rationnels et des risques aff\u00e9rents.",
+                "Senior": "A une connaissance approfondie des processus comptables, op\u00e9rationnels et des r\u00e8gles d'optimisation de ceux-ci.",
+                "Manager": "A une totale maitrise des processus comptables, op\u00e9rationnels et des r\u00e8gles d'optimisation de ceux-ci.",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "E",
+              "label": "Connaissance de la consolidation",
+              "statements": {
+                "Assistant": "",
+                "Senior": "",
+                "Manager": "",
+                "Associ?": ""
+              }
+            }
+          ]
+        },
+        {
+          "title": "Technologies",
+          "themes": [
+            {
+              "code": "A",
+              "label": "SAGE EXPERT",
+              "statements": {
+                "Assistant": "",
+                "Senior": "",
+                "Manager": "",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "B",
+              "label": "ERP",
+              "statements": {
+                "Assistant": "Acquiert et d\u00e9veloppe ses connaissances des principaux ERP de ses fonctionnalit\u00e9s et syst\u00e8mes supports d\u2019outsourcing du march\u00e9.",
+                "Senior": "A une bonne connaissance de l\u2019offre du march\u00e9 ERP, des solutions de d\u00e9mat\u00e9rialisation et syst\u00e8mes supports d\u2019outsourcing, et connait les grandes diff\u00e9rences entre ceux-ci ; a une bonne connaissance de certains outils de pilotage et se sp\u00e9cialise sur au moins un de ces outils.",
+                "Manager": "Sait piloter, dans le cadre de projets BPS, la contribution \u00e9ventuelle d\u2019experts en interne, des experts du CSP ou ext\u00e9rieurs \u00e0 la firme.",
+                "Associ?": ""
+              }
+            }
+          ]
+        },
+        {
+          "title": "Gestion du risque et qualit\u00e9",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Etre en conformit\u00e9 avec les valeurs du code \u00e9thique, r\u00e8gles, normes et proc\u00e9dures",
+              "statements": {
+                "Assistant": "Comprend et respecte le code d\u2019\u00e9thique et les normes professionnelles de Y3 Audit & Conseils ; s\u2019assure de la qualit\u00e9 des travaux dont il est responsable. Veille \u00e0 la s\u00e9curit\u00e9 et la confidentialit\u00e9 des donn\u00e9es",
+                "Senior": "Dirige et assiste les membres de l\u2019\u00e9quipe afin de s\u2019assurer que sont respect\u00e9s : le code d\u2019\u00e9thique, les normes professionnelles de Y3 Audit & Conseils, la qualit\u00e9 des travaux et la s\u00e9curit\u00e9 des donn\u00e9es.",
+                "Manager": "Evalue les documents produits au regard de l\u2019application des normes Y3 Audit & Conseils et du risque professionnel ; entretient une culture qui promeut le respect du risque et de la qualit\u00e9.",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "B",
+              "label": "Utiliser les outils et la documentation",
+              "statements": {
+                "Assistant": "Utilise les outils et m\u00e9thodologies pr\u00e9conis\u00e9s afin de r\u00e9aliser ses travaux et de documenter le travail fourni selon les standards Y3 Audit & Conseils.",
+                "Senior": "Veille \u00e0 ce que chacun utilise les outils et m\u00e9thodologies de Y3 Audit & Conseils ou appropri\u00e9s ; s\u2019assure que les livrables sont conformes aux standards Y3 Audit & Conseils.",
+                "Manager": "Contribue \u00e0 la qualit\u00e9 et la bonne utilisation des outils et m\u00e9thodologies, ainsi qu\u2019\u00e0 l\u2019exhaustivit\u00e9 de la documentation afin d\u2019assurer la conformit\u00e9 des livrables aux standards Y3 Audit & Conseils.",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "C",
+              "label": "Avoir un r\u00e9flexe de consultation et d\u2019alerte",
+              "statements": {
+                "Assistant": "Remonte \u00e0 son responsable les probl\u00e8mes rencontr\u00e9s ou les incertitudes, avec le bon niveau d\u2019information et au bon moment afin de trouver une solution dans les meilleurs d\u00e9lais.",
+                "Senior": "Consulte son responsable ou la personne appropri\u00e9e en cas de probl\u00e8me ou d'incertitude et propose des plans.",
+                "Manager": "Est une r\u00e9f\u00e9rence en cas de probl\u00e8me ou d\u2019incertitude.",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "D",
+              "label": "Respecter les r\u00e8gles d\u2019ind\u00e9pendance et autres obligations r\u00e9glementaires",
+              "statements": {
+                "Assistant": "Respecte les r\u00e8gles d\u2019ind\u00e9pendance de Y3 Audit & Conseils et reste objectif dans le cadre de la mission ; s\u2019engage \u00e0 signaler toute modification de sa situation \u00e0 l\u2019\u00e9gard de ces r\u00e8gles ; se conforme aux obligations d\u2019ind\u00e9pendance fix\u00e9es par Y3 Audit & Conseils, li\u00e9es aux sujets tels que : l\u2019acceptation d\u2019un projet/d\u2019une mission, la relation au client etc.",
+                "Senior": "Identifie les probl\u00e8mes li\u00e9s \u00e0 l\u2019ind\u00e9pendance et agit de fa\u00e7on appropri\u00e9e.",
+                "Manager": "Conseille les collaborateurs sur les r\u00e8gles d\u2019ind\u00e9pendance et autres obligations r\u00e9glementaires.",
+                "Associ?": ""
+              }
+            }
+          ]
+        },
+        {
+          "title": "Prise en compte de l'environnement",
+          "themes": []
+        },
+        {
+          "title": "D\u00e9veloppement commercial",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Am\u00e9lioration de la performance du cabinet",
+              "statements": {
+                "Assistant": "Renforce la qualit\u00e9 des offres commerciales, teasers et notes d'information.",
+                "Senior": "Identifie des opportunit\u00e9s d'affaires.",
+                "Manager": "D\u00e9veloppe la relation client et prospecte pour d\u00e9velopper son portefeuille.",
+                "Associ?": "D\u00e9finit la strat\u00e9gie commerciale du cabinet."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Recouvrement",
+              "statements": {
+                "Assistant": "Soutient les activit\u00e9s de relance des paiements sous la direction d'un sup\u00e9rieur.",
+                "Senior": "Met en \u0153uvre des plans d\u2019action pour r\u00e9duire les retards de paiement.",
+                "Manager": "Pilote les strat\u00e9gies de recouvrement en collaboration avec les \u00e9quipes finance.",
+                "Associ?": "D\u00e9finit des politiques de recouvrement adapt\u00e9es aux diff\u00e9rents profils clients et repr\u00e9sente le cabinet dans les n\u00e9gociations strat\u00e9giques de recouvrement."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SAVOIR ETRE",
+      "title": "SAVOIR ETRE",
+      "pages": [
+        {
+          "title": "Management et Leadership",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Ma\u00eetrise de l'organisation et de la gestion du temps",
+              "statements": {
+                "Assistant": "Organise efficacement son travail quotidien et respecte les d\u00e9lais impartis.",
+                "Senior": "G\u00e8re simultan\u00e9ment plusieurs projets et ajuste ses priorit\u00e9s en fonction des besoins.",
+                "Manager": "Impl\u00e9mente des m\u00e9thodes de gestion de projet pour optimiser la performance de l'\u00e9quipe.",
+                "Associ?": "D\u00e9finit les priorit\u00e9s strat\u00e9giques de l'entreprise et alloue les ressources en cons\u00e9quence."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Aptitude \u00e0 l'apprentissage et au d\u00e9veloppement personnel",
+              "statements": {
+                "Assistant": "Est curieux et a envie d'apprendre.",
+                "Senior": "Recherche activement de nouvelles informations et de nouvelles comp\u00e9tences.",
+                "Manager": "Identifie les besoins de formation de ses collaborateurs.",
+                "Associ?": "Favorise une culture d'apprentissage au sein de l'entreprise et s'adapte aux \u00e9volutions du march\u00e9 et aux nouvelles technologies."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Sens des responsabilit\u00e9s et de l'engagement",
+              "statements": {
+                "Assistant": "Ex\u00e9cute les t\u00e2ches qui lui sont confi\u00e9es avec rigueur et ponctualit\u00e9, en s'assurant de respecter les consignes et d\u00e9lais. Il prend soin de v\u00e9rifier l\u2019exactitude de son travail et informe son sup\u00e9rieur en cas de besoin.",
+                "Senior": "Prendre en charge les projets de mani\u00e8re autonome, d\u00e9montre une capacit\u00e9 \u00e0 anticiper les besoins et \u00e0 garantir la qualit\u00e9 du travail fourni, et informe son sup\u00e9rieur en cas de difficult\u00e9s.",
+                "Manager": "Pilote les projets avec un fort engagement, veille \u00e0 la responsabilit\u00e9 de l\u2019\u00e9quipe, assure la r\u00e9partition des t\u00e2ches, et garanti le respect des d\u00e9lais et objectifs.",
+                "Associ?": "Incarne les valeurs de l\u2019entreprise, prend des d\u00e9cisions strat\u00e9giques, dirige les grandes orientations du cabinet, et assure la p\u00e9rennit\u00e9 des activit\u00e9s en d\u00e9veloppant de nouvelles opportunit\u00e9s."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Excellence du service",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Aisance relationnelle avec le client",
+              "statements": {
+                "Assistant": "Exprime clairement ses id\u00e9es et entretien une relation quotidienne avec le client et les interlocuteurs client sur la mission.",
+                "Senior": "Ecoute activement pour comprendre les besoins du client et reformule efficacement ses besoins pour les mettre en perspective. Exprime clairement ses id\u00e9es lors des r\u00e9unions de synth\u00e8se notamment.",
+                "Manager": "Communique efficacement avec les membres de l\u2019\u00e9quipe et le client et dispose d'une capacit\u00e9 de persuasion. Veille \u00e0 la bonne diffusion et au partage de l\u2019information. Entretient une relation de confiance avec le client et les interlocuteurs client appropri\u00e9s. Anime efficacement des pr\u00e9sentations orales.",
+                "Associ?": "N\u00e9gocie et conclut des partenariats strat\u00e9giques avec les clients. Anticipe les besoins des clients et les int\u00e8gre dans la strat\u00e9gie globale de l'entreprise. Repr\u00e9sente l'entreprise aupr\u00e8s des clients lors d'\u00e9v\u00e9nements importants."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Respect des d\u00e9lais et de la qualit\u00e9",
+              "statements": {
+                "Assistant": "Documente et identifie ses sources d\u2019informations.",
+                "Senior": "R\u00e9dige de fa\u00e7on structur\u00e9e, coh\u00e9rente et synth\u00e9tique, Est capable d'expliciter un texte ou des travaux dont il est charg\u00e9 ou faits par son \u00e9quipe.",
+                "Manager": "S\u2019attache \u00e0 g\u00e9rer la mission de fa\u00e7on \u00e0 respecter les engagements et \u00e0 anticiper tout probl\u00e8me potentiel. Obtient l\u2019\u00e9valuation de la performance de Y3 Audit & Conseils sur la mission aupr\u00e8s du client, de fa\u00e7on formelle ou non et prend rapidement les mesures appropri\u00e9es.",
+                "Associ?": "Fixe des objectifs de performance \u00e9lev\u00e9s en mati\u00e8re de qualit\u00e9 et de d\u00e9lais. Cultive une culture d'excellence op\u00e9rationnelle au sein de l'entreprise."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Satisfaction globale du client",
+              "statements": {
+                "Assistant": "Est ouvert et flexible face aux diff\u00e9rentes sollicitations du client.",
+                "Senior": "Contribue \u00e0 renforcer l'image du cabinet aupr\u00e8s du client.",
+                "Manager": "Constitue l\u2019\u00e9quipe la plus comp\u00e9tente possible en vue de proposer des services de qualit\u00e9 au client. Respecte des niveaux de prestations \u00e9lev\u00e9es.",
+                "Associ?": "D\u00e9finit une vision claire de l'exp\u00e9rience client et s'assure qu'elle est partag\u00e9e par tous les collaborateurs. Utilise la satisfaction client comme levier de croissance et de fid\u00e9lisation."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Adaptabilit\u00e9",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Ajustement efficace des m\u00e9thodes et comportements en r\u00e9ponse aux changements des priorit\u00e9s, aux attentes des clients et aux \u00e9volutions du march\u00e9, tout en maintenant une attitude proactive et orient\u00e9e vers la recherche de solutions.",
+              "statements": {
+                "Assistant": "S\u2019adapte aux instructions de l'\u00e9quipe, \u00eatre r\u00e9actif aux changements de priorit\u00e9s, et adopte une attitude d\u2019apprentissage pour d\u00e9velopper de nouvelles comp\u00e9tences.",
+                "Senior": "S\u2019adapte aux changements de projet et aux ajustements des directives, g\u00e8re des situations vari\u00e9es avec flexibilit\u00e9, et propose des solutions cr\u00e9atives en cas de probl\u00e8mes.",
+                "Manager": "Apporte des ajustements strat\u00e9giques en fonction des retours des clients et des \u00e9volutions du march\u00e9, encadre l\u2019\u00e9quipe pour faire face aux impr\u00e9vus, et r\u00e9oriente les efforts si n\u00e9cessaire.",
+                "Associ?": "S\u2019adapte rapidement aux tendances du secteur, promouvoir une culture de flexibilit\u00e9 au sein de l\u2019organisation, et anticipe les besoins futurs en comp\u00e9tences et ressources."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "CONSEIL OPERATIONNEL": [
+    {
+      "key": "SAVOIR FAIRE",
+      "title": "SAVOIR FAIRE",
+      "pages": [
+        {
+          "title": "M\u00e9thodologie du cabinet",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Diagnostic strat\u00e9gique",
+              "statements": {
+                "Assistant": "Sait ce qu\u2019est une d\u00e9marche de diagnostic strat\u00e9gique et peut mener la d\u00e9marche.",
+                "Senior": "Ma\u00eetrise la d\u00e9marche de diagnostic strat\u00e9gique et peut g\u00e9rer en autonomie tout ou partie du p\u00e9rim\u00e8tre fonctionnel trait\u00e9 sur la mission.",
+                "Manager": "Est capable de piloter une mission de diagnostic strat\u00e9gique et d\u2019y apporter son expertise ; identifie les impacts sur l\u2019organisation globale.",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "B",
+              "label": "Diagnostic organisationnel et refonte des organisations",
+              "statements": {
+                "Assistant": "Sait ce qu\u2019est une d\u00e9marche de diagnostic strat\u00e9gique et peut mener la d\u00e9marche.",
+                "Senior": "Ma\u00eetrise la d\u00e9marche de diagnostic strat\u00e9gique et peut g\u00e9rer en autonomie tout ou partie du p\u00e9rim\u00e8tre fonctionnel trait\u00e9 sur la mission.",
+                "Manager": "Est capable de piloter une mission de diagnostic et refonte des organisations et d\u2019y apporter son expertise ; identifie les impacts sur l\u2019organisation globale et sur la structure de co\u00fbts du client",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "C",
+              "label": "Analyse et refonte de processus",
+              "statements": {
+                "Assistant": "Acquiert une connaissance des processus fonctionnels et op\u00e9rationnels de l\u2019entreprise et sait les mod\u00e9liser.",
+                "Senior": "Ma\u00eetrise la mod\u00e9lisation des processus (avec ou sans outil particulier) ; sait proposer et r\u00e9diger les proc\u00e9dures associ\u00e9es.",
+                "Manager": "A une vision int\u00e9gr\u00e9e des processus permettant d'identifier les interactions avec les autres processus et les impacts sur ceux-ci ainsi que les aspects financiers.",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "D",
+              "label": "Mesure / Pilotage de la performance op\u00e9rationnelle",
+              "statements": {
+                "Assistant": "Acquiert une connaissance du pilotage et de la mesure de la performance. Peut \u00e9tablir des tableaux de bord (indicateurs de performance du processus, r\u00e8gles de calcul et mise en \u0153uvre dans un outil...).",
+                "Senior": "Mesure la performance d\u2019un processus, propose au client des indicateurs de performance.",
+                "Manager": "Propose au client des indicateurs qui permettent de piloter la performance globale de l\u2019entreprise Propose la gouvernance / l\u2019organisation du pilotage de la performance op\u00e9rationnelle, en lien avec la Finance.",
+                "Associ?": ""
+              }
+            }
+          ]
+        },
+        {
+          "title": "Normes professionnelles",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Connaissances g\u00e9n\u00e9rales d\u2019un secteur d\u2019activit\u00e9",
+              "statements": {
+                "Assistant": "",
+                "Senior": "",
+                "Manager": "",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "B",
+              "label": "Environnement r\u00e9glementaire",
+              "statements": {
+                "Assistant": "",
+                "Senior": "",
+                "Manager": "",
+                "Associ?": ""
+              }
+            }
+          ]
+        },
+        {
+          "title": "Technologies",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Syst\u00e8mes d\u2019information et de gestion",
+              "statements": {
+                "Assistant": "",
+                "Senior": "",
+                "Manager": "",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "B",
+              "label": "Connaissance des logiciels, outils, produits (back offices, EPM, BI ou ERP)",
+              "statements": {
+                "Assistant": "",
+                "Senior": "",
+                "Manager": "",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "C",
+              "label": "Maitrise d'\u0153uvre (solutions back offices, EPM/CPM, BI ou ERP)",
+              "statements": {
+                "Assistant": "",
+                "Senior": "",
+                "Manager": "",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "D",
+              "label": "Cartographie, urbanisation du SI Planification des \u00e9volutions en phase avec la strat\u00e9gie de l\u2019entreprise",
+              "statements": {
+                "Assistant": "",
+                "Senior": "",
+                "Manager": "",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "E",
+              "label": "Elaboration et optimisation de l'architecture du SI",
+              "statements": {
+                "Assistant": "",
+                "Senior": "",
+                "Manager": "",
+                "Associ?": ""
+              }
+            }
+          ]
+        },
+        {
+          "title": "Gestion de projets",
+          "themes": [
+            {
+              "code": "A",
+              "label": "La coordination des \u00e9quipes, le suivi des \u00e9ch\u00e9ances et la gestion des risques associ\u00e9s \u00e0 chaque mission.",
+              "statements": {
+                "Assistant": "Connait et sait mettre en pratique les principales m\u00e9thodologies de gestion de projet (planification, proc\u00e9dures de suivi, gestion documentaire) avec ou sans outils sp\u00e9cifiques",
+                "Senior": "Ma\u00eetrise et adapte la m\u00e9thodologie de gestion de projet Sait identifier les risques projet potentiels et propose des plans d'actions associ\u00e9s",
+                "Manager": "",
+                "Associ?": ""
+              }
+            },
+            {
+              "code": "B",
+              "label": "Identification, qualification et priorisation des projets SI Optimisation de la capacit\u00e9 de production IT",
+              "statements": {
+                "Assistant": "Comprend et connait : \u2022 les outils de gestion de portefeuille de projets, et sait les utiliser (Fiches projets, MS Project ...) \u2022 les r\u00e9f\u00e9rentiels de gestion de portefeuille de projets (Val IT, Cigref) ; Est capable de collecter des informations en vue de la structuration d\u2019un portefeuille de projets.",
+                "Senior": "Ma\u00eetrise les r\u00e9f\u00e9rentiels de gestion de portefeuille de projets (Val IT, Cigref) ; Est capable de : \u2022 analyser le portefeuille au regard des crit\u00e8res d\u2019arbitrage et des objectifs strat\u00e9giques \u2022 proposer et mettre en \u0153uvre une d\u00e9marche d\u2019initialisation du portefeuille de projets (formalisation des objectifs), \u2022 d\u00e9velopper un mod\u00e8le de priorit\u00e9s pour le portefeuille (identification des crit\u00e8res d\u2019analyse et d\u2019alignement du portefeuille)",
+                "Manager": "D\u00e9montre une expertise sur la gestion de portefeuille de projet, et leur mise en \u0153uvre ; Est capable de : \u2022 proposer une organisation pour le pilotage du portefeuille de projets (mise en place des comit\u00e9s d\u2019arbitrage des nouveaux projets, et du portefeuille existant) \u2022 proposer une d\u00e9marche d\u2019am\u00e9lioration de la gestion et du pilotage du portefeuille de projet",
+                "Associ?": ""
+              }
+            }
+          ]
+        },
+        {
+          "title": "Gestion du risque et qualit\u00e9",
+          "themes": []
+        },
+        {
+          "title": "Prise en compte de l'environnement",
+          "themes": []
+        },
+        {
+          "title": "D\u00e9veloppement commercial",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Am\u00e9lioration de la performance du cabinet",
+              "statements": {
+                "Assistant": "Renforce la qualit\u00e9 des offres commerciales, teasers et notes d'information.",
+                "Senior": "Identifie des opportunit\u00e9s d'affaires.",
+                "Manager": "D\u00e9veloppe la relation client et prospecte pour d\u00e9velopper son portefeuille.",
+                "Associ?": "D\u00e9finit la strat\u00e9gie commerciale du cabinet."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Ma\u00eetrise la r\u00e9daction de propositions commerciales",
+              "statements": {
+                "Assistant": "Recherche d\u2019informations pour des propositions commerciales.",
+                "Senior": "Contribue activement aux propositions commerciales. Pilote le livrable et participe \u00e0 l'argumentaire commercial et technique (quels outils mettre en \u0153uvre pour r\u00e9pondre de mani\u00e8re pertinente au besoin client).",
+                "Manager": "Maitr\u00eese la gestion et la finalisation de propositions commerciales complexes. Est capable de faire une d\u00e9mo au client des fonctionnalit\u00e9s cl\u00e9s.",
+                "Associ?": "N\u00e9gocie et signe de grands contrats."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Recouvrement",
+              "statements": {
+                "Assistant": "Soutient les activit\u00e9s de relance des paiements sous la direction d'un sup\u00e9rieur.",
+                "Senior": "Met en \u0153uvre des plans d\u2019action pour r\u00e9duire les retards de paiement.",
+                "Manager": "Pilote les strat\u00e9gies de recouvrement en collaboration avec les \u00e9quipes finance.",
+                "Associ?": "D\u00e9finit des politiques de recouvrement adapt\u00e9es aux diff\u00e9rents profils clients et repr\u00e9sente le cabinet dans les n\u00e9gociations strat\u00e9giques de recouvrement."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SAVOIR ETRE",
+      "title": "SAVOIR ETRE",
+      "pages": [
+        {
+          "title": "Management et Leadership",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Ma\u00eetrise de l'organisation et de la gestion du temps",
+              "statements": {
+                "Assistant": "Organise efficacement son travail quotidien et respecte les d\u00e9lais impartis.",
+                "Senior": "G\u00e8re simultan\u00e9ment plusieurs projets et ajuste ses priorit\u00e9s en fonction des besoins.",
+                "Manager": "Impl\u00e9mente des m\u00e9thodes de gestion de projet pour optimiser la performance de l'\u00e9quipe.",
+                "Associ?": "D\u00e9finit les priorit\u00e9s strat\u00e9giques de l'entreprise et alloue les ressources en cons\u00e9quence."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Aptitude \u00e0 l'apprentissage et au d\u00e9veloppement personnel",
+              "statements": {
+                "Assistant": "Est curieux et a envie d'apprendre.",
+                "Senior": "Recherche activement de nouvelles informations et de nouvelles comp\u00e9tences.",
+                "Manager": "Identifie les besoins de formation de ses collaborateurs.",
+                "Associ?": "Favorise une culture d'apprentissage au sein de l'entreprise et s'adapte aux \u00e9volutions du march\u00e9 et aux nouvelles technologies."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Sens des responsabilit\u00e9s et de l'engagement",
+              "statements": {
+                "Assistant": "Ex\u00e9cute les t\u00e2ches qui lui sont confi\u00e9es avec rigueur et ponctualit\u00e9, en s'assurant de respecter les consignes et d\u00e9lais. Il prend soin de v\u00e9rifier l\u2019exactitude de son travail et informe son sup\u00e9rieur en cas de besoin.",
+                "Senior": "Ex\u00e9cute les t\u00e2ches qui lui sont confi\u00e9es avec rigueur et ponctualit\u00e9, en s'assurant de respecter les consignes et d\u00e9lais. Il prend soin de v\u00e9rifier l\u2019exactitude de son travail et informe son sup\u00e9rieur en cas de besoin.",
+                "Manager": "Pilote les projets avec un fort engagement, veille \u00e0 la responsabilit\u00e9 de l\u2019\u00e9quipe, assure la r\u00e9partition des t\u00e2ches, et garanti le respect des d\u00e9lais et objectifs.",
+                "Associ?": "Incarne les valeurs de l\u2019entreprise, prend des d\u00e9cisions strat\u00e9giques, dirige les grandes orientations du cabinet, et assure la p\u00e9rennit\u00e9 des activit\u00e9s en d\u00e9veloppant de nouvelles opportunit\u00e9s."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Excellence du service",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Aisance relationnelle avec le client",
+              "statements": {
+                "Assistant": "Exprime clairement ses id\u00e9es et entretien une relation quotidienne avec le client et les interlocuteurs client sur la mission.",
+                "Senior": "Ecoute activement pour comprendre les besoins du client et reformule efficacement ses besoins pour les mettre en perspective. Exprime clairement ses id\u00e9es lors des r\u00e9unions de synth\u00e8se notamment.",
+                "Manager": "Communique efficacement avec les membres de l\u2019\u00e9quipe et le client et dispose d'une capacit\u00e9 de persuasion. Veille \u00e0 la bonne diffusion et au partage de l\u2019information. Entretient une relation de confiance avec le client et les interlocuteurs client appropri\u00e9s. Anime efficacement des pr\u00e9sentations orales.",
+                "Associ?": "N\u00e9gocie et conclut des partenariats strat\u00e9giques avec les clients. Anticipe les besoins des clients et les int\u00e8gre dans la strat\u00e9gie globale de l'entreprise. Repr\u00e9sente l'entreprise aupr\u00e8s des clients lors d'\u00e9v\u00e9nements importants."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Respect des d\u00e9lais et de la qualit\u00e9",
+              "statements": {
+                "Assistant": "Documente et identifie ses sources d\u2019informations.",
+                "Senior": "R\u00e9dige de fa\u00e7on structur\u00e9e, coh\u00e9rente et synth\u00e9tique, Est capable d'expliciter un texte ou des travaux dont il est charg\u00e9 ou faits par son \u00e9quipe.",
+                "Manager": "S\u2019attache \u00e0 g\u00e9rer la mission de fa\u00e7on \u00e0 respecter les engagements et \u00e0 anticiper tout probl\u00e8me potentiel. Obtient l\u2019\u00e9valuation de la performance de Y3 Audit & Conseils sur la mission aupr\u00e8s du client, de fa\u00e7on formelle ou non et prend rapidement les mesures appropri\u00e9es.",
+                "Associ?": "Fixe des objectifs de performance \u00e9lev\u00e9s en mati\u00e8re de qualit\u00e9 et de d\u00e9lais. Cultive une culture d'excellence op\u00e9rationnelle au sein de l'entreprise."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Satisfaction globale du client",
+              "statements": {
+                "Assistant": "Est ouvert et flexible face aux diff\u00e9rentes sollicitations du client.",
+                "Senior": "Contribue \u00e0 renforcer l'image du cabinet aupr\u00e8s du client.",
+                "Manager": "Constitue l\u2019\u00e9quipe la plus comp\u00e9tente possible en vue de proposer des services de qualit\u00e9 au client. Respecte des niveaux de prestations \u00e9lev\u00e9es.",
+                "Associ?": "D\u00e9finit une vision claire de l'exp\u00e9rience client et s'assure qu'elle est partag\u00e9e par tous les collaborateurs. Utilise la satisfaction client comme levier de croissance et de fid\u00e9lisation."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Adaptabilit\u00e9",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Ajustement efficace des m\u00e9thodes et comportements en r\u00e9ponse aux changements des priorit\u00e9s, aux attentes des clients et aux \u00e9volutions du march\u00e9, tout en maintenant une attitude proactive et orient\u00e9e vers la recherche de solutions.",
+              "statements": {
+                "Assistant": "S\u2019adapte aux instructions de l'\u00e9quipe, \u00eatre r\u00e9actif aux changements de priorit\u00e9s, et adopte une attitude d\u2019apprentissage pour d\u00e9velopper de nouvelles comp\u00e9tences.",
+                "Senior": "S\u2019adapte aux changements de projet et aux ajustements des directives, g\u00e8re des situations vari\u00e9es avec flexibilit\u00e9, et propose des solutions cr\u00e9atives en cas de probl\u00e8mes.",
+                "Manager": "Apporte des ajustements strat\u00e9giques en fonction des retours des clients et des \u00e9volutions du march\u00e9, encadre l\u2019\u00e9quipe pour faire face aux impr\u00e9vus, et r\u00e9oriente les efforts si n\u00e9cessaire.",
+                "Associ?": "S\u2019adapte rapidement aux tendances du secteur, promouvoir une culture de flexibilit\u00e9 au sein de l\u2019organisation, et anticipe les besoins futurs en comp\u00e9tences et ressources."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "CAPITAL HUMAIN": [
+    {
+      "key": "SAVOIR FAIRE",
+      "title": "SAVOIR FAIRE",
+      "pages": [
+        {
+          "title": "M\u00e9thodologie du cabinet",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Strat\u00e9gie et politiques RH (recrutement, mobilit\u00e9, performance... )",
+              "statements": {
+                "Assistant": "Assister dans la collecte des donn\u00e9es et l\u2019\u00e9laboration des supports li\u00e9s \u00e0 la strat\u00e9gie RH.",
+                "Senior": "Analyser les donn\u00e9es pour alimenter les d\u00e9cisions strat\u00e9giques et participer \u00e0 des propositions concr\u00e8tes.",
+                "Manager": "Superviser l\u2019\u00e9laboration et la mise en \u0153uvre des strat\u00e9gies RH pour des projets sp\u00e9cifiques.",
+                "Associ?": "Piloter et d\u00e9finir les grandes orientations RH du cabinet et conseiller les clients sur des strat\u00e9gies complexes."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Gestion des Emplois et des Parcours Professionnels (GEPP) / Classification",
+              "statements": {
+                "Assistant": "R\u00e9aliser des t\u00e2ches de collecte d\u2019informations et mise \u00e0 jour des bases de donn\u00e9es de comp\u00e9tences.",
+                "Senior": "Contribuer \u00e0 l\u2019identification des \u00e9carts de comp\u00e9tences et proposer des plans d\u2019action.",
+                "Manager": "Superviser l\u2019analyse strat\u00e9gique des besoins en comp\u00e9tences et les plans d\u2019action associ\u00e9s.",
+                "Associ?": "Piloter la mise en \u0153uvre des politiques GPEC \u00e0 l\u2019\u00e9chelle de l\u2019organisation ou des clients strat\u00e9giques et les d\u00e9finir."
+              }
+            },
+            {
+              "code": "C",
+              "label": "D\u00e9finition de la strat\u00e9gie de formation",
+              "statements": {
+                "Assistant": "Pr\u00e9parer et organiser des sessions de formation sous supervision.",
+                "Senior": "Coordonner les calendriers de formation et \u00e9valuer l\u2019efficacit\u00e9 des programmes.",
+                "Manager": "\u00c9laborer des plans de formation align\u00e9s avec les objectifs strat\u00e9giques de l\u2019entreprise.",
+                "Associ?": "Concevoir des strat\u00e9gies globales de d\u00e9veloppement des comp\u00e9tences \u00e0 long terme. Orienter et valider des investissements strat\u00e9giques."
+              }
+            },
+            {
+              "code": "D",
+              "label": "Gestion de l'administration du personnel",
+              "statements": {
+                "Assistant": "Traite les dossiers administratifs (contrats, avenants) sous supervision.",
+                "Senior": "Assure la gestion administrative courante et optimiser les processus administratifs.",
+                "Manager": "Supervise les \u00e9quipes en charge de l\u2019administration du personnel et assure la conformit\u00e9 juridique.",
+                "Associ?": "Pilote des projets complexes d\u2019administration RH \u00e0 l\u2019\u00e9chelle organisationnelle et apporte une vision strat\u00e9gique."
+              }
+            },
+            {
+              "code": "E",
+              "label": "Gestion du climat social",
+              "statements": {
+                "Assistant": "Participe \u00e0 des enqu\u00eates ou analyses sur le bien-\u00eatre au travail.",
+                "Senior": "Identifie les signaux faibles li\u00e9s au climat social et proposer des actions.",
+                "Manager": "Con\u00e7oit des plans d\u2019am\u00e9lioration pour le climat social et en mesurer l\u2019impact.",
+                "Associ?": "D\u00e9finit et garantit une strat\u00e9gie globale pour maintenir un climat social positif et durable."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Normes professionnelles",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Audits/diagnostics d'organisation",
+              "statements": {
+                "Assistant": "Contribue efficacement \u00e0 une d\u00e9marche de diagnostic et refonte des organisations RH",
+                "Senior": "Ma\u00eetrise la d\u00e9marche de diagnostic et refonte des organisations RH et peut g\u00e9rer en autonomie tout ou partie du p\u00e9rim\u00e8tre fonctionnel trait\u00e9 sur la mission",
+                "Manager": "Est capable de piloter une mission de diagnostic et refonte des organisations et d\u2019y apporter son expertise ; identifie les impacts sur l\u2019organisation globale et sur la structure",
+                "Associ?": "Repr\u00e9senter le cabinet dans les instances de r\u00e9gulation ou de gouvernance RH"
+              }
+            },
+            {
+              "code": "B",
+              "label": "Conformit\u00e9 l\u00e9gale et r\u00e9glementaire",
+              "statements": {
+                "Assistant": "Collecter des informations pour garantir le respect des normes l\u00e9gales.",
+                "Senior": "Identifier les \u00e9carts de conformit\u00e9 et proposer des mesures correctives.",
+                "Manager": "Superviser les audits de conformit\u00e9 et mettre en \u0153uvre des plans de correction.",
+                "Associ?": "Piloter et conseiller sur les processus de conformit\u00e9 et r\u00e9pondre aux exigences r\u00e9glementaires majeures."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Ethique et d\u00e9ontologie",
+              "statements": {
+                "Assistant": "Participer \u00e0 la mise en place d\u2019initiatives \u00e9thiques sous supervision.",
+                "Senior": "Contribuer activement \u00e0 promouvoir les pratiques \u00e9thiques dans les projets.",
+                "Manager": "Mettre en place des politiques \u00e9thiques et veiller \u00e0 leur application.",
+                "Associ?": "Superviser et orienter les strat\u00e9gies \u00e9thiques globales de l\u2019organisation."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Technologies",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Outils RH",
+              "statements": {
+                "Assistant": "Utilise les outils RH de base (gestion des paies, gestion des temps et activit\u00e9s).",
+                "Senior": "Param\u00e8tre et personnalise les outils RH pour r\u00e9pondre \u00e0 des besoins sp\u00e9cifiques.",
+                "Manager": "Supervise l\u2019impl\u00e9mentation des outils RH et accompagne les utilisateurs dans leur prise en main.",
+                "Associ?": "Choisit les outils RH adapt\u00e9s en fonction des besoins strat\u00e9giques du cabinet et des clients et oriente les investissements strat\u00e9giques."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Digitalisation des process RH",
+              "statements": {
+                "Assistant": "Participe \u00e0 la mise en place de processus digitalis\u00e9s simples (d\u00e9mat\u00e9rialisation des documents RH).",
+                "Senior": "Automatise certains processus RH et mesure les gains en efficacit\u00e9.",
+                "Manager": "Pilote des projets de digitalisation \u00e0 grande \u00e9chelle en int\u00e9grant les retours utilisateurs.",
+                "Associ?": "D\u00e9finit et investit dans une strat\u00e9gie de digitalisation des processus RH pour r\u00e9pondre aux enjeux d\u2019efficacit\u00e9 et d\u2019innovation."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Gestion de projets",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Conduite du changement",
+              "statements": {
+                "Assistant": "Sait identifier les besoins de conduite du changement et alerter ; comprend les enjeux de la conduite du changement.",
+                "Senior": "Sait d\u00e9finir et mettre en \u0153uvre certains piliers d\u2019une strat\u00e9gie de changement.",
+                "Manager": "Con\u00e7oit des plans de conduite du changement pour des projets complexes, incluant la gestion des r\u00e9sistances et le suivi des impacts.",
+                "Associ?": "Supervise et d\u00e9finit les strat\u00e9gies globales de gestion du changement, en coordonnant les initiatives \u00e0 travers diff\u00e9rentes entit\u00e9s ou d\u00e9partements."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Transformation organisationnelle",
+              "statements": {
+                "Assistant": "Soutenir la planification et l'ex\u00e9cution des projets RH sous supervision.",
+                "Senior": "Coordonner des projets RH sp\u00e9cifiques (gestion des talents, transformation organisationnelle) en respectant les d\u00e9lais.",
+                "Manager": "Piloter des projets RH complexes et multidimensionnels tout en g\u00e9rant les parties prenantes.",
+                "Associ?": "Supervise les portefeuilles de projets RH strat\u00e9giques en ligne avec les objectifs du cabinet et des clients. \u00c9tablit une vision \u00e0 long terme pour la gestion des projets RH."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Gestion du risque et qualit\u00e9",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Risques RH",
+              "statements": {
+                "Assistant": "Identifie les risques RH de base (conformit\u00e9, droit du travail) et respecte les standards de qualit\u00e9 sous supervision.",
+                "Senior": "Analyse les risques RH et con\u00e7oit des plans d\u2019att\u00e9nuation adapt\u00e9s.",
+                "Manager": "D\u00e9veloppe et met en oeuvre un cadre de gestion des risques RH et garantir la qualit\u00e9 des livrables RH.",
+                "Associ?": "Pilote la strat\u00e9gie globale de gestion des risques RH et d\u00e9finit les priorit\u00e9s strat\u00e9giques en mati\u00e8re de gestion des risques et de la qualit\u00e9 RH pour renforcer la cr\u00e9dibilit\u00e9 du cabinet."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Contr\u00f4le qualit\u00e9 des politiques RH",
+              "statements": {
+                "Assistant": "V\u00e9rifie l\u2019application des politiques RH selon des crit\u00e8res de qualit\u00e9 d\u00e9finis.",
+                "Senior": "Analyse la coh\u00e9rence et l\u2019efficacit\u00e9 des politiques RH mises en \u0153uvre et identifie des axes d\u2019am\u00e9lioration.",
+                "Manager": "Met en place des processus d\u2019\u00e9valuation de la qualit\u00e9 des politiques RH (indicateurs, audits internes).",
+                "Associ?": "Supervise les \u00e9valuations globales des politiques RH et garantit leur alignement avec les objectifs organisationnels et les standards de qualit\u00e9."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Prise en compte de l'environnement",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Gestion des aspects culturels",
+              "statements": {
+                "Assistant": "Sait identifier les parties prenantes, comprend certains jeux politiques et diff\u00e9rences culturelles",
+                "Senior": "Propose des solutions pour mobiliser les parties prenantes, ou prendre en compte des environnements multi-culturels.",
+                "Manager": "Sait partager son exp\u00e9rience, est capable de mobiliser des parties prenantes difficiles, peut assurer le d\u00e9veloppement de comp\u00e9tences manag\u00e9riales.",
+                "Associ?": "D\u00e9finit une vision strat\u00e9gique de la gestion des aspects culturels et coordonne pour int\u00e9grer les diff\u00e9rentes approches culturelles."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Veille concurrentielle",
+              "statements": {
+                "Assistant": "Contribue \u00e0 la veille concurrentielle en collectant et en analysant des informations de base sur le march\u00e9 RH.",
+                "Senior": "Identifie les tendances RH \u00e9mergentes et compare les pratiques des clients avec celles des concurrents.",
+                "Manager": "Supervise le benchmarking des pratiques RH et propose des recommandations strat\u00e9giques pour am\u00e9liorer la comp\u00e9titivit\u00e9.",
+                "Associ?": "Pilote des initiatives strat\u00e9giques bas\u00e9es sur la veille concurrentielle et anticipe sur les tendances \u00e9conomiques et soci\u00e9tales."
+              }
+            }
+          ]
+        },
+        {
+          "title": "D\u00e9veloppement commercial",
+          "themes": [
+            {
+              "code": "A",
+              "label": "D\u00e9veloppement de l'offre et de la relation client",
+              "statements": {
+                "Assistant": "Contribuer \u00e0 la pr\u00e9paration des propositions RH en effectuant des recherches et analyses de base.",
+                "Senior": "Identifier des opportunit\u00e9s commerciales RH et participer activement aux n\u00e9gociations.",
+                "Manager": "D\u00e9velopper des offres RH sur mesure et g\u00e9rer les relations avec les clients cl\u00e9s.",
+                "Associ?": "Concevoir des strat\u00e9gies de d\u00e9veloppement commercial pour l\u2019offre RH et superviser les grands comptes. Positionner le cabinet comme leader dans le domaine RH."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Am\u00e9lioration de la performance du cabinet",
+              "statements": {
+                "Assistant": "Renforce la qualit\u00e9 des offres commerciales, teasers et notes d'information.",
+                "Senior": "Identifie des opportunit\u00e9s d'affaires.",
+                "Manager": "D\u00e9veloppe la relation client et prospecte pour d\u00e9velopper son portefeuille.",
+                "Associ?": "D\u00e9finit la strat\u00e9gie commerciale du cabinet."
+              }
+            },
+            {
+              "code": "C",
+              "label": "R\u00e9alisation des \u00e9tudes de march\u00e9",
+              "statements": {
+                "Assistant": "Collecte des donn\u00e9es basiques sur le march\u00e9 RH et effectuer des benchmarks sous supervision.",
+                "Senior": "Analyse les tendances du march\u00e9 RH pour identifier les opportunit\u00e9s de croissance.",
+                "Manager": "Supervise des \u00e9tudes de march\u00e9 complexes pour guider la strat\u00e9gie commerciale RH du cabinet.",
+                "Associ?": "Valide et exploite les r\u00e9sultats des \u00e9tudes pour orienter l'offre commerciale \u00e0 grande \u00e9chelle. Anticiper les \u00e9volutions RH du march\u00e9."
+              }
+            },
+            {
+              "code": "D",
+              "label": "R\u00e9diger son book commercial interactif",
+              "statements": {
+                "Assistant": "Contribue \u00e0 la mise en forme des pr\u00e9sentations commerciales en suivant un mod\u00e8le.",
+                "Senior": "Con\u00e7oit des supports commerciaux adapt\u00e9s aux besoins des clients sp\u00e9cifiques.",
+                "Manager": "Cr\u00e9e un book interactif align\u00e9 avec les objectifs strat\u00e9giques du cabinet.",
+                "Associ?": "Garantit la coh\u00e9rence des outils commerciaux avec l\u2019image de marque du cabinet et innover dans les formats commerciaux pour renforcer l\u2019attractivit\u00e9 du cabinet."
+              }
+            },
+            {
+              "code": "E",
+              "label": "Recouvrement",
+              "statements": {
+                "Assistant": "Soutient les activit\u00e9s de relance des paiements sous la direction d'un sup\u00e9rieur.",
+                "Senior": "Met en \u0153uvre des plans d\u2019action pour r\u00e9duire les retards de paiement.",
+                "Manager": "Pilote les strat\u00e9gies de recouvrement en collaboration avec les \u00e9quipes finance.",
+                "Associ?": "D\u00e9finit des politiques de recouvrement adapt\u00e9es aux diff\u00e9rents profils clients et repr\u00e9sente le cabinet dans les n\u00e9gociations strat\u00e9giques de recouvrement."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SAVOIR ETRE",
+      "title": "SAVOIR ETRE",
+      "pages": [
+        {
+          "title": "Management et Leadership",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Ma\u00eetrise de l'organisation et de la gestion du temps",
+              "statements": {
+                "Assistant": "Organise efficacement son travail quotidien et respecte les d\u00e9lais impartis.",
+                "Senior": "G\u00e8re simultan\u00e9ment plusieurs projets et ajuste ses priorit\u00e9s en fonction des besoins.",
+                "Manager": "Impl\u00e9mente des m\u00e9thodes de gestion de projet pour optimiser la performance de l'\u00e9quipe.",
+                "Associ?": "D\u00e9finit les priorit\u00e9s strat\u00e9giques de l'entreprise et alloue les ressources en cons\u00e9quence."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Aptitude \u00e0 l'apprentissage et au d\u00e9veloppement personnel",
+              "statements": {
+                "Assistant": "Est curieux et a envie d'apprendre.",
+                "Senior": "Recherche activement de nouvelles informations et de nouvelles comp\u00e9tences.",
+                "Manager": "Identifie les besoins de formation de ses collaborateurs.",
+                "Associ?": "Favorise une culture d'apprentissage au sein de l'entreprise et s'adapte aux \u00e9volutions du march\u00e9 et aux nouvelles technologies."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Sens des responsabilit\u00e9s et de l'engagement",
+              "statements": {
+                "Assistant": "Ex\u00e9cute les t\u00e2ches qui lui sont confi\u00e9es avec rigueur et ponctualit\u00e9, en s'assurant de respecter les consignes et d\u00e9lais. Il prend soin de v\u00e9rifier l\u2019exactitude de son travail et informe son sup\u00e9rieur en cas de besoin.",
+                "Senior": "Prendre en charge les projets de mani\u00e8re autonome, d\u00e9montre une capacit\u00e9 \u00e0 anticiper les besoins et \u00e0 garantir la qualit\u00e9 du travail fourni, et informe son sup\u00e9rieur en cas de difficult\u00e9s.",
+                "Manager": "Pilote les projets avec un fort engagement, veille \u00e0 la responsabilit\u00e9 de l\u2019\u00e9quipe, assure la r\u00e9partition des t\u00e2ches, et garanti le respect des d\u00e9lais et objectifs.",
+                "Associ?": "Incarne les valeurs de l\u2019entreprise, prend des d\u00e9cisions strat\u00e9giques, dirige les grandes orientations du cabinet, et assure la p\u00e9rennit\u00e9 des activit\u00e9s en d\u00e9veloppant de nouvelles opportunit\u00e9s."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Excellence du service",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Aisance relationnelle avec le client",
+              "statements": {
+                "Assistant": "Exprime clairement ses id\u00e9es et entretien une relation quotidienne avec le client et les interlocuteurs client sur la mission.",
+                "Senior": "Ecoute activement pour comprendre les besoins du client et reformule efficacement ses besoins pour les mettre en perspective. Exprime clairement ses id\u00e9es lors des r\u00e9unions de synth\u00e8se notamment.",
+                "Manager": "Communique efficacement avec les membres de l\u2019\u00e9quipe et le client et dispose d'une capacit\u00e9 de persuasion. Veille \u00e0 la bonne diffusion et au partage de l\u2019information. Entretient une relation de confiance avec le client et les interlocuteurs client appropri\u00e9s. Anime efficacement des pr\u00e9sentations orales.",
+                "Associ?": "N\u00e9gocie et conclut des partenariats strat\u00e9giques avec les clients. Anticipe les besoins des clients et les int\u00e8gre dans la strat\u00e9gie globale de l'entreprise. Repr\u00e9sente l'entreprise aupr\u00e8s des clients lors d'\u00e9v\u00e9nements importants."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Respect des d\u00e9lais et de la qualit\u00e9",
+              "statements": {
+                "Assistant": "Documente et identifie ses sources d\u2019informations.",
+                "Senior": "R\u00e9dige de fa\u00e7on structur\u00e9e, coh\u00e9rente et synth\u00e9tique, Est capable d'expliciter un texte ou des travaux dont il est charg\u00e9 ou faits par son \u00e9quipe.",
+                "Manager": "S\u2019attache \u00e0 g\u00e9rer la mission de fa\u00e7on \u00e0 respecter les engagements et \u00e0 anticiper tout probl\u00e8me potentiel. Obtient l\u2019\u00e9valuation de la performance de Y3 Audit & Conseils sur la mission aupr\u00e8s du client, de fa\u00e7on formelle ou non et prend rapidement les mesures appropri\u00e9es.",
+                "Associ?": "Fixe des objectifs de performance \u00e9lev\u00e9s en mati\u00e8re de qualit\u00e9 et de d\u00e9lais. Cultive une culture d'excellence op\u00e9rationnelle au sein de l'entreprise."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Satisfaction globale du client",
+              "statements": {
+                "Assistant": "Est ouvert et flexible face aux diff\u00e9rentes sollicitations du client.",
+                "Senior": "Contribue \u00e0 renforcer l'image du cabinet aupr\u00e8s du client.",
+                "Manager": "Constitue l\u2019\u00e9quipe la plus comp\u00e9tente possible en vue de proposer des services de qualit\u00e9 au client. Respecte des niveaux de prestations \u00e9lev\u00e9es.",
+                "Associ?": "D\u00e9finit une vision claire de l'exp\u00e9rience client et s'assure qu'elle est partag\u00e9e par tous les collaborateurs. Utilise la satisfaction client comme levier de croissance et de fid\u00e9lisation."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Adaptabilit\u00e9",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Ajustement efficace des m\u00e9thodes et comportements en r\u00e9ponse aux changements des priorit\u00e9s, aux attentes des clients et aux \u00e9volutions du march\u00e9, tout en maintenant une attitude proactive et orient\u00e9e vers la recherche de solutions.",
+              "statements": {
+                "Assistant": "S\u2019adapte aux instructions de l'\u00e9quipe, \u00eatre r\u00e9actif aux changements de priorit\u00e9s, et adopte une attitude d\u2019apprentissage pour d\u00e9velopper de nouvelles comp\u00e9tences.",
+                "Senior": "S\u2019adapte aux changements de projet et aux ajustements des directives, g\u00e8re des situations vari\u00e9es avec flexibilit\u00e9, et propose des solutions cr\u00e9atives en cas de probl\u00e8mes.",
+                "Manager": "Apporte des ajustements strat\u00e9giques en fonction des retours des clients et des \u00e9volutions du march\u00e9, encadre l\u2019\u00e9quipe pour faire face aux impr\u00e9vus, et r\u00e9oriente les efforts si n\u00e9cessaire.",
+                "Associ?": "S\u2019adapte rapidement aux tendances du secteur, promouvoir une culture de flexibilit\u00e9 au sein de l\u2019organisation, et anticipe les besoins futurs en comp\u00e9tences et ressources."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "CONSEIL FINANCIER": [
+    {
+      "key": "SAVOIR FAIRE",
+      "title": "SAVOIR FAIRE",
+      "pages": [
+        {
+          "title": "M\u00e9thodologie du cabinet",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Respect des normes \u00e9thiques",
+              "statements": {
+                "Assistant": "Respecte les normes \u00e9thiques pour maintenir la cr\u00e9dibilit\u00e9 professionnelle.",
+                "Senior": "Respecte les normes \u00e9thiques pour maintenir la cr\u00e9dibilit\u00e9 professionnelle.",
+                "Manager": "Respecte les normes \u00e9thiques pour maintenir la cr\u00e9dibilit\u00e9 professionnelle.",
+                "Associ?": "Respecte les normes \u00e9thiques pour maintenir la cr\u00e9dibilit\u00e9 professionnelle."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Compr\u00e9hension des processus standards",
+              "statements": {
+                "Assistant": "R\u00e9dige des livrables conformes aux standards professionnels.",
+                "Senior": "V\u00e9rifie les livrables pour conformit\u00e9 aux m\u00e9thodologies.",
+                "Manager": "Supervise des dossiers pour garantir l\u2019application des standards.",
+                "Associ?": "D\u00e9finit des m\u00e9thodologies strat\u00e9giques pour le cabinet."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Rigueur dans la d\u00e9finition et l'ex\u00e9cution des missions",
+              "statements": {
+                "Assistant": "V\u00e9rifie sa qualit\u00e9 r\u00e9dactionnelle dans le respect des d\u00e9lais.",
+                "Senior": "Accentue les analyses et l'esprit critique",
+                "Manager": "Optimise les processus internes pour garantir le bon d\u00e9roulement de la mission.",
+                "Associ?": "Repr\u00e9sente en externe pour promouvoir l'approche du cabinet."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Normes professionnelles",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Maitrise le montage d'un mod\u00e8le financier",
+              "statements": {
+                "Assistant": "Monte des mod\u00e8les financiers claires et simples \u00e0 utiliser",
+                "Senior": "Personnalise selon les besoins client.",
+                "Manager": "Propose des am\u00e9liorations ou des adaptations des mod\u00e8les.",
+                "Associ?": "Int\u00e9gre des mod\u00e8les dans le cadre de nouveaux services."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Ma\u00eetrise les standards de qualit\u00e9",
+              "statements": {
+                "Assistant": "Am\u00e9liore les supports de pr\u00e9sentation.",
+                "Senior": "Personnalise selon les besoins client.",
+                "Manager": "Propose des am\u00e9liorations ou des adaptations des mod\u00e8les.",
+                "Associ?": "Int\u00e9gre des mod\u00e8les dans le cadre de nouveaux services."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Bonnes pratiques",
+              "statements": {
+                "Assistant": "D\u00e9veloppe la capacit\u00e9 de recherche.",
+                "Senior": "Personnalise selon les besoins client.",
+                "Manager": "Propose des am\u00e9liorations ou des adaptations des mod\u00e8les.",
+                "Associ?": "Int\u00e9gre des mod\u00e8les dans le cadre de nouveaux services."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Technologies",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Ma\u00eetrise de MS Excel",
+              "statements": {
+                "Assistant": "Utilisation simple des outils technologiques internes",
+                "Senior": "Ma\u00eetrise avanc\u00e9e des technologies utilis\u00e9es",
+                "Manager": "Supervision des \u00e9quipes dans la structuration des donn\u00e9es et l'\u00e9laboration de rapports critiques pour les projets et avoir une utilisation avanc\u00e9e de fonctionnalit\u00e9s.",
+                "Associ?": "Orientation vers la mise en place d\u2019outils Excel innovants pour am\u00e9liorer les performances des \u00e9quipes."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Ma\u00eetrise de PowerPoint",
+              "statements": {
+                "Assistant": "Utilisation simple des outils technologiques internes",
+                "Senior": "Ma\u00eetrise avanc\u00e9e des technologies utilis\u00e9es",
+                "Manager": "Supervise les pr\u00e9sentations produites par les \u00e9quipes pour garantir leur coh\u00e9rence, clart\u00e9 et conformit\u00e9 aux standards du cabinet. Forme les collaborateurs \u00e0 l\u2019art de la communication visuelle et \u00e0 l\u2019optimisation des pr\u00e9sentations.",
+                "Associ?": "Capacit\u00e9 \u00e0 diriger des pr\u00e9sentations en public avec impact, tout en adaptant les messages en fonction de l\u2019audience."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Ma\u00eetrise de Power BI",
+              "statements": {
+                "Assistant": "Utilisation simple des outils technologiques internes",
+                "Senior": "Ma\u00eetrise avanc\u00e9e des technologies utilis\u00e9es",
+                "Manager": "Supervise les analyses Power BI r\u00e9alis\u00e9es par les \u00e9quipes, avec une v\u00e9rification des KPIs et de la coh\u00e9rence des donn\u00e9es. Sait proposer des am\u00e9liorations dans l\u2019utilisation de Power BI pour optimiser les rapports et tableaux de bord.",
+                "Associ?": "A la capacit\u00e9 \u00e0 interpr\u00e9ter les donn\u00e9es agr\u00e9g\u00e9es pour orienter les prises de d\u00e9cisions \u00e0 haut niveau.Fait la promotion de l\u2019adoption de Power BI pour am\u00e9liorer la culture de la data et la transformation num\u00e9rique au sein du cabinet."
+              }
+            },
+            {
+              "code": "D",
+              "label": "Avoir une expertise en innovation technologique et transformation num\u00e9rique",
+              "statements": {
+                "Assistant": "Respecte et am\u00e9liore de l'archivage des transactions",
+                "Senior": "Veille technologique",
+                "Manager": "Choix des outils pour les projets clients",
+                "Associ?": "Conception d\u2019approches technologiques innovantes pour les projets complexes et d\u00e9fnition de la strat\u00e9gie de transformation num\u00e9rique pour le cabinet"
+              }
+            }
+          ]
+        },
+        {
+          "title": "Gestion de projets",
+          "themes": [
+            {
+              "code": "A",
+              "label": "La coordination des \u00e9quipes, le suivi des \u00e9ch\u00e9ances et la gestion des risques associ\u00e9s \u00e0 chaque mission.",
+              "statements": {
+                "Assistant": "Planifie des t\u00e2ches simples et respecte des \u00e9ch\u00e9ances et des objectifs",
+                "Senior": "Coordonne les \u00e9quipes internes et externes et g\u00e8re de mani\u00e8re proactive les risques projet",
+                "Manager": "Structure et ex\u00e9cute des plans de projet complexes et communique avec des parties prenantes cl\u00e9s",
+                "Associ?": "Pilote des portefeuilles de projets strat\u00e9giques et n\u00e9gocie des contrats en alignement sur les objectifs strat\u00e9giques du cabinet"
+              }
+            }
+          ]
+        },
+        {
+          "title": "Gestion du risque et qualit\u00e9",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Les mesures d\u2019assurance qualit\u00e9 pour garantir que les livrables respectent les standards \u00e9tablis et r\u00e9pondent aux attentes des clients.",
+              "statements": {
+                "Assistant": "Sait identifier des risques basiques et appliquer des standards qualit\u00e9 \u00e9tablis.",
+                "Senior": "Maitrise l'\u00e9valuation des risques et pr\u00e9conisations et s'assure de la mise en \u0153uvre des plans d\u2019assurance qualit\u00e9.",
+                "Manager": "D\u00e9finit des politiques de gestion des risques pour les projets et contr\u00f4le la qualit\u00e9 des livrables clients.",
+                "Associ?": "Fait la gouvernance des risques au niveau strat\u00e9gique et s'assure de l'alignement des politiques de qualit\u00e9 sur les objectifs de croissance"
+              }
+            }
+          ]
+        },
+        {
+          "title": "Prise en compte de l'environnement",
+          "themes": []
+        },
+        {
+          "title": "D\u00e9veloppement commercial",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Am\u00e9lioration de la performance du cabinet",
+              "statements": {
+                "Assistant": "Renforce la qualit\u00e9 des offres commerciales, teasers et notes d'information.",
+                "Senior": "Identifie des opportunit\u00e9s d'affaires.",
+                "Manager": "D\u00e9veloppe la relation client et prospecte pour d\u00e9velopper son portefeuille.",
+                "Associ?": "D\u00e9finit la strat\u00e9gie commerciale du cabinet."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Ma\u00eetrise la r\u00e9daction de propositions commerciales",
+              "statements": {
+                "Assistant": "Recherche d\u2019informations pour des propositions commerciales.",
+                "Senior": "Contribue activement aux propositions commerciales.",
+                "Manager": "Maitr\u00eese la gestion et la finalisation de propositions commerciales complexes.",
+                "Associ?": "N\u00e9gocie et signe de grands contrats."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Recouvrement",
+              "statements": {
+                "Assistant": "Soutient les activit\u00e9s de relance des paiements sous la direction d'un sup\u00e9rieur.",
+                "Senior": "Met en \u0153uvre des plans d\u2019action pour r\u00e9duire les retards de paiement.",
+                "Manager": "Pilote les strat\u00e9gies de recouvrement en collaboration avec les \u00e9quipes finance.",
+                "Associ?": "D\u00e9finit des politiques de recouvrement adapt\u00e9es aux diff\u00e9rents profils clients et repr\u00e9sente le cabinet dans les n\u00e9gociations strat\u00e9giques de recouvrement."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SAVOIR ETRE",
+      "title": "SAVOIR ETRE",
+      "pages": [
+        {
+          "title": "Management et Leadership",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Ma\u00eetrise de l'organisation et de la gestion du temps",
+              "statements": {
+                "Assistant": "Organise efficacement son travail quotidien et respecte les d\u00e9lais impartis.",
+                "Senior": "G\u00e8re simultan\u00e9ment plusieurs projets et ajuste ses priorit\u00e9s en fonction des besoins.",
+                "Manager": "Impl\u00e9mente des m\u00e9thodes de gestion de projet pour optimiser la performance de l'\u00e9quipe.",
+                "Associ?": "D\u00e9finit les priorit\u00e9s strat\u00e9giques de l'entreprise et alloue les ressources en cons\u00e9quence."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Aptitude \u00e0 l'apprentissage et au d\u00e9veloppement personnel",
+              "statements": {
+                "Assistant": "Est curieux et a envie d'apprendre.",
+                "Senior": "Recherche activement de nouvelles informations et de nouvelles comp\u00e9tences.",
+                "Manager": "Identifie les besoins de formation de ses collaborateurs.",
+                "Associ?": "Favorise une culture d'apprentissage au sein de l'entreprise et s'adapte aux \u00e9volutions du march\u00e9 et aux nouvelles technologies."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Sens des responsabilit\u00e9s et de l'engagement",
+              "statements": {
+                "Assistant": "Ex\u00e9cute les t\u00e2ches qui lui sont confi\u00e9es avec rigueur et ponctualit\u00e9, en s'assurant de respecter les consignes et d\u00e9lais. Il prend soin de v\u00e9rifier l\u2019exactitude de son travail et informe son sup\u00e9rieur en cas de besoin.",
+                "Senior": "Prendre en charge les projets de mani\u00e8re autonome, d\u00e9montre une capacit\u00e9 \u00e0 anticiper les besoins et \u00e0 garantir la qualit\u00e9 du travail fourni, et informe son sup\u00e9rieur en cas de difficult\u00e9s.",
+                "Manager": "Pilote les projets avec un fort engagement, veille \u00e0 la responsabilit\u00e9 de l\u2019\u00e9quipe, assure la r\u00e9partition des t\u00e2ches, et garanti le respect des d\u00e9lais et objectifs.",
+                "Associ?": "Incarne les valeurs de l\u2019entreprise, prend des d\u00e9cisions strat\u00e9giques, dirige les grandes orientations du cabinet, et assure la p\u00e9rennit\u00e9 des activit\u00e9s en d\u00e9veloppant de nouvelles opportunit\u00e9s."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Excellence du service",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Aisance relationnelle avec le client",
+              "statements": {
+                "Assistant": "Exprime clairement ses id\u00e9es et entretien une relation quotidienne avec le client et les interlocuteurs client sur la mission.",
+                "Senior": "Ecoute activement pour comprendre les besoins du client et reformule efficacement ses besoins pour les mettre en perspective. Exprime clairement ses id\u00e9es lors des r\u00e9unions de synth\u00e8se notamment.",
+                "Manager": "Communique efficacement avec les membres de l\u2019\u00e9quipe et le client et dispose d'une capacit\u00e9 de persuasion. Veille \u00e0 la bonne diffusion et au partage de l\u2019information. Entretient une relation de confiance avec le client et les interlocuteurs client appropri\u00e9s. Anime efficacement des pr\u00e9sentations orales.",
+                "Associ?": "N\u00e9gocie et conclut des partenariats strat\u00e9giques avec les clients. Anticipe les besoins des clients et les int\u00e8gre dans la strat\u00e9gie globale de l'entreprise. Repr\u00e9sente l'entreprise aupr\u00e8s des clients lors d'\u00e9v\u00e9nements importants."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Respect des d\u00e9lais et de la qualit\u00e9",
+              "statements": {
+                "Assistant": "Documente et identifie ses sources d\u2019informations.",
+                "Senior": "R\u00e9dige de fa\u00e7on structur\u00e9e, coh\u00e9rente et synth\u00e9tique, Est capable d'expliciter un texte ou des travaux dont il est charg\u00e9 ou faits par son \u00e9quipe.",
+                "Manager": "S\u2019attache \u00e0 g\u00e9rer la mission de fa\u00e7on \u00e0 respecter les engagements et \u00e0 anticiper tout probl\u00e8me potentiel. Obtient l\u2019\u00e9valuation de la performance de Y3 Audit & Conseils sur la mission aupr\u00e8s du client, de fa\u00e7on formelle ou non et prend rapidement les mesures appropri\u00e9es.",
+                "Associ?": "Fixe des objectifs de performance \u00e9lev\u00e9s en mati\u00e8re de qualit\u00e9 et de d\u00e9lais. Cultive une culture d'excellence op\u00e9rationnelle au sein de l'entreprise."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Satisfaction globale du client",
+              "statements": {
+                "Assistant": "Est ouvert et flexible face aux diff\u00e9rentes sollicitations du client.",
+                "Senior": "Contribue \u00e0 renforcer l'image du cabinet aupr\u00e8s du client.",
+                "Manager": "Constitue l\u2019\u00e9quipe la plus comp\u00e9tente possible en vue de proposer des services de qualit\u00e9 au client. Respecte des niveaux de prestations \u00e9lev\u00e9es.",
+                "Associ?": "D\u00e9finit une vision claire de l'exp\u00e9rience client et s'assure qu'elle est partag\u00e9e par tous les collaborateurs. Utilise la satisfaction client comme levier de croissance et de fid\u00e9lisation."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Adaptabilit\u00e9",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Ajustement efficace des m\u00e9thodes et comportements en r\u00e9ponse aux changements des priorit\u00e9s, aux attentes des clients et aux \u00e9volutions du march\u00e9, tout en maintenant une attitude proactive et orient\u00e9e vers la recherche de solutions.",
+              "statements": {
+                "Assistant": "S\u2019adapte aux instructions de l'\u00e9quipe, \u00eatre r\u00e9actif aux changements de priorit\u00e9s, et adopte une attitude d\u2019apprentissage pour d\u00e9velopper de nouvelles comp\u00e9tences.",
+                "Senior": "S\u2019adapte aux changements de projet et aux ajustements des directives, g\u00e8re des situations vari\u00e9es avec flexibilit\u00e9, et propose des solutions cr\u00e9atives en cas de probl\u00e8mes.",
+                "Manager": "Apporte des ajustements strat\u00e9giques en fonction des retours des clients et des \u00e9volutions du march\u00e9, encadre l\u2019\u00e9quipe pour faire face aux impr\u00e9vus, et r\u00e9oriente les efforts si n\u00e9cessaire.",
+                "Associ?": "S\u2019adapte rapidement aux tendances du secteur, promouvoir une culture de flexibilit\u00e9 au sein de l\u2019organisation, et anticipe les besoins futurs en comp\u00e9tences et ressources."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
