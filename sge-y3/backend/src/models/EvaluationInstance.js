@@ -2,11 +2,40 @@ const mongoose = require('mongoose');
 
 const criterionSchema = new mongoose.Schema(
   {
+    criterion_id: { type: String, default: '', trim: true },
     label: { type: String, required: true, trim: true },
+    statement: { type: String, default: '', trim: true },
+    page_id: { type: String, default: '', trim: true },
+    page_title: { type: String, default: '', trim: true },
+    theme_code: { type: String, default: '', trim: true },
     score: { type: Number, default: null, min: 1, max: 5 },
     required: { type: Boolean, default: true },
   },
   { _id: false }
+);
+
+const pageThemeSchema = new mongoose.Schema(
+  {
+    theme_id: { type: String, required: true, trim: true },
+    code: { type: String, required: true, trim: true },
+    label: { type: String, required: true, trim: true },
+    statement: { type: String, default: '', trim: true },
+    score: { type: Number, default: null, min: 1, max: 5 },
+    required: { type: Boolean, default: true },
+  },
+  { _id: false }
+);
+
+const pageSchema = new mongoose.Schema(
+  {
+    page_id: { type: String, required: true, trim: true },
+    title: { type: String, required: true, trim: true },
+    source_sheet: { type: String, default: '', trim: true },
+    source_label: { type: String, default: '', trim: true },
+    comment: { type: String, default: '', trim: true },
+    themes: { type: [pageThemeSchema], default: [] },
+  },
+  { _id: false, id: false }
 );
 
 const sectionSchema = new mongoose.Schema(
@@ -16,6 +45,7 @@ const sectionSchema = new mongoose.Schema(
     subtitle: { type: String, required: true, trim: true },
     status: { type: String, required: true, trim: true },
     comment: { type: String, default: '', trim: true },
+    pages: { type: [pageSchema], default: [] },
     criteria: { type: [criterionSchema], default: [] },
   },
   { _id: false, id: false }
@@ -28,10 +58,12 @@ const evaluationInstanceSchema = new mongoose.Schema(
     status: {
       type: String,
       default: 'En cours',
-      enum: ['Brouillon', 'En cours', 'Soumis a RH', 'Valide RH', 'En correction', 'Cloture'],
+      enum: ['Brouillon', 'En cours', 'Soumis au Manager', 'Soumis a RH', 'Valide RH', 'En correction', 'Cloture'],
     },
     template_type: { type: String, default: 'assistant-self-evaluation', trim: true },
     submitted_to_role: { type: String, default: 'admin', trim: true },
+    submitted_to_user_ids: { type: [mongoose.Schema.Types.ObjectId], ref: 'User', default: [] },
+    submitted_to_names: { type: [String], default: [] },
     sections: { type: [sectionSchema], default: [] },
     submitted_at: { type: Date, default: null },
     last_saved_at: { type: Date, default: null },
