@@ -9,6 +9,7 @@ export const rhMenuGroups = [
     title: "Évaluation",
     items: [
       { key: "validations", label: "Validations RH", icon: ClipboardCheck },
+      { key: "self-evaluation-rh", label: "Mon auto-évaluation", icon: ClipboardList },
       { key: "questionnaire", label: "Sections & questions", icon: ClipboardList },
       { key: "syntheses", label: "Synthèses à transmettre", icon: FileText },
       { key: "calibration", label: "Calibration", icon: Scale },
@@ -21,6 +22,10 @@ export const rhMenuGroups = [
       { key: "population", label: "Équipe", icon: UsersRound },
       { key: "reports", label: "Rapports", icon: BarChart3 },
     ],
+  },
+  {
+    title: "Comite",
+    items: [{ key: "committee", label: "Comite d'evaluation", icon: UsersRound }],
   },
   {
     title: "Compte",

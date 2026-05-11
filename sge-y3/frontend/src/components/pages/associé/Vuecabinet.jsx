@@ -14,6 +14,7 @@ import SyntheseRH from "@/components/pages/associé/SynthèseRH";
 import Prendredecision from "@/components/pages/associé/Prendredecision";
 import Autoevamanager from "@/components/pages/associé/autoevamanager";
 import Histoireanalytique from "@/components/pages/associé/Histoireanalytique";
+import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import logoY3 from "@/assets/logo-y3.png";
 import { getDisplayName, getInitials } from "@/lib/userPresentation";
@@ -28,6 +29,7 @@ const sideMenu = [
     items: [
       { key: "syntheses-rh", label: "Synthèses validées RH", icon: FileStack },
       { key: "decisions", label: "Décisions en attente", icon: MonitorCheck },
+      { key: "committee", label: "Comité d'évaluation", icon: UsersRound },
     ],
   },
   {
@@ -81,6 +83,7 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
   const pageTitle = useMemo(() => {
     if (activeSection === "syntheses-rh") return "Synthèses validées RH";
     if (activeSection === "decisions") return "Décisions en attente";
+    if (activeSection === "committee") return "Comité d'évaluation";
     if (activeSection === "autoeval-managers") return "Auto-éval Managers";
     if (activeSection === "history") return "Historique & analytics";
     if (activeSection === "profile") return "Mon profil";
@@ -242,6 +245,8 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
             <SyntheseRH />
           ) : activeSection === "decisions" ? (
             <Prendredecision candidate={selectedDecision} />
+          ) : activeSection === "committee" ? (
+            <ComiteEvaluation readOnly />
           ) : activeSection === "autoeval-managers" ? (
             <Autoevamanager />
           ) : activeSection === "history" ? (

@@ -85,10 +85,23 @@ function formatSubmissionTarget(managers = []) {
     .join(', ');
 }
 
+function formatManagerRecipients(recipients = []) {
+  if (!recipients.length) {
+    return '';
+  }
+
+  return recipients
+    .map((recipient) => recipient.manager)
+    .filter(Boolean)
+    .join(', ');
+}
+
 async function buildEvaluationPayload(instance, user) {
   const sections = normalizeSections(instance.sections);
   const activeSection = sections.find((section) => section.status !== 'Complete') || sections[0] || null;
   const managers = await resolveManagersForAssistant(user);
+  const submittedTo =
+    formatManagerRecipients(instance.submitted_to_managers) || formatSubmissionTarget(managers);
 
   return {
     evaluation: {
@@ -112,7 +125,7 @@ async function buildEvaluationPayload(instance, user) {
       grade: user.grade,
       department: user.department,
       current_cycle: CURRENT_CYCLE_LABEL,
-      submitted_to: formatSubmissionTarget(managers),
+      submitted_to: submittedTo,
       submitted_to_users: managers.map((manager) => ({
         id: manager._id.toString(),
         name: manager.name,
@@ -121,6 +134,7 @@ async function buildEvaluationPayload(instance, user) {
         grade: manager.grade,
         department: manager.department,
       })),
+      submitted_to_managers: instance.submitted_to_managers || [],
     },
   };
 }
@@ -225,8 +239,16 @@ async function saveMyAssistantEvaluation(request, response) {
 async function submitMyAssistantEvaluation(request, response) {
   const instance = await getOrCreateAssistantEvaluation(request.user);
   const sections = normalizeSections(instance.sections);
+  const managerRecipients = Array.isArray(request.body?.managerRecipients)
+    ? request.body.managerRecipients
+        .filter((recipient) => recipient?.manager && recipient?.department)
+        .map((recipient) => ({
+          manager: String(recipient.manager).trim(),
+          department: String(recipient.department).trim(),
+        }))
+    : [];
   const missingAnswers = validateSectionsForSubmit(sections);
-  const managers = await resolveManagersForAssistant(request.user);
+  const resolvedManagers = await resolveManagersForAssistant(request.user);
 
   if (missingAnswers.length) {
     return response.status(400).json({
@@ -236,16 +258,21 @@ async function submitMyAssistantEvaluation(request, response) {
   }
 
   instance.sections = toPersistenceSections(sections);
-  instance.status = 'Soumis au Manager';
+  instance.status = 'Soumis aux Managers';
   instance.submitted_to_role = 'manager';
-  instance.submitted_to_user_ids = managers.map((manager) => manager._id);
-  instance.submitted_to_names = managers.map((manager) => manager.name);
+  instance.submitted_to_managers = managerRecipients;
+  instance.submitted_to_user_ids = resolvedManagers.map((manager) => manager._id);
+  instance.submitted_to_names = managerRecipients.length
+    ? managerRecipients.map((recipient) => recipient.manager)
+    : resolvedManagers.map((manager) => manager.name);
   instance.submitted_at = new Date();
   instance.last_saved_at = new Date();
   await instance.save();
 
   return response.json({
-    message: `Auto-evaluation soumise a ${formatSubmissionTarget(managers)}.`,
+    message: managerRecipients.length
+      ? `Auto-evaluation soumise aux managers concernes (${managerRecipients.map((recipient) => recipient.manager).join(', ')}).`
+      : `Auto-evaluation soumise a ${formatSubmissionTarget(resolvedManagers)}.`,
     ...(await buildEvaluationPayload(instance, request.user)),
   });
 }
@@ -285,7 +312,7 @@ async function getMyAssistantResults(request, response) {
       : 0;
 
   const comparisonSubtitle =
-    teamDelta > 0 ? 'Au-dessus de la moyenne' : teamDelta < 0 ? 'En-dessous de la moyenne' : 'Égal à la moyenne';
+    teamDelta > 0 ? 'Au-dessus de la moyenne' : teamDelta < 0 ? 'En-dessous de la moyenne' : 'Egal a la moyenne';
 
   return response.json({
     cycle_label: CURRENT_CYCLE_LABEL,
