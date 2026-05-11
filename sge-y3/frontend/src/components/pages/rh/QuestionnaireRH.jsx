@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { initialQuestionSections } from "@/components/pages/rh/rhData";
 
-function QuestionnaireRH() {
+function QuestionnaireRH({ assistantMode = false }) {
   const [sections, setSections] = useState(initialQuestionSections);
   const [selectedSectionId, setSelectedSectionId] = useState(initialQuestionSections[0].id);
   const [questionText, setQuestionText] = useState("");
@@ -57,7 +57,9 @@ function QuestionnaireRH() {
         <div className="mb-5">
           <h2 className="text-xl font-extrabold text-[#0F3A63]">Sections existantes</h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">
-            La RH peut enrichir le questionnaire d'évaluation utilisé pendant le cycle.
+            {assistantMode
+              ? "L'assistante RH peut creer des sections et ajouter des questions au questionnaire."
+              : "La RH peut enrichir le questionnaire d'évaluation utilisé pendant le cycle."}
           </p>
         </div>
 

@@ -53,6 +53,7 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
   const [resultsData, setResultsData] = useState(null);
   const [resultsError, setResultsError] = useState("");
   const [isLoadingResults, setIsLoadingResults] = useState(true);
+  const [missionEvaluations, setMissionEvaluations] = useState([]);
   const displayName = getDisplayName(user);
   const profileKey = [user?.id, user?.email, user?.first_name, user?.last_name, user?.grade, user?.department].join("|");
 
@@ -178,13 +179,22 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
           key={evaluationData?.evaluation?.id || "assistant-evaluation"}
           evaluationData={evaluationData}
           onEvaluationChange={handleEvaluationUpdate}
+          onMissionEvaluationsChange={setMissionEvaluations}
           onSubmitted={handleEvaluationUpdate}
         />
       );
     }
 
     if (activeSection === "results") {
-      return <Mesresultats resultsData={resultsData} isLoading={isLoadingResults} errorMessage={resultsError} />;
+      return (
+        <Mesresultats
+          evaluationData={evaluationData}
+          missionEvaluations={missionEvaluations}
+          resultsData={resultsData}
+          isLoading={isLoadingResults}
+          errorMessage={resultsError}
+        />
+      );
     }
 
     if (activeSection === "goals") {

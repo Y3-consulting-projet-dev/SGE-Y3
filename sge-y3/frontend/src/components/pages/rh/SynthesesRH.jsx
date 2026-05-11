@@ -1,6 +1,6 @@
 ﻿import { syntheseRows } from "@/components/pages/rh/rhData";
 
-function SynthesesRH() {
+function SynthesesRH({ readOnly = false }) {
   return (
     <section className="rounded-xl bg-white p-5 shadow-sm">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -8,7 +8,14 @@ function SynthesesRH() {
           <h2 className="text-xl font-extrabold text-[#0F3A63]">Syntheses RH</h2>
           <p className="text-sm font-semibold text-slate-500">Dossiers consolidés et prêts à être transmis.</p>
         </div>
-        <button className="rounded-full bg-[#0D496A] px-4 py-2 text-xs font-bold text-white">Transmettre à l'Associé</button>
+        <button
+          disabled={readOnly}
+          className={`rounded-full px-4 py-2 text-xs font-bold ${
+            readOnly ? "cursor-not-allowed bg-slate-200 text-slate-500" : "bg-[#0D496A] text-white"
+          }`}
+        >
+          {readOnly ? "Lecture seule" : "Transmettre à l'Associé"}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">

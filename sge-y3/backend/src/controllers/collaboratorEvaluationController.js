@@ -37,7 +37,7 @@ function buildEvaluationPayload(instance, user) {
       grade: user.grade,
       department: user.department,
       current_cycle: CURRENT_CYCLE_LABEL,
-      submitted_to: 'RH / Capital Humain',
+      submitted_to: instance.submitted_to_managers?.length ? instance.submitted_to_managers : 'Manager',
     },
   };
 }
@@ -142,6 +142,14 @@ async function saveMyAssistantEvaluation(request, response) {
 async function submitMyAssistantEvaluation(request, response) {
   const instance = await getOrCreateAssistantEvaluation(request.user);
   const sections = normalizeSections(instance.sections);
+  const managerRecipients = Array.isArray(request.body?.managerRecipients)
+    ? request.body.managerRecipients
+        .filter((recipient) => recipient?.manager && recipient?.department)
+        .map((recipient) => ({
+          manager: String(recipient.manager).trim(),
+          department: String(recipient.department).trim(),
+        }))
+    : [];
   const missingAnswers = validateSectionsForSubmit(sections);
 
   if (missingAnswers.length) {
@@ -159,13 +167,17 @@ async function submitMyAssistantEvaluation(request, response) {
     comment: section.comment,
     criteria: section.criteria,
   }));
-  instance.status = 'Soumis a RH';
+  instance.status = 'Soumis aux Managers';
+  instance.submitted_to_role = 'manager';
+  instance.submitted_to_managers = managerRecipients;
   instance.submitted_at = new Date();
   instance.last_saved_at = new Date();
   await instance.save();
 
   return response.json({
-    message: 'Auto-evaluation soumise a la RH / Capital Humain.',
+    message: managerRecipients.length
+      ? `Auto-evaluation soumise aux managers concernes (${managerRecipients.map((recipient) => recipient.manager).join(', ')}).`
+      : 'Auto-evaluation soumise au manager.',
     ...buildEvaluationPayload(instance, request.user),
   });
 }
