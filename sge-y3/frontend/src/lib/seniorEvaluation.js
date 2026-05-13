@@ -29,31 +29,27 @@ async function request(path, options = {}) {
   return data;
 }
 
-export function getMyAssistantEvaluation() {
-  return request("/collaborator/evaluation/me");
+export function getMySeniorEvaluation() {
+  return request("/senior/evaluation/me");
 }
 
-export function getMyAssistantResults() {
-  return request("/collaborator/results/me");
-}
-
-export function saveMyAssistantEvaluation(payload) {
-  return request("/collaborator/evaluation/me", {
+export function saveMySeniorEvaluation(payload) {
+  return request("/senior/evaluation/me", {
     method: "PUT",
     body: JSON.stringify(payload),
   });
 }
 
-export function submitMyAssistantMissionEvaluation(missionId) {
-  return request("/collaborator/evaluation/me/missions/submit", {
+export function submitMySeniorMissionEvaluation(missionId) {
+  return request("/senior/evaluation/me/missions/submit", {
     method: "POST",
     body: JSON.stringify({ missionId }),
   });
 }
 
-export function submitMyAssistantEvaluation(payload = {}) {
-  return request("/collaborator/evaluation/me/submit", {
+export function submitMySeniorEvaluation() {
+  return request("/senior/evaluation/me/submit", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify({}),
   });
 }

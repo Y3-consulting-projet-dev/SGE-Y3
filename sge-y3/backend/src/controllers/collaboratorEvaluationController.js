@@ -1,6 +1,7 @@
 const EvaluationInstance = require('../models/EvaluationInstance');
 const User = require('../models/User');
 const { cloneAssistantEvaluationTemplate } = require('../utils/assistantEvaluationTemplate');
+const { cloneSeniorEvaluationTemplate } = require('../utils/seniorEvaluationTemplate');
 const {
   getAverageScore,
   getEvaluationSummary,
@@ -30,11 +31,102 @@ async function resolveManagersForAssistant(user) {
 
   return User.find({
     is_active: true,
+    code_categorie: { $in: ['9A', '9B', '10B', '10C'] },
+    department: { $in: targetDepartments },
+  })
+    .sort({ last_name: 1, first_name: 1 })
+    .select('_id name first_name last_name grade department code_categorie');
+}
+
+async function resolveManagersForSenior(user) {
+  const targetDepartments = getManagerDepartmentsForDepartment(user.department);
+
+  if (!targetDepartments.length) {
+    return [];
+  }
+
+  return User.find({
+    is_active: true,
     code_categorie: { $in: ['10B', '10C'] },
     department: { $in: targetDepartments },
   })
     .sort({ last_name: 1, first_name: 1 })
-    .select('_id name first_name last_name grade department');
+    .select('_id name first_name last_name grade department code_categorie');
+}
+
+async function resolveRecipientsForInstance(instance, user) {
+  if (instance?.template_type === 'senior-self-evaluation') {
+    return resolveManagersForSenior(user);
+  }
+
+  return resolveManagersForAssistant(user);
+}
+
+function buildRecipientOptions(recipients = [], user) {
+  const targetDepartments = getManagerDepartmentsForDepartment(user?.department);
+
+  return targetDepartments.map((department) => {
+    const users = recipients.filter(
+      (recipient) => String(recipient.department || '').trim().toUpperCase() === String(department || '').trim().toUpperCase()
+    );
+
+    return {
+      department,
+      users: users.map((recipient) => ({
+        id: recipient._id.toString(),
+        name: recipient.name,
+        first_name: recipient.first_name,
+        last_name: recipient.last_name,
+        grade: recipient.grade,
+        department: recipient.department,
+        code_categorie: recipient.code_categorie,
+      })),
+    };
+  });
+}
+
+function buildMissionRecipients(recipients = []) {
+  return recipients.map((recipient) => ({
+    user_id: recipient._id,
+    name: recipient.name,
+    grade: recipient.grade,
+    department: recipient.department,
+  }));
+}
+
+function mergeManagerRecipients(explicitRecipients = [], resolvedManagers = []) {
+  const seen = new Set();
+  const merged = [];
+
+  const pushRecipient = (recipient = {}) => {
+    const manager = String(recipient.manager || recipient.name || '').trim();
+    const department = String(recipient.department || '').trim();
+
+    if (!manager || !department) {
+      return;
+    }
+
+    const key = `${department}::${manager}`;
+    if (seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    merged.push({
+      department,
+      manager,
+    });
+  };
+
+  explicitRecipients.forEach(pushRecipient);
+  resolvedManagers.forEach((manager) =>
+    pushRecipient({
+      manager: manager.name,
+      department: manager.department,
+    })
+  );
+
+  return merged;
 }
 
 function toPersistenceSections(sections = []) {
@@ -74,6 +166,94 @@ function toPersistenceSections(sections = []) {
   }));
 }
 
+function normalizeMissionEvaluations(missionEvaluations = []) {
+  return missionEvaluations.map((mission) => ({
+    mission_id: String(mission.id || mission.mission_id || '').trim(),
+    title: String(mission.title || '').trim(),
+    period: String(mission.period || '').trim(),
+    department: String(mission.department || '').trim(),
+    created_by_role: String(mission.created_by_role || mission.createdByRole || 'self').trim() || 'self',
+    assigned_by_user_id: mission.assigned_by_user_id || mission.assignedByUserId || null,
+    assigned_by_name: String(mission.assigned_by_name || mission.assignedByName || '').trim(),
+    assigned_by_grade: String(mission.assigned_by_grade || mission.assignedByGrade || '').trim(),
+    assigned_at: mission.assigned_at || mission.assignedAt || null,
+    recipients: Array.isArray(mission.recipients)
+      ? mission.recipients
+          .filter((recipient) => (recipient?.id || recipient?.user_id) && recipient?.name)
+          .map((recipient) => ({
+            user_id: recipient.id || recipient.user_id,
+            name: String(recipient.name || '').trim(),
+            grade: String(recipient.grade || '').trim(),
+            department: String(recipient.department || '').trim(),
+          }))
+      : [],
+    criteria: Array.isArray(mission.criteria)
+      ? mission.criteria.map((criterion) => ({
+          criterion_id: String(criterion.id || criterion.criterion_id || '').trim(),
+          section_title: String(criterion.sectionTitle || criterion.section_title || '').trim(),
+          page_title: String(criterion.pageTitle || criterion.page_title || '').trim(),
+          source_sheet: String(criterion.sourceSheet || criterion.source_sheet || '').trim(),
+          source_label: String(criterion.sourceLabel || criterion.source_label || '').trim(),
+          theme_code: String(criterion.themeCode || criterion.theme_code || '').trim(),
+          label: String(criterion.label || '').trim(),
+          statement: String(criterion.statement || '').trim(),
+          score: criterion.score ?? null,
+        }))
+      : [],
+    comment: String(mission.comment || '').trim(),
+    status: String(mission.status || 'Brouillon').trim(),
+    submitted_at: mission.submitted_at || null,
+  }));
+}
+
+function formatMissionEvaluations(missionEvaluations = []) {
+  return missionEvaluations.map((mission) => ({
+    id: mission.mission_id,
+    title: mission.title,
+    period: mission.period,
+    department: mission.department,
+    createdByRole: mission.created_by_role || 'self',
+    assignedByUserId: mission.assigned_by_user_id?.toString?.() || String(mission.assigned_by_user_id || ''),
+    assignedByName: mission.assigned_by_name || '',
+    assignedByGrade: mission.assigned_by_grade || '',
+    assignedAt: mission.assigned_at || null,
+    recipients: (mission.recipients || []).map((recipient) => ({
+      id: recipient.user_id?.toString?.() || String(recipient.user_id || ''),
+      name: recipient.name,
+      grade: recipient.grade,
+      department: recipient.department,
+    })),
+    criteria: (mission.criteria || []).map((criterion) => ({
+      id: criterion.criterion_id,
+      sectionTitle: criterion.section_title,
+      pageTitle: criterion.page_title,
+      sourceSheet: criterion.source_sheet,
+      sourceLabel: criterion.source_label,
+      themeCode: criterion.theme_code,
+      label: criterion.label,
+      statement: criterion.statement,
+      score: criterion.score,
+    })),
+    comment: mission.comment || '',
+    status: mission.status || 'Brouillon',
+    submitted_at: mission.submitted_at || null,
+  }));
+}
+
+function validateMissionEvaluations(missionEvaluations = []) {
+  for (const mission of missionEvaluations) {
+    for (const criterion of mission.criteria || []) {
+      if (criterion.score !== null && criterion.score !== undefined) {
+        if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
+          return `La note du critere "${criterion.label}" doit etre comprise entre 1 et 5.`;
+        }
+      }
+    }
+  }
+
+  return '';
+}
+
 function formatSubmissionTarget(managers = []) {
   if (!managers.length) {
     return 'Manager du departement';
@@ -99,7 +279,7 @@ function formatManagerRecipients(recipients = []) {
 async function buildEvaluationPayload(instance, user) {
   const sections = normalizeSections(instance.sections);
   const activeSection = sections.find((section) => section.status !== 'Complete') || sections[0] || null;
-  const managers = await resolveManagersForAssistant(user);
+  const managers = await resolveRecipientsForInstance(instance, user);
   const submittedTo =
     formatManagerRecipients(instance.submitted_to_managers) || formatSubmissionTarget(managers);
 
@@ -133,9 +313,12 @@ async function buildEvaluationPayload(instance, user) {
         last_name: manager.last_name,
         grade: manager.grade,
         department: manager.department,
+        code_categorie: manager.code_categorie,
       })),
+      recipient_options: buildRecipientOptions(managers, user),
       submitted_to_managers: instance.submitted_to_managers || [],
     },
+    mission_evaluations: formatMissionEvaluations(instance.mission_evaluations || []),
   };
 }
 
@@ -168,20 +351,28 @@ function shouldResetToCurrentTemplate(instance, templateSections) {
 }
 
 async function getOrCreateAssistantEvaluation(user) {
+  return getOrCreateSelfEvaluation(user, 'assistant-self-evaluation', cloneAssistantEvaluationTemplate);
+}
+
+async function getOrCreateSeniorEvaluation(user) {
+  return getOrCreateSelfEvaluation(user, 'senior-self-evaluation', cloneSeniorEvaluationTemplate);
+}
+
+async function getOrCreateSelfEvaluation(user, templateType, cloneTemplate) {
   let instance = await EvaluationInstance.findOne({
     evalue_id: user._id,
     cycle_label: CURRENT_CYCLE_LABEL,
-    template_type: 'assistant-self-evaluation',
+    template_type: templateType,
   });
 
-  const templateSections = cloneAssistantEvaluationTemplate(user);
+  const templateSections = cloneTemplate(user);
 
   if (!instance) {
     instance = await EvaluationInstance.create({
       cycle_label: CURRENT_CYCLE_LABEL,
       evalue_id: user._id,
       status: 'En cours',
-      template_type: 'assistant-self-evaluation',
+      template_type: templateType,
       sections: toPersistenceSections(templateSections),
       last_saved_at: new Date(),
     });
@@ -200,7 +391,16 @@ async function getMyAssistantEvaluation(request, response) {
 }
 
 async function saveMyAssistantEvaluation(request, response) {
+  return saveMySelfEvaluation(request, response, getOrCreateAssistantEvaluation);
+}
+
+async function saveMySeniorEvaluation(request, response) {
+  return saveMySelfEvaluation(request, response, getOrCreateSeniorEvaluation);
+}
+
+async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
   const rawSections = Array.isArray(request.body?.sections) ? request.body.sections : null;
+  const rawMissionEvaluations = Array.isArray(request.body?.missionEvaluations) ? request.body.missionEvaluations : null;
 
   if (!rawSections?.length) {
     return response.status(400).json({
@@ -222,10 +422,32 @@ async function saveMyAssistantEvaluation(request, response) {
     }
   }
 
-  const instance = await getOrCreateAssistantEvaluation(request.user);
+  let missionEvaluations = rawMissionEvaluations ? normalizeMissionEvaluations(rawMissionEvaluations) : null;
+  const missionValidationMessage = missionEvaluations ? validateMissionEvaluations(missionEvaluations) : '';
+
+  if (missionValidationMessage) {
+    return response.status(400).json({
+      message: missionValidationMessage,
+    });
+  }
+
+  const instance = await getOrCreateEvaluation(request.user);
   const summary = getEvaluationSummary(sections);
+  const resolvedManagers = await resolveRecipientsForInstance(instance, request.user);
+
+  if (missionEvaluations && instance.template_type === 'assistant-self-evaluation') {
+    const fullRecipients = buildMissionRecipients(resolvedManagers);
+    missionEvaluations = missionEvaluations.map((mission) => ({
+      ...mission,
+      department: mission.department || request.user.department || '',
+      recipients: fullRecipients,
+    }));
+  }
 
   instance.sections = toPersistenceSections(sections);
+  if (missionEvaluations) {
+    instance.mission_evaluations = missionEvaluations;
+  }
   instance.status = summary.globalProgress === 0 ? 'Brouillon' : 'En cours';
   instance.last_saved_at = new Date();
   await instance.save();
@@ -237,18 +459,77 @@ async function saveMyAssistantEvaluation(request, response) {
 }
 
 async function submitMyAssistantEvaluation(request, response) {
-  const instance = await getOrCreateAssistantEvaluation(request.user);
+  return submitMySelfEvaluation(request, response, getOrCreateAssistantEvaluation, true);
+}
+
+async function submitMyAssistantMissionEvaluation(request, response) {
+  return submitMySelfMissionEvaluation(request, response, getOrCreateAssistantEvaluation);
+}
+
+async function submitMySeniorMissionEvaluation(request, response) {
+  return submitMySelfMissionEvaluation(request, response, getOrCreateSeniorEvaluation);
+}
+
+async function submitMySelfMissionEvaluation(request, response, getOrCreateEvaluation) {
+  const missionId = String(request.body?.missionId || '').trim();
+
+  if (!missionId) {
+    return response.status(400).json({
+      message: 'La mission a soumettre est requise.',
+    });
+  }
+
+  const instance = await getOrCreateEvaluation(request.user);
+  const missionEvaluations = normalizeMissionEvaluations(instance.mission_evaluations || []);
+  const mission = missionEvaluations.find((item) => item.mission_id === missionId);
+
+  if (!mission) {
+    return response.status(404).json({
+      message: 'Mission introuvable.',
+    });
+  }
+
+  const hasIncompleteCriterion = (mission.criteria || []).some(
+    (criterion) => criterion.score === null || criterion.score === undefined
+  );
+
+  if (hasIncompleteCriterion) {
+    return response.status(400).json({
+      message: 'Toutes les questions de la mission doivent etre renseignees avant soumission.',
+    });
+  }
+
+  mission.status = 'Soumise';
+  mission.submitted_at = new Date();
+  instance.mission_evaluations = missionEvaluations;
+  instance.last_saved_at = new Date();
+  await instance.save();
+
+  return response.json({
+    message: `Mission soumise a ${mission.recipients.map((recipient) => recipient.name).join(', ')}.`,
+    ...(await buildEvaluationPayload(instance, request.user)),
+  });
+}
+
+async function submitMySeniorEvaluation(request, response) {
+  return submitMySelfEvaluation(request, response, getOrCreateSeniorEvaluation, false);
+}
+
+async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, allowExplicitRecipients) {
+  const instance = await getOrCreateEvaluation(request.user);
   const sections = normalizeSections(instance.sections);
-  const managerRecipients = Array.isArray(request.body?.managerRecipients)
-    ? request.body.managerRecipients
-        .filter((recipient) => recipient?.manager && recipient?.department)
-        .map((recipient) => ({
-          manager: String(recipient.manager).trim(),
-          department: String(recipient.department).trim(),
-        }))
-    : [];
+  const managerRecipients =
+    allowExplicitRecipients && Array.isArray(request.body?.managerRecipients)
+      ? request.body.managerRecipients
+          .filter((recipient) => recipient?.manager && recipient?.department)
+          .map((recipient) => ({
+            manager: String(recipient.manager).trim(),
+            department: String(recipient.department).trim(),
+          }))
+      : [];
   const missingAnswers = validateSectionsForSubmit(sections);
-  const resolvedManagers = await resolveManagersForAssistant(request.user);
+  const resolvedManagers = await resolveRecipientsForInstance(instance, request.user);
+  const mergedManagerRecipients = mergeManagerRecipients(managerRecipients, resolvedManagers);
 
   if (missingAnswers.length) {
     return response.status(400).json({
@@ -260,21 +541,26 @@ async function submitMyAssistantEvaluation(request, response) {
   instance.sections = toPersistenceSections(sections);
   instance.status = 'Soumis aux Managers';
   instance.submitted_to_role = 'manager';
-  instance.submitted_to_managers = managerRecipients;
+  instance.submitted_to_managers = mergedManagerRecipients;
   instance.submitted_to_user_ids = resolvedManagers.map((manager) => manager._id);
-  instance.submitted_to_names = managerRecipients.length
-    ? managerRecipients.map((recipient) => recipient.manager)
+  instance.submitted_to_names = mergedManagerRecipients.length
+    ? mergedManagerRecipients.map((recipient) => recipient.manager)
     : resolvedManagers.map((manager) => manager.name);
   instance.submitted_at = new Date();
   instance.last_saved_at = new Date();
   await instance.save();
 
   return response.json({
-    message: managerRecipients.length
-      ? `Auto-evaluation soumise aux managers concernes (${managerRecipients.map((recipient) => recipient.manager).join(', ')}).`
+    message: mergedManagerRecipients.length
+      ? `Auto-evaluation soumise aux managers concernes (${mergedManagerRecipients.map((recipient) => recipient.manager).join(', ')}).`
       : `Auto-evaluation soumise a ${formatSubmissionTarget(resolvedManagers)}.`,
     ...(await buildEvaluationPayload(instance, request.user)),
   });
+}
+
+async function getMySeniorEvaluation(request, response) {
+  const instance = await getOrCreateSeniorEvaluation(request.user);
+  return response.json(await buildEvaluationPayload(instance, request.user));
 }
 
 async function getMyAssistantResults(request, response) {
@@ -339,6 +625,11 @@ async function getMyAssistantResults(request, response) {
 module.exports = {
   getMyAssistantEvaluation,
   getMyAssistantResults,
+  getMySeniorEvaluation,
   saveMyAssistantEvaluation,
+  saveMySeniorEvaluation,
+  submitMyAssistantMissionEvaluation,
   submitMyAssistantEvaluation,
+  submitMySeniorMissionEvaluation,
+  submitMySeniorEvaluation,
 };

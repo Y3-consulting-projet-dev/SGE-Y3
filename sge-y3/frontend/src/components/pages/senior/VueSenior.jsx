@@ -1,5 +1,5 @@
-﻿import { useMemo, useState } from "react";
-import { LogOut, UserRound } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { LogOut } from "lucide-react";
 import logoY3 from "@/assets/logo-y3.png";
 import { menuGroups } from "@/components/pages/senior/seniorData";
 import Vueensemble from "@/components/pages/senior/Vueensemble";
@@ -10,12 +10,84 @@ import MesobjectifsSenior from "@/components/pages/senior/MesobjectifsSenior";
 import MonautoevaluationSenior from "@/components/pages/senior/MonautoevaluationSenior";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import { getDisplayName, getInitials } from "@/lib/userPresentation";
+import { getSeniorAssistants, getSeniorCommonMissions, getSeniorOverview } from "@/lib/seniorAssistants";
 
 function VueSenior({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
+  const [assistants, setAssistants] = useState([]);
+  const [commonMissions, setCommonMissions] = useState([]);
+  const [overviewData, setOverviewData] = useState(null);
+  const [selectedAssistantId, setSelectedAssistantId] = useState("");
+  const [assistantsError, setAssistantsError] = useState("");
+  const [isLoadingAssistants, setIsLoadingAssistants] = useState(true);
   const displayName = getDisplayName(user);
   const profileKey = [user?.id, user?.email, user?.first_name, user?.last_name, user?.grade, user?.department].join("|");
   const initials = getInitials(user);
+
+  async function refreshSeniorData() {
+    setIsLoadingAssistants(true);
+    setAssistantsError("");
+
+    try {
+      const [assistantsResponse, missionsResponse, overviewResponse] = await Promise.all([
+        getSeniorAssistants(),
+        getSeniorCommonMissions(),
+        getSeniorOverview(),
+      ]);
+
+      setAssistants(assistantsResponse.assistants || []);
+      setSelectedAssistantId((current) => current || assistantsResponse.assistants?.[0]?.id || "");
+      setCommonMissions(missionsResponse.missions || []);
+      setOverviewData(overviewResponse);
+    } catch (error) {
+      setAssistantsError(error.message || "Chargement des assistants impossible.");
+    } finally {
+      setIsLoadingAssistants(false);
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAssistants() {
+      try {
+        setIsLoadingAssistants(true);
+        setAssistantsError("");
+        const [assistantsResponse, missionsResponse, overviewResponse] = await Promise.all([
+          getSeniorAssistants(),
+          getSeniorCommonMissions(),
+          getSeniorOverview(),
+        ]);
+
+        if (cancelled) return;
+
+        setAssistants(assistantsResponse.assistants || []);
+        setSelectedAssistantId((current) => current || assistantsResponse.assistants?.[0]?.id || "");
+        setCommonMissions(missionsResponse.missions || []);
+        setOverviewData(overviewResponse);
+      } catch (error) {
+        if (!cancelled) {
+          setAssistantsError(error.message || "Chargement des assistants impossible.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingAssistants(false);
+        }
+      }
+    }
+
+    loadAssistants();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeSection === "overview" || activeSection === "goals" || activeSection === "reviews" || activeSection === "results") {
+      refreshSeniorData();
+    }
+  }, [activeSection]);
 
   const pageTitle = useMemo(() => {
     if (activeSection === "assistants") return "MES ASSISTANTS";
@@ -79,35 +151,48 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
               <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
               {activeSection === "overview" ? <p className="mt-1 text-sm text-slate-500">{displayName} - {user?.grade}</p> : null}
             </div>
-            
-           <div className="flex items-center gap-5">
-                            
-                             <div className="flex items-center gap-2">
-                               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1F4A72] text-xs font-bold text-white">{initials}</div>
-                               <div className="text-xs">
-                                 <p className="font-semibold text-[#73AF2E]">{displayName}</p>
-                                 <p className="font-semibold text-[#0F3A63]">{user?.grade}</p>
-                               </div>
-                             </div>
-                           </div>
+
+            <div className="flex items-center gap-5">
+              <div className="flex items-center gap-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1F4A72] text-xs font-bold text-white">{initials}</div>
+                <div className="text-xs">
+                  <p className="font-semibold text-[#73AF2E]">{displayName}</p>
+                  <p className="font-semibold text-[#0F3A63]">{user?.grade}</p>
+                </div>
+              </div>
+            </div>
           </header>
 
           {activeSection === "overview" ? (
-            <Vueensemble onOpen={setActiveSection} />
+            <Vueensemble onOpen={setActiveSection} overviewData={overviewData} isLoading={isLoadingAssistants} errorMessage={assistantsError} />
           ) : activeSection === "assistants" ? (
-            <Mesassistants onOpenReview={() => setActiveSection("reviews")} />
+            <Mesassistants
+              assistants={assistants}
+              isLoading={isLoadingAssistants}
+              errorMessage={assistantsError}
+              onOpenReview={(assistantId) => {
+                setSelectedAssistantId(assistantId);
+                setActiveSection("reviews");
+              }}
+            />
           ) : activeSection === "reviews" ? (
-            <Evaluerassistants />
+            <Evaluerassistants
+              assistants={assistants}
+              isLoadingAssistants={isLoadingAssistants}
+              assistantsError={assistantsError}
+              selectedAssistantId={selectedAssistantId}
+              onAssistantChange={setSelectedAssistantId}
+            />
           ) : activeSection === "results" ? (
             <MesresultatsSenior />
           ) : activeSection === "goals" ? (
-            <MesobjectifsSenior />
+            <MesobjectifsSenior missions={commonMissions} isLoading={isLoadingAssistants} errorMessage={assistantsError} />
           ) : activeSection === "self-evaluation" ? (
-            <MonautoevaluationSenior />
+            <MonautoevaluationSenior user={user} />
           ) : activeSection === "profile" ? (
             <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />
           ) : (
-            <Vueensemble onOpen={setActiveSection} />
+            <Vueensemble onOpen={setActiveSection} overviewData={overviewData} isLoading={isLoadingAssistants} errorMessage={assistantsError} />
           )}
         </main>
       </div>

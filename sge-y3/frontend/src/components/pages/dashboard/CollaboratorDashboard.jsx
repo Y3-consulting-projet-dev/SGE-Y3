@@ -14,7 +14,6 @@ import logoY3 from "@/assets/logo-y3.png";
 import MonTableauDeBord from "@/components/pages/collaborator/Collaboratordashboard";
 import Monautoevaluation from "@/components/pages/collaborator/Monautoevaluation";
 import Mesresultats from "@/components/pages/collaborator/Mesresultats";
-import Mesobjectifs from "@/components/pages/collaborator/Mesobjectifs";
 import Mondeveloppement from "@/components/pages/collaborator/Mondeveloppement";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import { getDisplayName } from "@/lib/userPresentation";
@@ -35,7 +34,6 @@ const menuGroups = [
   {
     title: "Developpement",
     items: [
-      { key: "goals", label: "Mes objectifs", icon: Target },
       { key: "development", label: "Mon développement", icon: TrendingUp },
     ],
   },
@@ -135,7 +133,6 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
     if (activeSection === "dashboard") return "TABLEAU DE BORD";
     if (activeSection === "self-evaluation") return "MON AUTO-ÉVALUATION";
     if (activeSection === "results") return "MES RESULTATS";
-    if (activeSection === "goals") return "MES OBJECTIFS";
     if (activeSection === "development") return "MON DEVELOPPEMENT";
     if (activeSection === "profile") return "MON PROFIL";
     return "ESPACE COLLABORATEUR";
@@ -195,10 +192,6 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
           errorMessage={resultsError}
         />
       );
-    }
-
-    if (activeSection === "goals") {
-      return <Mesobjectifs />;
     }
 
     if (activeSection === "development") {
