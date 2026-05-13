@@ -343,18 +343,14 @@ function MonautoevaluationSenior({ user }) {
     }))
   );
   const initialRecipientValue = recipientOptions[0] ? getRecipientOptionValue(recipientOptions[0]) : "";
-
-  useEffect(() => {
-    if (selectedRecipientValue && recipientOptions.some((recipient) => getRecipientOptionValue(recipient) === selectedRecipientValue)) {
-      return;
-    }
-
-    setSelectedRecipientValue(initialRecipientValue);
-  }, [initialRecipientValue, recipientOptions, selectedRecipientValue]);
+  const effectiveRecipientValue =
+    selectedRecipientValue && recipientOptions.some((recipient) => getRecipientOptionValue(recipient) === selectedRecipientValue)
+      ? selectedRecipientValue
+      : initialRecipientValue;
 
   const selectedRecipient = useMemo(
-    () => recipientOptions.find((recipient) => getRecipientOptionValue(recipient) === selectedRecipientValue) || null,
-    [recipientOptions, selectedRecipientValue]
+    () => recipientOptions.find((recipient) => getRecipientOptionValue(recipient) === effectiveRecipientValue) || null,
+    [effectiveRecipientValue, recipientOptions]
   );
 
   const activeSection = sections.find((section) => Number(section.id) === Number(activeSectionId)) || sections[0];
@@ -713,7 +709,7 @@ function MonautoevaluationSenior({ user }) {
                   className="w-full rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-[#0F3A63] outline-none"
                 />
                 <select
-                  value={selectedRecipientValue}
+                  value={effectiveRecipientValue}
                   onChange={(event) => setSelectedRecipientValue(event.target.value)}
                   className="w-full rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-[#0F3A63] outline-none"
                 >

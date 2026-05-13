@@ -76,16 +76,35 @@ function getMissionAssignmentLabel(mission) {
   return "";
 }
 
-function getMissionValidationLabel(mission) {
+function getMissionEvaluationDepartment(mission) {
+  return mission?.primaryRecipientDepartment || mission?.department || mission?.recipients?.[0]?.department || "";
+}
+
+function getMissionPrimaryRecipient(mission) {
   if (mission?.createdByRole === "senior") {
-    return mission?.department || "";
+    return mission?.assignedByName || "";
   }
 
-  if (!mission?.department) {
-    return "Circuit de validation du departement";
+  if (mission?.primaryRecipientName) {
+    return mission.primaryRecipientName;
   }
 
-  return `${mission.department} - Circuit de validation du departement`;
+  return mission?.recipients?.[0]?.name || "";
+}
+
+function getMissionValidationLabel(mission) {
+  const department = getMissionEvaluationDepartment(mission);
+  const primaryRecipient = getMissionPrimaryRecipient(mission);
+
+  if (mission?.createdByRole === "senior") {
+    return primaryRecipient ? `${department} - Destinataire : ${primaryRecipient}` : department;
+  }
+
+  if (!department) {
+    return primaryRecipient ? `Destinataire : ${primaryRecipient}` : "Circuit de validation du departement";
+  }
+
+  return primaryRecipient ? `${department} - Destinataire : ${primaryRecipient}` : `${department} - Circuit de validation du departement`;
 }
 
 function isSameMissionId(left, right) {
@@ -179,9 +198,10 @@ function getMissionGroupProgress(group) {
 function sanitizeMissionEvaluation(mission) {
   if (!mission) return mission;
 
-  const recipientDepartment = mission.department || mission.recipients?.[0]?.department || "";
+  const recipientDepartment = getMissionEvaluationDepartment(mission);
   return {
     ...mission,
+    department: recipientDepartment || mission.department || "",
     criteria: (mission.criteria || []).filter((criterion) =>
       shouldShowMissionGroupForRecipient(
         {
@@ -348,7 +368,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   const activeMissionAverage = useMemo(() => getMissionAverage(activeMission?.criteria), [activeMission]);
   const filteredMissionCriteriaGroups = useMemo(() => {
     const allGroups = getMissionCriteriaGroups(activeMission?.criteria || []);
-    const recipientDepartment = activeMission?.department || activeMission?.recipients?.[0]?.department || "";
+    const recipientDepartment = getMissionEvaluationDepartment(activeMission);
 
     return allGroups.filter((group) => shouldShowMissionGroupForRecipient(group, recipientDepartment));
   }, [activeMission]);
@@ -362,9 +382,13 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     Math.max((activeMissionSection?.groups?.length || 1) - 1, 0)
   );
   const activeMissionGroup = activeMissionSection?.groups?.[activeMissionPageIndex] || activeMissionSection?.groups?.[0] || null;
+  const effectiveRecipientValue =
+    selectedRecipientValue && recipientOptions.some((recipient) => getRecipientOptionValue(recipient) === selectedRecipientValue)
+      ? selectedRecipientValue
+      : initialRecipientValue;
   const selectedRecipient = useMemo(
-    () => recipientOptions.find((recipient) => getRecipientOptionValue(recipient) === selectedRecipientValue) || null,
-    [recipientOptions, selectedRecipientValue]
+    () => recipientOptions.find((recipient) => getRecipientOptionValue(recipient) === effectiveRecipientValue) || null,
+    [effectiveRecipientValue, recipientOptions]
   );
   const managerRecipients = useMemo(() => {
     const recipients = missionEvaluations.flatMap((mission) =>
@@ -383,19 +407,6 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
         ) === index
     );
   }, [missionEvaluations]);
-
-  useEffect(() => {
-    if (!selectedRecipientValue && initialRecipientValue) {
-      setSelectedRecipientValue(initialRecipientValue);
-      return;
-    }
-    if (selectedRecipientValue && recipientOptions.some((recipient) => getRecipientOptionValue(recipient) === selectedRecipientValue)) {
-      return;
-    }
-    if (initialRecipientValue) {
-      setSelectedRecipientValue(initialRecipientValue);
-    }
-  }, [initialRecipientValue, recipientOptions, selectedRecipientValue]);
 
   useEffect(() => {
     onMissionEvaluationsChange?.(missionEvaluations);
@@ -432,7 +443,11 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
       return;
     }
 
-    const autoRecipients = recipientOptions.map((recipient) => ({
+    const orderedRecipients = [
+      selectedRecipient,
+      ...recipientOptions.filter((recipient) => getRecipientOptionValue(recipient) !== getRecipientOptionValue(selectedRecipient)),
+    ];
+    const autoRecipients = orderedRecipients.map((recipient) => ({
       id: recipient.id,
       name: recipient.name,
       grade: recipient.grade,
@@ -443,10 +458,14 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
       id: Date.now(),
       title,
       period: missionPeriod.trim() || "Periode non renseignee",
-      department: evaluationData?.assignee?.department || selectedRecipient.department,
+      department: selectedRecipient.department || evaluationData?.assignee?.department || "",
       createdByRole: "self",
+      primaryRecipientUserId: selectedRecipient.id,
+      primaryRecipientName: selectedRecipient.name,
+      primaryRecipientGrade: selectedRecipient.grade,
+      primaryRecipientDepartment: selectedRecipient.department,
       recipients: autoRecipients,
-      criteria: buildMissionCriteriaFromSections(sections, evaluationData?.assignee?.department || selectedRecipient.department),
+      criteria: buildMissionCriteriaFromSections(sections, selectedRecipient.department || evaluationData?.assignee?.department || ""),
       comment: "",
     };
 
@@ -483,18 +502,6 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     setMissionEvaluations((missions) =>
       missions.map((mission) => (isSameMissionId(mission.id, activeMissionId) ? { ...mission, comment } : mission))
     );
-  };
-
-  const goToMissionGroup = (direction) => {
-    if (!activeMission) return;
-
-    const nextIndex = activeMissionPageIndex + direction;
-    if (nextIndex < 0 || nextIndex >= (activeMissionSection?.groups?.length || 0)) return;
-
-    setMissionPageIndexes((current) => ({
-      ...current,
-      [activeMission.id]: nextIndex,
-    }));
   };
 
   const goToMissionStep = (direction) => {
@@ -769,7 +776,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                 className="mt-2 h-10 w-full rounded-md bg-white px-3 text-sm font-semibold text-slate-600 outline-none placeholder:text-slate-400"
               />
               <select
-                value={selectedRecipientValue}
+                value={effectiveRecipientValue}
                 onChange={(event) => {
                   setSelectedRecipientValue(event.target.value);
                   setFeedbackMessage("");
@@ -1236,25 +1243,6 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
             </article>
 
             <div className="space-y-4">
-              <article className="rounded-md bg-white p-4 shadow-sm">
-                <h3 className="mb-3 text-[18px] font-bold text-[#0F3A63]">Managers destinataires</h3>
-                {managerRecipients.length ? (
-                  <div className="space-y-2">
-                    {managerRecipients.map((recipient) => (
-                      <div key={`${recipient.department}-${recipient.manager}`} className="rounded-md bg-[#F8FAFC] px-3 py-2">
-                        <p className="text-xs font-bold text-[#0F3A63]">{recipient.manager}</p>
-                        <p className="text-[11px] font-semibold text-slate-500">
-                          {recipient.department}{recipient.grade ? ` - ${recipient.grade}` : ""}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs font-semibold text-slate-500">
-                    Ajoutez vos missions pour determiner les managers destinataires.
-                  </p>
-                )}
-              </article>
 
               <article className="rounded-md bg-white p-4 shadow-sm">
                 <div className="mb-3 flex items-center justify-between">

@@ -295,6 +295,46 @@ function isMissionRecipientForUser(recipient, user) {
   return sameName && sameDepartment;
 }
 
+function isAssistantMissionVisibleToSupervisor(mission, user) {
+  if (!mission || !user) {
+    return false;
+  }
+
+  if (mission.created_by_role === 'senior') {
+    const assignedByUserId = mission.assigned_by_user_id?.toString?.() || String(mission.assigned_by_user_id || '');
+    if (assignedByUserId) {
+      return assignedByUserId === String(user._id);
+    }
+
+    return normalizeText(mission.assigned_by_name || '') === normalizeText(user.name || '');
+  }
+
+  const primaryRecipientUserId =
+    mission.primary_recipient_user_id?.toString?.() || String(mission.primary_recipient_user_id || '');
+
+  if (primaryRecipientUserId) {
+    return primaryRecipientUserId === String(user._id);
+  }
+
+  const primaryRecipientName = normalizeText(mission.primary_recipient_name || '');
+  const primaryRecipientDepartment = normalizeText(
+    mission.primary_recipient_department || mission.department || user.department || ''
+  );
+
+  if (primaryRecipientName) {
+    return (
+      primaryRecipientName === normalizeText(user.name || '') &&
+      primaryRecipientDepartment === normalizeText(user.department || '')
+    );
+  }
+
+  if ((mission.recipients || []).length === 1) {
+    return isMissionRecipientForUser(mission.recipients[0], user);
+  }
+
+  return Boolean((mission.recipients || []).length) && isMissionRecipientForUser(mission.recipients[0], user);
+}
+
 async function getAssistantSubmittedMissionsForSenior(assistantId, seniorUser) {
   const instance = await EvaluationInstance.findOne({
     evalue_id: assistantId,
@@ -309,7 +349,7 @@ async function getAssistantSubmittedMissionsForSenior(assistantId, seniorUser) {
   return (instance.mission_evaluations || []).filter(
     (mission) =>
       mission.status === 'Soumise' &&
-      (mission.recipients || []).some((recipient) => isMissionRecipientForUser(recipient, seniorUser))
+      isAssistantMissionVisibleToSupervisor(mission, seniorUser)
   );
 }
 
@@ -710,7 +750,7 @@ async function buildSeniorOverviewMetrics(user) {
       .filter(
         (mission) =>
           mission.status === 'Soumise' &&
-          (mission.recipients || []).some((recipient) => isMissionRecipientForUser(recipient, user))
+          isAssistantMissionVisibleToSupervisor(mission, user)
       )
       .map((mission) => ({
         assistantId: instance.evalue_id.toString(),
@@ -883,11 +923,10 @@ async function addMissionToAssistant(request, response) {
   }
 
   const evaluationDepartment = resolveEvaluationDepartmentForSeniorReview(request.user, assistant);
-  const [review, evaluationInstance, managers, hierarchyRecipients] = await Promise.all([
+  const [review, evaluationInstance, managers] = await Promise.all([
     getOrCreateSeniorAssistantReview(request.user, assistant),
     getOrCreateAssistantEvaluationInstance(assistant),
     resolveManagersForSeniorReview(request.user, assistant),
-    resolveHierarchyRecipientsForAssistant(assistant, evaluationDepartment),
   ]);
 
   const missionId = `senior-${request.user._id}-${assistant._id}-${Date.now()}`;
@@ -907,7 +946,11 @@ async function addMissionToAssistant(request, response) {
       assigned_by_name: request.user.name,
       assigned_by_grade: request.user.grade,
       assigned_at: assignedAt,
-      recipients: buildMissionRecipientsForAssistant(hierarchyRecipients),
+      primary_recipient_user_id: request.user._id,
+      primary_recipient_name: request.user.name,
+      primary_recipient_grade: request.user.grade,
+      primary_recipient_department: request.user.department,
+      recipients: buildMissionRecipientsForAssistant([request.user]),
       criteria: missionCriteria,
       comment: '',
       status: 'Brouillon',

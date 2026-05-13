@@ -177,6 +177,12 @@ function normalizeMissionEvaluations(missionEvaluations = []) {
     assigned_by_name: String(mission.assigned_by_name || mission.assignedByName || '').trim(),
     assigned_by_grade: String(mission.assigned_by_grade || mission.assignedByGrade || '').trim(),
     assigned_at: mission.assigned_at || mission.assignedAt || null,
+    primary_recipient_user_id: mission.primary_recipient_user_id || mission.primaryRecipientUserId || mission.primaryRecipientId || null,
+    primary_recipient_name: String(mission.primary_recipient_name || mission.primaryRecipientName || '').trim(),
+    primary_recipient_grade: String(mission.primary_recipient_grade || mission.primaryRecipientGrade || '').trim(),
+    primary_recipient_department: String(
+      mission.primary_recipient_department || mission.primaryRecipientDepartment || ''
+    ).trim(),
     recipients: Array.isArray(mission.recipients)
       ? mission.recipients
           .filter((recipient) => (recipient?.id || recipient?.user_id) && recipient?.name)
@@ -217,6 +223,11 @@ function formatMissionEvaluations(missionEvaluations = []) {
     assignedByName: mission.assigned_by_name || '',
     assignedByGrade: mission.assigned_by_grade || '',
     assignedAt: mission.assigned_at || null,
+    primaryRecipientUserId:
+      mission.primary_recipient_user_id?.toString?.() || String(mission.primary_recipient_user_id || ''),
+    primaryRecipientName: mission.primary_recipient_name || '',
+    primaryRecipientGrade: mission.primary_recipient_grade || '',
+    primaryRecipientDepartment: mission.primary_recipient_department || '',
     recipients: (mission.recipients || []).map((recipient) => ({
       id: recipient.user_id?.toString?.() || String(recipient.user_id || ''),
       name: recipient.name,
@@ -440,7 +451,35 @@ async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
     missionEvaluations = missionEvaluations.map((mission) => ({
       ...mission,
       department: mission.department || request.user.department || '',
-      recipients: fullRecipients,
+      recipients:
+        mission.created_by_role === 'senior'
+          ? [
+              {
+                user_id: mission.assigned_by_user_id || null,
+                name: mission.assigned_by_name || 'Senior',
+                grade: mission.assigned_by_grade || 'Senior',
+                department: mission.department || request.user.department || '',
+              },
+            ]
+          : Array.isArray(mission.recipients) && mission.recipients.length
+            ? mission.recipients
+            : fullRecipients,
+      primary_recipient_user_id:
+        mission.created_by_role === 'senior'
+          ? mission.assigned_by_user_id || null
+          : mission.primary_recipient_user_id || mission.recipients?.[0]?.user_id || fullRecipients[0]?.user_id || null,
+      primary_recipient_name:
+        mission.created_by_role === 'senior'
+          ? mission.assigned_by_name || 'Senior'
+          : mission.primary_recipient_name || mission.recipients?.[0]?.name || fullRecipients[0]?.name || '',
+      primary_recipient_grade:
+        mission.created_by_role === 'senior'
+          ? mission.assigned_by_grade || 'Senior'
+          : mission.primary_recipient_grade || mission.recipients?.[0]?.grade || fullRecipients[0]?.grade || '',
+      primary_recipient_department:
+        mission.created_by_role === 'senior'
+          ? mission.department || request.user.department || ''
+          : mission.primary_recipient_department || mission.recipients?.[0]?.department || fullRecipients[0]?.department || '',
     }));
   }
 
