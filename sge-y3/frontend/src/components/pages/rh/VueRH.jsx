@@ -13,6 +13,7 @@ import EvaluationsDepartementRH from "@/components/pages/rh/EvaluationsDeparteme
 import PopulationRH from "@/components/pages/rh/PopulationRH";
 import RapportsRH from "@/components/pages/rh/RapportsRH";
 import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
+import DecisionAssociesRH from "@/components/pages/comite/DecisionAssociesRH";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import { getDisplayName } from "@/lib/userPresentation";
 
@@ -73,7 +74,18 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
     }
 
     if (activeSection === "committee") {
-      return <ComiteEvaluation readOnly={assistantMode} />;
+      return (
+        <div className="space-y-6">
+          <ComiteEvaluation
+            readOnly={assistantMode}
+            submitLabel="Transmettre aux associes"
+            submittedLabel="Transmis aux associes"
+            successMessage="Classement des assistants, seniors et assistants managers transmis aux associes."
+            workflowText="La RH classe les assistants, seniors et assistants managers, puis transmet le classement aux associes pour decision du taux d'augmentation."
+          />
+          <DecisionAssociesRH />
+        </div>
+      );
     }
 
     return <RapportsRH readOnly={assistantMode} />;
@@ -154,7 +166,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
               </button>
               {assistantMode ? (
                 <span className="rounded-full bg-[#E7EDF3] px-4 py-2 text-xs font-bold text-[#0F4A72]">
-                  Acces restreint
+                  Accès restreint
                 </span>
               ) : activeSection !== "profile" ? (
                 <button

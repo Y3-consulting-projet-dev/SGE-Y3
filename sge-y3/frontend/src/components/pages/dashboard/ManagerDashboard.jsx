@@ -5,7 +5,6 @@ import Evaluermonequipe from "@/components/pages/manager/Evaluermonequipe";
 import Objectifsequipe from "@/components/pages/manager/Objectifsequipe";
 import Monautoevaluation from "@/components/pages/manager/Monautoevaluation";
 import Rapportsequipe from "@/components/pages/manager/Rapportsequipe";
-import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import logoY3 from "@/assets/logo-y3.png";
 import { getDisplayName, getInitials } from "@/lib/userPresentation";
@@ -38,12 +37,11 @@ const sidebarSections = [
     ],
   },
   { group: "Mon evaluation", items: [{ key: "self-evaluation", label: "Mon auto-evaluation", icon: BarChart3 }] },
-  { group: "Comite", items: [{ key: "committee", label: "Comite d'evaluation", icon: Users }] },
   { group: "Reporting", items: [{ key: "reports", label: "Rapports equipe", icon: FileBarChart2 }] },
   { group: "Compte", items: [{ key: "profile", label: "Profil", icon: Settings2 }] },
 ];
 
-const availableSections = new Set(["overview", "team", "team-goals", "self-evaluation", "committee", "reports", "actions", "profile"]);
+const availableSections = new Set(["overview", "team", "team-goals", "self-evaluation", "reports", "actions", "profile"]);
 
 const sectionContent = {
   notifications: "Consulte les dernieres notifications et relance les collaborateurs en attente.",
@@ -52,7 +50,6 @@ const sectionContent = {
   "team-goals": "Suis les objectifs de l'équipe et ajuste les priorités.",
   "self-evaluation": "Complète ou mets à jour ton auto-évaluation manager.",
   reports: "Génère et exporte les rapports de performance de l'équipe.",
-  committee: "Consulte le classement prepare en comite d'evaluation.",
   actions: "Retrouve toutes les actions prioritaires du workflow.",
 };
 
@@ -99,7 +96,6 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
     if (activeSection === "team") return "MON EQUIPE";
     if (activeSection === "team-goals") return "OBJECTIFS EQUIPE";
     if (activeSection === "self-evaluation") return "MON AUTO-ÉVALUATION";
-    if (activeSection === "committee") return "COMITE D'EVALUATION";
     if (activeSection === "reports") return "RAPPORTS EQUIPE";
     if (activeSection === "actions") return "ACTIONS REQUISES";
     if (activeSection === "profile") return "MON PROFIL";
@@ -478,8 +474,6 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
             <Objectifsequipe createSignal={createGoalSignal} />
           ) : activeSection === "self-evaluation" ? (
             <Monautoevaluation />
-          ) : activeSection === "committee" ? (
-            <ComiteEvaluation readOnly />
           ) : activeSection === "reports" ? (
             <Rapportsequipe />
           ) : activeSection === "profile" ? (
