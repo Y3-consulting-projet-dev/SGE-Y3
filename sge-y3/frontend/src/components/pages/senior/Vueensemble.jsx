@@ -1,56 +1,100 @@
-﻿import { assistantRows, priorityActions } from "@/components/pages/senior/seniorData";
+function StatCard({ label, value, subtitle, accentClass = "text-white", onClick }) {
+  return (
+    <button onClick={onClick} className="rounded-lg bg-[#003B63] p-5 text-left text-white">
+      <p className="text-sm">{label}</p>
+      <p className={`mt-3 text-3xl font-extrabold ${accentClass}`}>{value}</p>
+      <p className="mt-2 text-sm text-slate-200">{subtitle}</p>
+    </button>
+  );
+}
 
-function Vueensemble({ onOpen }) {
+function Vueensemble({ onOpen, overviewData, isLoading, errorMessage }) {
+  const summary = overviewData?.summary || {};
+  const assistantRows = overviewData?.assistants || [];
+  const priorityActions = [
+    summary.missionsAEvaluerCount > 0
+      ? { title: "Finaliser les avis Senior", subtitle: `${summary.missionsAEvaluerCount} mission(s) encore a evaluer`, target: "reviews" }
+      : null,
+    summary.missionsCommunesCount > 0
+      ? { title: "Consulter les missions communes", subtitle: `${summary.missionsCommunesCount} mission(s) soumise(s) par vos assistants`, target: "goals" }
+      : null,
+    { title: "Mettre a jour mon auto-evaluation", subtitle: "Poursuivre la saisie de votre cycle Senior", target: "self-evaluation" },
+  ].filter(Boolean);
+
   return (
     <>
       <div className="mb-6 border-l-4 border-[#7CB342] bg-[#DCECCB] px-4 py-3 text-sm font-semibold text-[#184D2E]">
         Le Senior évalue uniquement les assistants avec lesquels il a travaillé, mission par mission, à partir des faits observés.
       </div>
 
+      {errorMessage ? (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">{errorMessage}</div>
+      ) : null}
+
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <button onClick={() => onOpen("assistants")} className="rounded-lg bg-[#003B63] p-5 text-left text-white">
-          <p className="text-sm">Assistants encadres</p>
-          <p className="mt-3 text-3xl font-extrabold">3</p>
-          <p className="mt-2 text-sm text-slate-200">sur missions communes</p>
-        </button>
-        <button onClick={() => onOpen("reviews")} className="rounded-lg bg-[#003B63] p-5 text-left text-white">
-          <p className="text-sm">Missions à évaluer</p>
-          <p className="mt-3 text-3xl font-extrabold text-[#F34D4D]">2</p>
-          <p className="mt-2 text-sm text-slate-200">avis Senior incomplets</p>
-        </button>
-        <button onClick={() => onOpen("goals")} className="rounded-lg bg-[#003B63] p-5 text-left text-white">
-          <p className="text-sm">Missions communes</p>
-          <p className="mt-3 text-3xl font-extrabold text-[#7BC443]">5</p>
-          <p className="mt-2 text-sm text-slate-200">dossiers partages</p>
-        </button>
-        <button onClick={() => onOpen("results")} className="rounded-lg bg-[#003B63] p-5 text-left text-white">
-          <p className="text-sm">Synthèses transmises</p>
-          <p className="mt-3 text-3xl font-extrabold text-[#7BC443]">1</p>
-          <p className="mt-2 text-sm text-slate-200">prêtes pour Manager</p>
-        </button>
+        <StatCard
+          onClick={() => onOpen("assistants")}
+          label="Assistants encadres"
+          value={isLoading ? "..." : summary.assistantsEncadresCount || 0}
+          subtitle="sur missions communes"
+        />
+        <StatCard
+          onClick={() => onOpen("reviews")}
+          label="Missions à évaluer"
+          value={isLoading ? "..." : summary.missionsAEvaluerCount || 0}
+          subtitle="missions soumises non évaluées"
+          accentClass="text-[#F34D4D]"
+        />
+        <StatCard
+          onClick={() => onOpen("goals")}
+          label="Missions communes"
+          value={isLoading ? "..." : summary.missionsCommunesCount || 0}
+          subtitle="dossiers partages"
+          accentClass="text-[#7BC443]"
+        />
+        <StatCard
+          onClick={() => onOpen("results")}
+          label="Synthèses transmises"
+          value={isLoading ? "..." : summary.synthesesTransmisesCount || 0}
+          subtitle="prêtes pour Manager"
+          accentClass="text-[#7BC443]"
+        />
       </section>
 
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <article className="rounded-xl bg-white p-5 shadow-sm xl:col-span-2">
           <h2 className="mb-4 text-sm font-bold text-[#0F3A63]">Suivi des missions par assistant</h2>
-          <div className="space-y-4">
-            {assistantRows.map((row) => (
-              <button
-                key={row.name}
-                onClick={() => onOpen("assistants")}
-                className="grid w-full grid-cols-1 gap-3 rounded-lg bg-slate-50 p-4 text-left md:grid-cols-[1fr_auto]"
-              >
-                <div>
-                  <p className="font-bold text-[#0F3A63]">{row.name}</p>
-                  <p className="text-xs font-semibold text-slate-500">{row.sharedMissions}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
-                  <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-[#4E8B1B]">{row.readyMissions}</span>
-                  <span className="rounded-full bg-slate-200 px-3 py-1 text-[#0F3A63]">{row.evaluationStatus}</span>
-                </div>
-              </button>
-            ))}
-          </div>
+
+          {isLoading ? (
+            <p className="text-sm text-slate-500">Chargement des assistants encadrés...</p>
+          ) : assistantRows.length ? (
+            <div className="space-y-4">
+              {assistantRows.map((assistant) => (
+                <button
+                  key={assistant.assistantId}
+                  onClick={() => onOpen("assistants")}
+                  className="grid w-full grid-cols-1 gap-3 rounded-lg bg-slate-50 p-4 text-left md:grid-cols-[1fr_auto]"
+                >
+                  <div>
+                    <p className="font-bold text-[#0F3A63]">{assistant.name}</p>
+                    <p className="text-xs font-semibold text-slate-500">
+                      {assistant.department || "Departement non renseigne"} - {assistant.sharedMissionsCount} mission(s) commune(s)
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+                    <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-[#4E8B1B]">
+                      {assistant.transmittedMissionsCount} transmise(s)
+                    </span>
+                    <span className="rounded-full bg-slate-200 px-3 py-1 text-[#0F3A63]">
+                      {assistant.pendingMissionsCount} à évaluer
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">Aucun assistant ne vous a encore soumis de mission commune.</p>
+          )}
         </article>
 
         <article className="rounded-xl bg-white p-5 shadow-sm">

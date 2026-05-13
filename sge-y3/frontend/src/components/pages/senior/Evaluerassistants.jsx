@@ -1,22 +1,181 @@
-﻿import { useState } from "react";
-import { assistantEvaluations } from "@/components/pages/senior/seniorData";
+import { useEffect, useMemo, useState } from "react";
+import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  addSeniorAssistantMission,
+  getSeniorAssistantEvaluation,
+  saveSeniorAssistantEvaluation,
+  submitSeniorAssistantMissionEvaluation,
+  submitSeniorAssistantEvaluation,
+} from "@/lib/seniorAssistants";
 
-function MissionScoreRow({ item }) {
-  const gap = Math.abs(item.assistant - item.senior);
+const gradingHelp = [
+  { level: "1", text: "Insuffisant - objectif non atteint", color: "text-[#FF7A00]" },
+  { level: "2", text: "En progression - a ameliorer", color: "text-[#0F3A63]" },
+  { level: "3", text: "Satisfaisant - niveau attendu", color: "text-[#0F3A63]" },
+  { level: "4", text: "Bon - depasse les attentes", color: "text-[#0F3A63]" },
+  { level: "5", text: "Excellent - reference dans l'equipe", color: "text-[#76B82A]" },
+];
 
+function getRecipientOptionValue(recipient) {
+  return `${recipient.department}::${recipient.id}`;
+}
+
+function normalizeDepartment(value = "") {
+  return String(value).replace(/\s+/g, " ").trim().toUpperCase();
+}
+
+function shouldIncludePageForManager(page, managerDepartment) {
+  const normalizedManagerDepartment = normalizeDepartment(managerDepartment);
+  const normalizedSourceSheet = normalizeDepartment(page?.source_sheet);
+
+  if (!normalizedManagerDepartment || !normalizedSourceSheet || normalizedSourceSheet === "TRONC COMMUN") {
+    return true;
+  }
+
+  if (normalizedManagerDepartment === "AUDIT") {
+    return normalizedSourceSheet === "AUDIT";
+  }
+
+  if (normalizedManagerDepartment === "EXPERTISE COMPTABLE") {
+    return normalizedSourceSheet === "EXPERTISE COMPTABLE";
+  }
+
+  if (normalizedManagerDepartment === "AUDIT & EXPERTISE COMPTABLE") {
+    return normalizedSourceSheet === "AUDIT" || normalizedSourceSheet === "EXPERTISE COMPTABLE";
+  }
+
+  return true;
+}
+
+function filterSectionsForManager(sections = [], managerDepartment = "") {
+  return sections
+    .map((section) => ({
+      ...section,
+      pages: (section.pages || []).filter((page) => shouldIncludePageForManager(page, managerDepartment)),
+    }))
+    .filter((section) => (section.pages || []).length > 0);
+}
+
+function getSourceBadgeLabel(page) {
+  if (page?.source_label) return page.source_label;
+  if (page?.source_sheet === "AUDIT") return "Audit";
+  if (page?.source_sheet === "EXPERTISE COMPTABLE") return "Expertise comptable";
+  return "";
+}
+
+function getPageProgress(page) {
+  const themes = page?.themes || [];
+  const answered = themes.filter((theme) => theme.score !== null && theme.score !== undefined).length;
+  if (!themes.length) return 0;
+  return Math.round((answered / themes.length) * 100);
+}
+
+function getSectionProgress(section) {
+  const pages = section?.pages || [];
+  const totalThemes = pages.reduce((total, page) => total + (page.themes?.length || 0), 0);
+  const answeredThemes = pages.reduce(
+    (total, page) => total + (page.themes || []).filter((theme) => theme.score !== null && theme.score !== undefined).length,
+    0
+  );
+  if (!totalThemes) return 0;
+  return Math.round((answeredThemes / totalThemes) * 100);
+}
+
+function getMissionCriteriaGroups(criteria = []) {
+  const groups = [];
+
+  for (const criterion of criteria) {
+    const key = `${criterion.sectionTitle}::${criterion.pageTitle}::${criterion.sourceSheet || ""}::${criterion.sourceLabel || ""}`;
+    const existingGroup = groups.find((group) => group.key === key);
+
+    if (existingGroup) {
+      existingGroup.criteria.push(criterion);
+      continue;
+    }
+
+    groups.push({
+      key,
+      sectionTitle: criterion.sectionTitle,
+      pageTitle: criterion.pageTitle,
+      sourceSheet: criterion.sourceSheet,
+      sourceLabel: criterion.sourceLabel,
+      criteria: [criterion],
+    });
+  }
+
+  return groups;
+}
+
+function getMissionSections(groups = []) {
+  const sections = [];
+
+  for (const group of groups) {
+    const existingSection = sections.find((section) => section.title === group.sectionTitle);
+
+    if (existingSection) {
+      existingSection.groups.push(group);
+      continue;
+    }
+
+    sections.push({
+      id: group.sectionTitle,
+      title: group.sectionTitle,
+      groups: [group],
+    });
+  }
+
+  return sections;
+}
+
+function getMissionSectionProgress(section) {
+  const criteria = (section?.groups || []).flatMap((group) => group.criteria || []);
+  const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
+  if (!criteria.length) return 0;
+  return Math.round((answered / criteria.length) * 100);
+}
+
+function getMissionGroupProgress(group) {
+  const criteria = group?.criteria || [];
+  const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
+  if (!criteria.length) return 0;
+  return Math.round((answered / criteria.length) * 100);
+}
+
+function createInitialPageIndexes(sections = []) {
+  return Object.fromEntries(
+    sections.map((section) => {
+      const firstIncompletePageIndex = (section.pages || []).findIndex((page) => getPageProgress(page) < 100);
+      return [section.id, firstIncompletePageIndex >= 0 ? firstIncompletePageIndex : 0];
+    })
+  );
+}
+
+function clampPageIndexes(sections = [], currentIndexes = {}) {
+  return Object.fromEntries(
+    sections.map((section) => {
+      const maxIndex = Math.max((section.pages?.length || 1) - 1, 0);
+      return [section.id, Math.min(currentIndexes[section.id] || 0, maxIndex)];
+    })
+  );
+}
+
+function ScoreRow({ theme, onSelect }) {
   return (
-    <div className="grid grid-cols-1 gap-3 rounded-lg bg-slate-50 p-3 md:grid-cols-[1fr_auto_auto] md:items-center">
-      <div>
-        <p className="text-sm font-bold text-[#0F3A63]">{item.label}</p>
-        {gap >= 2 ? <p className="mt-1 text-xs font-semibold text-[#A4252F]">Ecart a justifier</p> : null}
+    <div className="rounded-md border border-[#E3EAF3] bg-[#F8FBFF] p-3">
+      <div className="mb-3">
+        <p className="text-[13px] font-bold text-[#0F3A63]">
+          {theme.code}. {theme.label}
+        </p>
+        <p className="mt-1 text-[12px] leading-6 text-slate-600">{theme.statement}</p>
       </div>
-      <span className="text-xs font-bold text-slate-500">Retour assistant: {item.assistant}/5</span>
-      <div className="flex overflow-hidden rounded-md border border-slate-200">
+      <div className="flex items-center gap-2">
         {[1, 2, 3, 4, 5].map((score) => (
           <button
-            key={`${item.label}-${score}`}
-            className={`h-8 w-9 border-r border-slate-200 text-xs font-bold last:border-0 ${
-              item.senior === score ? "bg-[#003B63] text-white" : "bg-white text-[#0F3A63]"
+            key={score}
+            type="button"
+            onClick={() => onSelect(score)}
+            className={`inline-flex h-8 w-9 items-center justify-center rounded text-[12px] font-bold ${
+              theme.score === score ? "bg-[#0B4C7A] text-white" : "bg-slate-200 text-slate-500 hover:bg-slate-300"
             }`}
           >
             {score}
@@ -27,269 +186,902 @@ function MissionScoreRow({ item }) {
   );
 }
 
-function Evaluerassistants() {
-  const [status, setStatus] = useState("");
-  const [selectedAssistant, setSelectedAssistant] = useState(assistantEvaluations[0].name);
-  const [selectedMission, setSelectedMission] = useState(0);
-  const [missionName, setMissionName] = useState("");
-  const [savedMissions, setSavedMissions] = useState([]);
-  const currentAssistant = assistantEvaluations.find((assistant) => assistant.name === selectedAssistant) || assistantEvaluations[0];
-  const currentMission = currentAssistant.missions[selectedMission] || currentAssistant.missions[0];
-  const allScores = currentAssistant.missions.flatMap((mission) => mission.criteria.map((criterion) => criterion.senior));
-  const averageScore = (allScores.reduce((total, score) => total + score, 0) / allScores.length).toFixed(1);
-  const hasGap = currentMission.criteria.some((criterion) => Math.abs(criterion.assistant - criterion.senior) >= 2);
+function MissionScoreRow({ criterion, onSelect }) {
+  return (
+    <div className="rounded-md border border-[#E3EAF3] bg-[#F8FBFF] p-3">
+      <p className="text-[12px] font-semibold text-[#0F3A63]">
+        {criterion.themeCode ? `${criterion.themeCode}. ` : ""}
+        {criterion.label}
+      </p>
+      {criterion.statement ? <p className="mt-1 text-[11px] leading-5 text-slate-600">{criterion.statement}</p> : null}
+      <div className="mt-2 flex items-center gap-2">
+        {[1, 2, 3, 4, 5].map((score) => (
+          <button
+            key={score}
+            type="button"
+            onClick={() => onSelect(score)}
+            className={`inline-flex h-6 w-8 items-center justify-center rounded text-[12px] font-bold ${
+              criterion.score === score ? "bg-[#0B4C7A] text-white" : "bg-slate-200 text-slate-500 hover:bg-slate-300"
+            }`}
+          >
+            {score}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-  const selectAssistant = (name) => {
-    setSelectedAssistant(name);
-    setSelectedMission(0);
-    setMissionName("");
-    setStatus("");
-  };
+function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsError, selectedAssistantId, onAssistantChange }) {
+  const [step, setStep] = useState("missions");
+  const [reviewData, setReviewData] = useState(null);
+  const [sections, setSections] = useState([]);
+  const [missionReviews, setMissionReviews] = useState([]);
+  const [activeSectionId, setActiveSectionId] = useState(1);
+  const [pageIndexes, setPageIndexes] = useState({});
+  const [activeMissionId, setActiveMissionId] = useState("");
+  const [missionSectionIds, setMissionSectionIds] = useState({});
+  const [missionPageIndexes, setMissionPageIndexes] = useState({});
+  const [missionTitle, setMissionTitle] = useState("");
+  const [missionPeriod, setMissionPeriod] = useState("");
+  const [savedComments, setSavedComments] = useState({});
+  const [selectedManagerValue, setSelectedManagerValue] = useState("");
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackTone, setFeedbackTone] = useState("success");
+  const [isLoadingReview, setIsLoadingReview] = useState(false);
+  const [reviewError, setReviewError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const saveMission = (nextStatus) => {
-    const trimmedMission = missionName.trim();
+  useEffect(() => {
+    let cancelled = false;
 
-    if (!trimmedMission) {
-      setStatus("missing-mission");
+    async function loadReview() {
+      if (!selectedAssistantId) {
+        setReviewData(null);
+        setSections([]);
+        setMissionReviews([]);
+        return;
+      }
+
+      try {
+        setIsLoadingReview(true);
+        setReviewError("");
+        const response = await getSeniorAssistantEvaluation(selectedAssistantId);
+
+        if (cancelled) return;
+
+        setReviewData(response);
+        setSections(response.review.sections || []);
+        setMissionReviews(response.mission_reviews || []);
+        setActiveMissionId((current) => current || response.mission_reviews?.[0]?.id || "");
+        setActiveSectionId(Number(response.review.activeSectionId || response.review.sections?.[0]?.id || 1));
+        setPageIndexes(createInitialPageIndexes(response.review.sections || []));
+        setSavedComments(
+          Object.fromEntries(
+            (response.review.sections || [])
+              .flatMap((section) => section.pages || [])
+              .filter((page) => page.comment?.trim())
+              .map((page) => [page.page_id, page.comment.trim()])
+          )
+        );
+      } catch (error) {
+        if (!cancelled) {
+          setReviewError(error.message || "Chargement de l'evaluation impossible.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingReview(false);
+        }
+      }
+    }
+
+    loadReview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedAssistantId]);
+
+  const selectedAssistant = assistants.find((assistant) => assistant.id === selectedAssistantId) || assistants[0] || null;
+  const managerRecipients = reviewData?.submitted_to || [];
+  const initialManagerValue = managerRecipients[0] ? getRecipientOptionValue(managerRecipients[0]) : "";
+  useEffect(() => {
+    if (selectedManagerValue && managerRecipients.some((manager) => getRecipientOptionValue(manager) === selectedManagerValue)) {
       return;
     }
 
-    setSavedMissions((missions) => [
-      {
-        id: `${Date.now()}-${trimmedMission}`,
-        assistant: currentAssistant.name,
-        role: currentAssistant.role,
-        mission: trimmedMission,
-        score: averageScore,
-        manager: currentAssistant.manager,
-        status: nextStatus,
-      },
-      ...missions,
-    ]);
-    setStatus(nextStatus);
-    setMissionName("");
-  };
+    setSelectedManagerValue(initialManagerValue);
+  }, [initialManagerValue, managerRecipients, selectedManagerValue]);
+
+  const selectedManager = useMemo(
+    () => managerRecipients.find((manager) => getRecipientOptionValue(manager) === selectedManagerValue) || null,
+    [managerRecipients, selectedManagerValue]
+  );
+  const evaluationDepartment = reviewData?.review_context?.evaluationDepartment || reviewData?.assistant?.department || "";
+  const displayedSections = useMemo(
+    () =>
+      reviewData?.assistant?.department === "AUDIT & EXPERTISE COMPTABLE" && evaluationDepartment
+        ? filterSectionsForManager(sections, evaluationDepartment)
+        : sections,
+    [evaluationDepartment, reviewData?.assistant?.department, sections]
+  );
+  const activeSection = displayedSections.find((section) => Number(section.id) === Number(activeSectionId)) || displayedSections[0];
+  const activePageIndex = pageIndexes[activeSection?.id] || 0;
+  const activePage = activeSection?.pages?.[activePageIndex] || activeSection?.pages?.[0];
+  const shouldShowSourceLabel = reviewData?.assistant?.department === "AUDIT & EXPERTISE COMPTABLE";
+  const activePageSourceBadgeLabel = getSourceBadgeLabel(activePage);
+  const completedSections = displayedSections.filter((section) => getSectionProgress(section) === 100).length;
+  const globalProgress = Math.round(
+    displayedSections.reduce((total, section) => total + getSectionProgress(section), 0) / (displayedSections.length || 1)
+  );
+  const activeMission = missionReviews.find((mission) => mission.id === activeMissionId) || missionReviews[0] || null;
+  const missionCriteriaGroups = useMemo(() => getMissionCriteriaGroups(activeMission?.criteria || []), [activeMission]);
+  const missionSections = useMemo(() => getMissionSections(missionCriteriaGroups), [missionCriteriaGroups]);
+  const activeMissionSectionId = missionSectionIds[activeMissionId] || missionSections[0]?.id || "";
+  const activeMissionSection = missionSections.find((section) => section.id === activeMissionSectionId) || missionSections[0] || null;
+  const activeMissionSectionIndex = missionSections.findIndex((section) => section.id === activeMissionSection?.id);
+  const activeMissionPageIndex = Math.min(
+    missionPageIndexes[activeMissionId] || 0,
+    Math.max((activeMissionSection?.groups?.length || 1) - 1, 0)
+  );
+  const activeMissionGroup = activeMissionSection?.groups?.[activeMissionPageIndex] || activeMissionSection?.groups?.[0] || null;
+
+  useEffect(() => {
+    if (!displayedSections.length) {
+      return;
+    }
+
+    const hasActiveSection = displayedSections.some((section) => Number(section.id) === Number(activeSectionId));
+    if (!hasActiveSection) {
+      setActiveSectionId(Number(displayedSections[0].id));
+    }
+  }, [activeSectionId, displayedSections]);
+
+  function syncSections(updater) {
+    setSections((currentSections) => {
+      const nextSections = typeof updater === "function" ? updater(currentSections) : updater;
+
+      return nextSections.map((section) => {
+        const progress = getSectionProgress(section);
+        return {
+          ...section,
+          status: progress === 0 ? "A faire" : progress === 100 ? "Complete" : "En cours",
+        };
+      });
+    });
+
+    setFeedbackMessage("");
+  }
+
+  function updateScore(themeId, score) {
+    syncSections((currentSections) =>
+      currentSections.map((section) => {
+        return {
+          ...section,
+          pages: (section.pages || []).map((page) =>
+            page.page_id !== activePage?.page_id
+              ? page
+              : {
+                  ...page,
+                  themes: (page.themes || []).map((theme) => (theme.theme_id === themeId ? { ...theme, score } : theme)),
+                }
+          ),
+        };
+      })
+    );
+  }
+
+  function updateMissionScore(criterionId, score) {
+    setMissionReviews((currentMissions) =>
+      currentMissions.map((mission) =>
+        mission.id !== activeMissionId
+          ? mission
+          : {
+              ...mission,
+              criteria: mission.criteria.map((criterion) =>
+                criterion.id === criterionId ? { ...criterion, score, status: "En cours" } : criterion
+              ),
+            }
+      )
+    );
+    setFeedbackMessage("");
+  }
+
+  function updateComment(comment) {
+    syncSections((currentSections) =>
+      currentSections.map((section) => {
+        return {
+          ...section,
+          pages: (section.pages || []).map((page) => (page.page_id !== activePage?.page_id ? page : { ...page, comment })),
+        };
+      })
+    );
+  }
+
+  async function handleAddMission() {
+    if (!selectedAssistantId) return;
+
+    const title = missionTitle.trim();
+    if (!title) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Renseignez le nom de la mission a partager avec l'assistant.");
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const response = await addSeniorAssistantMission(selectedAssistantId, {
+        title,
+        period: missionPeriod,
+      });
+      setReviewData(response);
+      setSections(response.review.sections || []);
+      setMissionReviews(response.mission_reviews || []);
+      const addedMission = response.mission_reviews?.[response.mission_reviews.length - 1] || null;
+      const nextMissionId = addedMission?.id || "";
+      setActiveMissionId(nextMissionId);
+      setMissionSectionIds((current) => ({
+        ...current,
+        [nextMissionId]: addedMission?.criteria?.[0]?.sectionTitle || "",
+      }));
+      setMissionPageIndexes((current) => ({ ...current, [nextMissionId]: 0 }));
+      setMissionTitle("");
+      setMissionPeriod("");
+      setFeedbackTone("success");
+      setFeedbackMessage(response.message || "Mission ajoutee pour l'assistant.");
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedbackMessage(error.message || "Ajout de mission impossible.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function persistReview(nextSections = sections, nextMissionReviews = missionReviews) {
+    if (!selectedAssistantId) return null;
+
+    setIsSaving(true);
+
+    try {
+      const response = await saveSeniorAssistantEvaluation(selectedAssistantId, {
+        sections: nextSections,
+        missionReviews: nextMissionReviews,
+      });
+      setReviewData(response);
+      setSections(response.review.sections);
+      setMissionReviews(response.mission_reviews || []);
+      setPageIndexes((current) => clampPageIndexes(response.review.sections, current));
+      setFeedbackTone("success");
+      setFeedbackMessage(response.message || "Sauvegarde reussie.");
+      return response;
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedbackMessage(error.message || "Sauvegarde impossible.");
+      return null;
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function goToGlobalStep(direction) {
+    const sectionIndex = displayedSections.findIndex((section) => Number(section.id) === Number(activeSectionId));
+    const pages = activeSection?.pages || [];
+    const nextPageIndex = activePageIndex + direction;
+
+    if (nextPageIndex >= 0 && nextPageIndex < pages.length) {
+      setPageIndexes((current) => ({ ...current, [activeSectionId]: nextPageIndex }));
+      return;
+    }
+
+    const nextSection = displayedSections[sectionIndex + direction];
+    if (!nextSection) return;
+
+    setActiveSectionId(Number(nextSection.id));
+    setPageIndexes((current) => ({
+      ...current,
+      [nextSection.id]: direction > 0 ? 0 : Math.max((nextSection.pages?.length || 1) - 1, 0),
+    }));
+  }
+
+  function goToMissionStep(direction) {
+    if (!activeMission || !activeMissionSection) return;
+
+    const nextPageIndex = activeMissionPageIndex + direction;
+    if (nextPageIndex >= 0 && nextPageIndex < (activeMissionSection.groups?.length || 0)) {
+      setMissionPageIndexes((current) => ({
+        ...current,
+        [activeMission.id]: nextPageIndex,
+      }));
+      return;
+    }
+
+    const nextSection = missionSections[activeMissionSectionIndex + direction];
+    if (!nextSection) return;
+
+    setMissionSectionIds((current) => ({
+      ...current,
+      [activeMission.id]: nextSection.id,
+    }));
+    setMissionPageIndexes((current) => ({
+      ...current,
+      [activeMission.id]: direction > 0 ? 0 : Math.max((nextSection.groups?.length || 1) - 1, 0),
+    }));
+  }
+
+  async function handleSaveAndContinue() {
+    const response = await persistReview(sections, missionReviews);
+    if (response) goToGlobalStep(1);
+  }
+
+  async function handleSubmit() {
+    if (!selectedAssistantId) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const savedResponse = await persistReview(sections, missionReviews);
+      if (!savedResponse) return;
+
+      const submittedResponse = await submitSeniorAssistantEvaluation(selectedAssistantId, {
+        selectedManagerRecipient: selectedManager
+          ? {
+              id: selectedManager.id,
+              name: selectedManager.name,
+              department: selectedManager.department,
+            }
+          : null,
+      });
+      setReviewData(submittedResponse);
+      setSections(submittedResponse.review.sections);
+      setMissionReviews(submittedResponse.mission_reviews || []);
+      setPageIndexes(createInitialPageIndexes(submittedResponse.review.sections));
+      setFeedbackTone("success");
+      setFeedbackMessage(submittedResponse.message || "Evaluation transmise au(x) manager(s).");
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedbackMessage(error.message || "Transmission impossible.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleSubmitMission() {
+    if (!selectedAssistantId || !activeMission) return;
+
+    const hasIncompleteCriterion = (activeMission.criteria || []).some(
+      (criterion) => criterion.score === null || criterion.score === undefined
+    );
+
+    if (hasIncompleteCriterion) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Toutes les questions de la mission doivent etre renseignees avant transmission.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const savedResponse = await persistReview(sections, missionReviews);
+      if (!savedResponse) return;
+
+      const submittedResponse = await submitSeniorAssistantMissionEvaluation(selectedAssistantId, activeMission.id);
+      setReviewData(submittedResponse);
+      setSections(submittedResponse.review.sections);
+      setMissionReviews(submittedResponse.mission_reviews || []);
+      setFeedbackTone("success");
+      setFeedbackMessage(submittedResponse.message || "Mission transmise au(x) manager(s).");
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedbackMessage(error.message || "Transmission impossible.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (isLoadingAssistants) {
+    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement des assistants...</section>;
+  }
+
+  if (assistantsError) {
+    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">{assistantsError}</section>;
+  }
+
+  if (!assistants.length) {
+    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Aucun assistant 8C partageant votre département n'est disponible.</section>;
+  }
+
+  if (isLoadingReview) {
+    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement de l'evaluation assistant...</section>;
+  }
+
+  if (reviewError) {
+    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">{reviewError}</section>;
+  }
+
+  if (!selectedAssistant || !activeSection || !activePage) {
+    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Selectionnez un assistant pour commencer.</section>;
+  }
+
+  const isLastGlobalStep =
+    displayedSections.findIndex((section) => Number(section.id) === Number(activeSectionId)) === displayedSections.length - 1 &&
+    activePageIndex === (activeSection.pages?.length || 1) - 1;
+  const isLastMissionStep =
+    activeMissionSectionIndex === missionSections.length - 1 &&
+    activeMissionPageIndex === (activeMissionSection?.groups?.length || 1) - 1;
 
   return (
     <section className="space-y-5">
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => setStep("missions")}
+          className={`rounded-lg p-4 text-left transition ${step === "missions" ? "bg-[#003B63] text-white" : "bg-white text-[#0F3A63] shadow-sm"}`}
+        >
+          <p className="text-xs font-bold uppercase opacity-80">ETAPE 1</p>
+          <h2 className="mt-1 text-lg font-black">Evaluation par mission</h2>
+          <p className="mt-2 text-xs font-semibold opacity-80">
+            Missions partagees avec l'assistant - {Math.round(((missionReviews.filter((mission) => mission.status === "Soumise" || mission.status === "Transmise").length) / (missionReviews.length || 1)) * 100)}%
+          </p>
+        </button>
+        <button
+          type="button"
+          onClick={() => setStep("global")}
+          className={`rounded-lg p-4 text-left transition ${step === "global" ? "bg-[#003B63] text-white" : "bg-white text-[#0F3A63] shadow-sm"}`}
+        >
+          <p className="text-xs font-bold uppercase opacity-80">ETAPE 2</p>
+          <h2 className="mt-1 text-lg font-black">Evaluation globale du cycle</h2>
+          <p className="mt-2 text-xs font-semibold opacity-80">Cycle 2026 - {globalProgress}%</p>
+        </button>
+      </section>
+
       <article className="rounded-xl bg-white p-5 shadow-sm">
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr_auto]">
           <div>
-            <label htmlFor="assistant-select" className="mb-2 block text-xs font-bold text-[#0F3A63]">
-              Assistant a evaluer
-            </label>
+            <label htmlFor="assistant-select" className="mb-2 block text-xs font-bold text-[#0F3A63]">Assistant a evaluer</label>
             <select
               id="assistant-select"
-              value={selectedAssistant}
-              onChange={(event) => selectAssistant(event.target.value)}
+              value={selectedAssistantId}
+              onChange={(event) => onAssistantChange?.(event.target.value)}
               className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-[#0F3A63] outline-none"
             >
-              {assistantEvaluations.map((assistant) => (
-                <option key={assistant.name} value={assistant.name}>
-                  {assistant.name} - {assistant.role}
+              {assistants.map((assistant) => (
+                <option key={assistant.id} value={assistant.id}>
+                  {assistant.name} - {assistant.department}
                 </option>
               ))}
             </select>
           </div>
-
-          <div>
-            <label htmlFor="mission-name" className="mb-2 block text-xs font-bold text-[#0F3A63]">
-              Mission a evaluer
-            </label>
-            <input
-              id="mission-name"
-              type="text"
-              value={missionName}
-              onChange={(event) => {
-                setMissionName(event.target.value);
-                setStatus("");
-              }}
-              placeholder="Saisir le type ou le nom de la mission"
-              className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-[#0F3A63] outline-none"
-            />
+          <div className="rounded-lg bg-slate-50 px-4 py-3">
+            <p className="text-xs font-semibold text-slate-500">Département partagé</p>
+            <p className="mt-1 text-sm font-bold text-[#0F3A63]">{selectedAssistant.department}</p>
           </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold">
-          <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-[#4E8B1B]">{currentAssistant.status}</span>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{currentAssistant.missions.length} mission(s) commune(s)</span>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">Manager: {currentAssistant.manager}</span>
         </div>
       </article>
 
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.9fr_1.4fr]">
-        <div className="space-y-5">
+      {step === "missions" ? (
+        <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.85fr_1.35fr]">
           <article className="rounded-xl bg-white p-5 shadow-sm">
-            <div className="mb-5 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#8BC53F] text-sm font-extrabold text-white">
-                {currentAssistant.initials}
-              </div>
-              <div>
-                <h2 className="text-xl font-extrabold text-[#0F3A63]">{currentAssistant.name}</h2>
-                <p className="text-sm font-semibold text-slate-500">{currentAssistant.role} - Cycle 2026</p>
-              </div>
-            </div>
+            <h2 className="text-xl font-extrabold text-[#0F3A63]">{selectedAssistant.name}</h2>
+            <p className="text-sm font-semibold text-slate-500">{selectedAssistant.grade}</p>
 
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="font-semibold text-[#0F3A63]">Manager final</span>
-                <span className="font-bold text-slate-500">{currentAssistant.manager}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-semibold text-[#0F3A63]">Entretien prevu</span>
-                <span className="font-bold text-[#76B82A]">{currentAssistant.interview}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="font-semibold text-[#0F3A63]">Score Senior</span>
-                <span className="font-bold text-[#76B82A]">{averageScore} / 5</span>
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-lg bg-[#DCECCB] p-4 text-sm font-semibold text-[#184D2E]">
-              Le Senior evalue l'assistant sur les missions menees ensemble. La validation finale reste cote Manager.
-            </div>
-          </article>
-
-          <article className="rounded-xl bg-white p-5 shadow-sm">
-            <h2 className="mb-4 text-sm font-bold text-[#0F3A63]">Missions communes de l'assistant</h2>
-            <div className="space-y-3">
-              {currentAssistant.missions.map((mission, index) => (
+            <div className="mt-5 rounded-lg border border-[#D9E3EE] bg-[#F8FAFC] p-4">
+              <p className="text-xs font-bold uppercase text-slate-500">Nouvelle mission partagee</p>
+              <p className="mt-1 text-sm font-semibold text-[#0F3A63]">
+                L'assistant recevra cette mission dans son auto-evaluation et notera la mission de son cote.
+              </p>
+              <div className="mt-3 space-y-3">
+                <input
+                  type="text"
+                  value={missionTitle}
+                  onChange={(event) => setMissionTitle(event.target.value)}
+                  placeholder="Nom de la mission"
+                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0F3A63] outline-none"
+                />
+                <input
+                  type="text"
+                  value={missionPeriod}
+                  onChange={(event) => setMissionPeriod(event.target.value)}
+                  placeholder="Periode de la mission"
+                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0F3A63] outline-none"
+                />
                 <button
-                  key={mission.title}
-                  onClick={() => {
-                    setSelectedMission(index);
-                    setMissionName(mission.title);
-                    setStatus("");
-                  }}
-                  className={`w-full rounded-lg p-4 text-left transition ${
-                    selectedMission === index ? "bg-[#DFECD4]" : "bg-slate-50 hover:bg-slate-100"
-                  }`}
+                  type="button"
+                  onClick={handleAddMission}
+                  disabled={isSaving || isSubmitting}
+                  className="inline-flex rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
                 >
-                  <div className="mb-2 flex items-start justify-between gap-3">
-                    <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#4E8B1B]">{mission.result}</span>
-                  </div>
-                  <p className="text-xs font-semibold text-slate-500">{mission.period}</p>
-                  <p className="mt-1 text-xs font-semibold text-[#0F3A63]">{mission.seniorRole}</p>
+                  {isSaving ? "Ajout..." : "Ajouter pour cet assistant"}
                 </button>
-              ))}
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {missionReviews.length ? missionReviews.map((mission) => {
+                const isActive = mission.id === activeMission?.id;
+                const progress = Math.round(((mission.criteria || []).filter((criterion) => criterion.score !== null && criterion.score !== undefined).length / ((mission.criteria || []).length || 1)) * 100);
+
+                return (
+                  <button
+                    key={mission.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveMissionId(mission.id);
+                      setMissionSectionIds((current) => ({ ...current, [mission.id]: current[mission.id] || mission.criteria?.[0]?.sectionTitle || "" }));
+                      setMissionPageIndexes((current) => ({ ...current, [mission.id]: current[mission.id] || 0 }));
+                    }}
+                    className={`w-full rounded-lg p-4 text-left transition ${isActive ? "bg-[#DFECD4]" : "bg-slate-50 hover:bg-slate-100"}`}
+                  >
+                    <div className="mb-2 flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
+                        {mission.origin === "senior-assigned" ? (
+                          <span className="mt-2 inline-flex rounded-full bg-[#E8F3D6] px-2.5 py-1 text-[10px] font-bold text-[#4E8B1B]">
+                            Mission ajoutee par le senior
+                          </span>
+                        ) : null}
+                      </div>
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#4E8B1B]">{mission.status}</span>
+                    </div>
+                    <p className="text-xs font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
+                    <p className="mt-1 text-xs font-semibold text-[#0F3A63]">Destinataire : {mission.recipientName}</p>
+                    <p className="mt-1 text-xs font-bold text-[#76B82A]">{progress}%</p>
+                  </button>
+                );
+              }) : <p className="rounded-md bg-[#EEF2F6] p-4 text-sm font-semibold text-slate-500">Aucune mission partagee avec cet assistant pour le moment.</p>}
             </div>
           </article>
-        </div>
 
-        <article className="rounded-xl bg-white p-5 shadow-sm">
-          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold text-slate-400">Evaluation selon la mission faite ensemble</p>
-              <h2 className="text-xl font-extrabold text-[#0F3A63]">
-                {missionName.trim() || "Renseigner la mission a evaluer"}
-              </h2>
+          <article className="rounded-xl bg-white p-5 shadow-sm">
+            {activeMission ? (
+              <>
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-slate-400">Evaluation selon la mission réalisée ensemble</p>
+                  <h2 className="text-xl font-extrabold text-[#0F3A63]">{activeMission.title}</h2>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">{activeMission.period || "Période non renseignée"}</p>
+                  {activeMission.origin === "senior-assigned" ? (
+                    <p className="mt-2 text-xs font-semibold text-[#4E8B1B]">
+                      Mission partagee avec l'assistant par {activeMission.assignedByName || "le senior"}.
+                    </p>
+                  ) : null}
+                </div>
+
+                <section className="mb-4 rounded-md bg-[#F8FAFC] p-4">
+                  <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    {missionSections.map((section) => {
+                      const isActive = section.id === activeMissionSection?.id;
+                      const progress = getMissionSectionProgress(section);
+                      const done = progress === 100;
+
+                      return (
+                        <button
+                          key={section.id}
+                          type="button"
+                          onClick={() => {
+                            setMissionSectionIds((current) => ({ ...current, [activeMission.id]: section.id }));
+                            setMissionPageIndexes((current) => ({ ...current, [activeMission.id]: 0 }));
+                          }}
+                          className={`rounded-md border px-3 py-3 text-left text-white transition ${isActive ? "border-[#76B82A] bg-[#003B63] shadow-[0_0_0_1px_#76B82A]" : "border-transparent bg-[#003B63] hover:bg-[#0B4C7A]"}`}
+                        >
+                          <div className="mb-2 flex items-center justify-between">
+                            <h4 className="text-[13px] font-bold">{section.title}</h4>
+                            {done ? <Check size={14} className="text-white" /> : null}
+                          </div>
+                          <p className="text-[12px] font-semibold">{section.groups.length} titre(s)</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[12px] font-semibold text-slate-500">Pagination dans la mission</p>
+                      <h4 className="text-[16px] font-bold text-[#0F3A63]">{activeMissionSection?.title}</h4>
+                    </div>
+                    <span className="text-[12px] font-semibold text-[#0F3A63]">Titre {activeMissionPageIndex + 1} / {activeMissionSection?.groups?.length || 1}</span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {(activeMissionSection?.groups || []).map((group, index) => (
+                      <button
+                        key={group.key}
+                        type="button"
+                        onClick={() => setMissionPageIndexes((current) => ({ ...current, [activeMission.id]: index }))}
+                        className={`rounded-md border px-3 py-2 text-left transition ${index === activeMissionPageIndex ? "border-[#76B82A] bg-[#F3FAEA] text-[#0F3A63]" : "border-[#D9E3EE] bg-white text-slate-600 hover:bg-slate-50"}`}
+                      >
+                        <p className="text-[11px] font-bold">Titre {index + 1}</p>
+                        <p className="mt-1 text-[12px] font-semibold">{group.pageTitle}</p>
+                        {shouldShowSourceLabel && group.sourceSheet !== "TRONC COMMUN" ? (
+                          <span className="mt-2 inline-flex rounded-full bg-[#EEF3F8] px-2 py-0.5 text-[10px] font-semibold text-[#0F3A63]">
+                            {group.sourceLabel || getSourceBadgeLabel({ source_sheet: group.sourceSheet })}
+                          </span>
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                {activeMissionGroup ? (
+                  <div className="space-y-3.5">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase text-slate-500">{activeMissionGroup.sectionTitle}</p>
+                      <p className="mt-1 text-[15px] font-bold text-[#0F3A63]">{activeMissionGroup.pageTitle}</p>
+                    </div>
+                    {activeMissionGroup.criteria.map((criterion) => (
+                      <MissionScoreRow key={criterion.id} criterion={criterion} onSelect={(score) => updateMissionScore(criterion.id, score)} />
+                    ))}
+                  </div>
+                ) : null}
+
+                <div className="mt-5 flex justify-end">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => goToMissionStep(-1)}
+                      disabled={activeMissionSectionIndex === 0 && activeMissionPageIndex === 0}
+                      className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <ChevronLeft size={14} />
+                      Precedent
+                    </button>
+                    {!isLastMissionStep ? (
+                      <button
+                        type="button"
+                        onClick={() => goToMissionStep(1)}
+                        className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
+                      >
+                        Sauvegarder et continuer
+                        <ChevronRight size={14} />
+                      </button>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={handleSubmitMission}
+                          disabled={isSaving || isSubmitting || activeMission?.status === "Transmise"}
+                          className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                        >
+                          {isSubmitting ? "Transmission..." : "Transmettre la mission au Manager"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setStep("global")}
+                          className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
+                        >
+                          Continuer vers l'evaluation globale
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-md bg-[#EEF2F6] p-5 text-sm font-semibold text-slate-500">Aucune mission commune disponible pour cet assistant.</div>
+            )}
+          </article>
+        </section>
+      ) : (
+        <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.8fr_1.4fr]">
+          <article className="rounded-xl bg-white p-5 shadow-sm">
+            <div className="mb-5">
+              <p className="text-xs font-semibold text-slate-400">{reviewData?.review?.cycle_label || "Cycle 2026"}</p>
+              <h2 className="text-xl font-extrabold text-[#0F3A63]">{selectedAssistant.name}</h2>
+              <p className="text-sm font-semibold text-slate-500">{selectedAssistant.grade}</p>
             </div>
-            <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">{currentMission.period}</span>
-          </div>
 
-          <div className="mb-4 rounded-lg bg-[#DCECCB] p-4 text-sm font-semibold text-[#184D2E]">
-            {currentMission.context}
-          </div>
-
-          <div className="mb-4 rounded-lg bg-slate-50 p-4">
-            <p className="mb-2 text-xs font-bold text-[#79B742]">Faits observes pendant la mission</p>
-            <div className="space-y-2">
-              {currentMission.facts.map((fact) => (
-                <p key={fact} className="text-sm font-semibold text-[#0F3A63]">
-                  {fact}
-                </p>
-              ))}
+            <div className="mb-4 flex items-center justify-between text-sm font-bold">
+              <span className="text-[#0F3A63]">Progression</span>
+              <span className="text-[#76B82A]">{globalProgress}%</span>
             </div>
-          </div>
-
-          <div className="space-y-4">
-            {currentMission.criteria.map((item) => (
-              <MissionScoreRow key={item.label} item={item} />
-            ))}
-          </div>
-
-          {hasGap ? (
-            <div className="mt-5 rounded-lg bg-[#F4D6D8] px-4 py-3 text-xs font-semibold text-[#A4252F]">
-              Ecart detecte entre le retour de l'assistant et l'avis Senior. Une justification est requise avant transmission.
+            <div className="h-2 rounded-full bg-slate-200">
+              <div className="h-2 rounded-full bg-[#76B82A]" style={{ width: `${globalProgress}%` }} />
             </div>
-          ) : (
-            <div className="mt-5 rounded-lg bg-[#DCECCB] px-4 py-3 text-xs font-semibold text-[#184D2E]">
-              Les notes Senior sont coherentes avec les faits observes sur cette mission.
+
+            <div className="mt-5 rounded-lg bg-slate-50 p-4 text-sm font-semibold text-[#0F3A63]">
+              Le Senior peut evaluer l'assistant globalement sur le cycle, sans voir les reponses de son auto-evaluation globale.
             </div>
-          )}
-
-          <textarea
-            rows={4}
-            placeholder="Avis Senior sur la mission, faits observes, points forts, axes de progres..."
-            className="mt-4 w-full resize-none rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
-          />
-
-          <div className="mt-4 rounded-lg bg-slate-50 p-4">
-            <p className="mb-3 text-xs font-bold text-[#79B742]">Synthese pour le Manager</p>
-            <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
-              <div>
-                <p className="text-xs font-semibold text-slate-500">Missions évaluées</p>
-                <p className="font-extrabold text-[#0F3A63]">{currentAssistant.missions.length}</p>
+            {reviewData?.assistant?.department === "AUDIT & EXPERTISE COMPTABLE" &&
+            evaluationDepartment &&
+            evaluationDepartment !== "AUDIT & EXPERTISE COMPTABLE" ? (
+              <div className="mt-3 rounded-lg bg-[#EEF6E8] p-4 text-sm font-semibold text-[#4E8B1B]">
+                Cette evaluation utilise les questions du departement {evaluationDepartment}.
               </div>
+            ) : null}
+
+            <div className="mt-5 space-y-4">
+              <article className="rounded-xl bg-white p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-[22px] font-bold text-[#0F3A63]">Progression globale</h3>
+                  <span className="text-[13px] font-bold text-[#76B82A]">{globalProgress}%</span>
+                </div>
+                <p className="mb-4 text-[12px] font-semibold text-[#76B82A]">{completedSections} section(s) complete(s)</p>
+
+                <div className="space-y-3">
+                  {displayedSections.map((section) => (
+                    <div key={section.id} className="flex items-center justify-between text-[12px]">
+                      <p className="font-semibold text-[#0F3A63]">{section.title}</p>
+                      <span className="font-bold text-[#76B82A]">{getSectionProgress(section)}%</span>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="rounded-xl bg-white p-4 shadow-sm">
+                <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">Aide a la notation</h3>
+                <div className="space-y-2">
+                  {gradingHelp.map((item) => (
+                    <div key={item.level} className="flex items-center gap-2 text-[12px]">
+                      <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-200 font-bold text-slate-500">{item.level}</span>
+                      <p className={`font-semibold ${item.color}`}>{item.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            </div>
+          </article>
+
+          <article className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-4 shadow-sm">
               <div>
-                <p className="text-xs font-semibold text-slate-500">Score moyen</p>
-                <p className="font-extrabold text-[#76B82A]">{averageScore} / 5</p>
+                <p className="text-xs font-semibold text-slate-500">Derniere sauvegarde</p>
+                <p className="text-sm font-semibold text-[#0F3A63]">{reviewData?.review?.last_saved_at ? "Enregistree" : "Non disponible"}</p>
               </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-500">Statut avis</p>
-                <p className="font-extrabold text-[#F34D4D]">À valider</p>
+              <div className="flex items-center gap-4 text-sm">
+                <span className="font-semibold text-[#0F3A63]">Section {displayedSections.findIndex((section) => Number(section.id) === Number(activeSectionId)) + 1} / {displayedSections.length}</span>
+                <button type="button" onClick={() => persistReview(sections, missionReviews)} className="font-semibold text-[#76B82A] hover:underline">
+                  {isSaving ? "Sauvegarde..." : "Sauvegarder maintenant"}
+                </button>
               </div>
             </div>
-          </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
-            <button onClick={() => saveMission("draft")} className="rounded-md bg-slate-200 px-5 py-2 text-sm font-bold text-[#0F3A63]">
-              Enregistrer brouillon
-            </button>
-            <button onClick={() => saveMission("sent")} className="rounded-md bg-[#76B82A] px-5 py-2 text-sm font-bold text-white">
-              Transmettre au Manager
-            </button>
-          </div>
-          {status ? (
-            <p className={`mt-3 text-right text-xs font-bold ${status === "missing-mission" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>
-              {status === "missing-mission"
-                ? "Saisissez une mission avant d'enregistrer."
-                : status === "sent"
-                  ? "Évaluation transmise au Manager."
-                  : "Brouillon enregistré."}
-            </p>
-          ) : null}
-        </article>
-      </section>
+            {managerRecipients.length ? (
+              <section className="rounded-xl bg-white p-4 shadow-sm">
+                <label htmlFor="manager-select-global" className="mb-2 block text-[12px] font-bold text-[#0F3A63]">
+                  Manager destinataire
+                </label>
+                <select
+                  id="manager-select-global"
+                  value={selectedManagerValue}
+                  onChange={(event) => {
+                    setSelectedManagerValue(event.target.value);
+                    setFeedbackMessage("");
+                  }}
+                  className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-[#0F3A63] outline-none"
+                >
+                  {managerRecipients.map((manager) => (
+                    <option key={getRecipientOptionValue(manager)} value={getRecipientOptionValue(manager)}>
+                      {manager.department} - {manager.name} ({manager.grade})
+                    </option>
+                  ))}
+                </select>
+              </section>
+            ) : null}
 
-      <article className="rounded-xl bg-white p-5 shadow-sm">
-        <h2 className="mb-4 text-sm font-bold text-[#0F3A63]">Missions saisies</h2>
-        {savedMissions.length ? (
-          <div className="space-y-3">
-            {savedMissions.map((mission) => (
-              <div key={mission.id} className="grid grid-cols-1 gap-3 rounded-lg bg-slate-50 p-4 md:grid-cols-[1fr_auto] md:items-center">
+            <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {displayedSections.map((section) => {
+                const progress = getSectionProgress(section);
+                const done = section.status === "Complete";
+
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveSectionId(Number(section.id));
+                      setFeedbackMessage("");
+                    }}
+                    className={`rounded-md border px-3 py-3 text-left text-white transition ${Number(activeSectionId) === Number(section.id) ? "border-[#76B82A] bg-[#003B63] shadow-[0_0_0_1px_#76B82A]" : "border-transparent bg-[#003B63] hover:bg-[#0B4C7A]"}`}
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <h2 className="text-[13px] font-bold">{section.title}</h2>
+                      {done ? <Check size={14} className="text-white" /> : null}
+                    </div>
+                    <p className="text-[12px] font-semibold">{section.pages?.length || 0} titre(s)</p>
+                  </button>
+                );
+              })}
+            </section>
+
+            <section className="rounded-xl bg-white p-4 shadow-sm">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-extrabold text-[#0F3A63]">{mission.mission}</p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">
-                    {mission.assistant} - {mission.role} - Manager: {mission.manager}
-                  </p>
+                  <p className="text-[12px] font-semibold text-slate-500">Pagination dans la section</p>
+                  <h3 className="text-[18px] font-bold text-[#0F3A63]">{activeSection.title}</h3>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
-                  <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-[#4E8B1B]">Score {mission.score} / 5</span>
-                  <span className={`rounded-full px-3 py-1 ${mission.status === "sent" ? "bg-[#76B82A] text-white" : "bg-slate-200 text-[#0F3A63]"}`}>
-                    {mission.status === "sent" ? "Transmise au Manager" : "Brouillon"}
-                  </span>
+                <span className="text-[12px] font-semibold text-[#0F3A63]">Titre {activePageIndex + 1} / {activeSection.pages?.length || 1}</span>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {(activeSection.pages || []).map((page, index) => (
+                  <button
+                    key={page.page_id}
+                    type="button"
+                    onClick={() => setPageIndexes((current) => ({ ...current, [activeSection.id]: index }))}
+                    className={`rounded-md border px-3 py-2 text-left transition ${index === activePageIndex ? "border-[#76B82A] bg-[#F3FAEA] text-[#0F3A63]" : "border-[#D9E3EE] bg-white text-slate-600 hover:bg-slate-50"}`}
+                  >
+                    <p className="text-[11px] font-bold">Titre {index + 1}</p>
+                    <p className="mt-1 text-[12px] font-semibold">{page.title}</p>
+                    {shouldShowSourceLabel && getSourceBadgeLabel(page) && page.source_sheet !== "TRONC COMMUN" ? (
+                      <span className="mt-2 inline-flex rounded-full bg-[#EEF3F8] px-2 py-0.5 text-[10px] font-semibold text-[#0F3A63]">
+                        {getSourceBadgeLabel(page)}
+                      </span>
+                    ) : null}
+                    <p className="mt-1 text-[10px] font-semibold text-[#76B82A]">{getPageProgress(page)}%</p>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-xl bg-white p-4 shadow-sm">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-[28px] font-bold leading-none text-[#0F3A63]">{activeSection.title}</h3>
+                  <p className="mt-2 text-[18px] font-semibold text-[#0F3A63]">{activePage.title}</p>
+                  {shouldShowSourceLabel && activePageSourceBadgeLabel && activePage.source_sheet !== "TRONC COMMUN" ? (
+                    <span className="mt-2 inline-flex rounded-full bg-[#EEF3F8] px-2.5 py-1 text-[11px] font-semibold text-[#0F3A63]">{activePageSourceBadgeLabel}</span>
+                  ) : null}
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">
-            Aucune mission enregistrée pour le moment.
-          </p>
-        )}
-      </article>
+
+              <div className="space-y-3.5">
+                {(activePage.themes || []).map((theme) => (
+                  <ScoreRow key={theme.theme_id} theme={theme} onSelect={(score) => updateScore(theme.theme_id, score)} />
+                ))}
+              </div>
+
+              <div className="mt-4">
+                <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire du titre (facultatif)</p>
+                <textarea
+                  rows={4}
+                  value={activePage.comment || ""}
+                  onChange={(event) => updateComment(event.target.value)}
+                  placeholder="Avis Senior, faits observes, points forts, axes de progres..."
+                  className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
+                />
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                <button
+                  type="button"
+                    onClick={() => goToGlobalStep(-1)}
+                    disabled={Number(activeSectionId) === Number(displayedSections[0]?.id) && activePageIndex === 0}
+                    className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                  <ChevronLeft size={14} />
+                  Precedent
+                </button>
+
+                {!isLastGlobalStep ? (
+                  <button
+                    type="button"
+                    onClick={handleSaveAndContinue}
+                    disabled={isSaving || isSubmitting}
+                    className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                  >
+                    Sauvegarder et continuer
+                    <ChevronRight size={14} />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={isSaving || isSubmitting || reviewData?.review?.status === "Transmis au Manager"}
+                    className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                  >
+                    {isSubmitting ? "Transmission..." : "Transmettre au Manager"}
+                  </button>
+                )}
+              </div>
+            </section>
+          </article>
+        </section>
+      )}
+
+      {feedbackMessage ? (
+        <p className={`text-right text-[11px] font-semibold ${feedbackTone === "error" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>{feedbackMessage}</p>
+      ) : null}
     </section>
   );
 }
