@@ -15,10 +15,10 @@ const scoreRows = [
 ];
 
 const historyRows = [
-  { cycle: "Cycle 2026", name: "Diallo Seydou", decision: "Promotion → Manager Senior", className: "text-[#78B843]" },
-  { cycle: "Cycle 2026", name: "Kone Awa", decision: "Augmentation +8%", className: "text-[#78B843]" },
-  { cycle: "Cycle 2025", name: "Yao Emmanuel", decision: "Maintien + formation", className: "text-[#0F4A72]" },
-  { cycle: "Cycle 2025", name: "Gnago Nadege", decision: "Promotion → Superviseur", className: "text-[#78B843]" },
+  { cycle: "Cycle 2026", name: "Diallo Seydou", décision: "Promotion → Manager Senior", className: "text-[#78B843]" },
+  { cycle: "Cycle 2026", name: "Kone Awa", décision: "Augmentation +8%", className: "text-[#78B843]" },
+  { cycle: "Cycle 2025", name: "Yao Emmanuel", décision: "Maintien + formation", className: "text-[#0F4A72]" },
+  { cycle: "Cycle 2025", name: "Gnago Nadege", décision: "Promotion → Superviseur", className: "text-[#78B843]" },
 ];
 
 const exportsRows = [
@@ -59,9 +59,9 @@ function Histoireanalytique() {
             <thead>
               <tr className="bg-[#0C4B6C] text-left text-sm font-semibold text-white">
                 <th className="px-4 py-3">Collaborateur</th>
-                <th className="px-4 py-3">Cycle 2024</th>
-                <th className="px-4 py-3">Cycle 2025</th>
-                <th className="px-4 py-3">Cycle 2026</th>
+                <th className="px-4 py-3">Cycle 2024-2025</th>
+                <th className="px-4 py-3">Cycle 2025-2026</th>
+                <th className="px-4 py-3">Cycle 2026-2027</th>
                 <th className="px-4 py-3">Tendance</th>
               </tr>
             </thead>
@@ -91,7 +91,7 @@ function Histoireanalytique() {
         <article className="rounded-lg bg-white shadow-sm">
           <div className="border-b border-slate-100 px-4 py-3">
             <p className="text-2xl font-black text-[#0F3A63]">Historique des décisions RH prises</p>
-            <p className="text-base font-bold text-[#0F4A72]">Cycle 2026 & anterieurs</p>
+            <p className="text-base font-bold text-[#0F4A72]">Cycle 2026 & antérieurs</p>
           </div>
           <div className="space-y-6 px-4 py-4">
             {historyRows.map((row) => (

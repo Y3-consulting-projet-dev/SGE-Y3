@@ -159,7 +159,7 @@ function Autoevamanager() {
                 <div className="mt-7">
                   <p className="text-sm font-extrabold text-[#0F4A72]">Commentaire du Manager</p>
                   <p className="mt-2 text-sm text-slate-600">"Bonne année malgré la charge importante.</p>
-                  <p className="text-sm text-slate-600">Souhaite évoluer vers un rôle de Manager Senior avec un portefeuille clients dédié."</p>
+                  <p className="text-sm text-slate-600">Souhaite évoluer vers un rôle de Manager Sénior avec un portefeuille clients dédié."</p>
                 </div>
               </>
             )}

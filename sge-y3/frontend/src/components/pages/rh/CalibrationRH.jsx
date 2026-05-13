@@ -4,7 +4,7 @@ function CalibrationRH() {
   return (
     <section className="rounded-xl bg-white p-5 shadow-sm">
       <h2 className="text-xl font-extrabold text-[#0F3A63]">Calibration des scores</h2>
-      <p className="mt-1 text-sm font-semibold text-slate-500">Comparaison des moyennes pour identifier les ecarts de notation.</p>
+      <p className="mt-1 text-sm font-semibold text-slate-500">Comparaison des moyennes pour identifier les écarts de notation.</p>
 
       <div className="mt-5 space-y-4">
         {calibrationRows.map((row) => (

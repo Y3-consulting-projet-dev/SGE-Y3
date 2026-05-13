@@ -30,7 +30,7 @@ function SynthesesRH({ readOnly = false }) {
               </div>
               <p className="text-2xl font-black text-[#78B843]">{row.score}</p>
             </div>
-            <p className="mt-4 rounded-md bg-white px-3 py-2 text-xs font-bold text-slate-500">Decision: {row.decisionOwner}</p>
+            <p className="mt-4 rounded-md bg-white px-3 py-2 text-xs font-bold text-slate-500">Décision: {row.decisionOwner}</p>
           </article>
         ))}
       </div>

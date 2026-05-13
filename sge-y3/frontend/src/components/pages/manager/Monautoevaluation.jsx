@@ -81,7 +81,7 @@ function SectionBadge({ status }) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-[#DFECD4] px-3 py-1 text-[11px] font-semibold text-[#79B742]">
         <CheckCircle2 size={12} />
-        Complete
+        Complète
       </span>
     );
   }
@@ -90,7 +90,7 @@ function SectionBadge({ status }) {
     return <span className="rounded-full bg-[#F6D4D4] px-3 py-1 text-xs font-semibold text-[#DF4C4C]">En cours</span>;
   }
 
-  return <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">A faire</span>;
+  return <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">  À faire</span>;
 }
 
 function Monautoevaluation() {
@@ -159,7 +159,7 @@ function Monautoevaluation() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs font-semibold text-slate-400">Axelle Armani - Manager - Cycle 2026</p>
+      <p className="text-xs font-semibold text-slate-400">Axelle Amani - Manager - Cycle 2025-2026</p>
 
       <div className="rounded-sm bg-[#DCECCB] px-4 py-3 text-xs font-semibold text-[#1E5B34]">
         Cette auto-évaluation sera transmise à l'Associé après validation RH. Soyez précis et factuel.
@@ -241,7 +241,7 @@ function Monautoevaluation() {
 
             {savedComments[activeSectionId] ? (
               <div className="mt-3 rounded-md bg-[#DCECCB] px-3 py-3">
-                <p className="mb-1 text-xs font-bold text-[#79B742]">Commentaire sauvegarde</p>
+                <p className="mb-1 text-xs font-bold text-[#79B742]">Commentaire Sauvegarder</p>
                 <p className="text-sm font-semibold text-[#0F3A63]">{savedComments[activeSectionId]}</p>
               </div>
             ) : null}
@@ -266,7 +266,7 @@ function Monautoevaluation() {
           </article>
 
           <article className="rounded-md bg-white p-4 shadow-sm">
-            <h3 className="mb-3 text-xs font-semibold text-[#79B742]">Commentaires sauvegardes</h3>
+            <h3 className="mb-3 text-xs font-semibold text-[#79B742]">Commentaires sauvegardés</h3>
             <div className="mb-4 space-y-3">
               {sections.some((section) => savedComments[section.id]) ? (
                 sections
@@ -279,7 +279,7 @@ function Monautoevaluation() {
                   ))
               ) : (
                 <p className="rounded-md bg-slate-50 px-3 py-3 text-xs font-semibold text-slate-500">
-                  Aucun commentaire sauvegarde pour le moment.
+                  Aucun commentaire Sauvegarder pour le moment.
                 </p>
               )}
             </div>
