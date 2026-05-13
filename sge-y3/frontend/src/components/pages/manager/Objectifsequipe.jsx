@@ -173,7 +173,7 @@ function Objectifsequipe({ createSignal = 0 }) {
               <tr className="bg-[#003B63] text-left text-white">
                 <th className="px-4 py-3 font-semibold">Objectif</th>
                 <th className="px-4 py-3 font-semibold">Collaborateur</th>
-                <th className="px-4 py-3 font-semibold">Echeance</th>
+                <th className="px-4 py-3 font-semibold">Echéance</th>
                 <th className="px-4 py-3 font-semibold">Progression</th>
                 <th className="px-4 py-3 font-semibold">Statut</th>
               </tr>
@@ -208,7 +208,7 @@ function Objectifsequipe({ createSignal = 0 }) {
       </section>
 
       <section ref={formRef} className="rounded-md bg-white p-4 shadow-sm">
-        <h2 className="mb-4 text-sm font-bold text-[#0F3A63]">Creer un objectif SMART</h2>
+        <h2 className="mb-4 text-sm font-bold text-[#0F3A63]">Créer un objectif SMART</h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="space-y-2">
             <span className="text-xs font-semibold text-[#0F3A63]">Collaborateur</span>
@@ -224,7 +224,7 @@ function Objectifsequipe({ createSignal = 0 }) {
           </label>
 
           <label className="space-y-2">
-            <span className="text-xs font-semibold text-[#0F3A63]">Indicateur de reussite</span>
+            <span className="text-xs font-semibold text-[#0F3A63]">Indicateur de réussite</span>
             <input
               type="text"
               value={form.indicator}
@@ -235,7 +235,7 @@ function Objectifsequipe({ createSignal = 0 }) {
           </label>
 
           <label className="space-y-2">
-            <span className="text-xs font-semibold text-[#0F3A63]">Intitule de l'objectif</span>
+            <span className="text-xs font-semibold text-[#0F3A63]">Intitulé de l'objectif</span>
             <input
               ref={titleInputRef}
               type="text"
@@ -277,7 +277,7 @@ function Objectifsequipe({ createSignal = 0 }) {
             className="inline-flex items-center gap-2 rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-semibold text-white"
           >
             <Target size={16} />
-            Enregistrer l'objectif
+            Enrégistrer l'objectif
           </button>
           {saveStatus ? (
             <p className={`w-full text-right text-xs font-bold ${saveStatus === "missing" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>

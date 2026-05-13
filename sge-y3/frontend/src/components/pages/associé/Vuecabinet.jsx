@@ -17,6 +17,7 @@ import Histoireanalytique from "@/components/pages/associé/Histoireanalytique";
 import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import logoY3 from "@/assets/logo-y3.png";
+import { saveCommitteeDecision } from "@/lib/committee";
 import { getDisplayName, getInitials } from "@/lib/userPresentation";
 
 const sideMenu = [
@@ -246,7 +247,20 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
           ) : activeSection === "decisions" ? (
             <Prendredecision candidate={selectedDecision} />
           ) : activeSection === "committee" ? (
-            <ComiteEvaluation readOnly />
+            <ComiteEvaluation
+              actorLabel="Les associes"
+              classifiableLabel="Managers et RH a ajouter au classement"
+              lockPrimaryClassification
+              participantScope="collaborators"
+              secondaryParticipantScope="leadership"
+              secondaryUnclassified
+              rateEnabled
+              submitLabel="Envoyer les taux d'augmentation a la RH"
+              submittedLabel="Taux d'augmentation envoyes a la RH"
+              successMessage="Les classements et les taux d'augmentation ont ete transmis a la RH."
+              onSubmit={(decisions) => saveCommitteeDecision({ scope: "associate-final", cycle_label: "Cycle 2026", decisions })}
+              workflowText="Les assistants, seniors et assistants managers recus de la RH restent dans leurs bulles : les associes renseignent seulement le taux. Les associes ajoutent ensuite la RH et les managers dans ces memes bulles, saisissent leur taux, puis envoient tout en une fois a la RH."
+            />
           ) : activeSection === "autoeval-managers" ? (
             <Autoevamanager />
           ) : activeSection === "history" ? (

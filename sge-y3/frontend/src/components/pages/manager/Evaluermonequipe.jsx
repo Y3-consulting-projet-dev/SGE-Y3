@@ -104,7 +104,7 @@ function Evaluermonequipe({ member }) {
                 <span className="text-[#76B82A]">4 / 5</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Savoir-etre</span>
+                <span>Savoir-être</span>
                 <span className="text-[#76B82A]">3 / 5</span>
               </div>
               <div className="flex items-center justify-between">
@@ -118,7 +118,7 @@ function Evaluermonequipe({ member }) {
           </div>
 
           <div className="rounded-lg bg-white p-4 shadow-sm">
-            <p className="mb-3 text-sm font-bold text-[#76B82A]">Entretien annuel</p>
+            <p className="mb-3 text-sm font-bold text-[#76B82A]">Entrétien annuel</p>
             <p className="text-lg font-bold text-[#0F3A63]">22/04/2026 - 14h30</p>
             <p className="mt-3 text-sm font-semibold text-[#0F3A63]">Mode</p>
             <select
@@ -126,9 +126,9 @@ function Evaluermonequipe({ member }) {
               onChange={(event) => setMeetingMode(event.target.value)}
               className="mt-1 h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-[#0F3A63] outline-none"
             >
-              <option>Presentiel</option>
+              <option>Présentiel</option>
               <option>Visio</option>
-              <option>Telephone</option>
+              <option>Téléphone</option>
             </select>
           </div>
         </div>
@@ -143,7 +143,7 @@ function Evaluermonequipe({ member }) {
                   <span className="text-[#76B82A]">{technicalScore}/5 - {technicalPercent}% - {technicalPoints.toFixed(1)} pts</span>
                 </div>
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <span>Savoir-etre (30%)</span>
+                  <span>Savoir-être (30%)</span>
                   <span className={behaviorScore < 3 ? "text-[#E53935]" : "text-[#76B82A]"}>
                     {behaviorScore}/5 - {behaviorPercent}% - {behaviorPoints.toFixed(1)} pts
                   </span>
@@ -162,7 +162,7 @@ function Evaluermonequipe({ member }) {
             <div className="rounded-lg bg-[#E3EFD8] p-4 shadow-sm">
               <p className="mb-1 text-sm font-bold text-[#76B82A]">Note annuelle</p>
               <p className="mb-4 text-xs text-slate-500">22/04/2026 - 14h30</p>
-              <p className="mb-1 text-xs font-semibold text-[#0F3A63]">Notes de l'entretien</p>
+              <p className="mb-1 text-xs font-semibold text-[#0F3A63]">Notes de l'entrétien</p>
               <textarea
                 rows={5}
                 value={meetingNotes}
@@ -193,12 +193,12 @@ function Evaluermonequipe({ member }) {
 
             {hasGap ? (
               <div className="mb-4 rounded-sm bg-[#F4D6D8] px-3 py-2 text-xs font-semibold text-[#A4252F]">
-                Ecart detecte - justification obligatoire
+                Ecart détecté - justification obligatoire
               </div>
             ) : null}
 
             <div className="rounded-xl bg-slate-100 p-4">
-              <p className="mb-2 text-xs font-semibold text-[#0F3A63]">Justification de l'ecart</p>
+              <p className="mb-2 text-xs font-semibold text-[#0F3A63]">Justification de l'écart</p>
               <textarea
                 rows={3}
                 value={gapJustification}
