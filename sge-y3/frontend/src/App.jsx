@@ -53,6 +53,7 @@ function isAssistantRh(user) {
 
 function getDashboardRole(user) {
   const department = normalizeDepartment(user?.department);
+  const grade = normalizeDepartment(user?.grade);
 
   if (isAssistantRh(user)) {
     return "rh-assistant";
@@ -64,6 +65,10 @@ function getDashboardRole(user) {
 
   if (user?.role === "associate") {
     return "associate";
+  }
+
+  if (grade === "SENIOR" || grade === "ASSISTANT MANAGER") {
+    return "senior";
   }
 
   return user?.role || "manager";

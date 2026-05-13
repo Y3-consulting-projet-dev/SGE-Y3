@@ -51,6 +51,55 @@ const sectionSchema = new mongoose.Schema(
   { _id: false, id: false }
 );
 
+const missionCriterionSchema = new mongoose.Schema(
+  {
+    criterion_id: { type: String, default: '', trim: true },
+    section_title: { type: String, default: '', trim: true },
+    page_title: { type: String, default: '', trim: true },
+    source_sheet: { type: String, default: '', trim: true },
+    source_label: { type: String, default: '', trim: true },
+    theme_code: { type: String, default: '', trim: true },
+    label: { type: String, required: true, trim: true },
+    statement: { type: String, default: '', trim: true },
+    score: { type: Number, default: null, min: 1, max: 5 },
+  },
+  { _id: false }
+);
+
+const missionRecipientSchema = new mongoose.Schema(
+  {
+    user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    name: { type: String, required: true, trim: true },
+    grade: { type: String, default: '', trim: true },
+    department: { type: String, default: '', trim: true },
+  },
+  { _id: false }
+);
+
+const missionEvaluationSchema = new mongoose.Schema(
+  {
+    mission_id: { type: String, required: true, trim: true },
+    title: { type: String, required: true, trim: true },
+    period: { type: String, default: '', trim: true },
+    department: { type: String, default: '', trim: true },
+    created_by_role: { type: String, default: 'self', trim: true },
+    assigned_by_user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    assigned_by_name: { type: String, default: '', trim: true },
+    assigned_by_grade: { type: String, default: '', trim: true },
+    assigned_at: { type: Date, default: null },
+    primary_recipient_user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    primary_recipient_name: { type: String, default: '', trim: true },
+    primary_recipient_grade: { type: String, default: '', trim: true },
+    primary_recipient_department: { type: String, default: '', trim: true },
+    recipients: { type: [missionRecipientSchema], default: [] },
+    criteria: { type: [missionCriterionSchema], default: [] },
+    comment: { type: String, default: '', trim: true },
+    status: { type: String, default: 'Brouillon', trim: true },
+    submitted_at: { type: Date, default: null },
+  },
+  { _id: false }
+);
+
 const evaluationInstanceSchema = new mongoose.Schema(
   {
     cycle_label: { type: String, required: true, trim: true },
@@ -73,6 +122,7 @@ const evaluationInstanceSchema = new mongoose.Schema(
       ],
       default: [],
     },
+    mission_evaluations: { type: [missionEvaluationSchema], default: [] },
     sections: { type: [sectionSchema], default: [] },
     submitted_at: { type: Date, default: null },
     last_saved_at: { type: Date, default: null },
