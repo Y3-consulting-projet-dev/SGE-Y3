@@ -1,55 +1,33 @@
 import { Search } from "lucide-react";
 
-const teamMembers = [
-  {
-    name: "Habib Bah",
-    role: "assistant",
-    seniority: "3 ans",
-    status: "Soumise",
-    score: "3.8 / 5",
-    action: "Corriger",
-    actionTarget: "team-review",
-  },
-  {
-    name: "Kader Kone",
-    role: "assistant",
-    seniority: "2 ans",
-    status: "En cours",
-    score: "",
-    action: "Voir",
-    actionTarget: "team",
-  },
-  {
-    name: "Orlane Kone",
-    role: "assistante",
-    seniority: "1 an",
-    status: "En cours",
-    score: "",
-    action: "Voir",
-    actionTarget: "team",
-  },
-  {
-    name: "Yasmine K",
-    role: "Senior",
-    seniority: "3 ans",
-    status: "Valide RH",
-    score: "4.2 / 5",
-    action: "Voir",
-    actionTarget: "reports",
-  },
-  {
-    name: "Louise Yao",
-    role: "assistante",
-    seniority: "6 mois",
-    status: "Brouillon",
-    score: "",
-    action: "Relancer",
-    actionTarget: "notifications",
-  },
-];
+function formatEvalStatus(status = "") {
+  if (status === "Soumis aux Managers" || status === "Soumis au Manager") return "Soumise";
+  if (status === "En cours") return "En cours";
+  if (status === "Brouillon") return "Brouillon";
+  if (status === "Valide RH") return "Valide RH";
+  return "En attente";
+}
 
-function Monequipe({ searchTerm, onSearchChange, onAction, onEvaluate, onRelance, relanceMessage, extraMembers = [] }) {
-  const allMembers = [...teamMembers, ...extraMembers];
+function getMemberAction() {
+  return { label: "Voir", actionTarget: "team" };
+}
+
+function Monequipe({ searchTerm, onSearchChange, onEvaluate, relanceMessage, members = [], extraMembers = [] }) {
+  const allMembers = [
+    ...members.map((member) => {
+      const action = getMemberAction();
+
+      return {
+        ...member,
+        role: member.grade,
+        status: formatEvalStatus(member.evaluationStatus),
+        score: typeof member.selfEvaluationScore === "number" ? `${member.selfEvaluationScore} / 5` : "",
+        action: action.label,
+        actionTarget: action.actionTarget,
+      };
+    }),
+    ...extraMembers,
+  ];
   const rows = allMembers.filter((member) => {
     const query = searchTerm.trim().toLowerCase();
     if (!query) return true;
@@ -67,11 +45,7 @@ function Monequipe({ searchTerm, onSearchChange, onAction, onEvaluate, onRelance
     return "bg-slate-100 text-[#0E4A6B]";
   };
 
-  const actionClass = (action) => {
-    if (action === "Corriger") return "text-[#E53935]";
-    if (action === "Relancer") return "text-[#D79C0F]";
-    return "text-[#2E5BC8]";
-  };
+  const actionClass = () => "text-[#2E5BC8]";
 
   return (
     <>
@@ -94,12 +68,14 @@ function Monequipe({ searchTerm, onSearchChange, onAction, onEvaluate, onRelance
       </div>
 
       <section className="overflow-hidden rounded-md bg-white">
+        {!rows.length ? (
+          <div className="p-5 text-sm font-semibold text-slate-500">Aucun membre trouve dans votre perimetre.</div>
+        ) : null}
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="bg-[#003B63] text-left text-white">
               <th className="px-4 py-4 font-semibold">Collaborateur</th>
               <th className="px-4 py-4 font-semibold">Role</th>
-              <th className="px-4 py-4 font-semibold">Anciennete</th>
               <th className="px-4 py-4 font-semibold">Statut eval.</th>
               <th className="px-4 py-4 font-semibold">Score auto-eval</th>
               <th className="px-4 py-4 font-semibold">Action</th>
@@ -108,13 +84,12 @@ function Monequipe({ searchTerm, onSearchChange, onAction, onEvaluate, onRelance
           <tbody>
             {rows.map((member) => (
               <tr
-                key={member.name}
+                key={member.id || member.name}
                 onClick={() => onEvaluate(member)}
                 className="cursor-pointer border-b border-slate-100 text-[#0F3A63] transition hover:bg-slate-50 last:border-0"
               >
                 <td className="px-4 py-4 font-semibold">{member.name}</td>
                 <td className="px-4 py-4">{member.role}</td>
-                <td className="px-4 py-4">{member.seniority}</td>
                 <td className="px-4 py-4">
                   <span
                     className={`inline-flex min-w-[94px] justify-center rounded-xl px-3 py-1 text-xs font-semibold ${statusClass(member.status)}`}
@@ -127,10 +102,6 @@ function Monequipe({ searchTerm, onSearchChange, onAction, onEvaluate, onRelance
                   <button
                     onClick={(event) => {
                       event.stopPropagation();
-                      if (member.actionTarget === "notifications") {
-                        onRelance(member);
-                        return;
-                      }
                       onEvaluate(member);
                     }}
                     className={`font-semibold hover:underline ${actionClass(member.action)}`}

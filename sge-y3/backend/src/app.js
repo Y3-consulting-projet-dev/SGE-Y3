@@ -6,6 +6,7 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const collaboratorRoutes = require('./routes/collaboratorRoutes');
 const seniorRoutes = require('./routes/seniorRoutes');
+const managerRoutes = require('./routes/managerRoutes');
 const committeeRoutes = require('./routes/committeeRoutes');
 
 dotenv.config();
@@ -29,6 +30,7 @@ app.get('/api/health', (_request, response) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/collaborator', collaboratorRoutes);
 app.use('/api/senior', seniorRoutes);
+app.use('/api/manager', managerRoutes);
 app.use('/api/committee', committeeRoutes);
 
 app.use((error, _request, response, _next) => {

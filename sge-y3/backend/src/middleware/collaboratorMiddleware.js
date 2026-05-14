@@ -18,7 +18,22 @@ function requireSenior(request, response, next) {
   return next();
 }
 
+function requireManager(request, response, next) {
+  if (
+    request.user?.grade !== 'Assistant manager' &&
+    request.user?.grade !== 'Manager' &&
+    request.user?.grade !== 'Senior manager'
+  ) {
+    return response.status(403).json({
+      message: 'Cette fonctionnalite est reservee aux Assistant managers, Managers et Senior managers.',
+    });
+  }
+
+  return next();
+}
+
 module.exports = {
   requireAssistant,
+  requireManager,
   requireSenior,
 };

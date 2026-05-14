@@ -1,73 +1,7 @@
-﻿const reportCards = [
-  { title: "Score moyen de l'équipe", value: "3.7", subtitle: "Sur 5", accent: "" },
-  { title: "Taux completion", value: "80%", subtitle: "4/5 evalo soumises", accent: "" },
-  { title: "Ecarts signales", value: "1", subtitle: "A justifier", accent: "text-[#F34D4D]" },
-  { title: "Promos recommandees", value: "2", subtitle: "", accent: "" },
-];
+import { useEffect, useMemo, useState } from "react";
+import { getManagerTeamReport } from "@/lib/managerOverview";
 
-const collaboratorScores = [
-  {
-    initials: "kk",
-    name: "Kader kone",
-    technique: "4/5",
-    behavior: "2/5",
-    goals: "4/5",
-    finalScore: "3.2/5",
-    recommendation: "Promotion",
-    recommendationClass: "bg-[#E3E7F3] text-[#4F67C7]",
-  },
-  {
-    initials: "Ok",
-    name: "Orlane Kone",
-    technique: "3/5",
-    behavior: "3/5",
-    goals: "3/5",
-    finalScore: "3/5",
-    recommendation: "Maintien",
-    recommendationClass: "bg-[#F5DFC2] text-[#D48A2A]",
-  },
-  {
-    initials: "YK",
-    name: "Yasimin K",
-    technique: "4/5",
-    behavior: "5/5",
-    goals: "5/5",
-    finalScore: "4.6/5",
-    recommendation: "Augmentation",
-    recommendationClass: "bg-[#DFECD4] text-[#73AF2E]",
-  },
-  {
-    initials: "LY",
-    name: "Louise Yao",
-    technique: "4/5",
-    behavior: "5/5",
-    goals: "4/5",
-    finalScore: "4.2/5",
-    recommendation: "Augmentation",
-    recommendationClass: "bg-[#DFECD4] text-[#73AF2E]",
-  },
-];
-
-const exportsList = [
-  {
-    title: "Rapport de synthèse d'équipe",
-    subtitle: "Scores, recommandations, objectifs - PDF",
-    action: "Export PDF",
-    actionClass: "bg-[#1E88F4] text-white",
-  },
-  {
-    title: "Données détaillées de l'équipe",
-    subtitle: "Toutes les notes et reponses - Excel",
-    action: "Export Excel",
-    actionClass: "bg-[#EAF1F8] text-[#0F3A63]",
-  },
-  {
-    title: "Suivi objectifs SMART",
-    subtitle: "Progression par collaborateur - PDF",
-    action: "Export PDF",
-    actionClass: "bg-[#EAF1F8] text-[#0F3A63]",
-  },
-];
+const recommendationOptions = ["Maintien", "Augmentation"];
 
 function downloadFile(filename, content, type) {
   const blob = new Blob([content], { type });
@@ -81,31 +15,41 @@ function downloadFile(filename, content, type) {
   URL.revokeObjectURL(url);
 }
 
-function buildCsvReport() {
-  const header = ["Collaborateur", "Technique", "Savoir-etre", "Objectifs", "Score final", "Recommandation"];
-  const rows = collaboratorScores.map((row) => [
-    row.name,
-    row.technique,
-    row.behavior,
-    row.goals,
-    row.finalScore,
-    row.recommendation,
-  ]);
-
-  return [header, ...rows].map((line) => line.map((cell) => `"${cell}"`).join(";")).join("\n");
+function formatScore(score) {
+  return typeof score === "number" ? `${score}/5` : "--";
 }
 
-function buildPrintableReport(title) {
-  const rows = collaboratorScores
+function getRecommendationClass(recommendation) {
+  return recommendation === "Augmentation"
+    ? "bg-[#DFECD4] text-[#73AF2E]"
+    : "bg-[#F5DFC2] text-[#D48A2A]";
+}
+
+function buildCsvReport(rows, sectionTitles, selectedRecommendations) {
+  const header = ["Collaborateur", ...sectionTitles, "Score final", "Recommandation"];
+  const values = rows.map((row) => [
+    row.name,
+    ...row.sectionScores.map((section) => formatScore(section.score)),
+    formatScore(row.finalScore),
+    selectedRecommendations[row.id] || row.automaticRecommendation,
+  ]);
+
+  return [header, ...values].map((line) => line.map((cell) => `"${cell}"`).join(";")).join("\n");
+}
+
+function buildPrintableReport(title, rows, sectionTitles, selectedRecommendations, cycleLabel) {
+  const headerCells = [...sectionTitles, "Score final", "Recommandation"]
+    .map((label) => `<th>${label}</th>`)
+    .join("");
+
+  const bodyRows = rows
     .map(
       (row) => `
         <tr>
           <td>${row.name}</td>
-          <td>${row.technique}</td>
-          <td>${row.behavior}</td>
-          <td>${row.goals}</td>
-          <td>${row.finalScore}</td>
-          <td>${row.recommendation}</td>
+          ${row.sectionScores.map((section) => `<td>${formatScore(section.score)}</td>`).join("")}
+          <td>${formatScore(row.finalScore)}</td>
+          <td>${selectedRecommendations[row.id] || row.automaticRecommendation}</td>
         </tr>`
     )
     .join("");
@@ -126,39 +70,139 @@ function buildPrintableReport(title) {
   </head>
   <body>
     <h1>${title}</h1>
-    <p>Reporting d'équipe - Cycle 2026</p>
+    <p>Reporting d'equipe - ${cycleLabel}</p>
     <table>
       <thead>
         <tr>
           <th>Collaborateur</th>
-          <th>Technique</th>
-          <th>Savoir-etre</th>
-          <th>Objectifs</th>
-          <th>Score final</th>
-          <th>Recommandation</th>
+          ${headerCells}
         </tr>
       </thead>
-      <tbody>${rows}</tbody>
+      <tbody>${bodyRows}</tbody>
     </table>
   </body>
 </html>`;
 }
 
 function Rapportsequipe() {
+  const [reportData, setReportData] = useState(null);
+  const [selectedRecommendations, setSelectedRecommendations] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadReport() {
+      try {
+        setIsLoading(true);
+        setErrorMessage("");
+        const response = await getManagerTeamReport();
+
+        if (cancelled) return;
+
+        setReportData(response);
+        setSelectedRecommendations(
+          Object.fromEntries((response.rows || []).map((row) => [row.id, row.automaticRecommendation]))
+        );
+      } catch (error) {
+        if (!cancelled) {
+          setErrorMessage(error.message || "Chargement du rapport equipe impossible.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadReport();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const rows = reportData?.rows || [];
+  const sectionTitles = reportData?.section_titles || [];
+  const kpis = reportData?.kpis || {};
+  const cycleLabel = reportData?.cycle_label || "Cycle 2026";
+
+  const reportCards = useMemo(
+    () => [
+      {
+        title: "Score moyen de l'equipe",
+        value: typeof kpis.teamAverage === "number" ? String(kpis.teamAverage) : "--",
+        subtitle: "Sur 5",
+        accent: "",
+      },
+      {
+        title: "Taux completion",
+        value: `${kpis.completionRate || 0}%`,
+        subtitle: `${kpis.completedEvaluationsCount || 0}/${kpis.totalMembers || 0} eval(s) completes`,
+        accent: "",
+      },
+      {
+        title: "Ecarts signales",
+        value: String(kpis.unjustifiedGapCount || 0),
+        subtitle: "A justifier",
+        accent: "text-[#F34D4D]",
+      },
+      {
+        title: "Augmentations recommandees",
+        value: String(kpis.augmentationCount || 0),
+        subtitle: "",
+        accent: "",
+      },
+    ],
+    [kpis]
+  );
+
+  const exportsList = [
+    {
+      title: "Rapport de synthese d'equipe",
+      subtitle: "Scores, recommandations, sections - PDF",
+      action: "Export PDF",
+      actionClass: "bg-[#1E88F4] text-white",
+    },
+    {
+      title: "Donnees detaillees de l'equipe",
+      subtitle: "Toutes les notes consolidees - Excel",
+      action: "Export Excel",
+      actionClass: "bg-[#EAF1F8] text-[#0F3A63]",
+    },
+  ];
+
   const handleExport = (item) => {
-    const slug = item.title.toLowerCase().replaceAll(" ", "-");
+    const slug = item.title.toLowerCase().replaceAll(" ", "-").replaceAll("'", "");
 
     if (item.action.includes("Excel")) {
-      downloadFile(`${slug}.csv`, buildCsvReport(), "text/csv;charset=utf-8");
+      downloadFile(
+        `${slug}.csv`,
+        buildCsvReport(rows, sectionTitles, selectedRecommendations),
+        "text/csv;charset=utf-8"
+      );
       return;
     }
 
-    downloadFile(`${slug}.html`, buildPrintableReport(item.title), "text/html;charset=utf-8");
+    downloadFile(
+      `${slug}.html`,
+      buildPrintableReport(item.title, rows, sectionTitles, selectedRecommendations, cycleLabel),
+      "text/html;charset=utf-8"
+    );
   };
+
+  if (isLoading) {
+    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement du reporting equipe...</section>;
+  }
+
+  if (errorMessage) {
+    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">{errorMessage}</section>;
+  }
 
   return (
     <div className="space-y-5">
-      <p className="text-xs font-semibold text-slate-400">Reporting - Cycle 2026</p>
+      <p className="text-xs font-semibold text-slate-400">Reporting - {cycleLabel}</p>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         {reportCards.map((card) => (
@@ -177,39 +221,76 @@ function Rapportsequipe() {
             <thead>
               <tr className="bg-[#003B63] text-left text-white">
                 <th className="px-4 py-3 font-semibold">Collaborateur</th>
-                <th className="px-4 py-3 font-semibold">Technique</th>
-                <th className="px-4 py-3 font-semibold">Savoir-etre</th>
-                <th className="px-4 py-3 font-semibold">Objectifs</th>
+                {sectionTitles.map((title) => (
+                  <th key={title} className="px-4 py-3 font-semibold">
+                    {title}
+                  </th>
+                ))}
                 <th className="px-4 py-3 font-semibold">Score final</th>
                 <th className="px-4 py-3 font-semibold">Recommandation</th>
               </tr>
             </thead>
             <tbody>
-              {collaboratorScores.map((row) => (
-                <tr key={row.name} className="border-b border-slate-100 text-[#0F3A63] last:border-0">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-slate-200 text-[11px] font-bold text-slate-500">
-                        {row.initials}
-                      </span>
-                      <span className="font-semibold">{row.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 font-semibold text-[#73AF2E]">{row.technique}</td>
-                  <td className={`px-4 py-3 font-semibold ${row.behavior === "2/5" ? "text-[#F34D4D]" : "text-[#73AF2E]"}`}>
-                    {row.behavior}
-                  </td>
-                  <td className={`px-4 py-3 font-semibold ${row.goals === "3/5" ? "text-[#D48A2A]" : "text-[#73AF2E]"}`}>
-                    {row.goals}
-                  </td>
-                  <td className="px-4 py-3 font-bold">{row.finalScore}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex min-w-[116px] justify-center rounded-full px-3 py-1 text-xs font-semibold ${row.recommendationClass}`}>
-                      {row.recommendation}
-                    </span>
+              {rows.length ? (
+                rows.map((row) => (
+                  <tr key={row.id} className="border-b border-slate-100 text-[#0F3A63] last:border-0">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-slate-200 text-[11px] font-bold text-slate-500">
+                          {row.initials || "--"}
+                        </span>
+                        <div>
+                          <span className="font-semibold">{row.name}</span>
+                          <p className="text-xs text-slate-500">
+                            {row.grade} - {row.department}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    {row.sectionScores.map((section) => (
+                      <td
+                        key={`${row.id}-${section.title}`}
+                        className={`px-4 py-3 font-semibold ${
+                          typeof section.score === "number" && section.score < 3
+                            ? "text-[#F34D4D]"
+                            : typeof section.score === "number" && section.score < 4
+                              ? "text-[#D48A2A]"
+                              : "text-[#73AF2E]"
+                        }`}
+                      >
+                        {formatScore(section.score)}
+                      </td>
+                    ))}
+                    <td className="px-4 py-3 font-bold">{formatScore(row.finalScore)}</td>
+                    <td className="px-4 py-3">
+                      <select
+                        value={selectedRecommendations[row.id] || row.automaticRecommendation}
+                        onChange={(event) =>
+                          setSelectedRecommendations((current) => ({
+                            ...current,
+                            [row.id]: event.target.value,
+                          }))
+                        }
+                        className={`min-w-[150px] rounded-full px-3 py-1 text-xs font-semibold outline-none ${getRecommendationClass(
+                          selectedRecommendations[row.id] || row.automaticRecommendation
+                        )}`}
+                      >
+                        {recommendationOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={sectionTitles.length + 3} className="px-4 py-6 text-center text-sm font-semibold text-slate-500">
+                    Aucune evaluation manager disponible pour le reporting d'equipe.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -226,6 +307,7 @@ function Rapportsequipe() {
                   <p className="mt-1 text-sm font-semibold text-[#0F3A63]">{item.subtitle}</p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => handleExport(item)}
                   className={`rounded-md px-5 py-2 text-xs font-semibold ${item.actionClass}`}
                 >
