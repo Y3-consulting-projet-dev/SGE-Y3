@@ -5,10 +5,17 @@ import CollaboratorDashboard from "@/components/pages/dashboard/CollaboratorDash
 import SeniorDashboard from "@/components/pages/dashboard/SeniorDashboard";
 import Vuecabinet from "@/components/pages/associé/Vuecabinet";
 import VueRH from "@/components/pages/rh/VueRH";
+import VueSupport from "@/components/pages/support/VueSupport";
 import { clearSession, loadSession, loginUser, saveSession } from "@/lib/auth";
 
 const ASSISTANT_RH_EMAIL = "fatoumata.ouattara@ycubeac.com";
 const FULL_RH_EMAILS = ["isabella.beda@ycubeac.com"];
+const SUPPORT_EMAILS = [
+  "fleur.nguessan@ycubeac.com",
+  "porthela.kakou@ycubeac.com",
+  "aziz.ouattara@ycubeac.com",
+  "adele.creppy@ycubeac.com",
+];
 
 function normalizeDepartment(value = "") {
   return String(value).replace(/\s+/g, " ").trim().toUpperCase();
@@ -21,6 +28,10 @@ function normalizeEmail(value = "") {
 function isRhDepartment(value = "") {
   const department = normalizeDepartment(value);
   return department === "RH" || department === "CAPITAL HUMAIN";
+}
+
+function isSupportUser(user) {
+  return SUPPORT_EMAILS.includes(normalizeEmail(user?.email));
 }
 
 function getFullName(user) {
@@ -65,6 +76,10 @@ function getDashboardRole(user) {
 
   if (user?.role === "associate") {
     return "associate";
+  }
+
+  if (isSupportUser(user)) {
+    return "support";
   }
 
   if (grade === "SENIOR" || grade === "ASSISTANT MANAGER") {
@@ -135,6 +150,10 @@ function App() {
 
     if (userRole === "associate") {
       return <Vuecabinet user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
+    }
+
+    if (userRole === "support") {
+      return <VueSupport user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
     }
 
     if (userRole === "rh" || userRole === "rh-assistant") {

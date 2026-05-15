@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 
 function formatScore(score) {
   return typeof score === "number" ? score.toFixed(1) : "0.0";
@@ -119,7 +119,7 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
   return (
     <div className="space-y-4">
       <p className="text-[12px] font-semibold text-slate-500">
-        {displayResults?.cycle_label || "Cycle 2026"} - Résultats actualisés selon l'auto-évaluation par mission et par cycle
+        {displayResults?.cycle_label || "Cycle 2025-2026"} - Résultats actualisés selon l'auto-évaluation par mission et par cycle
       </p>
 
       {/* <div className="rounded-sm bg-[#BFE2B9] px-4 py-3 text-[12px] font-semibold text-[#114F35]">
@@ -252,7 +252,7 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
                 <p>3.2 / 5 - Maintien</p>
               </div>
               <div className="flex items-center justify-between text-[#76B82A]">
-                <p>Cycle 2026</p>
+                <p>Cycle 2025-2026</p>
                 <p>{formatScore(scoreFinal)} / 5 - Maintien</p>
               </div>
             </div>

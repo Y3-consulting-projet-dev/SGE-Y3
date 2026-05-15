@@ -267,7 +267,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
         );
       } catch (error) {
         if (!cancelled) {
-          setReviewError(error.message || "Chargement de l'evaluation impossible.");
+          setReviewError(error.message || "Chargement de l'évaluation impossible.");
         }
       } finally {
         if (!cancelled) {
@@ -556,7 +556,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
 
     if (hasIncompleteCriterion) {
       setFeedbackTone("error");
-      setFeedbackMessage("Toutes les questions de la mission doivent etre renseignees avant transmission.");
+      setFeedbackMessage("Toutes les questions de la mission doivent être renseignées avant transmission.");
       return;
     }
 
@@ -593,7 +593,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
   }
 
   if (isLoadingReview) {
-    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement de l'evaluation assistant...</section>;
+    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement de l'évaluation assistant...</section>;
   }
 
   if (reviewError) {
@@ -601,7 +601,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
   }
 
   if (!selectedAssistant || !activeSection || !activePage) {
-    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Selectionnez un assistant pour commencer.</section>;
+    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Sélectionnez un assistant pour commencer.</section>;
   }
 
   const isLastGlobalStep =
@@ -622,7 +622,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
           <p className="text-xs font-bold uppercase opacity-80">ETAPE 1</p>
           <h2 className="mt-1 text-lg font-black">Evaluation par mission</h2>
           <p className="mt-2 text-xs font-semibold opacity-80">
-            Missions partagees avec l'assistant - {Math.round(((missionReviews.filter((mission) => mission.status === "Soumise" || mission.status === "Transmise").length) / (missionReviews.length || 1)) * 100)}%
+            Missions partagées avec l'assistant - {Math.round(((missionReviews.filter((mission) => mission.status === "Soumise" || mission.status === "Transmise").length) / (missionReviews.length || 1)) * 100)}%
           </p>
         </button>
         <button
@@ -632,14 +632,14 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
         >
           <p className="text-xs font-bold uppercase opacity-80">ETAPE 2</p>
           <h2 className="mt-1 text-lg font-black">Evaluation globale du cycle</h2>
-          <p className="mt-2 text-xs font-semibold opacity-80">Cycle 2026 - {globalProgress}%</p>
+          <p className="mt-2 text-xs font-semibold opacity-80">Cycle 2025-2026 {globalProgress}%</p>
         </button>
       </section>
 
       <article className="rounded-xl bg-white p-5 shadow-sm">
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr_auto]">
           <div>
-            <label htmlFor="assistant-select" className="mb-2 block text-xs font-bold text-[#0F3A63]">Assistant a evaluer</label>
+            <label htmlFor="assistant-select" className="mb-2 block text-xs font-bold text-[#0F3A63]">Assistant a évaluer</label>
             <select
               id="assistant-select"
               value={selectedAssistantId}
@@ -669,7 +669,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
             <div className="mt-5 rounded-lg border border-[#D9E3EE] bg-[#F8FAFC] p-4">
               <p className="text-xs font-bold uppercase text-slate-500">Nouvelle mission partagee</p>
               <p className="mt-1 text-sm font-semibold text-[#0F3A63]">
-                L'assistant recevra cette mission dans son auto-evaluation et notera la mission de son cote.
+                L'assistant récevra cette mission dans son auto-évaluation et notera la mission de son côté.
               </p>
               <div className="mt-3 space-y-3">
                 <input
@@ -718,7 +718,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                         <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
                         {mission.origin === "senior-assigned" ? (
                           <span className="mt-2 inline-flex rounded-full bg-[#E8F3D6] px-2.5 py-1 text-[10px] font-bold text-[#4E8B1B]">
-                            Mission ajoutee par le senior
+                            Mission ajoutée par le sénior
                           </span>
                         ) : null}
                       </div>
@@ -729,7 +729,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                     <p className="mt-1 text-xs font-bold text-[#76B82A]">{progress}%</p>
                   </button>
                 );
-              }) : <p className="rounded-md bg-[#EEF2F6] p-4 text-sm font-semibold text-slate-500">Aucune mission partagee avec cet assistant pour le moment.</p>}
+              }) : <p className="rounded-md bg-[#EEF2F6] p-4 text-sm font-semibold text-slate-500">Aucune mission partagée avec cet assistant pour le moment.</p>}
             </div>
           </article>
 
@@ -742,7 +742,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                   <p className="mt-1 text-sm font-semibold text-slate-500">{activeMission.period || "Période non renseignée"}</p>
                   {activeMission.origin === "senior-assigned" ? (
                     <p className="mt-2 text-xs font-semibold text-[#4E8B1B]">
-                      Mission partagee avec l'assistant par {activeMission.assignedByName || "le senior"}.
+                      Mission partagée avec l'assistant par {activeMission.assignedByName || "le senior"}.
                     </p>
                   ) : null}
                 </div>
@@ -823,7 +823,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                       className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <ChevronLeft size={14} />
-                      Precedent
+                      Précédent
                     </button>
                     {!isLastMissionStep ? (
                       <button
@@ -849,7 +849,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                           onClick={() => setStep("global")}
                           className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
                         >
-                          Continuer vers l'evaluation globale
+                          Continuer vers l'évaluation globale
                           <ChevronRight size={14} />
                         </button>
                       </div>
@@ -866,7 +866,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
         <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.8fr_1.4fr]">
           <article className="rounded-xl bg-white p-5 shadow-sm">
             <div className="mb-5">
-              <p className="text-xs font-semibold text-slate-400">{reviewData?.review?.cycle_label || "Cycle 2026"}</p>
+              <p className="text-xs font-semibold text-slate-400">{reviewData?.review?.cycle_label || "Cycle 2025-2026"}</p>
               <h2 className="text-xl font-extrabold text-[#0F3A63]">{selectedAssistant.name}</h2>
               <p className="text-sm font-semibold text-slate-500">{selectedAssistant.grade}</p>
             </div>
@@ -880,13 +880,13 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
             </div>
 
             <div className="mt-5 rounded-lg bg-slate-50 p-4 text-sm font-semibold text-[#0F3A63]">
-              Le Senior peut evaluer l'assistant globalement sur le cycle, sans voir les reponses de son auto-evaluation globale.
+              Le Sénior peut évaluer l'assistant globalement sur le cycle, sans voir les réponses de son auto-évaluation globale.
             </div>
             {reviewData?.assistant?.department === "AUDIT & EXPERTISE COMPTABLE" &&
             evaluationDepartment &&
             evaluationDepartment !== "AUDIT & EXPERTISE COMPTABLE" ? (
               <div className="mt-3 rounded-lg bg-[#EEF6E8] p-4 text-sm font-semibold text-[#4E8B1B]">
-                Cette evaluation utilise les questions du departement {evaluationDepartment}.
+                Cette évaluation utilise les questions du département {evaluationDepartment}.
               </div>
             ) : null}
 
@@ -925,7 +925,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
           <article className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-4 shadow-sm">
               <div>
-                <p className="text-xs font-semibold text-slate-500">Derniere sauvegarde</p>
+                <p className="text-xs font-semibold text-slate-500">Dernière sauvegarde</p>
                 <p className="text-sm font-semibold text-[#0F3A63]">{reviewData?.review?.last_saved_at ? "Enregistree" : "Non disponible"}</p>
               </div>
               <div className="flex items-center gap-4 text-sm">
@@ -1050,7 +1050,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                     className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                   <ChevronLeft size={14} />
-                  Precedent
+                  Précédent
                 </button>
 
                 {!isLastGlobalStep ? (

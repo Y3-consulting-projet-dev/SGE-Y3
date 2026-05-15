@@ -47,7 +47,7 @@ function MesresultatsSenior() {
   }, []);
 
   if (isLoading) {
-    return <section className="rounded-lg bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement des syntheses transmises...</section>;
+    return <section className="rounded-lg bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement des synthèses transmises...</section>;
   }
 
   if (errorMessage) {
@@ -57,7 +57,7 @@ function MesresultatsSenior() {
   if (!data?.rows?.length) {
     return (
       <section className="rounded-lg bg-white p-5 shadow-sm">
-        <p className="text-sm font-semibold text-slate-500">Aucune evaluation par mission n'a encore ete transmise au manager.</p>
+        <p className="text-sm font-semibold text-slate-500">Aucune évaluation par mission n'a encore été transmise au manager.</p>
       </section>
     );
   }
@@ -94,8 +94,8 @@ function MesresultatsSenior() {
               <thead>
                 <tr className="bg-[#003B63] text-left text-white">
                   <th className="px-4 py-4 font-semibold">Mission</th>
-                  <th className="px-4 py-4 font-semibold">Periode</th>
-                  <th className="px-4 py-4 font-semibold">Score Senior moyen</th>
+                  <th className="px-4 py-4 font-semibold">Période</th>
+                  <th className="px-4 py-4 font-semibold">Score Sénior moyen</th>
                   <th className="px-4 py-4 font-semibold">Statut</th>
                   <th className="px-4 py-4 font-semibold">Manager destinataire</th>
                   <th className="px-4 py-4 font-semibold">Date d'envoi</th>

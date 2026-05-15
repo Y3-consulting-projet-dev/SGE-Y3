@@ -126,7 +126,7 @@ function Rapportsequipe() {
   const rows = reportData?.rows || [];
   const sectionTitles = reportData?.section_titles || [];
   const kpis = reportData?.kpis || {};
-  const cycleLabel = reportData?.cycle_label || "Cycle 2026";
+  const cycleLabel = reportData?.cycle_label || "Cycle 2025-2026";
 
   const reportCards = useMemo(
     () => [

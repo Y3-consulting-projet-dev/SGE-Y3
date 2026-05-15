@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const committeeDecisionSchema = new mongoose.Schema(
   {
-    cycle_label: { type: String, default: 'Cycle 2026', trim: true },
+    cycle_label: { type: String, default: 'Cycle 2025-2026', trim: true },
     scope: { type: String, default: 'associate-final', trim: true, index: true },
     decisions: { type: mongoose.Schema.Types.Mixed, default: {} },
     submitted_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

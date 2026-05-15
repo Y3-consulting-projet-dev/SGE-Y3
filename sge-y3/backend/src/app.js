@@ -8,6 +8,7 @@ const collaboratorRoutes = require('./routes/collaboratorRoutes');
 const seniorRoutes = require('./routes/seniorRoutes');
 const managerRoutes = require('./routes/managerRoutes');
 const committeeRoutes = require('./routes/committeeRoutes');
+const rhRoutes = require('./routes/rhRoutes');
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use(
   cors({
     origin: process.env.FRONTEND_URL || true,
     credentials: true,
+    exposedHeaders: ['Content-Disposition', 'Content-Type'],
   })
 );
 app.use(express.json({ limit: '2mb' }));
@@ -32,6 +34,7 @@ app.use('/api/collaborator', collaboratorRoutes);
 app.use('/api/senior', seniorRoutes);
 app.use('/api/manager', managerRoutes);
 app.use('/api/committee', committeeRoutes);
+app.use('/api/rh', rhRoutes);
 
 app.use((error, _request, response, _next) => {
   console.error(error);

@@ -34,7 +34,7 @@ export const rhMenuGroups = [
 ];
 
 export const rhStats = [
-  { title: "Évaluations reçues", value: "18/24", subtitle: "75% du cycle 2026" },
+  { title: "Évaluations reçues", value: "18/24", subtitle: "75% du Cycle 2025-2026" },
   { title: "À valider RH", value: "6", subtitle: "Dont 2 prioritaires" },
   { title: "Synthèses prêtes", value: "11", subtitle: "Transmission Associé" },
   { title: "Entretiens planifiés", value: "9", subtitle: "Cette semaine" },
@@ -218,7 +218,7 @@ export const populationRows = [
 ];
 
 export const reportRows = [
-  { title: "Synthèse cycle 2026", format: "PDF", owner: "RH", status: "Prêt" },
+  { title: "Synthèse Cycle 2025-2026", format: "PDF", owner: "RH", status: "Prêt" },
   { title: "Export des évaluations validées", format: "XLSX", owner: "RH", status: "À générer" },
   { title: "Suivi des décisions Associé", format: "PDF", owner: "Associé", status: "En attente" },
 ];
