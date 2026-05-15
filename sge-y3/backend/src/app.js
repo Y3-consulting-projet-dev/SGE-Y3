@@ -19,6 +19,7 @@ app.use(
   cors({
     origin: process.env.FRONTEND_URL || true,
     credentials: true,
+    exposedHeaders: ['Content-Disposition', 'Content-Type'],
   })
 );
 app.use(express.json({ limit: '2mb' }));

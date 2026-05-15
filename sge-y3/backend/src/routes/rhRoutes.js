@@ -3,6 +3,7 @@ const express = require('express');
 const {
   addRhQuestionnaireQuestion,
   createRhQuestionnaireSection,
+  downloadRhReport,
   getRhCalibration,
   getRhDepartmentEvaluations,
   getRhQuestionnaire,
@@ -33,6 +34,7 @@ router.get('/calibration', requireAuth, requireRh, getRhCalibration);
 router.get('/department-evaluations', requireAuth, requireRh, getRhDepartmentEvaluations);
 router.get('/population', requireAuth, requireRh, getRhPopulation);
 router.get('/reports', requireAuth, requireRh, getRhReports);
+router.get('/reports/:reportId/download', requireAuth, requireRh, downloadRhReport);
 router.post('/department-evaluations/:reviewId/select', requireAuth, requireRh, selectRhDepartmentEvaluation);
 router.get('/validations', requireAuth, requireRh, getRhValidations);
 router.post('/validations/confirm', requireAuth, requireRh, validateRhSelection);

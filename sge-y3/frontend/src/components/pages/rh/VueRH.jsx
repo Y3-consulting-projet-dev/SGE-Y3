@@ -69,6 +69,10 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
       return <PopulationRH readOnly={assistantMode} />;
     }
 
+    if (activeSection === "reports") {
+      return <RapportsRH readOnly={assistantMode} />;
+    }
+
     if (activeSection === "profile") {
       return <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />;
     }
@@ -88,7 +92,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
       );
     }
 
-    return <RapportsRH readOnly={assistantMode} />;
+    return <TableauRH onOpen={setActiveSection} readOnly={assistantMode} />;
   };
 
   return (

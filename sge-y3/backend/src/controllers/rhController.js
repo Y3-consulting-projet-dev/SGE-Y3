@@ -921,6 +921,146 @@ async function getRhPopulation(request, response) {
   });
 }
 
+function escapeCsvValue(value) {
+  const normalized = value === null || value === undefined ? '' : String(value);
+  if (/[",\n;]/.test(normalized)) {
+    return `"${normalized.replace(/"/g, '""')}"`;
+  }
+  return normalized;
+}
+
+function buildCsvBuffer(headers = [], rows = []) {
+  const lines = [
+    headers.map(escapeCsvValue).join(';'),
+    ...rows.map((row) => row.map(escapeCsvValue).join(';')),
+  ];
+  return Buffer.from(lines.join('\n'), 'utf8');
+}
+
+function escapePdfText(value = '') {
+  return String(value).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+}
+
+function buildSimplePdfBuffer(title, lines = []) {
+  const pageHeight = 842;
+  const startY = 790;
+  const lineHeight = 16;
+  const contentLines = [
+    'BT',
+    '/F1 18 Tf',
+    `50 ${startY} Td`,
+    `(${escapePdfText(title)}) Tj`,
+    '/F1 10 Tf',
+  ];
+
+  lines.forEach((line, index) => {
+    const offset = index === 0 ? 28 : lineHeight;
+    contentLines.push(`0 -${offset} Td`);
+    contentLines.push(`(${escapePdfText(line)}) Tj`);
+  });
+
+  contentLines.push('ET');
+  const content = contentLines.join('\n');
+  const objects = [
+    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+    '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+    `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 ${pageHeight}] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`,
+    '4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+    `5 0 obj\n<< /Length ${Buffer.byteLength(content, 'utf8')} >>\nstream\n${content}\nendstream\nendobj\n`,
+  ];
+
+  let body = '%PDF-1.4\n';
+  const offsets = [0];
+  objects.forEach((object) => {
+    offsets.push(Buffer.byteLength(body, 'utf8'));
+    body += object;
+  });
+
+  const xrefOffset = Buffer.byteLength(body, 'utf8');
+  body += `xref\n0 ${objects.length + 1}\n`;
+  body += '0000000000 65535 f \n';
+  offsets.slice(1).forEach((offset) => {
+    body += `${String(offset).padStart(10, '0')} 00000 n \n`;
+  });
+  body += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+  return Buffer.from(body, 'utf8');
+}
+
+async function buildRhReportExport(reportId, request) {
+  const [syntheses, validations, calibration, population] = await Promise.all([
+    getRhSyntheses(request, { json: (data) => data }),
+    getRhValidations(request, { json: (data) => data }),
+    getRhCalibration(request, { json: (data) => data }),
+    getRhPopulation(request, { json: (data) => data }),
+  ]);
+
+  if (reportId === 'rh-synthese-validee') {
+    const lines = syntheses.items.length
+      ? syntheses.items.map(
+          (item) =>
+            `${item.name} | ${item.role} | Score final: ${item.finalScore ?? 'N/A'} | Recommandation: ${item.displayStatus || 'N/A'}`
+        )
+      : ['Aucune synthese RH validee disponible pour le moment.'];
+
+    return {
+      filename: 'synthese-rh-validee-cycle-2026.pdf',
+      contentType: 'application/pdf',
+      buffer: buildSimplePdfBuffer('Synthese RH validee - Cycle 2026', lines),
+    };
+  }
+
+  if (reportId === 'rh-validations') {
+    const rows = validations.items.map((item) => [
+      item.name,
+      item.role,
+      formatDepartmentLabel(item.department),
+      item.managerName,
+      item.selfScore ?? '',
+      item.managerScore ?? '',
+      item.finalScore ?? '',
+      item.displayStatus,
+    ]);
+
+    return {
+      filename: 'file-validations-rh-cycle-2026.csv',
+      contentType: 'text/csv; charset=utf-8',
+      buffer: buildCsvBuffer(
+        ['Collaborateur', 'Role', 'Departement', 'Manager', 'Auto-evaluation', 'Evaluation manager', 'Score final', 'Statut'],
+        rows
+      ),
+    };
+  }
+
+  if (reportId === 'rh-calibration') {
+    const lines = calibration.items.length
+      ? calibration.items.map(
+          (item) => `${item.department} | Moyenne: ${item.average ?? 'N/A'} | Evalues: ${item.evaluated} | Risque: ${item.risk}`
+        )
+      : ['Aucune calibration disponible pour le moment.'];
+
+    return {
+      filename: 'calibration-departements-cycle-2026.pdf',
+      contentType: 'application/pdf',
+      buffer: buildSimplePdfBuffer('Calibration des departements - Cycle 2026', lines),
+    };
+  }
+
+  if (reportId === 'rh-population') {
+    const rows = population.groups.flatMap((group) =>
+      (group.members || []).map((member) => [group.group, member.name, member.role, member.status, member.score ?? ''])
+    );
+
+    return {
+      filename: 'suivi-population-cycle-2026.csv',
+      contentType: 'text/csv; charset=utf-8',
+      buffer: buildCsvBuffer(['Groupe', 'Nom', 'Role', 'Statut', 'Score'], rows),
+    };
+  }
+
+  return null;
+}
+
 async function getRhReports(request, response) {
   const [syntheses, validations, calibration, population] = await Promise.all([
     getRhSyntheses(request, { json: (data) => data }),
@@ -933,31 +1073,54 @@ async function getRhReports(request, response) {
     cycle_label: CURRENT_CYCLE_LABEL,
     exports: [
       {
+        id: 'rh-synthese-validee',
         title: 'Synthese RH validee',
         format: 'PDF',
         owner: 'RH',
         status: syntheses.items.length ? 'Pret' : 'A generer',
+        downloadable: true,
       },
       {
+        id: 'rh-validations',
         title: 'File de validations RH',
         format: 'XLSX',
         owner: 'RH',
         status: validations.items.length ? 'Pret' : 'A generer',
+        downloadable: true,
       },
       {
+        id: 'rh-calibration',
         title: 'Calibration des departements',
         format: 'PDF',
         owner: 'RH',
         status: calibration.items.length ? 'Pret' : 'A generer',
+        downloadable: true,
       },
       {
+        id: 'rh-population',
         title: 'Suivi population cycle 2026',
         format: 'XLSX',
         owner: 'RH',
         status: population.groups.length ? 'Pret' : 'A generer',
+        downloadable: true,
       },
     ],
   });
+}
+
+async function downloadRhReport(request, response) {
+  const reportId = String(request.params.reportId || '').trim();
+  const file = await buildRhReportExport(reportId, request);
+
+  if (!file) {
+    return response.status(404).json({
+      message: 'Rapport RH introuvable.',
+    });
+  }
+
+  response.setHeader('Content-Type', file.contentType);
+  response.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+  return response.send(file.buffer);
 }
 
 module.exports = {
@@ -970,6 +1133,7 @@ module.exports = {
   getRhOverview,
   getRhPopulation,
   getRhReports,
+  downloadRhReport,
   getRhSyntheses,
   getRhValidations,
   saveMyRhSelfEvaluation,

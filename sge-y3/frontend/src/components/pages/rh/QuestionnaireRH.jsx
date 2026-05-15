@@ -69,18 +69,13 @@ function QuestionnaireRH() {
     sectionKeys: [],
     audiences: [],
   };
+  const effectiveSelectedSectionId = selectedSectionId || sections[0]?.id || "";
   const selectedSection = useMemo(
     () =>
-      sections.find((section) => section.id === selectedSectionId) ||
+      sections.find((section) => section.id === effectiveSelectedSectionId) ||
       sections[0],
-    [sections, selectedSectionId],
+    [effectiveSelectedSectionId, sections],
   );
-
-  useEffect(() => {
-    if (!selectedSectionId && sections[0]?.id) {
-      setSelectedSectionId(sections[0].id);
-    }
-  }, [sections, selectedSectionId]);
 
   async function handleAddQuestion() {
     if (!selectedSection?.id || !questionText.trim()) {
@@ -171,7 +166,7 @@ function QuestionnaireRH() {
         </label>
         <select
           id="question-section"
-          value={selectedSection?.id || ""}
+          value={effectiveSelectedSectionId}
           onChange={(event) => setSelectedSectionId(event.target.value)}
           className="mt-2 h-10 w-full rounded-md border border-slate-200 bg-[#F8FAFC] px-3 text-sm font-bold text-[#0F3A63] outline-none"
         >
