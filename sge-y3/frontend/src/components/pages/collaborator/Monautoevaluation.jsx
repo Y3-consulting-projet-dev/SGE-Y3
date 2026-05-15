@@ -101,10 +101,10 @@ function getMissionValidationLabel(mission) {
   }
 
   if (!department) {
-    return primaryRecipient ? `Destinataire : ${primaryRecipient}` : "Circuit de validation du departement";
+    return primaryRecipient ? `Destinataire : ${primaryRecipient}` : "Circuit de validation du département";
   }
 
-  return primaryRecipient ? `${department} - Destinataire : ${primaryRecipient}` : `${department} - Circuit de validation du departement`;
+  return primaryRecipient ? `${department} - Destinataire : ${primaryRecipient}` : `${department} - Circuit de validation du département`;
 }
 
 function isSameMissionId(left, right) {
@@ -664,7 +664,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     if (!managerRecipients.length) {
       setStep("missions");
       setFeedbackTone("error");
-      setFeedbackMessage("Ajoutez au moins une mission avec son departement avant de soumettre aux managers.");
+      setFeedbackMessage("Ajoutez au moins une mission avec son département avant de soumettre aux managers.");
       return;
     }
 
@@ -681,7 +681,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
       setSections(submittedResponse.evaluation.sections);
       setPageIndexes(createInitialPageIndexes(submittedResponse.evaluation.sections));
       setFeedbackTone("success");
-      setFeedbackMessage(submittedResponse.message || "Auto-evaluation soumise aux managers.");
+      setFeedbackMessage(submittedResponse.message || "Auto-évaluation soumise aux managers.");
       onEvaluationChange?.(submittedResponse);
       onSubmitted?.(submittedResponse);
     } catch (error) {
@@ -708,7 +708,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   if (!activeSection || !activePage) {
     return (
       <div className="rounded-md bg-white p-4 text-sm font-semibold text-slate-500 shadow-sm">
-        Chargement de l'auto-evaluation...
+        Chargement de l'auto-évaluation...
       </div>
     );
   }
@@ -723,7 +723,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   return (
     <div className="space-y-3">
       <div className="text-[10px] text-slate-500">
-        {evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"} - Auto-evaluation en deux etapes - Sauvegarde progressive activee
+        {evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"} - Auto-évaluation en deux etapes - Sauvegarde progressive activée
       </div>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -736,7 +736,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
         >
           <p className="text-xs font-bold uppercase opacity-80">Etape 1</p>
           <h2 className="mt-1 text-lg font-black">Evaluation par mission</h2>
-          <p className="mt-2 text-xs font-semibold opacity-80">Missions ajoutees par le collaborateur - {missionProgress}%</p>
+          <p className="mt-2 text-xs font-semibold opacity-80">Missions ajoutées par le collaborateur - {missionProgress}%</p>
         </button>
         <button
           type="button"
@@ -756,9 +756,9 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
       {step === "missions" ? (
         <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.95fr_1.25fr]">
           <article className="rounded-md bg-white p-4 shadow-sm">
-            <h3 className="text-lg font-bold text-[#0F3A63]">Mes missions de l'annee</h3>
+            <h3 className="text-lg font-bold text-[#0F3A63]">Mes missions de l'année</h3>
             <p className="mt-1 text-xs font-semibold text-slate-500">
-              Le collaborateur renseigne ici les missions qu'il a reellement effectuees.
+              Le collaborateur renseigne ici les missions qu'il a réellement effectuées.
             </p>
 
             <div className="mt-4 rounded-lg bg-[#F8FAFC] p-3">
@@ -790,7 +790,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                 ))}
               </select>
               <p className="mt-2 text-[11px] font-semibold text-slate-500">
-                La mission sera aussi adressee automatiquement aux autres responsables du meme circuit de validation.
+                La mission sera aussi adressée automatiquement aux autres responsables du même circuit de validation.
               </p>
               <button
                 type="button"
@@ -865,7 +865,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                       </p>
                     ) : (
                       <p className="mt-2 text-xs font-semibold text-slate-500">
-                        Cette mission sera transmise automatiquement au circuit de validation du departement.
+                        Cette mission sera transmise automatiquement au circuit de validation du département.
                       </p>
                     )}
                   </div>
@@ -1042,7 +1042,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
               </>
             ) : (
               <div className="rounded-md bg-[#EEF2F6] p-5 text-sm font-semibold text-slate-500">
-                Ajoutez une mission pour commencer votre auto-evaluation par mission.
+                Ajoutez une mission pour commencer votre auto-évaluation par mission.
               </div>
             )}
           </article>
@@ -1051,7 +1051,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
         <>
           <div className="flex flex-wrap items-center justify-between gap-3 text-[12px]">
             <p className="font-semibold text-[#0F3A63]">
-              Derniere sauvegarde : {evaluationData?.evaluation?.last_saved_at ? "enregistree" : "non disponible"}
+              Derniere sauvegarde : {evaluationData?.evaluation?.last_saved_at ? "Enregistrée" : "non disponible"}
             </p>
             <div className="flex items-center gap-4">
               <span className="font-semibold text-[#0F3A63]">
