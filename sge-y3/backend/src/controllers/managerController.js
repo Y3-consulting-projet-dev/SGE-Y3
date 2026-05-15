@@ -11,7 +11,7 @@ const {
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
 
-const CURRENT_CYCLE_LABEL = 'Cycle 2026';
+const CURRENT_CYCLE_LABEL = 'Cycle 2025-2026';
 
 function normalizeText(value = '') {
   return String(value || '').replace(/\s+/g, ' ').trim().toUpperCase();
