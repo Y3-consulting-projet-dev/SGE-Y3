@@ -32,8 +32,27 @@ function requireManager(request, response, next) {
   return next();
 }
 
+function requireRh(request, response, next) {
+  const department = String(request.user?.department || "").trim().toUpperCase();
+  const permissionRole = String(request.auth?.permission_role || "").trim().toLowerCase();
+
+  if (
+    department === "RH" ||
+    department === "CAPITAL HUMAIN" ||
+    permissionRole === "admin" ||
+    permissionRole === "rh_assistant"
+  ) {
+    return next();
+  }
+
+  return response.status(403).json({
+    message: "Cette fonctionnalite est reservee a la RH / Capital Humain.",
+  });
+}
+
 module.exports = {
   requireAssistant,
   requireManager,
+  requireRh,
   requireSenior,
 };

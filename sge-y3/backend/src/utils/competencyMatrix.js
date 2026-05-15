@@ -1,5 +1,6 @@
 const matrixData = require('../data/competencyMatrix.generated.json');
 const { normalizeDepartment, normalizeText } = require('./userMapping');
+const { readQuestionnaireConfig } = require('./questionnaireConfig');
 
 const SECTION_ORDER = ['SAVOIR FAIRE', 'SAVOIR ETRE'];
 
@@ -75,22 +76,135 @@ function getSourceLabel(sheetName) {
   return sheetName;
 }
 
+function createSectionRecord(sectionKey, index, sectionTitle = sectionKey) {
+  return {
+    id: index + 1,
+    title: sectionTitle,
+    subtitle: sectionTitle,
+    status: 'A faire',
+    comment: '',
+    pages: [],
+    criteria: [],
+  };
+}
+
+function ensureSection(sectionsMap, orderedSectionKeys, sectionKey, sectionTitle = sectionKey) {
+  if (!sectionsMap.has(sectionKey)) {
+    orderedSectionKeys.push(sectionKey);
+    sectionsMap.set(sectionKey, createSectionRecord(sectionKey, orderedSectionKeys.length - 1, sectionTitle));
+  }
+
+  return sectionsMap.get(sectionKey);
+}
+
+function buildThemeRecord(targetSection, theme, themeIndex, gradeColumnKey) {
+  const statement = getStatementForGrade(theme.statements, gradeColumnKey);
+
+  if (!theme.label || !statement) {
+    return null;
+  }
+
+  return {
+    theme_id: `${targetSection.id}-${targetSection.pages.length + 1}-${themeIndex + 1}`,
+    code: theme.code,
+    label: theme.label,
+    statement,
+    score: null,
+    required: true,
+  };
+}
+
+function appendPageToSection(targetSection, page, sheetName, gradeColumnKey) {
+  const pageThemes = (page.themes || [])
+    .map((theme, themeIndex) => buildThemeRecord(targetSection, theme, themeIndex, gradeColumnKey))
+    .filter(Boolean);
+
+  if (!pageThemes.length) {
+    return;
+  }
+
+  const pageId = `${targetSection.id}-${targetSection.pages.length + 1}`;
+  targetSection.pages.push({
+    page_id: pageId,
+    title: page.title,
+    source_sheet: sheetName,
+    source_label: getSourceLabel(sheetName),
+    comment: '',
+    themes: pageThemes,
+  });
+}
+
+function applyCustomQuestionnaire(sectionsMap, orderedSectionKeys, sheetNames, gradeColumnKey) {
+  const config = readQuestionnaireConfig();
+
+  (config.customPages || []).forEach((page) => {
+    if (!sheetNames.includes(page.source_sheet)) {
+      return;
+    }
+
+    const targetSection = ensureSection(
+      sectionsMap,
+      orderedSectionKeys,
+      page.section_key,
+      page.section_title || page.section_key
+    );
+
+    appendPageToSection(targetSection, page, page.source_sheet, gradeColumnKey);
+  });
+
+  (config.pageAdditions || []).forEach((addition) => {
+    if (!sheetNames.includes(addition.source_sheet)) {
+      return;
+    }
+
+    const targetSection = sectionsMap.get(addition.section_key);
+    if (!targetSection) {
+      return;
+    }
+
+    const targetPage = (targetSection.pages || []).find(
+      (page) => page.source_sheet === addition.source_sheet && normalizeText(page.title) === normalizeText(addition.page_title)
+    );
+
+    if (!targetPage) {
+      return;
+    }
+
+    const nextStartIndex = targetPage.themes.length;
+    const additionThemes = (addition.themes || [])
+      .map((theme, themeIndex) => {
+        const statement = getStatementForGrade(theme.statements, gradeColumnKey);
+
+        if (!theme.label || !statement) {
+          return null;
+        }
+
+        return {
+          theme_id: `${targetPage.page_id}-${nextStartIndex + themeIndex + 1}`,
+          code: theme.code,
+          label: theme.label,
+          statement,
+          score: null,
+          required: true,
+        };
+      })
+      .filter(Boolean);
+
+    if (additionThemes.length) {
+      targetPage.themes = [...targetPage.themes, ...additionThemes];
+    }
+  });
+}
+
 function buildEvaluationTemplateForUser(user = {}) {
   const gradeColumnKey = getGradeColumnKey(user.grade);
   const sheetNames = getSheetNamesForDepartment(user.department);
+  const orderedSectionKeys = [...SECTION_ORDER];
 
   const sectionsMap = new Map(
-    SECTION_ORDER.map((sectionKey, index) => [
+    orderedSectionKeys.map((sectionKey, index) => [
       sectionKey,
-      {
-        id: index + 1,
-        title: sectionKey,
-        subtitle: sectionKey,
-        status: 'A faire',
-        comment: '',
-        pages: [],
-        criteria: [],
-      },
+      createSectionRecord(sectionKey, index, sectionKey),
     ])
   );
 
@@ -105,43 +219,14 @@ function buildEvaluationTemplateForUser(user = {}) {
       }
 
       section.pages.forEach((page) => {
-        const pageThemes = page.themes
-          .map((theme, themeIndex) => {
-            const statement = getStatementForGrade(theme.statements, gradeColumnKey);
-
-            if (!theme.label || !statement) {
-              return null;
-            }
-
-            return {
-              theme_id: `${targetSection.id}-${targetSection.pages.length + 1}-${themeIndex + 1}`,
-              code: theme.code,
-              label: theme.label,
-              statement,
-              score: null,
-              required: true,
-            };
-          })
-          .filter(Boolean);
-
-        if (!pageThemes.length) {
-          return;
-        }
-
-        const pageId = `${targetSection.id}-${targetSection.pages.length + 1}`;
-        targetSection.pages.push({
-          page_id: pageId,
-          title: page.title,
-          source_sheet: sheetName,
-          source_label: getSourceLabel(sheetName),
-          comment: '',
-          themes: pageThemes,
-        });
+        appendPageToSection(targetSection, page, sheetName, gradeColumnKey);
       });
     });
   });
 
-  return SECTION_ORDER.map((sectionKey) => {
+  applyCustomQuestionnaire(sectionsMap, orderedSectionKeys, sheetNames, gradeColumnKey);
+
+  return orderedSectionKeys.map((sectionKey) => {
     const section = sectionsMap.get(sectionKey);
 
     return {

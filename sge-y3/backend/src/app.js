@@ -8,6 +8,7 @@ const collaboratorRoutes = require('./routes/collaboratorRoutes');
 const seniorRoutes = require('./routes/seniorRoutes');
 const managerRoutes = require('./routes/managerRoutes');
 const committeeRoutes = require('./routes/committeeRoutes');
+const rhRoutes = require('./routes/rhRoutes');
 
 dotenv.config();
 
@@ -32,6 +33,7 @@ app.use('/api/collaborator', collaboratorRoutes);
 app.use('/api/senior', seniorRoutes);
 app.use('/api/manager', managerRoutes);
 app.use('/api/committee', committeeRoutes);
+app.use('/api/rh', rhRoutes);
 
 app.use((error, _request, response, _next) => {
   console.error(error);
