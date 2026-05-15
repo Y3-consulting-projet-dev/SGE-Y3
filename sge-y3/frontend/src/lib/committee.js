@@ -56,6 +56,28 @@ export async function getCommitteeParticipants(scope = "collaborators") {
   return data;
 }
 
+export async function getCommitteeOverview() {
+  const session = loadSession();
+  const headers = {
+    "Content-Type": "application/json",
+  };
+
+  if (session?.token) {
+    headers.Authorization = `Bearer ${session.token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/committee/overview`, {
+    headers,
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.message || "Chargement de la vue associe impossible.");
+  }
+
+  return data;
+}
+
 export async function saveCommitteeDecision(payload) {
   const session = loadSession();
   const headers = {
