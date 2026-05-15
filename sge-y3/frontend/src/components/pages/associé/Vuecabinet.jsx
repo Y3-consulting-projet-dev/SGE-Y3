@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bell,
   CircleHelp,
@@ -13,6 +13,7 @@ import {
 import SyntheseRH from "@/components/pages/associé/SynthèseRH";
 import Prendredecision from "@/components/pages/associé/Prendredecision";
 import Autoevamanager from "@/components/pages/associé/autoevamanager";
+import AutoevaluationSupport from "@/components/pages/associé/AutoevaluationSupport";
 import Histoireanalytique from "@/components/pages/associé/Histoireanalytique";
 import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
 import ProfilePanel from "@/components/profile/ProfilePanel";
@@ -35,7 +36,10 @@ const sideMenu = [
   },
   {
     title: "Managers",
-    items: [{ key: "autoeval-managers", label: "Auto-éval Managers", icon: UsersRound }],
+    items: [
+      { key: "autoeval-managers", label: "Auto-éval Managers", icon: UsersRound },
+      { key: "autoeval-support", label: "Auto-éval Support", icon: UsersRound },
+    ],
   },
   {
     title: "Reporting",
@@ -86,6 +90,7 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
     if (activeSection === "decisions") return "Décisions en attente";
     if (activeSection === "committee") return "Comité d'évaluation";
     if (activeSection === "autoeval-managers") return "Auto-éval Managers";
+    if (activeSection === "autoeval-support") return "Auto-éval Support";
     if (activeSection === "history") return "Historique & analytics";
     if (activeSection === "profile") return "Mon profil";
     return "Vue cabinet";
@@ -144,7 +149,7 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
                 <div>
                   <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
                   <p className="text-sm text-slate-500">
-                    {displayName} - {user?.grade} - Cycle 2026 - Synthese globale
+                    {displayName} - {user?.grade} - Cycle 2025-2026 - Synthese globale
                   </p>
                 </div>
 
@@ -253,16 +258,20 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
               lockPrimaryClassification
               participantScope="collaborators"
               secondaryParticipantScope="leadership"
+              tertiaryParticipantScope="support"
+              tertiaryUnclassified
               secondaryUnclassified
               rateEnabled
               submitLabel="Envoyer les taux d'augmentation a la RH"
               submittedLabel="Taux d'augmentation envoyes a la RH"
               successMessage="Les classements et les taux d'augmentation ont ete transmis a la RH."
-              onSubmit={(decisions) => saveCommitteeDecision({ scope: "associate-final", cycle_label: "Cycle 2026", decisions })}
-              workflowText="Les assistants, seniors et assistants managers recus de la RH restent dans leurs bulles : les associes renseignent seulement le taux. Les associes ajoutent ensuite la RH et les managers dans ces memes bulles, saisissent leur taux, puis envoient tout en une fois a la RH."
+              onSubmit={(decisions) => saveCommitteeDecision({ scope: "associate-final", cycle_label: "Cycle 2025-2026", decisions })}
+              workflowText="Les assistants, seniors et assistants managers recus de la RH restent dans leurs bulles : les associes renseignent seulement le taux. Les associes ajoutent ensuite la RH, les managers et les membres du departement support dans ces memes bulles, saisissent leur taux, puis envoient tout en une fois a la RH."
             />
           ) : activeSection === "autoeval-managers" ? (
             <Autoevamanager />
+          ) : activeSection === "autoeval-support" ? (
+            <AutoevaluationSupport />
           ) : activeSection === "history" ? (
             <Histoireanalytique />
           ) : activeSection === "profile" ? (

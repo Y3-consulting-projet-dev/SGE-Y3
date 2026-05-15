@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { committeeAssistants, committeeLeaders, committeeLevels, committeeMembers } from "@/components/pages/comite/comiteData";
+import { committeeAssistants, committeeLeaders, committeeLevels, committeeMembers, committeeSupport } from "@/components/pages/comite/comiteData";
 import { getCommitteeParticipants } from "@/lib/committee";
 
 function PersonCard({ person, draggable, onDragStart, onRateChange, compact = false, rateEnabled = false }) {
@@ -43,6 +43,8 @@ function ComiteEvaluation({
   rateEnabled = false,
   secondaryParticipantScope = null,
   secondaryUnclassified = false,
+  tertiaryParticipantScope = null,
+  tertiaryUnclassified = false,
   showSubmit = true,
   submitLabel = "Transmettre aux associes",
   submittedLabel = "Transmis aux associes",
@@ -51,14 +53,16 @@ function ComiteEvaluation({
   onSubmit,
 }) {
   const fallbackParticipants = useMemo(() => {
-    const primaryFallback = participantScope === "leadership" ? committeeLeaders : committeeAssistants;
+    const primaryFallback = participantScope === "leadership" ? committeeLeaders : participantScope === "support" ? committeeSupport : committeeAssistants;
     const secondaryFallback = secondaryParticipantScope === "leadership" ? committeeLeaders : [];
+    const tertiaryFallback = tertiaryParticipantScope === "support" ? committeeSupport : [];
 
     return [
       ...primaryFallback.map((person) => ({ ...person, lockedClassification: lockPrimaryClassification })),
       ...secondaryFallback.map((person) => ({ ...person, level: secondaryUnclassified ? null : person.level })),
+      ...tertiaryFallback.map((person) => ({ ...person, level: tertiaryUnclassified ? null : person.level })),
     ];
-  }, [lockPrimaryClassification, participantScope, secondaryParticipantScope, secondaryUnclassified]);
+  }, [lockPrimaryClassification, participantScope, secondaryParticipantScope, secondaryUnclassified, tertiaryParticipantScope, tertiaryUnclassified]);
   const [people, setPeople] = useState(fallbackParticipants);
   const [draggedId, setDraggedId] = useState(null);
   const [status, setStatus] = useState("");
@@ -88,10 +92,11 @@ function ComiteEvaluation({
     Promise.all([
       loadScope(participantScope, { lockedClassification: lockPrimaryClassification }),
       secondaryParticipantScope ? loadScope(secondaryParticipantScope, { unclassified: secondaryUnclassified }) : Promise.resolve([]),
+      tertiaryParticipantScope ? loadScope(tertiaryParticipantScope, { unclassified: tertiaryUnclassified }) : Promise.resolve([]),
     ])
-      .then(([primaryParticipants, secondaryParticipants]) => {
+      .then(([primaryParticipants, secondaryParticipants, tertiaryParticipants]) => {
         if (ignore) return;
-        const loadedParticipants = [...primaryParticipants, ...secondaryParticipants];
+        const loadedParticipants = [...primaryParticipants, ...secondaryParticipants, ...tertiaryParticipants];
         if (!loadedParticipants.length) return;
         setPeople(loadedParticipants);
         setLoadStatus("");
@@ -105,7 +110,15 @@ function ComiteEvaluation({
     return () => {
       ignore = true;
     };
-  }, [fallbackParticipants, lockPrimaryClassification, participantScope, secondaryParticipantScope, secondaryUnclassified]);
+  }, [
+    fallbackParticipants,
+    lockPrimaryClassification,
+    participantScope,
+    secondaryParticipantScope,
+    secondaryUnclassified,
+    tertiaryParticipantScope,
+    tertiaryUnclassified,
+  ]);
 
   const groupedPeople = useMemo(
     () =>

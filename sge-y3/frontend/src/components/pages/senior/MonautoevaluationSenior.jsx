@@ -639,7 +639,7 @@ function MonautoevaluationSenior({ user }) {
   }
 
   if (isLoading) {
-    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement de l'auto-evaluation...</section>;
+    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement de l'auto-évaluation...</section>;
   }
 
   if (errorMessage) {
@@ -647,7 +647,7 @@ function MonautoevaluationSenior({ user }) {
   }
 
   if (!activeSection || !activePage) {
-    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Aucune auto-evaluation disponible.</section>;
+    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Aucune auto-évaluation disponible.</section>;
   }
 
   const isLastCycleStep =
@@ -661,7 +661,7 @@ function MonautoevaluationSenior({ user }) {
   return (
     <section className="space-y-4">
       <div className="rounded-lg bg-[#DCECCB] px-4 py-3 text-sm font-semibold text-[#184D2E]">
-        Le Senior peut saisir son evaluation par mission puis son evaluation globale du cycle. Les missions comme l'auto-evaluation globale sont transmises au(x) manager(s) concernes.
+        Le Senior peut saisir son évaluation par mission puis son évaluation globale du cycle. Les missions comme l'auto-évaluation globale sont transmises au(x) manager(s) concernés.
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
@@ -685,7 +685,7 @@ function MonautoevaluationSenior({ user }) {
           <p className="text-xs font-bold uppercase">Etape 2</p>
           <h2 className="mt-2 text-[22px] font-extrabold">Evaluation globale du cycle</h2>
           <p className={`mt-3 text-sm font-semibold ${step === "cycle" ? "text-slate-200" : "text-slate-500"}`}>
-            {evaluationData?.assignee?.current_cycle || "Cycle 2026"} - {globalProgress}%
+            {evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"} - {globalProgress}%
           </p>
         </button>
       </div>
@@ -751,7 +751,7 @@ function MonautoevaluationSenior({ user }) {
                     <div className="h-2 rounded-full bg-[#76B82A]" style={{ width: `${getMissionProgress(mission)}%` }} />
                   </div>
                   <div className="mt-2 flex items-center justify-between">
-                    <p className="text-[12px] font-bold text-[#76B82A]">{getMissionProgress(mission)}% complete</p>
+                    <p className="text-[12px] font-bold text-[#76B82A]">{getMissionProgress(mission)}% complète</p>
                     <span className="rounded-full bg-white px-3 py-1 text-[10px] font-bold text-[#0F3A63]">{mission.status || "Brouillon"}</span>
                   </div>
                 </button>
@@ -765,7 +765,7 @@ function MonautoevaluationSenior({ user }) {
                 <div className="rounded-xl bg-white p-4 shadow-sm">
                   <div className="mb-3 flex items-center justify-between">
                     <div>
-                      <p className="text-[12px] font-semibold text-slate-500">Mission selectionnee</p>
+                      <p className="text-[12px] font-semibold text-slate-500">Mission sélectionnee</p>
                       <h3 className="text-[20px] font-extrabold text-[#0F3A63]">{activeMission.title}</h3>
                     </div>
                     <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-[12px] font-bold text-[#4E8B1B]">
@@ -774,7 +774,7 @@ function MonautoevaluationSenior({ user }) {
                   </div>
                   <p className="text-[12px] font-semibold text-slate-500">{activeMission.period}</p>
                   <p className="mt-2 text-[12px] font-semibold text-[#0F3A63]">
-                    Departement : {activeMission.department} - Destinataire : {activeMission.recipients.map(getRecipientLabel).join(", ")}
+                    Département : {activeMission.department} - Destinataire : {activeMission.recipients.map(getRecipientLabel).join(", ")}
                   </p>
                 </div>
 
@@ -886,7 +886,7 @@ function MonautoevaluationSenior({ user }) {
                         </div>
 
                         <div className="mt-3 rounded-sm bg-[#DCECCB] px-3 py-2 text-[10px] font-semibold text-[#5A8A3A]">
-                          Les questions obligatoires sans reponse bloqueront la soumission de la mission au manager.
+                          Les questions obligatoires sans réponse bloqueront la soumission de la mission au manager.
                         </div>
 
                         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
@@ -924,7 +924,7 @@ function MonautoevaluationSenior({ user }) {
                                 onClick={() => setStep("cycle")}
                                 className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
                               >
-                                Continuer vers l'evaluation globale
+                                Continuer vers l'évaluation globale
                                 <ChevronRight size={14} />
                               </button>
                             </div>
@@ -937,7 +937,7 @@ function MonautoevaluationSenior({ user }) {
               </>
             ) : (
               <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">
-                Aucune mission ajoutee pour le moment.
+                Aucune mission ajoutée pour le moment.
               </section>
             )}
           </article>
@@ -946,7 +946,7 @@ function MonautoevaluationSenior({ user }) {
         <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.8fr_1.4fr]">
           <article className="rounded-xl bg-white p-5 shadow-sm">
             <div className="mb-5">
-              <p className="text-xs font-semibold text-slate-400">{evaluationData?.assignee?.current_cycle || "Cycle 2026"}</p>
+              <p className="text-xs font-semibold text-slate-400">{evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"}</p>
               <h2 className="text-xl font-extrabold text-[#0F3A63]">{displayName}</h2>
               <p className="text-sm font-semibold text-slate-500">{user?.grade || evaluationData?.assignee?.grade || "Senior"}</p>
             </div>
@@ -971,7 +971,7 @@ function MonautoevaluationSenior({ user }) {
             </div>
 
             <div className="mt-5 rounded-lg bg-slate-50 p-4 text-sm font-semibold text-[#0F3A63]">
-              Cette auto-evaluation personnelle sera envoyee au(x) manager(s) concernes pour completer l'appreciation du cycle.
+              Cette auto-évaluation personnelle sera envoyée au(x) manager(s) concernés pour complèter l'appréciation du cycle.
             </div>
 
             <div className="mt-4 space-y-4">
@@ -1011,7 +1011,7 @@ function MonautoevaluationSenior({ user }) {
           <article className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-4 shadow-sm">
               <div>
-                <p className="text-xs font-semibold text-slate-500">Derniere sauvegarde</p>
+                <p className="text-xs font-semibold text-slate-500">Dernière sauvegarde</p>
                 <p className="text-sm font-semibold text-[#0F3A63]">{evaluationData?.evaluation?.last_saved_at ? "Enregistree" : "Non disponible"}</p>
               </div>
               <div className="flex items-center gap-4 text-sm">
@@ -1141,13 +1141,13 @@ function MonautoevaluationSenior({ user }) {
 
                 {savedComments[activePage.page_id] ? (
                   <div className="mt-3 rounded-sm bg-[#DCECCB] px-3 py-2">
-                    <p className="text-[10px] font-bold text-[#5A8A3A]">Commentaire sauvegarde</p>
+                    <p className="text-[10px] font-bold text-[#5A8A3A]">Commentaire sauvegardé</p>
                     <p className="mt-1 text-[11px] font-semibold text-[#0F3A63]">{savedComments[activePage.page_id]}</p>
                   </div>
                 ) : null}
 
                 <div className="mt-3 rounded-sm bg-[#DCECCB] px-3 py-2 text-[10px] font-semibold text-[#5A8A3A]">
-                  Les questions obligatoires sans reponse bloqueront la soumission aux managers concernes.
+                  Les questions obligatoires sans réponse bloqueront la soumission aux managers concernés.
                 </div>
 
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
@@ -1158,7 +1158,7 @@ function MonautoevaluationSenior({ user }) {
                     className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <ChevronLeft size={14} />
-                    Precedent
+                    Précédent
                   </button>
 
                   {!isLastCycleStep ? (

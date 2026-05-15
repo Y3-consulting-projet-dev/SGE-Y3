@@ -118,7 +118,7 @@ function MonautoevaluationAssistanteRH() {
 
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.85fr_1.35fr]">
         <article className="rounded-xl bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold text-slate-400">Cycle 2026</p>
+          <p className="text-xs font-semibold text-slate-400">Cycle 2025-2026</p>
           <h2 className="mt-1 text-xl font-extrabold text-[#0F3A63]">Auto-evaluation Assistante RH</h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">Transmission : {rhRecipient}</p>
 

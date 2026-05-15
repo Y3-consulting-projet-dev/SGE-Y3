@@ -339,7 +339,7 @@ function Evaluermonequipe({ member }) {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold text-slate-400">{reviewData.review.cycle_label || "Cycle 2026"}</p>
+          <p className="text-xs font-semibold text-slate-400">{reviewData.review.cycle_label || "Cycle 2025-2026"}</p>
           <h3 className="text-2xl font-black text-[#0F3A63]">
             {reviewData.member.name} ({reviewData.member.grade})
           </h3>
@@ -387,7 +387,7 @@ function Evaluermonequipe({ member }) {
           </div>
           <h2 className="text-lg font-black text-[#0F3A63]">Evaluation globale du cycle</h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">
-            {reviewData.review.cycle_label || "Cycle 2026"} - {globalProgress}%
+            {reviewData.review.cycle_label || "Cycle 2025-2026"} - {globalProgress}%
           </p>
           <p className="mt-2 text-xs font-semibold text-[#4E8B1B]">
             Notez la matrice globale du membre puis soumettez a la RH.

@@ -9,6 +9,12 @@ const LEADERSHIP_COMMITTEE_NAMES = [
   'AXELLE AMANI',
   'STEPHANIE TAKI',
 ];
+const SUPPORT_COMMITTEE_EMAILS = [
+  'fleur.nguessan@ycubeac.com',
+  'porthela.kakou@ycubeac.com',
+  'aziz.ouattara@ycubeac.com',
+  'adele.creppy@ycubeac.com',
+];
 
 function normalizeName(value = '') {
   return String(value).replace(/\s+/g, ' ').trim().toUpperCase();
@@ -30,7 +36,8 @@ function buildParticipant(user, defaultLevel = null) {
 }
 
 async function listCommitteeParticipants(request, response) {
-  const scope = request.query?.scope === 'leadership' ? 'leadership' : 'collaborators';
+  const requestedScope = String(request.query?.scope || 'collaborators');
+  const scope = ['leadership', 'support'].includes(requestedScope) ? requestedScope : 'collaborators';
   const query = {
     is_active: true,
     grade: { $in: ['Assistant', 'Senior', 'Assistant manager'] },
@@ -51,6 +58,15 @@ async function listCommitteeParticipants(request, response) {
     });
   }
 
+  if (scope === 'support') {
+    users = await User.find({
+      is_active: true,
+      email: { $in: SUPPORT_COMMITTEE_EMAILS },
+    })
+      .sort({ last_name: 1, first_name: 1 })
+      .select('_id name first_name last_name grade department');
+  }
+
   return response.json({
     participants: users.map((user) => buildParticipant(user, scope === 'leadership' ? 'CC' : null)),
   });
@@ -68,7 +84,7 @@ async function saveCommitteeDecision(request, response) {
 
   const submittedByName = [request.user?.first_name, request.user?.last_name].filter(Boolean).join(' ').trim() || request.user?.name || '';
   const decision = await CommitteeDecision.create({
-    cycle_label: request.body?.cycle_label || 'Cycle 2026',
+    cycle_label: request.body?.cycle_label || 'Cycle 2025-2026',
     scope,
     decisions,
     submitted_by: request.user?._id || null,

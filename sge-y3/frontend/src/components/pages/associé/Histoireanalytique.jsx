@@ -1,24 +1,24 @@
-﻿import { Bell } from "lucide-react";
+import { Bell } from "lucide-react";
 
 const stats = [
-  { title: "Taux promotion (2026)", value: "18%", subtitle: "vs 12% en 2025" },
+  { title: "Taux promotion (cycle 2025-2026)", value: "18%", subtitle: "vs 12% au cycle 2024-2025" },
   { title: "Score moyen cabinet", value: "3.7/5", subtitle: "+0.3 vs 2025" },
   { title: "Écarts signalés", value: "3", subtitle: "sur 24 évaluations" },
   { title: "Formations decidees", value: "4", subtitle: "dont 2 certifiantes" },
 ];
 
 const scoreRows = [
-  { initials: "DS", name: "Diallo S.", y2024: "3.2", y2025: "3.8", y2026: "3.9", trend: "↑ +0.7", trendClass: "text-[#78B843]" },
-  { initials: "KA", name: "Kouame A.", y2024: "3.5", y2025: "4.2", y2026: "3.9", trend: "↑ +0.6", trendClass: "text-[#78B843]" },
-  { initials: "YE", name: "Yao E.", y2024: "3.1", y2025: "3.0", y2026: "2.8", trend: "↓ -0.3", trendClass: "text-[#F24A4A]" },
-  { initials: "GN", name: "Gbagbo N.", y2024: "3.8", y2025: "4.0", y2026: "4.2", trend: "↑ +0.4", trendClass: "text-[#78B843]" },
+  { initials: "DS", name: "Diallo S.", y2024: "3.2", y2025: "3.8", y2026: "3.9", trend: "? +0.7", trendClass: "text-[#78B843]" },
+  { initials: "KA", name: "Kouame A.", y2024: "3.5", y2025: "4.2", y2026: "3.9", trend: "? +0.6", trendClass: "text-[#78B843]" },
+  { initials: "YE", name: "Yao E.", y2024: "3.1", y2025: "3.0", y2026: "2.8", trend: "? -0.3", trendClass: "text-[#F24A4A]" },
+  { initials: "GN", name: "Gbagbo N.", y2024: "3.8", y2025: "4.0", y2026: "4.2", trend: "? +0.4", trendClass: "text-[#78B843]" },
 ];
 
 const historyRows = [
-  { cycle: "Cycle 2026", name: "Diallo Seydou", décision: "Promotion → Manager Senior", className: "text-[#78B843]" },
-  { cycle: "Cycle 2026", name: "Kone Awa", décision: "Augmentation +8%", className: "text-[#78B843]" },
+  { cycle: "Cycle 2025-2026", name: "Diallo Seydou", décision: "Promotion ? Manager Senior", className: "text-[#78B843]" },
+  { cycle: "Cycle 2025-2026", name: "Kone Awa", décision: "Augmentation +8%", className: "text-[#78B843]" },
   { cycle: "Cycle 2025", name: "Yao Emmanuel", décision: "Maintien + formation", className: "text-[#0F4A72]" },
-  { cycle: "Cycle 2025", name: "Gnago Nadege", décision: "Promotion → Superviseur", className: "text-[#78B843]" },
+  { cycle: "Cycle 2025", name: "Gnago Nadege", décision: "Promotion ? Superviseur", className: "text-[#78B843]" },
 ];
 
 const exportsRows = [
@@ -91,7 +91,7 @@ function Histoireanalytique() {
         <article className="rounded-lg bg-white shadow-sm">
           <div className="border-b border-slate-100 px-4 py-3">
             <p className="text-2xl font-black text-[#0F3A63]">Historique des décisions RH prises</p>
-            <p className="text-base font-bold text-[#0F4A72]">Cycle 2026 & antérieurs</p>
+            <p className="text-base font-bold text-[#0F4A72]">Cycle 2025-2026 & antérieurs</p>
           </div>
           <div className="space-y-6 px-4 py-4">
             {historyRows.map((row) => (
