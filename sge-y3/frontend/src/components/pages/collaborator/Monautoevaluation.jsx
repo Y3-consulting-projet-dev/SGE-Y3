@@ -723,7 +723,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   return (
     <div className="space-y-3">
       <div className="text-[10px] text-slate-500">
-        {evaluationData?.assignee?.current_cycle || "Cycle 2026"} - Auto-evaluation en deux etapes - Sauvegarde progressive activee
+        {evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"} - Auto-evaluation en deux etapes - Sauvegarde progressive activee
       </div>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -748,7 +748,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
           <p className="text-xs font-bold uppercase opacity-80">Etape 2</p>
           <h2 className="mt-1 text-lg font-black">Evaluation globale du cycle</h2>
           <p className="mt-2 text-xs font-semibold opacity-80">
-            {evaluationData?.assignee?.current_cycle || "Cycle 2026"} - {globalProgress}%
+            {evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"} - {globalProgress}%
           </p>
         </button>
       </section>

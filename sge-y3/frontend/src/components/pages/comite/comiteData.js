@@ -143,3 +143,24 @@ export const committeeLeaders = [
     level: "CD",
   },
 ];
+
+export const committeeSupport = [
+  {
+    id: "support-admin",
+    name: "Support administratif",
+    role: "Support",
+    department: "Support",
+    manager: "Associes",
+    score: "-",
+    level: "CB",
+  },
+  {
+    id: "support-it",
+    name: "Support IT",
+    role: "Support",
+    department: "Support",
+    manager: "Associes",
+    score: "-",
+    level: "CB",
+  },
+];

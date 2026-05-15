@@ -181,7 +181,7 @@ export const priorityActions = [
 export const seniorSelfEvaluation = {
   name: "Yasmine KOUAME",
   role: "Senior",
-  cycle: "Cycle 2026",
+  cycle: "Cycle 2025-2026",
   status: "En cours",
   progress: 60,
   managerRecipient: "Diallo S.",

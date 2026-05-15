@@ -84,6 +84,12 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
             workflowText="La RH classe les assistants, seniors et assistants managers, puis transmet le classement aux associes pour decision du taux d'augmentation."
           />
           <DecisionAssociesRH />
+          <DecisionAssociesRH
+            emptyMessage="Aucune decision support des associes n'a encore ete envoyee a la RH."
+            scope="support-final"
+            title="Decisions support recues"
+            subtitle="La RH visualise ici le classement et les taux d'augmentation du departement support envoyes par les associes."
+          />
         </div>
       );
     }
@@ -154,7 +160,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
             <div>
               <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
               <p className="mt-1 text-sm font-semibold text-slate-500">
-                {assistantMode ? "Cycle 2026 - Consultation RH et gestion des questions" : "Cycle 2026 - Pilotage des évaluations"}
+                {assistantMode ? "Cycle 2025-2026 - Consultation RH et gestion des questions" : "Cycle 2025-2026 - Pilotage des évaluations"}
               </p>
             </div>
             <div className="flex items-center gap-4">

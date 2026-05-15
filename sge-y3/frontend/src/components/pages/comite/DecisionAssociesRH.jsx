@@ -13,7 +13,12 @@ function formatDate(value) {
   });
 }
 
-function DecisionAssociesRH() {
+function DecisionAssociesRH({
+  emptyMessage = "Aucune decision des associes n'a encore ete envoyee a la RH.",
+  scope = "associate-final",
+  subtitle = "La RH visualise ici les classements et taux d'augmentation envoyes par les associes. La vue se met a jour automatiquement.",
+  title = "Decisions et taux recus",
+}) {
   const [decision, setDecision] = useState(null);
   const [selectedLevelKey, setSelectedLevelKey] = useState(committeeLevels[0].key);
   const [status, setStatus] = useState("");
@@ -24,7 +29,7 @@ function DecisionAssociesRH() {
     let ignore = false;
 
     const loadDecision = () => {
-      getLatestCommitteeDecision("associate-final")
+      getLatestCommitteeDecision(scope)
         .then((data) => {
           if (ignore) return;
           setDecision(data.decision || null);
@@ -42,17 +47,15 @@ function DecisionAssociesRH() {
       ignore = true;
       window.clearInterval(refreshTimer);
     };
-  }, []);
+  }, [scope]);
 
   return (
     <section className="rounded-xl bg-white p-5 shadow-sm">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase text-slate-400">Retour des associés</p>
-          <h2 className="text-xl font-extrabold text-[#0F3A63]">Décisions et taux reçus</h2>
-          <p className="mt-1 text-sm font-semibold text-slate-500">
-            La RH visualise ici les classements et taux d'augmentation envoyés par les associés. La vue se met à jour automatiquement.
-          </p>
+          <p className="text-xs font-bold uppercase text-slate-400">Retour des associes</p>
+          <h2 className="text-xl font-extrabold text-[#0F3A63]">{title}</h2>
+          <p className="mt-1 text-sm font-semibold text-slate-500">{subtitle}</p>
         </div>
         {decision?.submitted_at ? (
           <span className="rounded-full bg-[#DDECCF] px-3 py-1 text-xs font-bold text-[#4E8B1B]">
@@ -63,7 +66,7 @@ function DecisionAssociesRH() {
 
       {!decision ? (
         <p className="rounded-lg bg-[#F8FAFC] px-4 py-3 text-sm font-semibold text-slate-500">
-          {status || "Aucune decision des associes n'a encore ete envoyee a la RH."}
+          {status || emptyMessage}
         </p>
       ) : (
         <article className={`rounded-[24px] border p-4 ${selectedLevel.tone}`}>
@@ -101,7 +104,9 @@ function DecisionAssociesRH() {
                 </div>
               ))
             ) : (
-              <p className="rounded-lg bg-white/70 px-3 py-3 text-sm font-bold opacity-70">Aucune personne dans cette catégorie.</p>
+              <p className="rounded-lg bg-white/70 px-3 py-3 text-sm font-bold opacity-70">
+                Aucune personne dans cette categorie.
+              </p>
             )}
           </div>
         </article>

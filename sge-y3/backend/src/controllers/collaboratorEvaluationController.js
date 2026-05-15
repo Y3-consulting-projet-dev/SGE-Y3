@@ -10,7 +10,7 @@ const {
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
 
-const CURRENT_CYCLE_LABEL = 'Cycle 2026';
+const CURRENT_CYCLE_LABEL = 'Cycle 2025-2026';
 
 function getManagerDepartmentsForDepartment(department = '') {
   const normalized = String(department || '').replace(/\s+/g, ' ').trim().toUpperCase();

@@ -1,5 +1,14 @@
+<<<<<<< HEAD
 import { useEffect, useMemo, useState } from "react";
 import { getManagerTeamReport } from "@/lib/managerOverview";
+=======
+const reportCards = [
+  { title: "Score moyen de l'équipe", value: "3.7", subtitle: "Sur 5", accent: "" },
+  { title: "Taux completion", value: "80%", subtitle: "4/5 evalo soumises", accent: "" },
+  { title: "Ecarts signales", value: "1", subtitle: "A justifier", accent: "text-[#F34D4D]" },
+  { title: "Promos recommandees", value: "2", subtitle: "", accent: "" },
+];
+>>>>>>> d5f696a (comité-eval)
 
 const recommendationOptions = ["Maintien", "Augmentation"];
 
@@ -70,7 +79,11 @@ function buildPrintableReport(title, rows, sectionTitles, selectedRecommendation
   </head>
   <body>
     <h1>${title}</h1>
+<<<<<<< HEAD
     <p>Reporting d'equipe - ${cycleLabel}</p>
+=======
+    <p>Reporting d'équipe - Cycle 2025-2026</p>
+>>>>>>> d5f696a (comité-eval)
     <table>
       <thead>
         <tr>
@@ -202,7 +215,11 @@ function Rapportsequipe() {
 
   return (
     <div className="space-y-5">
+<<<<<<< HEAD
       <p className="text-xs font-semibold text-slate-400">Reporting - {cycleLabel}</p>
+=======
+      <p className="text-xs font-semibold text-slate-400">Reporting - Cycle 2025-2026</p>
+>>>>>>> d5f696a (comité-eval)
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         {reportCards.map((card) => (

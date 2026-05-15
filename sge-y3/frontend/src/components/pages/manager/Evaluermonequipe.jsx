@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import {
@@ -5,6 +6,9 @@ import {
   saveManagerMemberEvaluation,
   submitManagerMemberEvaluation,
 } from "@/lib/managerOverview";
+=======
+import { useState } from "react";
+>>>>>>> d5f696a (comité-eval)
 
 function getSourceBadgeLabel(page) {
   if (page?.source_label) return page.source_label;
@@ -337,6 +341,7 @@ function Evaluermonequipe({ member }) {
 
   return (
     <div className="space-y-5">
+<<<<<<< HEAD
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold text-slate-400">{reviewData.review.cycle_label || "Cycle 2026"}</p>
@@ -346,6 +351,68 @@ function Evaluermonequipe({ member }) {
           <p className="mt-1 text-sm font-semibold text-slate-500">
             Departement du membre : {reviewData.member.department} | Matrice utilisee : {evaluationDepartment}
           </p>
+=======
+      <p className="text-sm font-semibold text-slate-400">
+        Evaluations - {collaborator.name} ({collaborator.role})
+      </p>
+
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+        <div className="space-y-4 xl:col-span-4">
+          <div className="rounded-lg bg-white p-4 shadow-sm">
+            <div className="mb-2 flex items-start justify-between">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500">
+                  {initials}
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-[#0F3A63]">{collaborator.name}</p>
+                  <p className="text-xs text-slate-400">{collaborator.role}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center gap-3 text-xs font-semibold">
+              <span className="text-[#0F3A63]">Cycle 2025-2026</span>
+              <span className="rounded-full bg-[#DDECCF] px-2 py-1 text-[#4E8B1B]">{collaborator.status}</span>
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-white p-4 shadow-sm">
+            <p className="mb-3 text-sm font-bold text-[#76B82A]">Auto-évaluation du collaborateur</p>
+            <div className="space-y-2 text-sm font-semibold text-[#0F3A63]">
+              <div className="flex items-center justify-between">
+                <span>Compétences techniques</span>
+                <span className="text-[#76B82A]">4 / 5</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Savoir-être</span>
+                <span className="text-[#76B82A]">3 / 5</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Objectifs atteints</span>
+                <span className="text-[#76B82A]">4 / 5</span>
+              </div>
+            </div>
+            <p className="mt-4 border-t border-slate-100 pt-3 text-sm text-slate-500">
+              "Bonne maîtrise des dossiers clients, souhaite évoluer vers un poste de Manager."
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-white p-4 shadow-sm">
+            <p className="mb-3 text-sm font-bold text-[#76B82A]">Entrétien annuel</p>
+            <p className="text-lg font-bold text-[#0F3A63]">22/04/2026 - 14h30</p>
+            <p className="mt-3 text-sm font-semibold text-[#0F3A63]">Mode</p>
+            <select
+              value={meetingMode}
+              onChange={(event) => setMeetingMode(event.target.value)}
+              className="mt-1 h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-[#0F3A63] outline-none"
+            >
+              <option>Présentiel</option>
+              <option>Visio</option>
+              <option>Téléphone</option>
+            </select>
+          </div>
+>>>>>>> d5f696a (comité-eval)
         </div>
         <div className="rounded-xl bg-[#F3F8EC] px-4 py-3 text-sm font-semibold text-[#4E8B1B]">
           {reviewData.review.status}

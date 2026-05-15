@@ -6,7 +6,7 @@ const COMMITTEE_DECISION_STORAGE_KEY = "sge-committee-latest-decision";
 function saveLocalDecision(payload) {
   const decision = {
     id: `local-${Date.now()}`,
-    cycle_label: payload.cycle_label || "Cycle 2026",
+    cycle_label: payload.cycle_label || "Cycle 2025-2026",
     scope: payload.scope || "associate-final",
     decisions: payload.decisions || {},
     submitted_by_name: "Associés",
