@@ -187,7 +187,7 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
               ))}
               <div>
                 <div className="mb-1 flex items-center justify-between text-[13px] font-bold text-[#0F3A63]">
-                  <p>Score final pondere</p>
+                  <p>Score final</p>
                   <span className="text-[#76B82A]">{formatScore(scoreFinal)} / 5</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-300">
@@ -248,7 +248,7 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
             <h3 className="mb-4 text-[20px] font-bold text-[#0F3A63]">Évolution sur 2 cycles</h3>
             <div className="space-y-3 text-[13px] font-semibold">
               <div className="flex items-center justify-between text-[#0F3A63]">
-                <p>Cycle 2025</p>
+                <p>Cycle 2025-2026</p>
                 <p>3.2 / 5 - Maintien</p>
               </div>
               <div className="flex items-center justify-between text-[#76B82A]">

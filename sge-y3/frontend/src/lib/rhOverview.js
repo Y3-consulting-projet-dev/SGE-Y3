@@ -37,6 +37,21 @@ export function getRhSelfEvaluation() {
   return request("/rh/self-evaluation");
 }
 
+export function createRhSelfMissionEvaluation(payload) {
+  return request("/rh/self-evaluation/missions", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getAssistantRhEvaluation(memberId) {
+  return request(`/rh/assistant-evaluations/${memberId}`);
+}
+
+export function getAssistantRhSelfEvaluation() {
+  return request("/rh/assistant-self-evaluation");
+}
+
 export function saveRhSelfEvaluation(payload) {
   return request("/rh/self-evaluation", {
     method: "PUT",
@@ -44,8 +59,41 @@ export function saveRhSelfEvaluation(payload) {
   });
 }
 
+export function saveAssistantRhEvaluation(memberId, payload) {
+  return request(`/rh/assistant-evaluations/${memberId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function saveAssistantRhSelfEvaluation(payload) {
+  return request("/rh/assistant-self-evaluation", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function submitRhSelfEvaluation() {
   return request("/rh/self-evaluation/submit", {
+    method: "POST",
+  });
+}
+
+export function submitRhSelfMissionEvaluation(missionId) {
+  return request("/rh/self-evaluation/missions/submit", {
+    method: "POST",
+    body: JSON.stringify({ missionId }),
+  });
+}
+
+export function submitAssistantRhEvaluation(memberId) {
+  return request(`/rh/assistant-evaluations/${memberId}/submit`, {
+    method: "POST",
+  });
+}
+
+export function submitAssistantRhSelfEvaluation() {
+  return request("/rh/assistant-self-evaluation/submit", {
     method: "POST",
   });
 }

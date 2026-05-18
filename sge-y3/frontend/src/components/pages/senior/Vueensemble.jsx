@@ -13,12 +13,12 @@ function Vueensemble({ onOpen, overviewData, isLoading, errorMessage }) {
   const assistantRows = overviewData?.assistants || [];
   const priorityActions = [
     summary.missionsAEvaluerCount > 0
-      ? { title: "Finaliser les avis Senior", subtitle: `${summary.missionsAEvaluerCount} mission(s) encore a evaluer`, target: "reviews" }
+      ? { title: "Finaliser les avis Senior", subtitle: `${summary.missionsAEvaluerCount} mission(s) encore à évaluer`, target: "reviews" }
       : null,
     summary.missionsCommunesCount > 0
       ? { title: "Consulter les missions communes", subtitle: `${summary.missionsCommunesCount} mission(s) soumise(s) par vos assistants`, target: "goals" }
       : null,
-    { title: "Mettre a jour mon auto-evaluation", subtitle: "Poursuivre la saisie de votre cycle Senior", target: "self-evaluation" },
+    { title: "Mettre à jour mon auto-évaluation", subtitle: "Poursuivre la saisie de votre cycle Senior", target: "self-evaluation" },
   ].filter(Boolean);
 
   return (
@@ -49,7 +49,7 @@ function Vueensemble({ onOpen, overviewData, isLoading, errorMessage }) {
           onClick={() => onOpen("goals")}
           label="Missions communes"
           value={isLoading ? "..." : summary.missionsCommunesCount || 0}
-          subtitle="dossiers partages"
+          subtitle="dossiers partagés"
           accentClass="text-[#7BC443]"
         />
         <StatCard
@@ -78,7 +78,7 @@ function Vueensemble({ onOpen, overviewData, isLoading, errorMessage }) {
                   <div>
                     <p className="font-bold text-[#0F3A63]">{assistant.name}</p>
                     <p className="text-xs font-semibold text-slate-500">
-                      {assistant.department || "Departement non renseigne"} - {assistant.sharedMissionsCount} mission(s) commune(s)
+                      {assistant.department || "Departement non renseigné"} - {assistant.sharedMissionsCount} mission(s) commune(s)
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs font-bold">

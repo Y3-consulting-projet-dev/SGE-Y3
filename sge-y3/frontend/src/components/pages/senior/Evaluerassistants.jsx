@@ -10,10 +10,10 @@ import {
 
 const gradingHelp = [
   { level: "1", text: "Insuffisant - objectif non atteint", color: "text-[#FF7A00]" },
-  { level: "2", text: "En progression - a ameliorer", color: "text-[#0F3A63]" },
+  { level: "2", text: "En progression - à améliorer", color: "text-[#0F3A63]" },
   { level: "3", text: "Satisfaisant - niveau attendu", color: "text-[#0F3A63]" },
-  { level: "4", text: "Bon - depasse les attentes", color: "text-[#0F3A63]" },
-  { level: "5", text: "Excellent - reference dans l'equipe", color: "text-[#76B82A]" },
+  { level: "4", text: "Bon - dépasse les attentes", color: "text-[#0F3A63]" },
+  { level: "5", text: "Excellent - référence dans l'équipe", color: "text-[#76B82A]" },
 ];
 
 function getRecipientOptionValue(recipient) {
@@ -346,7 +346,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
         const progress = getSectionProgress(section);
         return {
           ...section,
-          status: progress === 0 ? "A faire" : progress === 100 ? "Complete" : "En cours",
+          status: progress === 0 ? "À faire" : progress === 100 ? "Complète" : "En cours",
         };
       });
     });
@@ -454,7 +454,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
       setMissionReviews(response.mission_reviews || []);
       setPageIndexes((current) => clampPageIndexes(response.review.sections, current));
       setFeedbackTone("success");
-      setFeedbackMessage(response.message || "Sauvegarde reussie.");
+      setFeedbackMessage(response.message || "Sauvegarde réussie.");
       return response;
     } catch (error) {
       setFeedbackTone("error");
@@ -589,7 +589,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
   }
 
   if (!assistants.length) {
-    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Aucun assistant 8C partageant votre département n'est disponible.</section>;
+    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Aucun assistant partageant votre département n'est disponible.</section>;
   }
 
   if (isLoadingReview) {
@@ -639,7 +639,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
       <article className="rounded-xl bg-white p-5 shadow-sm">
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1fr_auto]">
           <div>
-            <label htmlFor="assistant-select" className="mb-2 block text-xs font-bold text-[#0F3A63]">Assistant a évaluer</label>
+            <label htmlFor="assistant-select" className="mb-2 block text-xs font-bold text-[#0F3A63]">Assistant à évaluer</label>
             <select
               id="assistant-select"
               value={selectedAssistantId}
@@ -667,9 +667,9 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
             <p className="text-sm font-semibold text-slate-500">{selectedAssistant.grade}</p>
 
             <div className="mt-5 rounded-lg border border-[#D9E3EE] bg-[#F8FAFC] p-4">
-              <p className="text-xs font-bold uppercase text-slate-500">Nouvelle mission partagee</p>
+              <p className="text-xs font-bold uppercase text-slate-500">Nouvelle mission partagée</p>
               <p className="mt-1 text-sm font-semibold text-[#0F3A63]">
-                L'assistant récevra cette mission dans son auto-évaluation et notera la mission de son côté.
+                L'assistant recevra cette mission dans son auto-évaluation et notera la mission de son côté.
               </p>
               <div className="mt-3 space-y-3">
                 <input
@@ -896,7 +896,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                   <h3 className="text-[22px] font-bold text-[#0F3A63]">Progression globale</h3>
                   <span className="text-[13px] font-bold text-[#76B82A]">{globalProgress}%</span>
                 </div>
-                <p className="mb-4 text-[12px] font-semibold text-[#76B82A]">{completedSections} section(s) complete(s)</p>
+                <p className="mb-4 text-[12px] font-semibold text-[#76B82A]">{completedSections} section(s) complétée(s)</p>
 
                 <div className="space-y-3">
                   {displayedSections.map((section) => (
@@ -909,7 +909,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
               </article>
 
               <article className="rounded-xl bg-white p-4 shadow-sm">
-                <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">Aide a la notation</h3>
+                <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">Aide à la notation</h3>
                 <div className="space-y-2">
                   {gradingHelp.map((item) => (
                     <div key={item.level} className="flex items-center gap-2 text-[12px]">

@@ -9,6 +9,7 @@ const {
   writeQuestionnaireConfig,
 } = require('../utils/questionnaireConfig');
 const {
+  getAverageFromScores,
   getAverageScore,
   getEvaluationSummary,
   getOverallAverageScore,
@@ -16,7 +17,7 @@ const {
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
 
-const CURRENT_CYCLE_LABEL = 'Cycle 2026';
+const CURRENT_CYCLE_LABEL = 'Cycle 2025-2026';
 const RH_RELEVANT_STATUSES = ['Soumis a RH', 'Valide RH', 'Cloture'];
 const QUESTIONNAIRE_SECTION_OPTIONS = [
   { value: 'SAVOIR FAIRE', label: 'SAVOIR FAIRE' },
@@ -30,9 +31,24 @@ const QUESTIONNAIRE_AUDIENCE_OPTIONS = [
   'Managers et Seniors',
   'RH / Capital Humain',
 ];
+const FULL_RH_EMAILS = ['isabella.beda@ycubeac.com'];
+const RH_DEPARTMENT_REGEX = /^RH$/i;
+const CAPITAL_HUMAIN_DEPARTMENT_REGEX = /^CAPITAL HUMAIN$/i;
 
 function normalizeText(value = '') {
   return String(value || '').replace(/\s+/g, ' ').trim().toUpperCase();
+}
+
+function buildRhDepartmentClause() {
+  return {
+    $or: [{ department: RH_DEPARTMENT_REGEX }, { department: CAPITAL_HUMAIN_DEPARTMENT_REGEX }],
+  };
+}
+
+function buildNonRhDepartmentClause() {
+  return {
+    $nor: [{ department: RH_DEPARTMENT_REGEX }, { department: CAPITAL_HUMAIN_DEPARTMENT_REGEX }],
+  };
 }
 
 function formatDepartmentLabel(department = '') {
@@ -179,6 +195,105 @@ function toPersistenceSections(sections = []) {
   }));
 }
 
+function buildRhMissionCriteria(sections = []) {
+  return sections.flatMap((section) =>
+    (section.pages || []).flatMap((page) =>
+      (page.themes || []).map((theme) => ({
+        criterion_id: `${page.page_id}-${theme.theme_id}`,
+        section_title: section.title,
+        page_title: page.title,
+        source_sheet: page.source_sheet || '',
+        source_label: page.source_label || '',
+        theme_code: theme.code,
+        label: theme.label,
+        statement: theme.statement || '',
+        score: null,
+      }))
+    )
+  );
+}
+
+function normalizeRhMissionEvaluations(missionEvaluations = []) {
+  return missionEvaluations.map((mission) => ({
+    mission_id: String(mission.id || mission.mission_id || '').trim(),
+    title: String(mission.title || '').trim(),
+    period: String(mission.period || '').trim(),
+    department: String(mission.department || '').trim(),
+    created_by_role: String(mission.created_by_role || mission.createdByRole || 'self').trim() || 'self',
+    assigned_by_user_id: mission.assigned_by_user_id || mission.assignedByUserId || null,
+    assigned_by_name: String(mission.assigned_by_name || mission.assignedByName || '').trim(),
+    assigned_by_grade: String(mission.assigned_by_grade || mission.assignedByGrade || '').trim(),
+    assigned_at: mission.assigned_at || mission.assignedAt || null,
+    primary_recipient_user_id: mission.primary_recipient_user_id || mission.primaryRecipientUserId || null,
+    primary_recipient_name: String(mission.primary_recipient_name || mission.primaryRecipientName || '').trim(),
+    primary_recipient_grade: String(mission.primary_recipient_grade || mission.primaryRecipientGrade || '').trim(),
+    primary_recipient_department: String(
+      mission.primary_recipient_department || mission.primaryRecipientDepartment || ''
+    ).trim(),
+    recipients: Array.isArray(mission.recipients)
+      ? mission.recipients
+          .filter((recipient) => (recipient?.id || recipient?.user_id) && recipient?.name)
+          .map((recipient) => ({
+            user_id: recipient.id || recipient.user_id,
+            name: String(recipient.name || '').trim(),
+            grade: String(recipient.grade || '').trim(),
+            department: String(recipient.department || '').trim(),
+          }))
+      : [],
+    criteria: Array.isArray(mission.criteria)
+      ? mission.criteria.map((criterion) => ({
+          criterion_id: String(criterion.id || criterion.criterion_id || '').trim(),
+          section_title: String(criterion.sectionTitle || criterion.section_title || '').trim(),
+          page_title: String(criterion.pageTitle || criterion.page_title || '').trim(),
+          source_sheet: String(criterion.sourceSheet || criterion.source_sheet || '').trim(),
+          source_label: String(criterion.sourceLabel || criterion.source_label || '').trim(),
+          theme_code: String(criterion.themeCode || criterion.theme_code || '').trim(),
+          label: String(criterion.label || '').trim(),
+          statement: String(criterion.statement || '').trim(),
+          score: criterion.score === null || criterion.score === undefined ? null : Number(criterion.score),
+        }))
+      : [],
+    comment: String(mission.comment || '').trim(),
+    status: String(mission.status || 'Brouillon').trim(),
+    submitted_at: mission.submitted_at || mission.submittedAt || null,
+  }));
+}
+
+function formatRhMissionEvaluations(missionEvaluations = []) {
+  return missionEvaluations.map((mission) => ({
+    id: mission.mission_id,
+    title: mission.title,
+    period: mission.period,
+    department: mission.department,
+    createdByRole: mission.created_by_role || 'self',
+    primaryRecipientUserId:
+      mission.primary_recipient_user_id?.toString?.() || String(mission.primary_recipient_user_id || ''),
+    primaryRecipientName: mission.primary_recipient_name || '',
+    primaryRecipientGrade: mission.primary_recipient_grade || '',
+    primaryRecipientDepartment: mission.primary_recipient_department || '',
+    recipients: (mission.recipients || []).map((recipient) => ({
+      id: recipient.user_id?.toString?.() || String(recipient.user_id || ''),
+      name: recipient.name,
+      grade: recipient.grade,
+      department: recipient.department,
+    })),
+    criteria: (mission.criteria || []).map((criterion) => ({
+      id: criterion.criterion_id,
+      sectionTitle: criterion.section_title,
+      pageTitle: criterion.page_title,
+      sourceSheet: criterion.source_sheet,
+      sourceLabel: criterion.source_label,
+      themeCode: criterion.theme_code,
+      label: criterion.label,
+      statement: criterion.statement,
+      score: criterion.score,
+    })),
+    comment: mission.comment || '',
+    status: mission.status || 'Brouillon',
+    submittedAt: mission.submitted_at || null,
+  }));
+}
+
 function shouldResetToCurrentTemplate(instance, templateSections) {
   const currentSections = normalizeSections(instance.sections || []);
 
@@ -221,11 +336,31 @@ async function resolveAssociateRecipients() {
     .select('_id name first_name last_name grade department code_categorie');
 }
 
-async function getOrCreateRhSelfEvaluation(user) {
+async function resolveFullRhRecipients() {
+  return User.find({
+    is_active: true,
+    $or: [
+      buildRhDepartmentClause(),
+      { email: { $in: FULL_RH_EMAILS } },
+      { first_name: /ISABELLA/i, last_name: /BEDA/i },
+    ],
+  })
+    .sort({ last_name: 1, first_name: 1 })
+    .select('_id name first_name last_name grade department code_categorie');
+}
+
+async function resolveRhQueueUserIds() {
+  const recipients = await resolveFullRhRecipients();
+  return recipients.map((recipient) => recipient._id);
+}
+
+async function getOrCreateRhSelfEvaluation(user, options = {}) {
+  const templateType = options.templateType || 'rh-self-evaluation';
+  const submittedToRole = options.submittedToRole || 'associate';
   let instance = await EvaluationInstance.findOne({
     evalue_id: user._id,
     cycle_label: CURRENT_CYCLE_LABEL,
-    template_type: 'rh-self-evaluation',
+    template_type: templateType,
   });
 
   const templateSections = cloneRhSelfTemplate(user);
@@ -235,8 +370,8 @@ async function getOrCreateRhSelfEvaluation(user) {
       cycle_label: CURRENT_CYCLE_LABEL,
       evalue_id: user._id,
       status: 'En cours',
-      template_type: 'rh-self-evaluation',
-      submitted_to_role: 'associate',
+      template_type: templateType,
+      submitted_to_role: submittedToRole,
       sections: toPersistenceSections(templateSections),
       last_saved_at: new Date(),
     });
@@ -249,9 +384,10 @@ async function getOrCreateRhSelfEvaluation(user) {
   return instance;
 }
 
-function buildRhSelfEvaluationPayload(instance, user, associateRecipients = []) {
+function buildRhSelfEvaluationPayload(instance, user, recipients = [], workflow = {}) {
   const sections = normalizeSections(instance.sections || []);
   const activeSection = sections.find((section) => section.status !== 'Complete') || sections[0] || null;
+  const missionEvaluations = formatRhMissionEvaluations(normalizeRhMissionEvaluations(instance.mission_evaluations || []));
 
   return {
     evaluation: {
@@ -263,6 +399,7 @@ function buildRhSelfEvaluationPayload(instance, user, associateRecipients = []) 
       sections,
       activeSectionId: activeSection?.id || 1,
     },
+    mission_evaluations: missionEvaluations,
     summary: {
       ...getEvaluationSummary(sections),
       overallAverage: getOverallAverageScore(sections),
@@ -275,12 +412,25 @@ function buildRhSelfEvaluationPayload(instance, user, associateRecipients = []) 
       grade: user.grade,
       department: user.department,
     },
-    submitted_to: associateRecipients.map((recipient) => ({
+    submitted_to: recipients.map((recipient) => ({
       id: recipient._id.toString(),
       name: recipient.name,
       department: recipient.department,
       grade: recipient.grade,
     })),
+    workflow: {
+      recipientRoleLabel: workflow.recipientRoleLabel || 'Associe',
+      submitButtonLabel: workflow.submitButtonLabel || 'Soumettre aux associes',
+      introMessage:
+        workflow.introMessage ||
+        "La RH s'auto-evalue sur la conduite du cycle, puis transmet son auto-evaluation aux associes.",
+      titleLabel: workflow.titleLabel || 'Auto-evaluation RH',
+      saveMessage: workflow.saveMessage || 'Auto-evaluation RH enregistree.',
+      readyMessage: workflow.readyMessage || 'Auto-evaluation RH prete pour soumission.',
+      submittedMessage: workflow.submittedMessage || 'Auto-evaluation RH soumise aux associes.',
+      missingAnswersMessage:
+        workflow.missingAnswersMessage || 'Toutes les questions RH doivent etre renseignees avant soumission aux associes.',
+    },
   };
 }
 
@@ -315,8 +465,45 @@ function getPriorityStatus(finalScore, unjustifiedLowScores) {
 
 function getRhDisplayStatus(review, unjustifiedLowScores, finalScore) {
   if (review.status === 'Cloture' || review.status === 'Valide RH') return 'Valide';
+  if (review.status === 'Soumis a RH') return 'A valider RH';
   if (review.rh_validation_selected) return 'A valider RH';
   return getPriorityStatus(finalScore, unjustifiedLowScores);
+}
+
+function getAssistantRhDisplayStatus(instance) {
+  if (instance.status === 'Cloture' || instance.status === 'Valide RH') return 'Valide';
+  if (instance.rh_validation_selected) return 'A valider RH';
+  if (instance.status === 'Soumis a RH') return 'A valider RH';
+  return 'En attente';
+}
+
+function getMissionAverage(criteria = []) {
+  const scores = (criteria || []).map((criterion) => criterion.score).filter((score) => typeof score === 'number');
+
+  if (!scores.length) {
+    return null;
+  }
+
+  return Number((scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1));
+}
+
+function getMissionScoreTotal(missions = [], allowedStatuses = []) {
+  return Number(
+    (missions || [])
+      .filter((mission) => !allowedStatuses.length || allowedStatuses.includes(mission.status))
+      .reduce((total, mission) => total + (getMissionAverage(mission.criteria || []) || 0), 0)
+      .toFixed(1)
+  );
+}
+
+function getMissionScoreCount(missions = [], allowedStatuses = []) {
+  return (missions || []).filter((mission) => {
+    if (allowedStatuses.length && !allowedStatuses.includes(mission.status)) {
+      return false;
+    }
+
+    return typeof getMissionAverage(mission.criteria || []) === 'number';
+  }).length;
 }
 
 function getReviewSectionSummaries(sections = []) {
@@ -344,13 +531,14 @@ function getReviewCommentSummary(sections = [], managerName = '') {
     : "Les scores sont consultables par la RH pour verifier la coherence de l'evaluation.";
 }
 
-async function loadRhReviewDataset(rhUserId) {
-  const reviews = await ManagerMemberReview.find({
-    cycle_label: CURRENT_CYCLE_LABEL,
-    submitted_to_user_ids: rhUserId,
-  }).select(
-    'member_id manager_id member_department status submitted_at sections rh_validation_selected rh_validation_selected_at rh_validated_at'
-  );
+async function loadRhReviewDataset(rhUserIds) {
+  const recipientIds = Array.isArray(rhUserIds) ? rhUserIds.filter(Boolean) : [rhUserIds].filter(Boolean);
+    const reviews = await ManagerMemberReview.find({
+      cycle_label: CURRENT_CYCLE_LABEL,
+      submitted_to_user_ids: { $in: recipientIds },
+    }).select(
+      'member_id manager_id member_department status submitted_at sections mission_reviews rh_validation_selected rh_validation_selected_at rh_validated_at'
+    );
 
   const memberIds = reviews.map((review) => review.member_id).filter(Boolean);
   const managerIds = reviews.map((review) => review.manager_id).filter(Boolean);
@@ -361,12 +549,12 @@ async function loadRhReviewDataset(rhUserId) {
     User.find({
       is_active: true,
       code_categorie: { $in: ['8C', '9A', '9B', '10B', '10C'] },
-      department: { $nin: ['RH', 'CAPITAL HUMAIN'] },
+      ...buildNonRhDepartmentClause(),
     }).select('_id name first_name last_name grade department code_categorie'),
     User.find({
       is_active: true,
       code_categorie: { $in: ['9B', '10B', '10C'] },
-      department: { $nin: ['RH', 'CAPITAL HUMAIN'] },
+      ...buildNonRhDepartmentClause(),
     }).select('_id name department grade'),
   ]);
 
@@ -380,7 +568,7 @@ async function loadRhReviewDataset(rhUserId) {
     }));
 
   const selfEvaluations = selfEvaluationQueries.length
-    ? await EvaluationInstance.find({ $or: selfEvaluationQueries }).select('evalue_id sections')
+    ? await EvaluationInstance.find({ $or: selfEvaluationQueries }).select('evalue_id sections mission_evaluations')
     : [];
   const selfEvaluationByMemberId = new Map(selfEvaluations.map((instance) => [String(instance.evalue_id), instance]));
   const reviewByMemberId = new Map(reviews.map((review) => [String(review.member_id), review]));
@@ -403,8 +591,19 @@ async function loadRhReviewDataset(rhUserId) {
     const selfEvaluation = selfEvaluationByMemberId.get(String(fallbackMember._id));
     const selfSections = normalizeSections(selfEvaluation?.sections || []);
     const selfScore = getOverallAverageScore(selfSections);
+    const missionScore = getMissionScoreTotal(selfEvaluation?.mission_evaluations || [], ['Soumise']);
+    const missionScoreCount = getMissionScoreCount(selfEvaluation?.mission_evaluations || [], ['Soumise']);
+    const managerMissionScore = getMissionScoreTotal(review?.mission_reviews || [], ['Soumise a RH']);
+    const managerMissionScoreCount = getMissionScoreCount(review?.mission_reviews || [], ['Soumise a RH']);
     const managerScore = getOverallAverageScore(sections);
-    const finalScore = managerScore;
+    const finalScore = getAverageFromScores([missionScore, managerMissionScore, selfScore, managerScore]);
+    const hasSubmittedManagerMission = (review?.mission_reviews || []).some((mission) => mission.status === 'Soumise a RH');
+    const effectiveStatus =
+      review?.status === 'Soumis a RH' || review?.status === 'Valide RH' || review?.status === 'Cloture'
+        ? review.status
+        : hasSubmittedManagerMission
+          ? 'Soumis a RH'
+          : review?.status || 'En attente';
     const unjustifiedLowScores = countUnjustifiedLowScorePages(sections);
     const sectionSummaries = getReviewSectionSummaries(sections);
     const commentSummary = sections.length
@@ -420,16 +619,93 @@ async function loadRhReviewDataset(rhUserId) {
       department: fallbackMember?.department || review?.member_department || '',
       managerName: fallbackManager?.name || 'Non soumis',
       selfScore,
+      missionScore,
+      missionScoreCount,
+      managerMissionScore,
+      managerMissionScoreCount,
       managerScore,
       finalScore,
-      status: review?.status || 'En attente',
+      status: effectiveStatus,
       submittedAt: review?.submitted_at || null,
       unjustifiedLowScores,
-      displayStatus: review ? getRhDisplayStatus(review, unjustifiedLowScores, finalScore) : 'En attente',
-      rhValidationSelected: Boolean(review?.rh_validation_selected),
+      displayStatus: review ? getRhDisplayStatus({ ...review, status: effectiveStatus }, unjustifiedLowScores, finalScore) : 'En attente',
+      rhValidationSelected: Boolean(review?.rh_validation_selected || hasSubmittedManagerMission),
       sectionSummaries,
       commentSummary,
       gap,
+    };
+  });
+}
+
+async function loadAssistantRhSelfDataset(rhUserIds) {
+  const recipientIds = Array.isArray(rhUserIds) ? rhUserIds.filter(Boolean) : [rhUserIds].filter(Boolean);
+  const instances = await EvaluationInstance.find({
+    cycle_label: CURRENT_CYCLE_LABEL,
+    template_type: 'rh-assistant-self-evaluation',
+    submitted_to_user_ids: { $in: recipientIds },
+  }).select(
+    'evalue_id status submitted_at sections rh_validation_selected rh_validation_selected_at rh_validated_at'
+  );
+
+  const userIds = instances.map((instance) => instance.evalue_id).filter(Boolean);
+  const [users, reviews] = await Promise.all([
+    userIds.length
+      ? User.find({ _id: { $in: userIds } }).select('_id name first_name last_name grade department code_categorie')
+      : [],
+    userIds.length
+      ? ManagerMemberReview.find({
+          cycle_label: CURRENT_CYCLE_LABEL,
+          member_id: { $in: userIds },
+          template_type: 'rh-assistant-evaluation',
+        }).select('member_id manager_id status submitted_at sections rh_validation_selected rh_validation_selected_at rh_validated_at')
+      : [],
+  ]);
+  const userById = new Map(users.map((user) => [String(user._id), user]));
+  const reviewByMemberId = new Map(reviews.map((review) => [String(review.member_id), review]));
+
+  return instances.map((instance) => {
+    const assistantUser = userById.get(String(instance.evalue_id));
+    const review = reviewByMemberId.get(String(instance.evalue_id));
+    const sections = normalizeSections(instance.sections || []);
+    const reviewSections = normalizeSections(review?.sections || []);
+    const selfScore = getOverallAverageScore(sections);
+    const missionScore = 0;
+    const missionScoreCount = 0;
+    const managerMissionScore = getMissionScoreTotal(review?.mission_reviews || [], ['Soumise a RH']);
+    const managerMissionScoreCount = getMissionScoreCount(review?.mission_reviews || [], ['Soumise a RH']);
+    const managerScore = getOverallAverageScore(reviewSections);
+    const finalScore = getAverageFromScores([missionScore, managerMissionScore, selfScore, managerScore]);
+    const reviewHasBeenSubmitted = review?.status === 'Soumis a RH' || review?.status === 'Valide RH' || review?.status === 'Cloture';
+    const effectiveStatus = reviewHasBeenSubmitted ? review.status : instance.status;
+    const rhValidationSelected =
+      reviewHasBeenSubmitted && typeof review?.rh_validation_selected === 'boolean'
+        ? review.rh_validation_selected
+        : instance.rh_validation_selected;
+
+    return {
+      id: `assistant-rh:${instance._id.toString()}`,
+      rawId: instance._id.toString(),
+      sourceType: 'assistant-rh-self-evaluation',
+      memberId: assistantUser?._id?.toString?.() || '',
+      name: assistantUser?.name || 'Assistante RH',
+      role: assistantUser?.grade || 'Assistante RH',
+      department: assistantUser?.department || 'CAPITAL HUMAIN',
+      managerName: 'Auto-evaluation Assistante RH',
+      selfScore,
+      missionScore,
+      missionScoreCount,
+      managerMissionScore,
+      managerMissionScoreCount,
+      managerScore,
+      finalScore,
+      status: effectiveStatus,
+      submittedAt: instance.submitted_at || null,
+      unjustifiedLowScores: 0,
+      displayStatus: getAssistantRhDisplayStatus({ status: effectiveStatus, rh_validation_selected: rhValidationSelected }),
+      rhValidationSelected: Boolean(rhValidationSelected),
+      sectionSummaries: getReviewSectionSummaries(reviewSections.length ? reviewSections : sections),
+      commentSummary: getReviewCommentSummary(reviewSections.length ? reviewSections : sections, 'RH'),
+      gap: null,
     };
   });
 }
@@ -495,29 +771,31 @@ function buildDepartmentGroups(rows = []) {
 }
 
 async function getRhOverview(request, response) {
-  const rhUserId = request.user._id;
+  const rhUserIds = await resolveRhQueueUserIds();
 
-  const [managerSelfEvaluations, evaluatedPopulation, reviewRows] = await Promise.all([
+  const [managerSelfEvaluations, evaluatedPopulation, reviewRows, assistantRhRows] = await Promise.all([
     EvaluationInstance.find({
       cycle_label: CURRENT_CYCLE_LABEL,
       template_type: 'manager-self-evaluation',
-      submitted_to_user_ids: rhUserId,
+      submitted_to_user_ids: { $in: rhUserIds },
     }).select('evalue_id status submitted_at sections'),
     User.find({
       is_active: true,
       code_categorie: { $in: ['8C', '9A', '9B', '10B', '10C'] },
-      department: { $nin: ['RH', 'CAPITAL HUMAIN'] },
+      ...buildNonRhDepartmentClause(),
     }).select('_id'),
-    loadRhReviewDataset(rhUserId),
+    loadRhReviewDataset(rhUserIds),
+    loadAssistantRhSelfDataset(rhUserIds),
   ]);
 
+  const combinedReviewRows = [...reviewRows, ...assistantRhRows];
   const receivedCount =
-    reviewRows.filter((item) => RH_RELEVANT_STATUSES.includes(item.status)).length +
+    combinedReviewRows.filter((item) => RH_RELEVANT_STATUSES.includes(item.status)).length +
     managerSelfEvaluations.filter((item) => RH_RELEVANT_STATUSES.includes(item.status)).length;
   const totalEvaluatedPopulation = evaluatedPopulation.length;
-  const pendingRhItems = reviewRows.filter((item) => item.status === 'Soumis a RH');
-  const readySynthesesCount = reviewRows.filter((item) => item.status === 'Valide RH' || item.status === 'Cloture').length;
-  const priorityRows = reviewRows
+  const pendingRhItems = combinedReviewRows.filter((item) => item.status === 'Soumis a RH');
+  const readySynthesesCount = combinedReviewRows.filter((item) => item.status === 'Valide RH' || item.status === 'Cloture').length;
+  const priorityRows = combinedReviewRows
     .filter((row) => row.status === 'Soumis a RH')
     .sort((left, right) => {
       if (right.unjustifiedLowScores !== left.unjustifiedLowScores) {
@@ -538,7 +816,7 @@ async function getRhOverview(request, response) {
 
   const departmentMap = new Map();
 
-  reviewRows.forEach((row) => {
+  combinedReviewRows.forEach((row) => {
     if (typeof row.finalScore !== 'number') return;
     const key = formatDepartmentLabel(row.department);
     const current = departmentMap.get(key) || { department: key, scores: [] };
@@ -589,7 +867,7 @@ async function getRhOverview(request, response) {
 }
 
 async function getRhDepartmentEvaluations(request, response) {
-  const rows = await loadRhReviewDataset(request.user._id);
+  const rows = await loadRhReviewDataset(await resolveRhQueueUserIds());
   const groups = buildDepartmentGroups(rows);
 
   return response.json({
@@ -599,10 +877,11 @@ async function getRhDepartmentEvaluations(request, response) {
 }
 
 async function selectRhDepartmentEvaluation(request, response) {
+  const rhUserIds = await resolveRhQueueUserIds();
   const review = await ManagerMemberReview.findOne({
     _id: request.params.reviewId,
     cycle_label: CURRENT_CYCLE_LABEL,
-    submitted_to_user_ids: request.user._id,
+    submitted_to_user_ids: { $in: rhUserIds },
   });
 
   if (!review) {
@@ -621,8 +900,12 @@ async function selectRhDepartmentEvaluation(request, response) {
 }
 
 async function getRhValidations(request, response) {
-  const rows = await loadRhReviewDataset(request.user._id);
-  const items = rows.filter((row) => row.status === 'Soumis a RH' && row.rhValidationSelected);
+  const rhUserIds = await resolveRhQueueUserIds();
+  const [rows, assistantRhRows] = await Promise.all([
+    loadRhReviewDataset(rhUserIds),
+    loadAssistantRhSelfDataset(rhUserIds),
+  ]);
+  const items = [...rows, ...assistantRhRows].filter((row) => row.status === 'Soumis a RH');
 
   return response.json({
     cycle_label: CURRENT_CYCLE_LABEL,
@@ -631,6 +914,7 @@ async function getRhValidations(request, response) {
 }
 
 async function validateRhSelection(request, response) {
+  const rhUserIds = await resolveRhQueueUserIds();
   const reviewIds = Array.isArray(request.body?.reviewIds)
     ? request.body.reviewIds.map((id) => String(id || '').trim()).filter(Boolean)
     : [];
@@ -641,11 +925,31 @@ async function validateRhSelection(request, response) {
     });
   }
 
+  const assistantReviewIds = reviewIds
+    .filter((id) => id.startsWith('assistant-rh:'))
+    .map((id) => id.replace('assistant-rh:', ''));
+  const managerReviewIds = reviewIds.filter((id) => !id.startsWith('assistant-rh:'));
+
   const reviews = await ManagerMemberReview.find({
-    _id: { $in: reviewIds },
+    _id: { $in: managerReviewIds },
     cycle_label: CURRENT_CYCLE_LABEL,
-    submitted_to_user_ids: request.user._id,
+    submitted_to_user_ids: { $in: rhUserIds },
   });
+  const assistantInstances = await EvaluationInstance.find({
+    _id: { $in: assistantReviewIds },
+    cycle_label: CURRENT_CYCLE_LABEL,
+    template_type: 'rh-assistant-self-evaluation',
+    submitted_to_user_ids: { $in: rhUserIds },
+  });
+  const assistantReviewMemberIds = assistantInstances.map((instance) => instance.evalue_id).filter(Boolean);
+  const assistantReviews = assistantReviewMemberIds.length
+    ? await ManagerMemberReview.find({
+        cycle_label: CURRENT_CYCLE_LABEL,
+        manager_id: request.user._id,
+        member_id: { $in: assistantReviewMemberIds },
+        template_type: 'rh-assistant-evaluation',
+      })
+    : [];
 
   for (const review of reviews) {
     review.status = 'Valide RH';
@@ -653,7 +957,23 @@ async function validateRhSelection(request, response) {
     review.rh_validated_at = new Date();
   }
 
-  await Promise.all(reviews.map((review) => review.save()));
+  for (const instance of assistantInstances) {
+    instance.status = 'Valide RH';
+    instance.rh_validation_selected = false;
+    instance.rh_validated_at = new Date();
+  }
+
+  for (const review of assistantReviews) {
+    review.status = 'Valide RH';
+    review.rh_validation_selected = false;
+    review.rh_validated_at = new Date();
+  }
+
+  await Promise.all([
+    ...reviews.map((review) => review.save()),
+    ...assistantInstances.map((instance) => instance.save()),
+    ...assistantReviews.map((review) => review.save()),
+  ]);
 
   return response.json({
     message: 'Selection RH validee. Les evaluations sont maintenant dans les syntheses a transmettre.',
@@ -661,8 +981,12 @@ async function validateRhSelection(request, response) {
 }
 
 async function getRhSyntheses(request, response) {
-  const rows = await loadRhReviewDataset(request.user._id);
-  const items = rows.filter((row) => row.status === 'Valide RH' || row.status === 'Cloture');
+  const rhUserIds = await resolveRhQueueUserIds();
+  const [rows, assistantRhRows] = await Promise.all([
+    loadRhReviewDataset(rhUserIds),
+    loadAssistantRhSelfDataset(rhUserIds),
+  ]);
+  const items = [...rows, ...assistantRhRows].filter((row) => row.status === 'Valide RH' || row.status === 'Cloture');
 
   return response.json({
     cycle_label: CURRENT_CYCLE_LABEL,
@@ -793,16 +1117,223 @@ async function getMyRhSelfEvaluation(request, response) {
   return response.json(buildRhSelfEvaluationPayload(instance, request.user, associateRecipients));
 }
 
+function getAssistantRhWorkflowConfig() {
+  return {
+    recipientRoleLabel: 'Responsable RH',
+    submitButtonLabel: 'Soumettre a la RH',
+    introMessage:
+      "L'assistante RH s'auto-evalue sur son accompagnement du cycle, puis transmet son auto-evaluation a la RH.",
+    titleLabel: 'Auto-evaluation Assistante RH',
+    saveMessage: 'Auto-evaluation Assistante RH enregistree.',
+    readyMessage: 'Auto-evaluation Assistante RH prete pour soumission.',
+    submittedMessage: 'Auto-evaluation Assistante RH soumise a la RH.',
+    missingAnswersMessage: 'Toutes les questions Assistante RH doivent etre renseignees avant soumission a la RH.',
+  };
+}
+
+async function getAssistantRhMemberForRh(rhUser, memberId) {
+  const selfEvaluation = await EvaluationInstance.findOne({
+    evalue_id: memberId,
+    cycle_label: CURRENT_CYCLE_LABEL,
+    template_type: 'rh-assistant-self-evaluation',
+    submitted_to_user_ids: rhUser._id,
+  }).select('evalue_id status submitted_at sections');
+
+  if (!selfEvaluation) {
+    return null;
+  }
+
+  const member = await User.findOne({
+    _id: memberId,
+    is_active: true,
+    $or: [{ department: CAPITAL_HUMAIN_DEPARTMENT_REGEX }, { department: RH_DEPARTMENT_REGEX }],
+  }).select('_id name first_name last_name grade department code_categorie');
+
+  if (!member) {
+    return null;
+  }
+
+  return { member, selfEvaluation };
+}
+
+async function getOrCreateAssistantRhReview(rhUser, member) {
+  let review = await ManagerMemberReview.findOne({
+    cycle_label: CURRENT_CYCLE_LABEL,
+    manager_id: rhUser._id,
+    member_id: member._id,
+    template_type: 'rh-assistant-evaluation',
+  });
+
+  const templateSections = cloneRhSelfTemplate(member);
+
+  if (!review) {
+    review = await ManagerMemberReview.create({
+      cycle_label: CURRENT_CYCLE_LABEL,
+      manager_id: rhUser._id,
+      member_id: member._id,
+      member_department: member.department || 'CAPITAL HUMAIN',
+      status: 'En cours',
+      template_type: 'rh-assistant-evaluation',
+      submitted_to_user_ids: [rhUser._id],
+      submitted_to_names: [rhUser.name],
+      sections: toPersistenceSections(templateSections),
+      last_saved_at: new Date(),
+    });
+  } else if (shouldResetToCurrentTemplate(review, templateSections)) {
+    review.sections = toPersistenceSections(templateSections);
+    review.last_saved_at = new Date();
+    await review.save();
+  }
+
+  return review;
+}
+
+function buildAssistantRhReviewPayload(review, rhUser, member, selfEvaluation, associateRecipients = []) {
+  const sections = normalizeSections(review.sections || []);
+  const activeSection = sections.find((section) => section.status !== 'Complete') || sections[0] || null;
+  const selfSections = normalizeSections(selfEvaluation?.sections || []);
+
+  return {
+    review: {
+      id: review._id.toString(),
+      cycle_label: review.cycle_label,
+      status: review.status,
+      submitted_at: review.submitted_at,
+      last_saved_at: review.last_saved_at,
+      sections,
+      activeSectionId: activeSection?.id || 1,
+    },
+    summary: {
+      ...getEvaluationSummary(sections),
+      overallAverage: getOverallAverageScore(sections),
+    },
+    reviewer: {
+      id: rhUser._id.toString(),
+      name: rhUser.name,
+      grade: rhUser.grade,
+      department: rhUser.department,
+    },
+    member: {
+      id: member._id.toString(),
+      name: member.name,
+      first_name: member.first_name,
+      last_name: member.last_name,
+      grade: member.grade,
+      department: member.department,
+      code_categorie: member.code_categorie,
+    },
+    self_evaluation: {
+      status: selfEvaluation?.status || 'En attente',
+      submitted_at: selfEvaluation?.submitted_at || null,
+      overallAverage: getOverallAverageScore(selfSections),
+      sectionScores: selfSections
+        .map((section) => ({
+          sectionId: section.id,
+          title: section.title,
+          score: getAverageScore(section),
+          percent: Math.round(((getAverageScore(section) || 0) / 5) * 100),
+        }))
+        .filter((item) => typeof item.score === 'number'),
+    },
+    submitted_to: associateRecipients.map((recipient) => ({
+      id: recipient._id.toString(),
+      name: recipient.name,
+      department: recipient.department,
+      grade: recipient.grade,
+    })),
+  };
+}
+
+async function getMyAssistantRhSelfEvaluation(request, response) {
+  const [instance, rhRecipients] = await Promise.all([
+    getOrCreateRhSelfEvaluation(request.user, {
+      templateType: 'rh-assistant-self-evaluation',
+      submittedToRole: 'rh',
+    }),
+    resolveFullRhRecipients(),
+  ]);
+
+  return response.json(buildRhSelfEvaluationPayload(instance, request.user, rhRecipients, getAssistantRhWorkflowConfig()));
+}
+
+async function getAssistantRhEvaluation(request, response) {
+  const context = await getAssistantRhMemberForRh(request.user, request.params.memberId);
+
+  if (!context) {
+    return response.status(404).json({
+      message: "Assistante RH introuvable pour cette RH.",
+    });
+  }
+
+  const [review, associateRecipients] = await Promise.all([
+    getOrCreateAssistantRhReview(request.user, context.member),
+    resolveAssociateRecipients(),
+  ]);
+
+  return response.json(buildAssistantRhReviewPayload(review, request.user, context.member, context.selfEvaluation, associateRecipients));
+}
+
+async function addRhSelfMissionEvaluation(request, response) {
+  const title = String(request.body?.title || '').trim();
+  const period = String(request.body?.period || '').trim();
+
+  if (!title) {
+    return response.status(400).json({
+      message: 'Le titre de la mission est requis.',
+    });
+  }
+
+  const instance = await getOrCreateRhSelfEvaluation(request.user);
+  const templateSections = cloneRhSelfTemplate(request.user);
+  const missionEvaluations = normalizeRhMissionEvaluations(instance.mission_evaluations || []);
+
+  missionEvaluations.push({
+    mission_id: `rh-mission-${request.user._id}-${Date.now()}`,
+    title,
+    period,
+    department: request.user.department || 'RH',
+    created_by_role: 'self',
+    assigned_by_user_id: null,
+    assigned_by_name: '',
+    assigned_by_grade: '',
+    assigned_at: null,
+    primary_recipient_user_id: null,
+    primary_recipient_name: '',
+    primary_recipient_grade: '',
+    primary_recipient_department: '',
+    recipients: [],
+    criteria: buildRhMissionCriteria(templateSections),
+    comment: '',
+    status: 'Brouillon',
+    submitted_at: null,
+  });
+
+  instance.mission_evaluations = missionEvaluations;
+  instance.last_saved_at = new Date();
+  await instance.save();
+
+  const associateRecipients = await resolveAssociateRecipients();
+
+  return response.json({
+    message: 'Mission RH ajoutee.',
+    ...buildRhSelfEvaluationPayload(instance, request.user, associateRecipients),
+  });
+}
+
 async function saveMyRhSelfEvaluation(request, response) {
   const instance = await getOrCreateRhSelfEvaluation(request.user);
   const normalizedIncomingSections = normalizeSections(request.body?.sections || []);
+  const missionEvaluations = Array.isArray(request.body?.missionEvaluations)
+    ? normalizeRhMissionEvaluations(request.body.missionEvaluations)
+    : normalizeRhMissionEvaluations(instance.mission_evaluations || []);
 
   if (!normalizedIncomingSections.length) {
     return response.status(400).json({ message: "Aucune section RH a sauvegarder." });
   }
 
   instance.sections = toPersistenceSections(normalizedIncomingSections);
-  instance.status = 'En cours';
+  instance.mission_evaluations = missionEvaluations;
+  instance.status = instance.status === 'Soumis aux Associes' ? instance.status : 'En cours';
   instance.last_saved_at = new Date();
   await instance.save();
 
@@ -811,6 +1342,59 @@ async function saveMyRhSelfEvaluation(request, response) {
   return response.json({
     message: "Auto-evaluation RH enregistree.",
     ...buildRhSelfEvaluationPayload(instance, request.user, associateRecipients),
+  });
+}
+
+async function saveMyAssistantRhSelfEvaluation(request, response) {
+  const instance = await getOrCreateRhSelfEvaluation(request.user, {
+    templateType: 'rh-assistant-self-evaluation',
+    submittedToRole: 'rh',
+  });
+  const normalizedIncomingSections = normalizeSections(request.body?.sections || []);
+
+  if (!normalizedIncomingSections.length) {
+    return response.status(400).json({ message: "Aucune section Assistante RH a sauvegarder." });
+  }
+
+  instance.sections = toPersistenceSections(normalizedIncomingSections);
+  instance.status = 'En cours';
+  instance.last_saved_at = new Date();
+  await instance.save();
+
+  const rhRecipients = await resolveFullRhRecipients();
+
+  return response.json({
+    message: 'Auto-evaluation Assistante RH enregistree.',
+    ...buildRhSelfEvaluationPayload(instance, request.user, rhRecipients, getAssistantRhWorkflowConfig()),
+  });
+}
+
+async function saveAssistantRhEvaluation(request, response) {
+  const context = await getAssistantRhMemberForRh(request.user, request.params.memberId);
+
+  if (!context) {
+    return response.status(404).json({
+      message: "Assistante RH introuvable pour cette RH.",
+    });
+  }
+
+  const review = await getOrCreateAssistantRhReview(request.user, context.member);
+  const normalizedIncomingSections = normalizeSections(request.body?.sections || []);
+
+  if (!normalizedIncomingSections.length) {
+    return response.status(400).json({ message: "Les sections de l'evaluation RH sont requises." });
+  }
+
+  review.sections = toPersistenceSections(normalizedIncomingSections);
+  review.status = 'En cours';
+  review.last_saved_at = new Date();
+  await review.save();
+
+  const associateRecipients = await resolveAssociateRecipients();
+
+  return response.json({
+    message: "Evaluation RH enregistree.",
+    ...buildAssistantRhReviewPayload(review, request.user, context.member, context.selfEvaluation, associateRecipients),
   });
 }
 
@@ -848,8 +1432,144 @@ async function submitMyRhSelfEvaluation(request, response) {
   });
 }
 
+async function submitMyRhSelfMissionEvaluation(request, response) {
+  const missionId = String(request.body?.missionId || '').trim();
+
+  if (!missionId) {
+    return response.status(400).json({
+      message: 'La mission RH a soumettre est requise.',
+    });
+  }
+
+  const instance = await getOrCreateRhSelfEvaluation(request.user);
+  const missionEvaluations = normalizeRhMissionEvaluations(instance.mission_evaluations || []);
+  const mission = missionEvaluations.find((item) => item.mission_id === missionId);
+
+  if (!mission) {
+    return response.status(404).json({
+      message: 'Mission RH introuvable.',
+    });
+  }
+
+  const hasIncompleteCriterion = (mission.criteria || []).some(
+    (criterion) => criterion.score === null || criterion.score === undefined
+  );
+
+  if (hasIncompleteCriterion) {
+    return response.status(400).json({
+      message: 'Toutes les questions de la mission RH doivent etre renseignees avant soumission aux associes.',
+    });
+  }
+
+  const associateRecipients = await resolveAssociateRecipients();
+
+  if (!associateRecipients.length) {
+    return response.status(400).json({
+      message: "Aucun associe actif n'est disponible pour recevoir cette mission RH.",
+    });
+  }
+
+  mission.primary_recipient_user_id = associateRecipients[0]?._id || null;
+  mission.primary_recipient_name = associateRecipients[0]?.name || '';
+  mission.primary_recipient_grade = associateRecipients[0]?.grade || '';
+  mission.primary_recipient_department = associateRecipients[0]?.department || '';
+  mission.recipients = associateRecipients.map((recipient) => ({
+    user_id: recipient._id,
+    name: recipient.name,
+    grade: recipient.grade,
+    department: recipient.department,
+  }));
+  mission.status = 'Soumise';
+  mission.submitted_at = new Date();
+
+  instance.mission_evaluations = missionEvaluations;
+  instance.last_saved_at = new Date();
+  await instance.save();
+
+  return response.json({
+    message: `Mission RH soumise a ${associateRecipients.map((recipient) => recipient.name).join(', ')}.`,
+    ...buildRhSelfEvaluationPayload(instance, request.user, associateRecipients),
+  });
+}
+
+async function submitMyAssistantRhSelfEvaluation(request, response) {
+  const instance = await getOrCreateRhSelfEvaluation(request.user, {
+    templateType: 'rh-assistant-self-evaluation',
+    submittedToRole: 'rh',
+  });
+  const normalizedSections = normalizeSections(instance.sections || []);
+  const missingAnswers = validateSectionsForSubmit(normalizedSections);
+
+  if (missingAnswers.length) {
+    return response.status(400).json({
+      message: 'Toutes les questions Assistante RH doivent etre renseignees avant soumission a la RH.',
+      missingAnswers,
+    });
+  }
+
+  const rhRecipients = await resolveFullRhRecipients();
+
+  if (!rhRecipients.length) {
+    return response.status(400).json({
+      message: "Aucune RH active n'est disponible pour recevoir cette auto-evaluation Assistante RH.",
+    });
+  }
+
+  instance.status = 'Soumis a RH';
+  instance.submitted_to_role = 'rh';
+  instance.submitted_to_user_ids = rhRecipients.map((recipient) => recipient._id);
+  instance.submitted_to_names = rhRecipients.map((recipient) => recipient.name);
+  instance.rh_validation_selected = true;
+  instance.rh_validation_selected_at = new Date();
+  instance.submitted_at = new Date();
+  instance.last_saved_at = new Date();
+  await instance.save();
+
+  return response.json({
+    message: 'Auto-evaluation Assistante RH soumise a la RH.',
+    ...buildRhSelfEvaluationPayload(instance, request.user, rhRecipients, getAssistantRhWorkflowConfig()),
+  });
+}
+
+async function submitAssistantRhEvaluation(request, response) {
+  const context = await getAssistantRhMemberForRh(request.user, request.params.memberId);
+
+  if (!context) {
+    return response.status(404).json({
+      message: "Assistante RH introuvable pour cette RH.",
+    });
+  }
+
+  const review = await getOrCreateAssistantRhReview(request.user, context.member);
+  const normalizedSections = normalizeSections(review.sections || []);
+  const missingAnswers = validateSectionsForSubmit(normalizedSections);
+
+  if (missingAnswers.length) {
+    return response.status(400).json({
+      message: "Toutes les questions de l'evaluation RH doivent etre renseignees avant validation.",
+      missingAnswers,
+    });
+  }
+
+  review.status = 'Soumis a RH';
+  review.submitted_to_user_ids = [request.user._id];
+  review.submitted_to_names = [request.user.name];
+  review.rh_validation_selected = true;
+  review.rh_validation_selected_at = new Date();
+  review.submitted_at = new Date();
+  review.last_saved_at = new Date();
+  await review.save();
+
+  const associateRecipients = await resolveAssociateRecipients();
+
+  return response.json({
+    message: "Evaluation RH de l'assistante RH enregistree dans la file de validation.",
+    ...buildAssistantRhReviewPayload(review, request.user, context.member, context.selfEvaluation, associateRecipients),
+  });
+}
+
 async function getRhCalibration(request, response) {
-  const rows = await loadRhReviewDataset(request.user._id);
+  const rows = await loadRhReviewDataset(await resolveRhQueueUserIds());
   const departmentGroups = buildDepartmentGroups(rows);
 
   const items = departmentGroups.map((group) => {
@@ -885,7 +1605,7 @@ function getPopulationGroupKey(role = '') {
 }
 
 async function getRhPopulation(request, response) {
-  const rows = await loadRhReviewDataset(request.user._id);
+  const rows = await loadRhReviewDataset(await resolveRhQueueUserIds());
   const groupsMap = new Map([
     ['Managers', { group: 'Managers', members: [] }],
     ['Seniors', { group: 'Seniors', members: [] }],
@@ -1126,18 +1846,29 @@ async function downloadRhReport(request, response) {
 module.exports = {
   addRhQuestionnaireQuestion,
   createRhQuestionnaireSection,
+  CURRENT_CYCLE_LABEL,
+  downloadRhReport,
+  addRhSelfMissionEvaluation,
+  getAssistantRhEvaluation,
   getRhCalibration,
   getRhDepartmentEvaluations,
+  getMyAssistantRhSelfEvaluation,
   getRhQuestionnaire,
   getMyRhSelfEvaluation,
   getRhOverview,
   getRhPopulation,
   getRhReports,
-  downloadRhReport,
   getRhSyntheses,
   getRhValidations,
+  loadRhReviewDataset,
+  RH_RELEVANT_STATUSES,
+  saveAssistantRhEvaluation,
+  saveMyAssistantRhSelfEvaluation,
   saveMyRhSelfEvaluation,
   selectRhDepartmentEvaluation,
+  submitAssistantRhEvaluation,
+  submitMyAssistantRhSelfEvaluation,
+  submitMyRhSelfMissionEvaluation,
   submitMyRhSelfEvaluation,
   validateRhSelection,
 };

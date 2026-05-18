@@ -15,12 +15,12 @@ const sidebarSections = [
   {
     group: "Equipe",
     items: [
-      { key: "team", label: "Mon equipe", icon: Users },
-      { key: "team-goals", label: "Objectifs d'equipe", icon: FolderKanban },
+      { key: "team", label: "Mon équipe", icon: Users },
+      { key: "team-goals", label: "Objectifs d'équipe", icon: FolderKanban },
     ],
   },
-  { group: "Mon evaluation", items: [{ key: "self-evaluation", label: "Mon auto-evaluation", icon: BarChart3 }] },
-  { group: "Reporting", items: [{ key: "reports", label: "Rapports equipe", icon: FileBarChart2 }] },
+  { group: "Mon evaluation", items: [{ key: "self-evaluation", label: "Mon auto-évaluation", icon: BarChart3 }] },
+  { group: "Reporting", items: [{ key: "reports", label: "Rapports", icon: FileBarChart2 }] },
   { group: "Compte", items: [{ key: "profile", label: "Profil", icon: Settings2 }] },
 ];
 
@@ -45,10 +45,10 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
 
   const pageTitle = useMemo(() => {
     if (activeSection === "overview") return "VUE D'ENSEMBLE";
-    if (activeSection === "team") return "MON EQUIPE";
-    if (activeSection === "team-goals") return "OBJECTIFS EQUIPE";
-    if (activeSection === "self-evaluation") return "MON AUTO-EVALUATION";
-    if (activeSection === "reports") return "RAPPORTS EQUIPE";
+    if (activeSection === "team") return "MON";
+    if (activeSection === "team-goals") return "OBJECTIFS";
+    if (activeSection === "self-evaluation") return "MON AUTO-ÉVALUATION";
+    if (activeSection === "reports") return "RAPPORTS";
     if (activeSection === "profile") return "MON PROFIL";
     return "WORKFLOW MANAGER";
   }, [activeSection]);
@@ -94,10 +94,10 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
     ? "Chargement..."
     : pendingEvaluations.length
       ? pendingEvaluations.slice(0, 2).map((evaluation) => evaluation.grade).join(", ")
-      : "Aucune evaluation globale en attente";
+      : "Aucune évaluation globale en attente";
 
   const relanceMember = (member) => {
-    setRelanceMessage(`Relance envoyee a ${member.name} pour finaliser son evaluation.`);
+    setRelanceMessage(`Relance envoyée à ${member.name} pour finaliser son évaluation.`);
   };
 
   const renderOverview = () => {
@@ -111,8 +111,8 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
           {isLoadingOverview
             ? "Chargement de la vue d'ensemble..."
             : summary.selfEvaluationStatus === "Soumis aux Managers" || summary.selfEvaluationStatus === "Soumis au Manager"
-              ? "Mon auto-evaluation a deja ete soumise."
-              : "Mon auto-evaluation est en attente."}
+              ? "Mon auto-évaluation a deja été soumise."
+              : "Mon auto-évaluation est en attente."}
         </div>
 
         <section className="mb-7 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -130,7 +130,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
 
           <article className="rounded-lg bg-[#003B63] p-5 text-left text-white">
             <div className="mb-4 flex items-start justify-between">
-              <p className="text-sm">Auto-evals recues</p>
+              <p className="text-sm">Auto-évaluations reçues</p>
               <p className="text-2xl font-extrabold">
                 {isLoadingOverview ? "..." : `${summary.receivedSelfEvaluationsCount || 0}/${summary.totalMembers || 0}`}
               </p>
@@ -146,7 +146,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
             className="rounded-lg bg-[#003B63] p-5 text-left text-white transition hover:bg-[#0B4C7A]"
           >
             <div className="mb-4 flex items-start justify-between">
-              <p className="text-sm">Evals a donner</p>
+              <p className="text-sm">Evaluations à donner</p>
               <p className="text-2xl font-extrabold text-[#F34D4D]">{isLoadingOverview ? "..." : summary.pendingEvaluationsCount || 0}</p>
             </div>
             <p className="text-sm text-slate-200">{pendingSummaryText}</p>
@@ -157,7 +157,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
             onClick={() => setActiveSection("self-evaluation")}
             className="rounded-lg bg-[#003B63] p-5 text-left text-white transition hover:bg-[#0B4C7A]"
           >
-            <p className="mb-4 text-sm">Mon auto-eval</p>
+            <p className="mb-4 text-sm">Mon auto-évaluation</p>
             <p className="text-base font-bold text-[#F34D4D]">{isLoadingOverview ? "Chargement..." : summary.selfEvaluationStatus || "En attente"}</p>
           </button>
         </section>
@@ -190,22 +190,22 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
               </div>
             ) : (
               <p className="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">
-                Aucune evaluation globale en attente pour le moment.
+                Aucune évaluation globale en attente pour le moment.
               </p>
             )}
           </article>
 
           <article className="rounded-xl bg-white p-5 shadow-sm">
-            <h2 className="mb-4 text-sm font-semibold text-[#0F3A63]">Perimetre manager</h2>
+            <h2 className="mb-4 text-sm font-semibold text-[#0F3A63]">Périmètre manager</h2>
             <div className="space-y-3 text-sm text-slate-600">
               <p>
-                Cette vue prend en compte les assistants, seniors et assistant managers du meme perimetre de departement.
+                Cette vue prend en compte les assistants, seniors et assistants managers du même département.
               </p>
               <p>
-                Si vous etes en AUDIT, vous recuperez aussi les profils en AUDIT & EXPERTISE COMPTABLE. Meme logique pour EXPERTISE COMPTABLE.
+                Si vous êtes en AUDIT, vous recuperez aussi les profils en AUDIT & EXPERTISE COMPTABLE. Meme logique pour EXPERTISE COMPTABLE.
               </p>
               <p>
-                Les cartes du haut montrent uniquement les auto-evaluations globales soumises a votre compte manager.
+                Les cartes du haut montrent uniquement les auto-évaluations globales soumises à votre compte manager.
               </p>
             </div>
           </article>
@@ -270,7 +270,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
               className="flex items-center gap-2 pt-6 text-left font-medium text-[#0F3A63] hover:text-[#0E4A6B]"
             >
               <LogOut size={14} />
-              Deconnexion
+              Déconnexion
             </button>
           </nav>
         </aside>
@@ -287,14 +287,14 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
                 onClick={() => setCreateGoalSignal((value) => value + 1)}
                 className="rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-semibold text-white"
               >
-                Creer un objectif
+                Créer un objectif
               </button>
             ) : activeSection === "overview" ? (
               <button
                 onClick={() => setActiveSection("team")}
                 className="rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-semibold text-[#0B2F4F]"
               >
-                Ouvrir l'equipe
+                Ouvrir l'équipe
               </button>
             ) : null}
           </header>
