@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   getManagerMemberEvaluation,
+  saveManagerMemberMissionReviews,
   saveManagerMemberEvaluation,
+  submitManagerMemberMissionReview,
   submitManagerMemberEvaluation,
 } from "@/lib/managerOverview";
 
@@ -35,6 +37,109 @@ function getPageAverage(page) {
   const scores = (page?.themes || []).map((theme) => theme.score).filter((score) => typeof score === "number");
   if (!scores.length) return "--";
   return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
+}
+
+function getMissionReviewProgress(missionReview) {
+  const criteria = missionReview?.criteria || [];
+  const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
+  if (!criteria.length) return 0;
+  return Math.round((answered / criteria.length) * 100);
+}
+
+function getMissionReviewAverage(missionReview) {
+  const scores = (missionReview?.criteria || []).map((criterion) => criterion.score).filter((score) => typeof score === "number");
+  if (!scores.length) return "--";
+  return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
+}
+
+function getMissionGroups(criteria = []) {
+  const groups = [];
+
+  for (const criterion of criteria) {
+    const key = `${criterion.sectionTitle}::${criterion.pageTitle}::${criterion.sourceSheet || ""}::${criterion.sourceLabel || ""}`;
+    const existingGroup = groups.find((group) => group.key === key);
+
+    if (existingGroup) {
+      existingGroup.criteria.push(criterion);
+      continue;
+    }
+
+    groups.push({
+      key,
+      sectionTitle: criterion.sectionTitle,
+      pageTitle: criterion.pageTitle,
+      sourceSheet: criterion.sourceSheet,
+      sourceLabel: criterion.sourceLabel,
+      criteria: [criterion],
+    });
+  }
+
+  return groups;
+}
+
+function getMissionSections(groups = []) {
+  const sections = [];
+
+  for (const group of groups) {
+    const existingSection = sections.find((section) => section.title === group.sectionTitle);
+
+    if (existingSection) {
+      existingSection.groups.push(group);
+      continue;
+    }
+
+    sections.push({
+      id: group.sectionTitle,
+      title: group.sectionTitle,
+      groups: [group],
+    });
+  }
+
+  return sections;
+}
+
+function getMissionSectionProgress(section) {
+  const criteria = (section?.groups || []).flatMap((group) => group.criteria || []);
+  const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
+  if (!criteria.length) return 0;
+  return Math.round((answered / criteria.length) * 100);
+}
+
+function getMissionSectionAverage(section) {
+  const scores = (section?.groups || [])
+    .flatMap((group) => group.criteria || [])
+    .map((criterion) => criterion.score)
+    .filter((score) => typeof score === "number");
+  if (!scores.length) return "--";
+  return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
+}
+
+function MissionScoreRow({ criterion, onSelect }) {
+  return (
+    <div className="rounded-md border border-[#E3EAF3] bg-[#F8FBFF] p-3">
+      <div className="mb-3">
+        <p className="text-[13px] font-bold text-[#0F3A63]">
+          {criterion.themeCode ? `${criterion.themeCode}. ` : ""}
+          {criterion.label}
+        </p>
+        <p className="mt-1 text-[12px] leading-6 text-slate-600">{criterion.statement}</p>
+      </div>
+      <div className="flex items-center gap-2">
+        {[1, 2, 3, 4, 5].map((score) => (
+          <button
+            key={score}
+            type="button"
+            onClick={() => onSelect(score)}
+            className={`inline-flex h-8 w-9 items-center justify-center rounded text-[12px] font-bold ${
+              criterion.score === score ? "bg-[#0B4C7A] text-white" : "bg-slate-200 text-slate-500 hover:bg-slate-300"
+            }`}
+          >
+            {score}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function createInitialPageIndexes(sections = []) {
@@ -83,7 +188,7 @@ function ScoreRow({ theme, onSelect }) {
 }
 
 function formatSubmittedAt(value) {
-  if (!value) return "Date non renseignee";
+  if (!value) return "Date non renseignée";
   return new Date(value).toLocaleDateString("fr-FR");
 }
 
@@ -94,6 +199,9 @@ function Evaluermonequipe({ member }) {
   const [activeSectionId, setActiveSectionId] = useState(1);
   const [pageIndexes, setPageIndexes] = useState({});
   const [activeMissionId, setActiveMissionId] = useState("");
+  const [missionSectionIds, setMissionSectionIds] = useState({});
+  const [missionPageIndexes, setMissionPageIndexes] = useState({});
+  const [missionReviews, setMissionReviews] = useState([]);
   const [savedComments, setSavedComments] = useState({});
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackTone, setFeedbackTone] = useState("success");
@@ -121,8 +229,11 @@ function Evaluermonequipe({ member }) {
 
         setReviewData(response);
         setSections(response.review.sections || []);
+        setMissionReviews(response.mission_reviews || []);
         setActiveSectionId(Number(response.review.activeSectionId || response.review.sections?.[0]?.id || 1));
         setActiveMissionId((current) => current || response.submitted_missions?.[0]?.id || "");
+        setMissionSectionIds({});
+        setMissionPageIndexes({});
         setPageIndexes(createInitialPageIndexes(response.review.sections || []));
         setSavedComments(
           Object.fromEntries(
@@ -134,7 +245,7 @@ function Evaluermonequipe({ member }) {
         );
       } catch (error) {
         if (!cancelled) {
-          setErrorMessage(error.message || "Chargement de l'evaluation manager impossible.");
+          setErrorMessage(error.message || "Chargement de l'évaluation manager impossible.");
         }
       } finally {
         if (!cancelled) {
@@ -166,10 +277,36 @@ function Evaluermonequipe({ member }) {
   const receivedGlobalScores = reviewData?.received_global_scores || [];
   const submittedMissions = reviewData?.submitted_missions || [];
   const activeMission = submittedMissions.find((mission) => mission.id === activeMissionId) || submittedMissions[0] || null;
+  const activeMissionReview = missionReviews.find((mission) => mission.id === activeMissionId) || null;
+  const activeMissionGroups = useMemo(() => getMissionGroups(activeMissionReview?.criteria || []), [activeMissionReview]);
+  const missionSections = useMemo(() => getMissionSections(activeMissionGroups), [activeMissionGroups]);
+  const activeMissionSectionId = missionSectionIds[activeMissionId] || missionSections[0]?.id || "";
+  const activeMissionSection =
+    missionSections.find((section) => section.id === activeMissionSectionId) || missionSections[0] || null;
+  const activeMissionSectionIndex = missionSections.findIndex((section) => section.id === activeMissionSection?.id);
+  const activeMissionPageIndex = Math.min(
+    missionPageIndexes[activeMissionId] || 0,
+    Math.max((activeMissionSection?.groups?.length || 1) - 1, 0)
+  );
+  const activeMissionGroup = activeMissionSection?.groups?.[activeMissionPageIndex] || activeMissionSection?.groups?.[0] || null;
+  const activeMissionAverage = useMemo(() => getMissionReviewAverage(activeMissionReview), [activeMissionReview]);
   const hasLowScoreOnActivePage = (activePage?.themes || []).some(
     (theme) => typeof theme.score === "number" && theme.score < 3
   );
   const hasRequiredJustification = !hasLowScoreOnActivePage || Boolean((activePage?.comment || "").trim());
+
+  useEffect(() => {
+    if (!activeMissionReview?.id || !missionSections.length) return;
+
+    setMissionSectionIds((current) => ({
+      ...current,
+      [activeMissionReview.id]: current[activeMissionReview.id] || missionSections[0].id,
+    }));
+    setMissionPageIndexes((current) => ({
+      ...current,
+      [activeMissionReview.id]: current[activeMissionReview.id] || 0,
+    }));
+  }, [activeMissionReview?.id, missionSections]);
 
   function syncSections(updater) {
     setSections((currentSections) => {
@@ -179,7 +316,7 @@ function Evaluermonequipe({ member }) {
         const progress = getSectionProgress(section);
         return {
           ...section,
-          status: progress === 0 ? "A faire" : progress === 100 ? "Complete" : "En cours",
+          status: progress === 0 ? "À faire" : progress === 100 ? "Complète" : "En cours",
         };
       });
     });
@@ -224,7 +361,7 @@ function Evaluermonequipe({ member }) {
     );
   }
 
-  async function persistSections(nextSections = sections, successMessage = "Evaluation manager enregistree.") {
+  async function persistSections(nextSections = sections, successMessage = "Evaluation manager enregistrée.") {
     if (!member?.id) return null;
 
     try {
@@ -236,6 +373,7 @@ function Evaluermonequipe({ member }) {
 
       setReviewData(response);
       setSections(response.review.sections || []);
+      setMissionReviews(response.mission_reviews || []);
       setPageIndexes((current) => clampPageIndexes(response.review.sections || [], current));
       setSavedComments(
         Object.fromEntries(
@@ -255,6 +393,122 @@ function Evaluermonequipe({ member }) {
     } finally {
       setIsSaving(false);
     }
+  }
+
+  function updateMissionCriterionScore(criterionId, score) {
+    setMissionReviews((currentMissionReviews) =>
+      currentMissionReviews.map((missionReview) =>
+        missionReview.id !== activeMissionId
+          ? missionReview
+          : {
+              ...missionReview,
+              status: missionReview.status === "Soumise à la RH" ? missionReview.status : "En cours",
+              criteria: (missionReview.criteria || []).map((criterion) =>
+                criterion.id === criterionId ? { ...criterion, score } : criterion
+              ),
+            }
+      )
+    );
+    setFeedbackMessage("");
+  }
+
+  function updateMissionReviewComment(comment) {
+    setMissionReviews((currentMissionReviews) =>
+      currentMissionReviews.map((missionReview) =>
+        missionReview.id !== activeMissionId
+          ? missionReview
+          : {
+              ...missionReview,
+              comment,
+            }
+      )
+    );
+    setFeedbackMessage("");
+  }
+
+  async function persistMissionReviews(nextMissionReviews = missionReviews, successMessage = "Evaluation manager par mission enregistrée.") {
+    if (!member?.id) return null;
+
+    try {
+      setIsSaving(true);
+      setFeedbackMessage("");
+      const response = await saveManagerMemberMissionReviews(member.id, {
+        missionReviews: nextMissionReviews,
+      });
+
+      setReviewData(response);
+      setSections(response.review.sections || []);
+      setMissionReviews(response.mission_reviews || []);
+      setFeedbackTone("success");
+      setFeedbackMessage(response.message || successMessage);
+      return response;
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedbackMessage(error.message || "Sauvegarde de la mission impossible.");
+      return null;
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleSubmitMissionReview() {
+    if (!member?.id || !activeMissionReview?.id) return;
+
+    const hasIncompleteCriterion = (activeMissionReview.criteria || []).some(
+      (criterion) => criterion.score === null || criterion.score === undefined
+    );
+
+    if (hasIncompleteCriterion) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Toutes les questions de la mission doivent être renseignées avant soumission à la RH.");
+      return;
+    }
+
+    const savedMissionReview = await persistMissionReviews(missionReviews, "Evaluation manager par mission prête pour soumission.");
+
+    if (!savedMissionReview) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const response = await submitManagerMemberMissionReview(member.id, activeMissionReview.id);
+      setReviewData(response);
+      setSections(response.review.sections || []);
+      setMissionReviews(response.mission_reviews || []);
+      setFeedbackTone("success");
+      setFeedbackMessage(response.message || "Mission soumise à la RH.");
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedbackMessage(error.message || "Soumission de la mission impossible.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  function goToMissionStep(direction) {
+    if (!activeMissionReview || !activeMissionSection) return;
+
+    const nextPageIndex = activeMissionPageIndex + direction;
+    if (nextPageIndex >= 0 && nextPageIndex < (activeMissionSection.groups?.length || 0)) {
+      setMissionPageIndexes((current) => ({
+        ...current,
+        [activeMissionReview.id]: nextPageIndex,
+      }));
+      return;
+    }
+
+    const nextSection = missionSections[activeMissionSectionIndex + direction];
+    if (!nextSection) return;
+
+    setMissionSectionIds((current) => ({
+      ...current,
+      [activeMissionReview.id]: nextSection.id,
+    }));
+    setMissionPageIndexes((current) => ({
+      ...current,
+      [activeMissionReview.id]: direction > 0 ? 0 : Math.max((nextSection.groups?.length || 1) - 1, 0),
+    }));
   }
 
   function goToStep(direction) {
@@ -283,22 +537,22 @@ function Evaluermonequipe({ member }) {
   async function handleSaveAndContinue() {
     if (!hasRequiredJustification) {
       setFeedbackTone("error");
-      setFeedbackMessage("Une justification est requise pour toute note inferieure a 3.");
+      setFeedbackMessage("Une justification est requise pour toute note inférieure à 3.");
       return;
     }
 
-    await persistSections(sections, "Evaluation manager enregistree.");
+    await persistSections(sections, "Evaluation manager enregistrée.");
     goToStep(1);
   }
 
   async function handleSubmit() {
     if (!hasRequiredJustification) {
       setFeedbackTone("error");
-      setFeedbackMessage("Une justification est requise pour toute note inferieure a 3.");
+      setFeedbackMessage("Une justification est requise pour toute note inférieure à 3.");
       return;
     }
 
-    const savedReview = await persistSections(sections, "Evaluation manager prete pour soumission.");
+    const savedReview = await persistSections(sections, "Evaluation manager prête pour soumission.");
 
     if (!savedReview) {
       return;
@@ -309,8 +563,9 @@ function Evaluermonequipe({ member }) {
       const response = await submitManagerMemberEvaluation(member.id);
       setReviewData(response);
       setSections(response.review.sections || []);
+      setMissionReviews(response.mission_reviews || []);
       setFeedbackTone("success");
-      setFeedbackMessage(response.message || "Evaluation soumise a la RH / Capital Humain.");
+      setFeedbackMessage(response.message || "Evaluation soumise à la RH.");
     } catch (error) {
       setFeedbackTone("error");
       setFeedbackMessage(error.message || "Soumission impossible.");
@@ -320,7 +575,7 @@ function Evaluermonequipe({ member }) {
   }
 
   if (isLoading) {
-    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement de l'evaluation manager...</section>;
+    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement de l'évaluation manager...</section>;
   }
 
   if (errorMessage) {
@@ -328,7 +583,7 @@ function Evaluermonequipe({ member }) {
   }
 
   if (!reviewData || !sections.length || !activeSection || !activePage) {
-    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Aucune evaluation disponible pour ce membre.</section>;
+    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Aucune évaluation disponible pour ce membre.</section>;
   }
 
   const isLastStep =
@@ -344,7 +599,7 @@ function Evaluermonequipe({ member }) {
             {reviewData.member.name} ({reviewData.member.grade})
           </h3>
           <p className="mt-1 text-sm font-semibold text-slate-500">
-            Departement du membre : {reviewData.member.department} | Matrice utilisee : {evaluationDepartment}
+            Département du membre : {reviewData.member.department} | Matrice utilisée : {evaluationDepartment}
           </p>
         </div>
         <div className="rounded-xl bg-[#F3F8EC] px-4 py-3 text-sm font-semibold text-[#4E8B1B]">
@@ -370,7 +625,7 @@ function Evaluermonequipe({ member }) {
             {submittedMissions.length} mission(s) soumise(s)
           </p>
           <p className="mt-2 text-xs font-semibold text-[#0B4C7A]">
-            Consultez les scores finaux deja transmis pour chaque mission.
+            Consultez les scores finaux déjà transmis pour chaque mission.
           </p>
         </button>
         <button
@@ -390,7 +645,7 @@ function Evaluermonequipe({ member }) {
             {reviewData.review.cycle_label || "Cycle 2025-2026"} - {globalProgress}%
           </p>
           <p className="mt-2 text-xs font-semibold text-[#4E8B1B]">
-            Notez la matrice globale du membre puis soumettez a la RH.
+            Notez la matrice globale du membre puis soumettez à la RH.
           </p>
         </button>
       </section>
@@ -427,19 +682,34 @@ function Evaluermonequipe({ member }) {
                       <button
                         key={mission.id}
                         type="button"
-                        onClick={() => setActiveMissionId(mission.id)}
+                        onClick={() => {
+                          setActiveMissionId(mission.id);
+                          const selectedMissionReview = missionReviews.find((item) => item.id === mission.id);
+                          const selectedMissionSections = getMissionSections(getMissionGroups(selectedMissionReview?.criteria || []));
+                          setMissionSectionIds((current) => ({
+                            ...current,
+                            [mission.id]: current[mission.id] || selectedMissionSections[0]?.id || "",
+                          }));
+                          setMissionPageIndexes((current) => ({
+                            ...current,
+                            [mission.id]: current[mission.id] || 0,
+                          }));
+                        }}
                         className={`w-full rounded-md border p-3 text-left transition ${
                           activeMission?.id === mission.id ? "border-[#76B82A] bg-[#EEF6E8]" : "border-slate-100 bg-white hover:bg-slate-50"
                         }`}
                       >
                         <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
-                        <p className="mt-1 text-xs font-semibold text-slate-500">{mission.period || "Periode non renseignee"}</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
                         <p className="mt-1 text-xs font-bold text-[#0F3A63]">{mission.department}</p>
+                        <p className="mt-2 text-xs font-bold text-[#76B82A]">
+                          {getMissionReviewProgress(missionReviews.find((item) => item.id === mission.id))}%
+                        </p>
                       </button>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm font-semibold text-slate-500">Aucune mission soumise a ce manager pour le moment.</p>
+                  <p className="text-sm font-semibold text-slate-500">Aucune mission soumise à ce manager pour le moment.</p>
                 )}
               </div>
             </article>
@@ -454,7 +724,7 @@ function Evaluermonequipe({ member }) {
                       </div>
                       <h4 className="text-xl font-black text-[#0F3A63]">{activeMission.title}</h4>
                       <p className="mt-1 text-sm font-semibold text-slate-500">
-                        {activeMission.period || "Periode non renseignee"} - {activeMission.department}
+                        {activeMission.period || "Période non renseignée"} - {activeMission.department}
                       </p>
                     </div>
                   </div>
@@ -476,10 +746,204 @@ function Evaluermonequipe({ member }) {
                       </div>
                     ))}
                   </div>
+
+                  {activeMissionReview ? (
+                    <div className="mt-4 space-y-4 border-t border-slate-100 pt-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-bold text-[#4E8B1B]">Evaluation manager sur la mission</p>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">
+                            Moyenne : {activeMissionAverage} / 5 - Progression : {getMissionReviewProgress(activeMissionReview)}%
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-[#EEF3F8] px-3 py-1 text-xs font-bold text-[#0F3A63]">
+                          {activeMissionReview.status || "À démarrer"}
+                        </span>
+                      </div>
+
+                      <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        {missionSections.map((section) => {
+                          const progress = getMissionSectionProgress(section);
+                          const isActive = section.id === activeMissionSection?.id;
+
+                          return (
+                            <button
+                              key={section.id}
+                              type="button"
+                              onClick={() => {
+                                setMissionSectionIds((current) => ({
+                                  ...current,
+                                  [activeMissionReview.id]: section.id,
+                                }));
+                                setMissionPageIndexes((current) => ({
+                                  ...current,
+                                  [activeMissionReview.id]: 0,
+                                }));
+                              }}
+                              className={`rounded-md border px-3 py-3 text-left text-white transition ${
+                                isActive
+                                  ? "border-[#76B82A] bg-[#003B63] shadow-[0_0_0_1px_#76B82A]"
+                                  : "border-transparent bg-[#003B63] hover:bg-[#0B4C7A]"
+                              }`}
+                            >
+                              <div className="mb-2 flex items-center justify-between">
+                                <h2 className="text-[13px] font-bold">{section.title}</h2>
+                                {progress === 100 ? <Check size={14} className="text-white" /> : null}
+                              </div>
+                              <p className="text-[12px] font-semibold">{section.groups?.length || 0} titre(s)</p>
+                              <div className="mt-3 h-1.5 rounded-full bg-slate-200">
+                                <div className="h-1.5 rounded-full bg-[#7BC443]" style={{ width: `${progress}%` }} />
+                              </div>
+                              <p className="mt-1.5 text-[10px] font-semibold text-slate-200">{progress}%</p>
+                            </button>
+                          );
+                        })}
+                      </section>
+
+                      <section className="rounded-md bg-[#F8FAFC] p-4">
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[12px] font-semibold text-slate-500">Pagination dans la mission</p>
+                            <h4 className="text-[18px] font-bold text-[#0F3A63]">{activeMissionSection?.title}</h4>
+                          </div>
+                          <span className="text-[12px] font-semibold text-[#0F3A63]">
+                            Titre {activeMissionPageIndex + 1} / {activeMissionSection?.groups?.length || 1}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          {(activeMissionSection?.groups || []).map((group, index) => {
+                            const isActive = index === activeMissionPageIndex;
+                            const progress = getMissionReviewProgress({ criteria: group.criteria });
+
+                            return (
+                              <button
+                                key={group.key}
+                                type="button"
+                                onClick={() =>
+                                  setMissionPageIndexes((current) => ({
+                                    ...current,
+                                    [activeMissionReview.id]: index,
+                                  }))
+                                }
+                                className={`rounded-md border px-3 py-2 text-left transition ${
+                                  isActive
+                                    ? "border-[#76B82A] bg-[#F3FAEA] text-[#0F3A63]"
+                                    : "border-[#D9E3EE] bg-white text-slate-600 hover:bg-slate-50"
+                                }`}
+                              >
+                                <p className="text-[11px] font-bold">Titre {index + 1}</p>
+                                <p className="mt-1 text-[12px] font-semibold">{group.pageTitle}</p>
+                                {shouldShowSourceLabel && group.sourceLabel && group.sourceSheet !== "TRONC COMMUN" ? (
+                                  <span className="mt-2 inline-flex rounded-full bg-[#EEF3F8] px-2 py-0.5 text-[10px] font-semibold text-[#0F3A63]">
+                                    {group.sourceLabel}
+                                  </span>
+                                ) : null}
+                                <p className="mt-1 text-[10px] font-semibold text-[#76B82A]">{progress}%</p>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </section>
+
+                      <div className="rounded-md border border-[#D9E3EE] bg-[#FCFEF8] p-4">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <p className="text-sm font-bold text-[#4E8B1B]">Scores finaux par section</p>
+                          <span className="text-xs font-semibold text-slate-500">Mission sélectionnée</span>
+                        </div>
+                        <div className="space-y-2">
+                          {missionSections.map((section) => (
+                            <div key={section.id} className="flex items-center justify-between text-sm font-semibold text-[#0F3A63]">
+                              <span>{section.title}</span>
+                              <span className="text-[#76B82A]">{getMissionSectionAverage(section)} / 5</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {activeMissionGroup ? (
+                        <div className="rounded-md border border-[#D9E3EE] bg-white p-4">
+                          <div className="mb-3">
+                            <p className="text-[11px] font-bold uppercase text-slate-500">{activeMissionGroup.sectionTitle}</p>
+                            <p className="mt-1 text-[15px] font-bold text-[#0F3A63]">{activeMissionGroup.pageTitle}</p>
+                            {shouldShowSourceLabel && activeMissionGroup.sourceLabel && activeMissionGroup.sourceSheet !== "TRONC COMMUN" ? (
+                              <span className="mt-2 inline-flex rounded-full bg-[#EEF3F8] px-2.5 py-1 text-[11px] font-semibold text-[#0F3A63]">
+                                {activeMissionGroup.sourceLabel}
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="space-y-3">
+                            {activeMissionGroup.criteria.map((criterion) => (
+                              <MissionScoreRow
+                                key={criterion.id}
+                                criterion={criterion}
+                                onSelect={(score) => updateMissionCriterionScore(criterion.id, score)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <button
+                          type="button"
+                          onClick={() => goToMissionStep(-1)}
+                          disabled={activeMissionSectionIndex === 0 && activeMissionPageIndex === 0}
+                          className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <ChevronLeft size={14} />
+                          Précédent
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => goToMissionStep(1)}
+                          disabled={
+                            activeMissionSectionIndex === missionSections.length - 1 &&
+                            activeMissionPageIndex === (activeMissionSection?.groups?.length || 1) - 1
+                          }
+                          className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                        >
+                          Titre suivant
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+
+                      <div>
+                        <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire manager sur la mission</p>
+                        <textarea
+                          rows={4}
+                          value={activeMissionReview.comment || ""}
+                          onChange={(event) => updateMissionReviewComment(event.target.value)}
+                          placeholder="Analyse manager, écarts constates, faits marquants..."
+                          className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap justify-end gap-3">
+                        <button
+                          type="button"
+                          onClick={() => persistMissionReviews(missionReviews)}
+                          disabled={isSaving || isSubmitting || activeMissionReview.status === "Soumise à la RH"}
+                          className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600 disabled:opacity-70"
+                        >
+                          {isSaving ? "Sauvegarde..." : "Sauvegarder la mission"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSubmitMissionReview}
+                          disabled={isSaving || isSubmitting || activeMissionReview.status === "Soumise à la RH"}
+                          className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                        >
+                          {isSubmitting ? "Soumission..." : "Soumettre la mission à la RH"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                 </section>
               ) : (
                 <section className="rounded-md border border-[#BFD7EA] bg-white p-4 shadow-sm">
-                  <p className="text-sm font-semibold text-slate-500">Aucune mission selectionnee.</p>
+                  <p className="text-sm font-semibold text-slate-500">Aucune mission sélectionnée.</p>
                 </section>
               )}
             </article>
@@ -489,12 +953,12 @@ function Evaluermonequipe({ member }) {
             <article className="space-y-4">
               <div className="rounded-md border border-[#D9E3EE] bg-white p-4 shadow-sm">
                 <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="text-sm font-bold text-[#76B82A]">Evaluation globale recue</p>
+                  <p className="text-sm font-bold text-[#76B82A]">Evaluation globale reçue</p>
                   <span className="rounded-full bg-[#EEF3F8] px-3 py-1 text-xs font-bold text-[#0F3A63]">
                     {selfEvaluation.overallAverage ?? "--"} / 5
                   </span>
                 </div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Auto-evaluation du membre</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Auto-évaluation du membre</p>
                 <div className="mt-3 space-y-2">
                   {(selfEvaluation.sectionScores || []).map((section) => (
                     <div key={section.sectionId} className="flex items-center justify-between text-sm font-semibold text-[#0F3A63]">
@@ -510,7 +974,7 @@ function Evaluermonequipe({ member }) {
 
               <div className="rounded-md border border-[#D9E3EE] bg-white p-4 shadow-sm">
                 <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="text-sm font-bold text-[#76B82A]">Scores globaux recus</p>
+                  <p className="text-sm font-bold text-[#76B82A]">Scores globaux reçus</p>
                   <span className="rounded-full bg-[#EEF3F8] px-3 py-1 text-xs font-bold text-[#0F3A63]">
                     {receivedGlobalScores.length} score(s)
                   </span>
@@ -533,7 +997,7 @@ function Evaluermonequipe({ member }) {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm font-semibold text-slate-500">Aucun score global encore soumis a votre niveau.</p>
+                  <p className="text-sm font-semibold text-slate-500">Aucun score global encore soumis à votre niveau.</p>
                 )}
               </div>
 
@@ -542,7 +1006,7 @@ function Evaluermonequipe({ member }) {
                   <div>
                     <p className="text-sm font-bold text-[#4E8B1B]">Sections globales</p>
                     <p className="text-xs font-semibold text-slate-500">
-                      {completedSections} / {sections.length} complete(s)
+                      {completedSections} / {sections.length} complète(s)
                     </p>
                   </div>
                   <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">{globalProgress}%</span>
@@ -570,7 +1034,7 @@ function Evaluermonequipe({ member }) {
                         <div className="mt-3 h-1.5 rounded-full bg-slate-200">
                           <div className="h-1.5 rounded-full bg-[#76B82A]" style={{ width: `${progress}%` }} />
                         </div>
-                        <p className="mt-1 text-xs font-bold text-[#76B82A]">{progress}% complete</p>
+                        <p className="mt-1 text-xs font-bold text-[#76B82A]">{progress}% complété</p>
                       </button>
                     );
                   })}
@@ -600,7 +1064,7 @@ function Evaluermonequipe({ member }) {
                 <p className="mt-1 text-sm font-semibold text-slate-500">Score moyen du titre : {activePageAverage} / 5</p>
               </div>
               <span className="rounded-full bg-[#EEF3F8] px-3 py-1 text-xs font-bold text-[#0F3A63]">
-                {reviewData.review.last_saved_at ? "Enregistree" : "Non disponible"}
+                {reviewData.review.last_saved_at ? "Enregistrée" : "Non disponible"}
               </span>
             </div>
 
@@ -669,13 +1133,13 @@ function Evaluermonequipe({ member }) {
 
             {hasLowScoreOnActivePage ? (
               <div className="mt-4 rounded-md bg-[#FDEBEC] px-3 py-2 text-[11px] font-semibold text-[#B93840]">
-                Une note inferieure a 3 a ete detectee. Merci de justifier cet ecart.
+                Une note inférieure à 3 a été détectée. Merci de justifier cet écart.
               </div>
             ) : null}
 
             <div className="mt-4">
               <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">
-                {hasLowScoreOnActivePage ? "Justification de l'ecart" : "Commentaire du titre"}
+                {hasLowScoreOnActivePage ? "Justification de l'écart" : "Commentaire du titre"}
               </p>
               <textarea
                 rows={4}
@@ -683,8 +1147,8 @@ function Evaluermonequipe({ member }) {
                 onChange={(event) => updateComment(event.target.value)}
                 placeholder={
                   hasLowScoreOnActivePage
-                    ? "Expliquez la raison de la note inferieure a 3..."
-                    : "Faits marquants, ecarts constates, recommandations..."
+                    ? "Expliquez la raison de la note inférieure à 3..."
+                    : "Faits marquants, écarts constates, recommandations..."
                 }
                 className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
               />
@@ -698,7 +1162,7 @@ function Evaluermonequipe({ member }) {
             ) : null}
 
             <div className="mt-3 rounded-sm bg-[#DCECCB] px-3 py-2 text-[10px] font-semibold text-[#5A8A3A]">
-              Toutes les questions doivent etre renseignees avant soumission a la RH / Capital Humain.
+              Toutes les questions doivent être renseignées avant soumission à la RH.
             </div>
 
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
@@ -709,7 +1173,7 @@ function Evaluermonequipe({ member }) {
                 className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ChevronLeft size={14} />
-                Precedent
+                Précédent
               </button>
 
               <div className="flex flex-wrap items-center gap-3">
@@ -736,10 +1200,10 @@ function Evaluermonequipe({ member }) {
                     <button
                       type="button"
                       onClick={handleSubmit}
-                      disabled={isSaving || isSubmitting || reviewData.review.status === "Soumis a RH"}
+                      disabled={isSaving || isSubmitting || reviewData.review.status === "Soumis à la RH"}
                       className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
                     >
-                      {isSubmitting ? "Soumission..." : "Soumettre a la RH"}
+                      {isSubmitting ? "Soumission..." : "Soumettre à la RH"}
                     </button>
                   </>
                 )}

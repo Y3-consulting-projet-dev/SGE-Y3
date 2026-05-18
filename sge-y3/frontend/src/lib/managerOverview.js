@@ -70,3 +70,17 @@ export function submitManagerMemberEvaluation(memberId) {
     method: "POST",
   });
 }
+
+export function saveManagerMemberMissionReviews(memberId, payload) {
+  return request(`/manager/members/${memberId}/evaluation/missions`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function submitManagerMemberMissionReview(memberId, missionId) {
+  return request(`/manager/members/${memberId}/evaluation/missions/${missionId}/submit`, {
+    method: "POST",
+    body: JSON.stringify({ missionId }),
+  });
+}

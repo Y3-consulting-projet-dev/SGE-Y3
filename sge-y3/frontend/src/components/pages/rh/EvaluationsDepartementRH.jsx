@@ -12,7 +12,7 @@ function formatScore(score) {
   return typeof score === "number" ? `${score}/5` : "--";
 }
 
-function EvaluationsDepartementRH() {
+function EvaluationséRH() {
   const [data, setData] = useState(null);
   const [activeDepartment, setActiveDepartment] = useState("");
   const [selectedMember, setSelectedMember] = useState(null);
@@ -42,7 +42,7 @@ function EvaluationsDepartementRH() {
         setActiveDepartment(response.departments?.[0]?.department || "");
       } catch (error) {
         if (!cancelled) {
-          setErrorMessage(error.message || "Chargement des evaluations par departement impossible.");
+          setErrorMessage(error.message || "Chargement des évaluations par département impossible.");
         }
       } finally {
         if (!cancelled) {
@@ -74,17 +74,17 @@ function EvaluationsDepartementRH() {
       setIsSelecting(true);
       setFeedbackMessage("");
       const response = await selectRhDepartmentEvaluation(selectedMember.id);
-      setFeedbackMessage(response.message || "Evaluation ajoutee a la validation RH.");
+      setFeedbackMessage(response.message || "Evaluation ajoutée à la validation RH.");
       await loadData();
     } catch (error) {
-      setErrorMessage(error.message || "Selection RH impossible.");
+      setErrorMessage(error.message || "Sélection RH impossible.");
     } finally {
       setIsSelecting(false);
     }
   }
 
   if (isLoading) {
-    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement des evaluations par departement...</section>;
+    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement des évaluations</section>;
   }
 
   if (errorMessage) {
@@ -92,7 +92,7 @@ function EvaluationsDepartementRH() {
   }
 
   if (!selectedDepartment) {
-    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Aucune evaluation transmise a la RH pour le moment.</section>;
+    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Aucune évaluation transmise à la RH pour le moment.</section>;
   }
 
   return (
@@ -104,9 +104,9 @@ function EvaluationsDepartementRH() {
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-extrabold text-[#0F3A63]">Evaluations des equipes par departement</h2>
+            <h2 className="text-xl font-extrabold text-[#0F3A63]">Evaluations des équipes</h2>
             <p className="mt-1 text-sm font-semibold text-slate-500">
-              Vue RH de toutes les evaluations : auto-evaluation, evaluation manager et score final.
+              Vue RH de toutes les évaluations : auto-évaluation, évaluation manager et score final.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -131,7 +131,7 @@ function EvaluationsDepartementRH() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <article className="rounded-lg bg-[#0D496A] p-4 text-white">
-          <p className="text-sm font-semibold">Departement</p>
+          <p className="text-sm font-semibold">Département</p>
           <p className="mt-2 text-2xl font-black leading-none">{selectedDepartment.department}</p>
         </article>
         <article className="rounded-lg bg-white p-4 shadow-sm">
@@ -139,7 +139,7 @@ function EvaluationsDepartementRH() {
           <p className="mt-2 text-2xl font-black leading-none text-[#0F3A63]">{selectedDepartment.members.length}</p>
         </article>
         <article className="rounded-lg bg-white p-4 shadow-sm">
-          <p className="text-sm font-semibold text-slate-500">Moyenne du departement</p>
+          <p className="text-sm font-semibold text-slate-500">Moyenne du département</p>
           <p className="mt-2 text-2xl font-black leading-none text-[#78B843]">
             {typeof selectedDepartment.average === "number" ? `${selectedDepartment.average}/5` : "--"}
           </p>
@@ -149,13 +149,13 @@ function EvaluationsDepartementRH() {
       <article className="rounded-xl bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-lg font-extrabold text-[#0F3A63]">Equipe {selectedDepartment.department}</h3>
+            <h3 className="text-lg font-extrabold text-[#0F3A63]">Département {selectedDepartment.department}</h3>
             <p className="text-sm font-semibold text-slate-500">
-              Responsable d'equipe : {selectedDepartment.manager || "Manager"} - Manager du departement : {selectedDepartment.manager || "Manager"}
+              Responsable d'équipe : {selectedDepartment.manager || "Manager"} - Manager du département : {selectedDepartment.manager || "Manager"}
             </p>
           </div>
           <span className="rounded-full bg-[#E7EDF3] px-3 py-1 text-xs font-bold text-[#0F4A72]">
-            {selectedDepartment.members.length} evaluation(s)
+            {selectedDepartment.members.length} évaluation(s)
           </span>
         </div>
 
@@ -165,8 +165,8 @@ function EvaluationsDepartementRH() {
               <tr>
                 <th className="px-4 py-3">Collaborateur</th>
                 <th className="px-4 py-3">Evaluateur</th>
-                <th className="px-4 py-3">Auto-eval</th>
-                <th className="px-4 py-3">Eval manager</th>
+                <th className="px-4 py-3">Auto-évaluation</th>
+                <th className="px-4 py-3">Evaluation manager</th>
                 <th className="px-4 py-3">Score final</th>
                 <th className="px-4 py-3">Statut RH</th>
               </tr>
@@ -214,7 +214,7 @@ function EvaluationsDepartementRH() {
           >
             <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-bold uppercase text-slate-400">Detail de l'evaluation</p>
+                <p className="text-xs font-bold uppercase text-slate-400">Détail de l'évaluation</p>
                 <h3 id="evaluation-detail-title" className="mt-1 text-2xl font-black text-[#0F3A63]">
                   {selectedMember.name}
                 </h3>
@@ -229,12 +229,12 @@ function EvaluationsDepartementRH() {
                   onClick={handleSelectForValidation}
                   className="rounded-full bg-[#E7EDF3] px-4 py-2 text-xs font-bold text-[#0F4A72] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {selectedMember.rhValidationSelected ? "A valider RH" : "Valider"}
+                  {selectedMember.rhValidationSelected ? "À valider RH" : "Valider"}
                 </button>
                 <button
                   onClick={() => setSelectedMember(null)}
                   className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-lg font-black text-[#0F3A63] hover:bg-slate-200"
-                  aria-label="Fermer le detail de l'evaluation"
+                  aria-label="Fermer le détail de l'évaluation"
                 >
                   x
                 </button>
@@ -243,7 +243,7 @@ function EvaluationsDepartementRH() {
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
               <div className="rounded-lg bg-[#F8FAFC] p-4">
-                <p className="text-xs font-bold uppercase text-slate-500">Auto-evaluation</p>
+                <p className="text-xs font-bold uppercase text-slate-500">Auto-évaluation</p>
                 <p className="mt-2 text-2xl font-black text-[#0F3A63]">{formatScore(selectedMember.selfScore)}</p>
               </div>
               <div className="rounded-lg bg-[#F8FAFC] p-4">
@@ -262,15 +262,15 @@ function EvaluationsDepartementRH() {
 
             <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
               <section className="rounded-lg bg-[#F8FAFC] p-4">
-                <h4 className="text-sm font-extrabold text-[#0F3A63]">Commentaires d'evaluation</h4>
+                <h4 className="text-sm font-extrabold text-[#0F3A63]">Commentaires d'évaluation</h4>
                 <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{selectedMember.commentSummary}</p>
                 <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
-                  Point RH : {Number(scoreGap) >= 0.7 ? "ecart significatif a arbitrer avec le manager." : "evaluation coherente, prete pour validation RH."}
+                  Point RH : {Number(scoreGap) >= 0.7 ? "écart significatif à arbitrer avec le manager." : "évaluation cohérente, prête pour validation RH."}
                 </p>
               </section>
 
               <section className="rounded-lg bg-[#F8FAFC] p-4">
-                <h4 className="text-sm font-extrabold text-[#0F3A63]">Criteres principaux</h4>
+                <h4 className="text-sm font-extrabold text-[#0F3A63]">Critères principaux</h4>
                 <div className="mt-3 space-y-3">
                   {selectedMember.sectionSummaries.length ? (
                     selectedMember.sectionSummaries.map((criterion) => (
@@ -285,7 +285,7 @@ function EvaluationsDepartementRH() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm font-semibold text-slate-500">Aucun critere principal disponible.</p>
+                    <p className="text-sm font-semibold text-slate-500">Aucun critère principal disponible.</p>
                   )}
                 </div>
               </section>
@@ -297,4 +297,4 @@ function EvaluationsDepartementRH() {
   );
 }
 
-export default EvaluationsDepartementRH;
+export default EvaluationséRH;

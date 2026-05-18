@@ -70,7 +70,7 @@ function buildPrintableReport(title, rows, sectionTitles, selectedRecommendation
   </head>
   <body>
     <h1>${title}</h1>
-    <p>Reporting d'equipe - ${cycleLabel}</p>
+    <p>Reporting d'équipe - ${cycleLabel}</p>
     <table>
       <thead>
         <tr>
@@ -107,7 +107,7 @@ function Rapportsequipe() {
         );
       } catch (error) {
         if (!cancelled) {
-          setErrorMessage(error.message || "Chargement du rapport equipe impossible.");
+          setErrorMessage(error.message || "Chargement du rapport équipe impossible.");
         }
       } finally {
         if (!cancelled) {
@@ -131,13 +131,13 @@ function Rapportsequipe() {
   const reportCards = useMemo(
     () => [
       {
-        title: "Score moyen de l'equipe",
+        title: "Score moyen de l'équipe",
         value: typeof kpis.teamAverage === "number" ? String(kpis.teamAverage) : "--",
         subtitle: "Sur 5",
         accent: "",
       },
       {
-        title: "Taux completion",
+        title: "Taux complétion",
         value: `${kpis.completionRate || 0}%`,
         subtitle: `${kpis.completedEvaluationsCount || 0}/${kpis.totalMembers || 0} eval(s) completes`,
         accent: "",
@@ -149,7 +149,7 @@ function Rapportsequipe() {
         accent: "text-[#F34D4D]",
       },
       {
-        title: "Augmentations recommandees",
+        title: "Augmentations recommandées",
         value: String(kpis.augmentationCount || 0),
         subtitle: "",
         accent: "",
@@ -160,14 +160,14 @@ function Rapportsequipe() {
 
   const exportsList = [
     {
-      title: "Rapport de synthese d'equipe",
+      title: "Rapport de synthèse d'équipe",
       subtitle: "Scores, recommandations, sections - PDF",
       action: "Export PDF",
       actionClass: "bg-[#1E88F4] text-white",
     },
     {
-      title: "Donnees detaillees de l'equipe",
-      subtitle: "Toutes les notes consolidees - Excel",
+      title: "Données detaillées de l'équipe",
+      subtitle: "Toutes les notes consolidées - Excel",
       action: "Export Excel",
       actionClass: "bg-[#EAF1F8] text-[#0F3A63]",
     },
@@ -193,7 +193,7 @@ function Rapportsequipe() {
   };
 
   if (isLoading) {
-    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement du reporting equipe...</section>;
+    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement du reporting équipe...</section>;
   }
 
   if (errorMessage) {
@@ -215,7 +215,7 @@ function Rapportsequipe() {
       </section>
 
       <section className="rounded-md bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-2xl font-extrabold text-[#0F3A63]">Synthese des scores par collaborateur</h2>
+        <h2 className="mb-3 text-2xl font-extrabold text-[#0F3A63]">Synthèse des scores par collaborateur</h2>
         <div className="overflow-x-auto rounded-md border border-slate-100">
           <table className="min-w-[860px] w-full border-collapse text-sm">
             <thead>
@@ -287,7 +287,7 @@ function Rapportsequipe() {
               ) : (
                 <tr>
                   <td colSpan={sectionTitles.length + 3} className="px-4 py-6 text-center text-sm font-semibold text-slate-500">
-                    Aucune evaluation manager disponible pour le reporting d'equipe.
+                    Aucune évaluation manager disponible pour le reporting d'équipe.
                   </td>
                 </tr>
               )}

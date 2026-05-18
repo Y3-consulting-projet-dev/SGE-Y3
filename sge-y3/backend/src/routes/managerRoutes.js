@@ -5,7 +5,9 @@ const {
   getManagerMemberEvaluation,
   getManagerOverview,
   getManagerTeamReport,
+  saveManagerMemberMissionReviews,
   saveMyManagerEvaluation,
+  submitManagerMemberMissionReview,
   saveManagerMemberEvaluation,
   submitMyManagerEvaluation,
   submitManagerMemberEvaluation,
@@ -23,5 +25,7 @@ router.post('/self-evaluation/submit', requireAuth, requireManager, submitMyMana
 router.get('/members/:memberId/evaluation', requireAuth, requireManager, getManagerMemberEvaluation);
 router.put('/members/:memberId/evaluation', requireAuth, requireManager, saveManagerMemberEvaluation);
 router.post('/members/:memberId/evaluation/submit', requireAuth, requireManager, submitManagerMemberEvaluation);
+router.put('/members/:memberId/evaluation/missions', requireAuth, requireManager, saveManagerMemberMissionReviews);
+router.post('/members/:memberId/evaluation/missions/:missionId/submit', requireAuth, requireManager, submitManagerMemberMissionReview);
 
 module.exports = router;

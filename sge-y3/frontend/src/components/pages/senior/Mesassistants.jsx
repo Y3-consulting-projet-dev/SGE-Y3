@@ -18,7 +18,7 @@ function Mesassistants({ assistants = [], isLoading, errorMessage, onOpenReview 
     return (
       <section className="rounded-md bg-white p-5 shadow-sm">
         <h2 className="text-xl font-bold text-[#0F3A63]">Mes assistants</h2>
-        <p className="mt-3 text-sm font-semibold text-slate-500">Aucun assistant de code catégorie 8C ne partage actuellement votre département.</p>
+        <p className="mt-3 text-sm font-semibold text-slate-500">Aucun assistant ne partage actuellement votre département.</p>
       </section>
     );
   }

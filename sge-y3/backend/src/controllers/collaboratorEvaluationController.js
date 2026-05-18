@@ -12,6 +12,10 @@ const {
 
 const CURRENT_CYCLE_LABEL = 'Cycle 2025-2026';
 
+function normalizeText(value = '') {
+  return String(value || '').replace(/\s+/g, ' ').trim().toUpperCase();
+}
+
 function getManagerDepartmentsForDepartment(department = '') {
   const normalized = String(department || '').replace(/\s+/g, ' ').trim().toUpperCase();
 
@@ -23,6 +27,22 @@ function getManagerDepartmentsForDepartment(department = '') {
 }
 
 async function resolveManagersForAssistant(user) {
+  const targetDepartments = getManagerDepartmentsForDepartment(user.department);
+
+  if (!targetDepartments.length) {
+    return [];
+  }
+
+  return User.find({
+    is_active: true,
+    code_categorie: { $in: ['10B', '10C'] },
+    department: { $in: targetDepartments },
+  })
+    .sort({ last_name: 1, first_name: 1 })
+    .select('_id name first_name last_name grade department code_categorie');
+}
+
+async function resolveMissionRecipientsForAssistant(user) {
   const targetDepartments = getManagerDepartmentsForDepartment(user.department);
 
   if (!targetDepartments.length) {
@@ -291,6 +311,10 @@ async function buildEvaluationPayload(instance, user) {
   const sections = normalizeSections(instance.sections);
   const activeSection = sections.find((section) => section.status !== 'Complete') || sections[0] || null;
   const managers = await resolveRecipientsForInstance(instance, user);
+  const missionRecipients =
+    instance?.template_type === 'assistant-self-evaluation'
+      ? await resolveMissionRecipientsForAssistant(user)
+      : managers;
   const submittedTo =
     formatManagerRecipients(instance.submitted_to_managers) || formatSubmissionTarget(managers);
 
@@ -326,7 +350,7 @@ async function buildEvaluationPayload(instance, user) {
         department: manager.department,
         code_categorie: manager.code_categorie,
       })),
-      recipient_options: buildRecipientOptions(managers, user),
+      recipient_options: buildRecipientOptions(missionRecipients, user),
       submitted_to_managers: instance.submitted_to_managers || [],
     },
     mission_evaluations: formatMissionEvaluations(instance.mission_evaluations || []),
@@ -445,9 +469,13 @@ async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
   const instance = await getOrCreateEvaluation(request.user);
   const summary = getEvaluationSummary(sections);
   const resolvedManagers = await resolveRecipientsForInstance(instance, request.user);
+  const resolvedMissionRecipients =
+    instance.template_type === 'assistant-self-evaluation'
+      ? await resolveMissionRecipientsForAssistant(request.user)
+      : resolvedManagers;
 
   if (missionEvaluations && instance.template_type === 'assistant-self-evaluation') {
-    const fullRecipients = buildMissionRecipients(resolvedManagers);
+    const availableRecipients = buildMissionRecipients(resolvedMissionRecipients);
     missionEvaluations = missionEvaluations.map((mission) => ({
       ...mission,
       department: mission.department || request.user.department || '',
@@ -463,23 +491,30 @@ async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
             ]
           : Array.isArray(mission.recipients) && mission.recipients.length
             ? mission.recipients
-            : fullRecipients,
+            : [],
       primary_recipient_user_id:
         mission.created_by_role === 'senior'
           ? mission.assigned_by_user_id || null
-          : mission.primary_recipient_user_id || mission.recipients?.[0]?.user_id || fullRecipients[0]?.user_id || null,
+          : mission.primary_recipient_user_id || mission.recipients?.[0]?.user_id || null,
       primary_recipient_name:
         mission.created_by_role === 'senior'
           ? mission.assigned_by_name || 'Senior'
-          : mission.primary_recipient_name || mission.recipients?.[0]?.name || fullRecipients[0]?.name || '',
+          : mission.primary_recipient_name || mission.recipients?.[0]?.name || '',
       primary_recipient_grade:
         mission.created_by_role === 'senior'
           ? mission.assigned_by_grade || 'Senior'
-          : mission.primary_recipient_grade || mission.recipients?.[0]?.grade || fullRecipients[0]?.grade || '',
+          : mission.primary_recipient_grade || mission.recipients?.[0]?.grade || '',
       primary_recipient_department:
         mission.created_by_role === 'senior'
           ? mission.department || request.user.department || ''
-          : mission.primary_recipient_department || mission.recipients?.[0]?.department || fullRecipients[0]?.department || '',
+          : mission.primary_recipient_department || mission.recipients?.[0]?.department || '',
+      recipients: (mission.recipients || []).filter((recipient) =>
+        availableRecipients.some(
+          (candidate) =>
+            String(candidate.user_id) === String(recipient.user_id) ||
+            (candidate.name === recipient.name && candidate.department === recipient.department)
+        )
+      ),
     }));
   }
 
@@ -568,7 +603,16 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
       : [];
   const missingAnswers = validateSectionsForSubmit(sections);
   const resolvedManagers = await resolveRecipientsForInstance(instance, request.user);
-  const mergedManagerRecipients = mergeManagerRecipients(managerRecipients, resolvedManagers);
+  const mergedManagerRecipients = mergeManagerRecipients(
+    managerRecipients.filter((recipient) =>
+      resolvedManagers.some(
+        (manager) =>
+          normalizeText(manager.name || '') === normalizeText(recipient.manager || '') &&
+          normalizeText(manager.department || '') === normalizeText(recipient.department || '')
+      )
+    ),
+    resolvedManagers
+  );
 
   if (missingAnswers.length) {
     return response.status(400).json({
