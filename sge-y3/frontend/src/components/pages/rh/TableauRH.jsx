@@ -94,9 +94,9 @@ function TableauRH({ onOpen }) {
 
         <article className="rounded-xl bg-white p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between gap-4">
-            <h2 className="text-xl font-extrabold text-[#0F3A63]">Moyenne par departement</h2>
+            <h2 className="text-xl font-extrabold text-[#0F3A63]">Moyenne par département</h2>
             <button onClick={() => onOpen?.("department-evaluations")} className="rounded-full bg-[#0D496A] px-4 py-2 text-xs font-bold text-white">
-              Voir les evaluations
+              Voir les évaluations
             </button>
           </div>
           <div className="space-y-4">
@@ -114,7 +114,7 @@ function TableauRH({ onOpen }) {
               ))
             ) : (
               <div className="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">
-                Aucune moyenne disponible par departement.
+                Aucune moyenne disponible par département.
               </div>
             )}
           </div>

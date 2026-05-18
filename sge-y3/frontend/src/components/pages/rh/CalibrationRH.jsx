@@ -47,7 +47,7 @@ function CalibrationRH() {
   return (
     <section className="rounded-xl bg-white p-5 shadow-sm">
       <h2 className="text-xl font-extrabold text-[#0F3A63]">Calibration des scores</h2>
-      <p className="mt-1 text-sm font-semibold text-slate-500">Comparaison des moyennes pour identifier les ecarts de notation.</p>
+      <p className="mt-1 text-sm font-semibold text-slate-500">Comparaison des moyennes pour identifier les écarts de notation.</p>
 
       <div className="mt-5 space-y-4">
         {rows.length ? (
@@ -56,7 +56,7 @@ function CalibrationRH() {
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-base font-extrabold text-[#0F3A63]">{row.department}</p>
-                  <p className="text-xs font-semibold text-slate-500">{row.evaluated} evaluations completes</p>
+                  <p className="text-xs font-semibold text-slate-500">{row.evaluated} évaluations complétées</p>
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-black text-[#78B843]">{typeof row.average === "number" ? row.average : "--"}</p>
@@ -70,7 +70,7 @@ function CalibrationRH() {
           ))
         ) : (
           <div className="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">
-            Aucune donnee de calibration disponible.
+            Aucune donnée de calibration disponible.
           </div>
         )}
       </div>

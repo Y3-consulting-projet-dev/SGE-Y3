@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import {
-  getManagerSelfEvaluation,
-  saveManagerSelfEvaluation,
-  submitManagerSelfEvaluation,
-} from "@/lib/managerOverview";
+  getAssistantRhEvaluation,
+  saveAssistantRhEvaluation,
+  submitAssistantRhEvaluation,
+} from "@/lib/rhOverview";
 
 function getPageProgress(page) {
   const themes = page?.themes || [];
@@ -20,7 +20,6 @@ function getSectionProgress(section) {
     (total, page) => total + (page.themes || []).filter((theme) => theme.score !== null && theme.score !== undefined).length,
     0
   );
-
   if (!totalThemes) return 0;
   return Math.round((answeredThemes / totalThemes) * 100);
 }
@@ -47,13 +46,6 @@ function clampPageIndexes(sections = [], currentIndexes = {}) {
       return [section.id, Math.min(currentIndexes[section.id] || 0, maxIndex)];
     })
   );
-}
-
-function getSourceBadgeLabel(page) {
-  if (page?.source_label) return page.source_label;
-  if (page?.source_sheet === "AUDIT") return "Audit";
-  if (page?.source_sheet === "EXPERTISE COMPTABLE") return "Expertise comptable";
-  return "";
 }
 
 function ScoreSelector({ selected, onSelect }) {
@@ -102,8 +94,8 @@ function SectionBadge({ progress }) {
   return <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">A faire</span>;
 }
 
-function Monautoevaluation() {
-  const [evaluationData, setEvaluationData] = useState(null);
+function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
+  const [reviewData, setReviewData] = useState(null);
   const [sections, setSections] = useState([]);
   const [activeSectionId, setActiveSectionId] = useState(1);
   const [pageIndexes, setPageIndexes] = useState({});
@@ -118,21 +110,27 @@ function Monautoevaluation() {
   useEffect(() => {
     let cancelled = false;
 
-    async function loadEvaluation() {
+    async function loadReview() {
+      if (!memberId) {
+        setReviewData(null);
+        setSections([]);
+        return;
+      }
+
       try {
         setIsLoading(true);
         setErrorMessage("");
-        const response = await getManagerSelfEvaluation();
+        const response = await getAssistantRhEvaluation(memberId);
 
         if (cancelled) return;
 
-        setEvaluationData(response);
-        setSections(response.evaluation.sections || []);
-        setActiveSectionId(Number(response.evaluation.activeSectionId || response.evaluation.sections?.[0]?.id || 1));
-        setPageIndexes(createInitialPageIndexes(response.evaluation.sections || []));
+        setReviewData(response);
+        setSections(response.review.sections || []);
+        setActiveSectionId(Number(response.review.activeSectionId || response.review.sections?.[0]?.id || 1));
+        setPageIndexes(createInitialPageIndexes(response.review.sections || []));
         setSavedComments(
           Object.fromEntries(
-            (response.evaluation.sections || [])
+            (response.review.sections || [])
               .flatMap((section) => section.pages || [])
               .filter((page) => page.comment?.trim())
               .map((page) => [page.page_id, page.comment.trim()])
@@ -140,7 +138,7 @@ function Monautoevaluation() {
         );
       } catch (error) {
         if (!cancelled) {
-          setErrorMessage(error.message || "Chargement de l'auto-évaluation manager impossible.");
+          setErrorMessage(error.message || "Chargement de l'evaluation RH impossible.");
         }
       } finally {
         if (!cancelled) {
@@ -149,24 +147,21 @@ function Monautoevaluation() {
       }
     }
 
-    loadEvaluation();
+    loadReview();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [memberId]);
 
   const activeSection = sections.find((section) => Number(section.id) === Number(activeSectionId)) || sections[0];
   const activePageIndex = pageIndexes[activeSection?.id] || 0;
   const activePage = activeSection?.pages?.[activePageIndex] || activeSection?.pages?.[0];
-  const shouldShowSourceLabel = evaluationData?.manager?.department === "AUDIT & EXPERTISE COMPTABLE";
-  const activePageSourceBadgeLabel = getSourceBadgeLabel(activePage);
   const completedSections = sections.filter((section) => getSectionProgress(section) === 100).length;
-  const progress = Math.round(
-    sections.reduce((total, section) => total + getSectionProgress(section), 0) / (sections.length || 1)
-  );
+  const progress = Math.round(sections.reduce((total, section) => total + getSectionProgress(section), 0) / (sections.length || 1));
   const averageScore = useMemo(() => getPageAverage(activePage), [activePage]);
-  const rhRecipients = evaluationData?.submitted_to || [];
+  const associateRecipients = reviewData?.submitted_to || [];
+  const selfEvaluation = reviewData?.self_evaluation || {};
 
   function syncSections(updater) {
     setSections((currentSections) => {
@@ -221,20 +216,20 @@ function Monautoevaluation() {
     );
   }
 
-  async function persistSections(nextSections = sections, successMessage = "Auto-évaluation manager enregistree.") {
+  async function persistSections(nextSections = sections, successMessage = "Evaluation RH enregistree.") {
     try {
       setIsSaving(true);
       setFeedbackMessage("");
-      const response = await saveManagerSelfEvaluation({
+      const response = await saveAssistantRhEvaluation(memberId, {
         sections: nextSections,
       });
 
-      setEvaluationData(response);
-      setSections(response.evaluation.sections || []);
-      setPageIndexes((current) => clampPageIndexes(response.evaluation.sections || [], current));
+      setReviewData(response);
+      setSections(response.review.sections || []);
+      setPageIndexes((current) => clampPageIndexes(response.review.sections || [], current));
       setSavedComments(
         Object.fromEntries(
-          (response.evaluation.sections || [])
+          (response.review.sections || [])
             .flatMap((section) => section.pages || [])
             .filter((page) => page.comment?.trim())
             .map((page) => [page.page_id, page.comment.trim()])
@@ -276,24 +271,25 @@ function Monautoevaluation() {
   }
 
   async function handleSaveAndContinue() {
-    await persistSections(sections, "Auto-évaluation manager enregistree.");
+    await persistSections(sections);
     goToStep(1);
   }
 
   async function handleSubmit() {
-    const savedEvaluation = await persistSections(sections, "Auto-évaluation manager prete pour soumission.");
+    const savedReview = await persistSections(sections, "Evaluation RH prete pour validation.");
 
-    if (!savedEvaluation) {
+    if (!savedReview) {
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const response = await submitManagerSelfEvaluation();
-      setEvaluationData(response);
-      setSections(response.evaluation.sections || []);
+      const response = await submitAssistantRhEvaluation(memberId);
+      setReviewData(response);
+      setSections(response.review.sections || []);
       setFeedbackTone("success");
-      setFeedbackMessage(response.message || "Auto-évaluation manager soumise a la RH.");
+      setFeedbackMessage(response.message || "Evaluation RH de l'assistante RH soumise.");
+      onSubmitted?.();
     } catch (error) {
       setFeedbackTone("error");
       setFeedbackMessage(error.message || "Soumission impossible.");
@@ -303,15 +299,15 @@ function Monautoevaluation() {
   }
 
   if (isLoading) {
-    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement de l'auto-évaluation manager...</section>;
+    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement de l'evaluation RH...</section>;
   }
 
   if (errorMessage) {
     return <section className="rounded-md bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">{errorMessage}</section>;
   }
 
-  if (!evaluationData || !sections.length || !activeSection || !activePage) {
-    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Aucune matrice manager disponible.</section>;
+  if (!reviewData || !sections.length || !activeSection || !activePage) {
+    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Aucune evaluation RH disponible pour cette assistante.</section>;
   }
 
   const isLastStep =
@@ -320,12 +316,16 @@ function Monautoevaluation() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs font-semibold text-slate-400">
-        {evaluationData.manager.name} - {evaluationData.manager.grade} - {evaluationData.evaluation.cycle_label}
-      </p>
-
-      <div className="rounded-sm bg-[#DCECCB] px-4 py-3 text-xs font-semibold text-[#1E5B34]">
-        Cette auto-évaluation sera transmise a la RH. Soyez precis et factuel.
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-sm font-semibold text-[#0F3A63]"
+        >
+          <ChevronLeft size={14} />
+          Retour validations RH
+        </button>
+        <span className="rounded-full bg-[#E7EDF3] px-4 py-2 text-xs font-bold text-[#0F4A72]">{reviewData.review.status}</span>
       </div>
 
       {feedbackMessage ? (
@@ -338,20 +338,51 @@ function Monautoevaluation() {
         </div>
       ) : null}
 
-      <section className="rounded-md bg-white p-4 shadow-sm">
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs font-semibold text-[#0F3A63]">
-            Progression - {completedSections} / {sections.length} sections
-          </p>
-          <span className="text-xs font-semibold text-[#E53935]">{progress}%</span>
-        </div>
-        <div className="h-2 rounded-full bg-slate-300">
-          <div className="h-2 rounded-full bg-[#2AA7D6]" style={{ width: `${progress}%` }} />
-        </div>
-      </section>
-
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-12">
         <div className="space-y-3 xl:col-span-5">
+          <article className="rounded-md bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold text-slate-400">{reviewData.review.cycle_label}</p>
+            <h2 className="mt-1 text-2xl font-black text-[#0F3A63]">Evaluation RH de l'assistante RH</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              {reviewData.member.name} - {reviewData.member.department}
+            </p>
+
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-[#0D496A] p-4 text-white">
+                <p className="text-xs font-bold">Progression RH</p>
+                <p className="mt-2 text-2xl font-black text-[#86EFAC]">{progress}%</p>
+              </div>
+              <div className="rounded-lg bg-[#0D496A] p-4 text-white">
+                <p className="text-xs font-bold">Score RH</p>
+                <p className="mt-2 text-2xl font-black text-[#86EFAC]">
+                  {reviewData.summary.overallAverage ?? "--"}/5
+                </p>
+              </div>
+            </div>
+          </article>
+
+          <article className="rounded-md bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-xs font-semibold text-[#79B742]">Auto-evaluation recue</h3>
+            <div className="space-y-2">
+              <div className="rounded-md bg-slate-50 px-3 py-3">
+                <p className="text-xs font-bold text-[#0F3A63]">Statut</p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">{selfEvaluation.status || "En attente"}</p>
+              </div>
+              <div className="rounded-md bg-slate-50 px-3 py-3">
+                <p className="text-xs font-bold text-[#0F3A63]">Score auto-evaluation</p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                  {typeof selfEvaluation.overallAverage === "number" ? `${selfEvaluation.overallAverage}/5` : "--"}
+                </p>
+              </div>
+              {(selfEvaluation.sectionScores || []).map((item) => (
+                <div key={item.sectionId} className="rounded-md bg-slate-50 px-3 py-3">
+                  <p className="text-xs font-bold text-[#0F3A63]">{item.title}</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">{item.score}/5</p>
+                </div>
+              ))}
+            </div>
+          </article>
+
           {sections.map((section) => {
             const sectionProgress = getSectionProgress(section);
             const isActive = Number(activeSectionId) === Number(section.id);
@@ -377,72 +408,9 @@ function Monautoevaluation() {
                   </div>
                   <SectionBadge progress={sectionProgress} />
                 </div>
-
-                <div className="space-y-2">
-                  {(section.pages || []).slice(0, 3).map((page) => (
-                    <div key={page.page_id} className="flex items-center justify-between text-xs font-semibold text-[#0F3A63]">
-                      <p>{page.title}</p>
-                      <span className={getPageAverage(page) === "--" ? "text-slate-400" : "text-[#79B742]"}>
-                        {getPageAverage(page) === "--" ? "--" : `${getPageAverage(page)}/5`}
-                      </span>
-                    </div>
-                  ))}
-                </div>
               </button>
             );
           })}
-          <article className="rounded-md bg-white p-4 shadow-sm">
-            <h3 className="mb-3 text-xs font-semibold text-[#79B742]">Commentaires sauvegardes</h3>
-            <div className="mb-4 space-y-3">
-              {sections.some((section) => (section.pages || []).some((page) => savedComments[page.page_id])) ? (
-                sections.flatMap((section) =>
-                  (section.pages || [])
-                    .filter((page) => savedComments[page.page_id])
-                    .map((page) => (
-                      <div key={page.page_id} className="rounded-md bg-slate-50 px-3 py-3">
-                        <p className="text-xs font-bold text-[#0F3A63]">
-                          {section.title} - {page.title}
-                        </p>
-                        <p className="mt-1 text-xs font-semibold text-slate-500">{savedComments[page.page_id]}</p>
-                      </div>
-                    ))
-                )
-              ) : (
-                <p className="rounded-md bg-slate-50 px-3 py-3 text-xs font-semibold text-slate-500">
-                  Aucun commentaire sauvegarde pour le moment.
-                </p>
-              )}
-            </div>
-
-            <h3 className="mb-3 text-xs font-semibold text-[#79B742]">Circuit de validation</h3>
-            <div className="space-y-3 text-xs font-semibold text-[#0F3A63]">
-              <div className="flex items-start gap-3">
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#DFECD4] text-[#79B742]">
-                  <Check size={12} />
-                </span>
-                <p>Vous saisissez votre auto-évaluation</p>
-              </div>
-              <div className="flex items-start gap-3">
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#2AA7D6] text-white">
-                  1
-                </span>
-                <div>
-                  <p>Soumission a la RH</p>
-                  <p className="text-[11px] text-slate-400">Après complétion de toutes les sections de la matrice</p>
-                </div>
-              </div>
-              {rhRecipients.map((recipient, index) => (
-                <div key={recipient.id} className="flex items-start gap-3">
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-200 text-slate-600">
-                    {index + 2}
-                  </span>
-                  <p>
-                    Validation RH - {recipient.name} ({recipient.department})
-                  </p>
-                </div>
-              ))}
-            </div>
-          </article>
         </div>
 
         <div className="space-y-3 xl:col-span-7">
@@ -472,7 +440,6 @@ function Monautoevaluation() {
                 {(activeSection.pages || []).map((page, index) => {
                   const isActive = index === activePageIndex;
                   const pageProgress = getPageProgress(page);
-                  const sourceBadgeLabel = getSourceBadgeLabel(page);
 
                   return (
                     <button
@@ -492,11 +459,6 @@ function Monautoevaluation() {
                     >
                       <p className="text-[11px] font-bold">Titre {index + 1}</p>
                       <p className="mt-1 text-[12px] font-semibold">{page.title}</p>
-                      {shouldShowSourceLabel && sourceBadgeLabel && page.source_sheet !== "TRONC COMMUN" ? (
-                        <span className="mt-2 inline-flex rounded-full bg-[#EEF3F8] px-2 py-0.5 text-[10px] font-semibold text-[#0F3A63]">
-                          {sourceBadgeLabel}
-                        </span>
-                      ) : null}
                       <p className="mt-1 text-[10px] font-semibold text-[#79B742]">{pageProgress}%</p>
                     </button>
                   );
@@ -508,11 +470,6 @@ function Monautoevaluation() {
               <div>
                 <p className="text-[11px] font-bold uppercase text-slate-500">{activeSection.title}</p>
                 <p className="mt-1 text-[15px] font-bold text-[#0F3A63]">{activePage.title}</p>
-                {shouldShowSourceLabel && activePageSourceBadgeLabel && activePage.source_sheet !== "TRONC COMMUN" ? (
-                  <span className="mt-2 inline-flex rounded-full bg-[#EEF3F8] px-2.5 py-1 text-[11px] font-semibold text-[#0F3A63]">
-                    {activePageSourceBadgeLabel}
-                  </span>
-                ) : null}
               </div>
 
               {(activePage.themes || []).map((theme) => (
@@ -532,14 +489,14 @@ function Monautoevaluation() {
                 rows={3}
                 value={activePage.comment || ""}
                 onChange={(event) => updateComment(event.target.value)}
-                placeholder="Exemples concrets, points forts, axes d'amélioration..."
+                placeholder="Exemples concrets, points forts, axes d'amelioration..."
                 className="w-full resize-none rounded-md border border-slate-200 bg-slate-100 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
               />
             </div>
 
             {savedComments[activePage.page_id] ? (
               <div className="mt-3 rounded-md bg-[#DCECCB] px-3 py-3">
-                <p className="mb-1 text-xs font-bold text-[#79B742]">Commentaire sauvegardé</p>
+                <p className="mb-1 text-xs font-bold text-[#79B742]">Commentaire sauvegarde</p>
                 <p className="text-sm font-semibold text-[#0F3A63]">{savedComments[activePage.page_id]}</p>
               </div>
             ) : null}
@@ -552,7 +509,7 @@ function Monautoevaluation() {
                 className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ChevronLeft size={14} />
-                Précédent
+                Precedent
               </button>
 
               <div className="flex flex-wrap items-center gap-3">
@@ -580,20 +537,22 @@ function Monautoevaluation() {
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={isSaving || isSubmitting || evaluationData.evaluation.status === "Soumis a RH"}
+                  disabled={isSaving || isSubmitting || reviewData.review.status === "Soumis a RH"}
                   className="rounded-md bg-[#79B742] px-8 py-2 text-xs font-semibold text-white disabled:opacity-70"
                 >
-                  {isSubmitting ? "Soumission..." : "Soumettre à la RH"}
+                  {isSubmitting ? "Soumission..." : "Envoyer dans la file RH"}
                 </button>
               </div>
             </div>
-          </article>
 
-          
+            <div className="mt-4 rounded-md bg-[#F8FAFC] px-4 py-3 text-xs font-semibold text-slate-500">
+              Une fois cette evaluation RH soumise, vous pourrez la valider depuis la file RH puis la transmettre a l'associe.
+            </div>
+          </article>
         </div>
       </section>
     </div>
   );
 }
 
-export default Monautoevaluation;
+export default EvaluationAssistanteRH;

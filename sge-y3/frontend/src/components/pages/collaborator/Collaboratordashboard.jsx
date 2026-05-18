@@ -15,7 +15,7 @@ function formatProgressSubtitle(evaluation) {
 }
 
 function getSectionStepTitle(section) {
-  const status = section.status === "Complete" ? "completée" : section.status === "En cours" ? "en cours" : "à faire";
+  const status = section.status === "Complete" ? "complétée" : section.status === "En cours" ? "en cours" : "à faire";
   return `${section.title} ${status}`;
 }
 
@@ -34,7 +34,6 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
       line1: getEvaluationStatusLabel(evaluation?.evaluation?.status),
       line2: formatProgressSubtitle(evaluation),
     },
-    { title: "Mes objectifs", line1: "3", line2: "1 atteint, 2 en cours" },
     { title: "Formation planifiée", line1: "--", line2: "Mai 2026" },
   ];
 
@@ -56,7 +55,7 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
           ? "Auto-évaluation soumise aux managers concernés. En attente de retour."
           : evaluation?.evaluation?.status === "Soumis au Manager"
           ? "Auto-évaluation soumise au(x) manager(s). En attente de traitement."
-          : evaluation?.evaluation?.status === "Soumis a RH"
+          : evaluation?.evaluation?.status === "Soumis à la RH"
           ? "Auto-évaluation soumise à la RH. En attente de traitement."
           : "Auto-évaluation en cours -  à soumettre avant le 18/04/2026. Sauvegarde automatique activée"}
       </div>
