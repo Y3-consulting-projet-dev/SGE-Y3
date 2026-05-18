@@ -32,7 +32,7 @@ const menuGroups = [
     ],
   },
   {
-    title: "Developpement",
+    title: "Développement",
     items: [
       { key: "development", label: "Mon développement", icon: TrendingUp },
     ],
@@ -132,8 +132,8 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
   const pageTitle = useMemo(() => {
     if (activeSection === "dashboard") return "TABLEAU DE BORD";
     if (activeSection === "self-evaluation") return "MON AUTO-ÉVALUATION";
-    if (activeSection === "results") return "MES RESULTATS";
-    if (activeSection === "development") return "MON DEVELOPPEMENT";
+    if (activeSection === "results") return "MES RÉSULTATS";
+    if (activeSection === "development") return "MON DÉVELOPPEMENT";
     if (activeSection === "profile") return "MON PROFIL";
     return "ESPACE COLLABORATEUR";
   }, [activeSection]);
@@ -144,7 +144,7 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
         <section className="rounded-lg bg-white p-5 shadow-sm">
           <h2 className="text-xl font-bold text-[#0F3A63]">Parcours collaborateur en préparation</h2>
           <p className="mt-3 text-sm text-slate-600">
-            Cette premiere phase est activée uniquement pour les Assistants. Les autres profils collaborateurs seront branchés ensuite.
+            Cette première phase est activée uniquement pour les Assistants. Les autres profils collaborateurs seront branchés ensuite.
           </p>
         </section>
       );

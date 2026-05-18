@@ -46,8 +46,8 @@ function ComiteEvaluation({
   tertiaryParticipantScope = null,
   tertiaryUnclassified = false,
   showSubmit = true,
-  submitLabel = "Transmettre aux associes",
-  submittedLabel = "Transmis aux associes",
+  submitLabel = "Transmettre aux associés",
+  submittedLabel = "Transmis aux associés",
   successMessage = "Classement transmis.",
   workflowText,
   onSubmit,
@@ -208,7 +208,7 @@ function ComiteEvaluation({
             ? "Classement visible par le comite."
             : allowClassification
               ? "Glissez un nom vers CA, CB, CC ou CD."
-              : "Classement verrouille : renseignez uniquement les taux."}
+              : "Classement verrouillé : renseignez uniquement les taux."}
         </p>
         {loadStatus ? <p className="mt-2 text-xs font-bold text-slate-400">{loadStatus}</p> : null}
         <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">

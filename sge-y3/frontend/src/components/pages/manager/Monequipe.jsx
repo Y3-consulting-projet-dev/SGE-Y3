@@ -4,7 +4,7 @@ function formatEvalStatus(status = "") {
   if (status === "Soumis aux Managers" || status === "Soumis au Manager") return "Soumise";
   if (status === "En cours") return "En cours";
   if (status === "Brouillon") return "Brouillon";
-  if (status === "Valide RH") return "Valide RH";
+  if (status === "Validé RH") return "Validé RH";
   return "En attente";
 }
 
@@ -41,7 +41,7 @@ function Monequipe({ searchTerm, onSearchChange, onEvaluate, relanceMessage, mem
   const statusClass = (status) => {
     if (status === "Soumise") return "bg-[#DFECD4] text-[#0E4A6B]";
     if (status === "En cours") return "bg-[#4B73D9] text-white";
-    if (status === "Valide RH") return "bg-[#76B82A] text-white";
+    if (status === "Validé RH") return "bg-[#76B82A] text-white";
     return "bg-slate-100 text-[#0E4A6B]";
   };
 
@@ -69,15 +69,15 @@ function Monequipe({ searchTerm, onSearchChange, onEvaluate, relanceMessage, mem
 
       <section className="overflow-hidden rounded-md bg-white">
         {!rows.length ? (
-          <div className="p-5 text-sm font-semibold text-slate-500">Aucun membre trouve dans votre perimetre.</div>
+          <div className="p-5 text-sm font-semibold text-slate-500">Aucun membre trouvé dans votre périmètre.</div>
         ) : null}
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="bg-[#003B63] text-left text-white">
               <th className="px-4 py-4 font-semibold">Collaborateur</th>
-              <th className="px-4 py-4 font-semibold">Role</th>
-              <th className="px-4 py-4 font-semibold">Statut eval.</th>
-              <th className="px-4 py-4 font-semibold">Score auto-eval</th>
+              <th className="px-4 py-4 font-semibold">Rôle</th>
+              <th className="px-4 py-4 font-semibold">Statut évaluation</th>
+              <th className="px-4 py-4 font-semibold">Score auto-évaluation</th>
               <th className="px-4 py-4 font-semibold">Action</th>
             </tr>
           </thead>

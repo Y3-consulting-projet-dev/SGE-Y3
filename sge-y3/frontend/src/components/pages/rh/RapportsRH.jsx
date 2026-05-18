@@ -54,7 +54,7 @@ function RapportsRH({ readOnly = false }) {
       anchor.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      setErrorMessage(error.message || "Telechargement impossible.");
+      setErrorMessage(error.message || "Téléchargement impossible.");
     } finally {
       setDownloadingId("");
     }
@@ -88,7 +88,7 @@ function RapportsRH({ readOnly = false }) {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-extrabold text-[#0F3A63]">Rapports RH</h2>
-          <p className="text-sm font-semibold text-slate-500">Exports et documents du cycle d'evaluation.</p>
+          <p className="text-sm font-semibold text-slate-500">Exports et documents du cycle d'évaluation.</p>
         </div>
         <button
           type="button"
@@ -98,7 +98,7 @@ function RapportsRH({ readOnly = false }) {
             readOnly || !rows.length || isDownloadingAll || downloadingId ? "cursor-not-allowed bg-slate-200 text-slate-500" : "bg-[#8BC53F] text-white"
           }`}
         >
-          {readOnly ? "Lecture seule" : isDownloadingAll ? "Generation..." : "Generer export"}
+          {readOnly ? "Lecture seule" : isDownloadingAll ? "Génération..." : "Générer export"}
         </button>
       </div>
 
@@ -108,7 +108,7 @@ function RapportsRH({ readOnly = false }) {
             <article key={row.title} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[#F8FAFC] p-4">
               <div>
                 <p className="text-sm font-extrabold text-[#0F3A63]">{row.title}</p>
-                <p className="text-xs font-semibold text-slate-500">Proprietaire: {row.owner}</p>
+                <p className="text-xs font-semibold text-slate-500">Propriétaire: {row.owner}</p>
               </div>
               <div className="flex items-center gap-3">
                 <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#0F4A72]">{row.format}</span>
@@ -123,7 +123,7 @@ function RapportsRH({ readOnly = false }) {
                       : "bg-[#0D496A] text-white"
                   }`}
                 >
-                  {downloadingId === row.id ? "Telechargement..." : "Telecharger"}
+                  {downloadingId === row.id ? "Téléchargement..." : "Télécharger"}
                 </button>
               </div>
             </article>

@@ -12,6 +12,7 @@ import CalibrationRH from "@/components/pages/rh/CalibrationRH";
 import EvaluationsDepartementRH from "@/components/pages/rh/EvaluationsDepartementRH";
 import PopulationRH from "@/components/pages/rh/PopulationRH";
 import RapportsRH from "@/components/pages/rh/RapportsRH";
+import EvaluationAssistanteRH from "@/components/pages/rh/EvaluationAssistanteRH";
 import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
 import DecisionAssociesRH from "@/components/pages/comite/DecisionAssociesRH";
 import ProfilePanel from "@/components/profile/ProfilePanel";
@@ -19,6 +20,7 @@ import { getDisplayName } from "@/lib/userPresentation";
 
 function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
+  const [selectedAssistantRh, setSelectedAssistantRh] = useState(null);
   const displayName = getDisplayName(user);
   const profileKey = [user?.id, user?.email, user?.first_name, user?.last_name, user?.grade, user?.department].join("|");
 
@@ -26,12 +28,13 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
     if (activeSection === "validations") return "VALIDATIONS RH";
     if (activeSection === "self-evaluation-rh") return assistantMode ? "MON AUTO-EVALUATION ASSISTANTE RH" : "MON AUTO-ÉVALUATION RH";
     if (activeSection === "questionnaire") return "SECTIONS & QUESTIONS";
+    if (activeSection === "assistant-rh-review") return "EVALUATION ASSISTANTE RH";
     if (activeSection === "syntheses") return "SYNTHÈSES À TRANSMETTRE";
     if (activeSection === "calibration") return "CALIBRATION";
     if (activeSection === "department-evaluations") return "ÉVALUATIONS PAR DÉPARTEMENT";
     if (activeSection === "population") return "ÉQUIPE";
     if (activeSection === "reports") return "RAPPORTS RH";
-    if (activeSection === "committee") return "COMITE D'EVALUATION";
+    if (activeSection === "committee") return "COMITÉ D'ÉVALUATION";
     if (activeSection === "profile") return "MON PROFIL";
     return "TABLEAU DE BORD RH";
   }, [activeSection, assistantMode]);
@@ -42,7 +45,15 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
     }
 
     if (activeSection === "validations") {
-      return <ValidationsRH readOnly={assistantMode} />;
+      return (
+        <ValidationsRH
+          readOnly={assistantMode}
+          onOpenAssistantEvaluation={(row) => {
+            setSelectedAssistantRh(row);
+            setActiveSection("assistant-rh-review");
+          }}
+        />
+      );
     }
 
     if (activeSection === "self-evaluation-rh") {
@@ -73,6 +84,16 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
       return <RapportsRH readOnly={assistantMode} />;
     }
 
+    if (activeSection === "assistant-rh-review") {
+      return (
+        <EvaluationAssistanteRH
+          memberId={selectedAssistantRh?.memberId}
+          onBack={() => setActiveSection("validations")}
+          onSubmitted={() => setActiveSection("validations")}
+        />
+      );
+    }
+
     if (activeSection === "profile") {
       return <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />;
     }
@@ -82,17 +103,17 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
         <div className="space-y-6">
           <ComiteEvaluation
             readOnly={assistantMode}
-            submitLabel="Transmettre aux associes"
-            submittedLabel="Transmis aux associes"
-            successMessage="Classement des assistants, seniors et assistants managers transmis aux associes."
-            workflowText="La RH classe les assistants, seniors et assistants managers, puis transmet le classement aux associes pour decision du taux d'augmentation."
+            submitLabel="Transmettre aux associés"
+            submittedLabel="Transmis aux associés"
+            successMessage="Classement des assistants, seniors et assistants managers transmis aux associés."
+            workflowText="La RH classe les assistants, seniors et assistants managers, puis transmet le classement aux associés pour decision du taux d'augmentation."
           />
           <DecisionAssociesRH />
           <DecisionAssociesRH
-            emptyMessage="Aucune decision support des associes n'a encore ete envoyee a la RH."
+            emptyMessage="Aucune décision support des associés n'a encore été envoyée à la RH."
             scope="support-final"
-            title="Decisions support recues"
-            subtitle="La RH visualise ici le classement et les taux d'augmentation du departement support envoyes par les associes."
+            title="Décisions support reçues"
+            subtitle="La RH visualise ici le classement et les taux d'augmentation du département support envoyés par les associés."
           />
         </div>
       );
@@ -168,12 +189,12 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <button onClick={() => window.alert("Notifications RH bientôt disponibles.")} className="text-slate-500 hover:text-[#0F3A63]">
+              {/* <button onClick={() => window.alert("Notifications RH bientôt disponibles.")} className="text-slate-500 hover:text-[#0F3A63]">
                 <Bell size={18} />
               </button>
               <button onClick={() => window.alert("Aide RH bientôt disponible.")} className="text-slate-500 hover:text-[#0F3A63]">
                 <CircleHelp size={18} />
-              </button>
+              </button> */}
               {assistantMode ? (
                 <span className="rounded-full bg-[#E7EDF3] px-4 py-2 text-xs font-bold text-[#0F4A72]">
                   Accès restreint

@@ -44,27 +44,21 @@ function getSectionStatus(section) {
 }
 
 function getAverageScore(section) {
-  const scores = getSectionCriteria(section)
-    .map((criterion) => criterion.score)
-    .filter((score) => typeof score === 'number');
-
-  if (!scores.length) {
-    return null;
-  }
-
-  return Number((scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1));
+  return getAverageFromScores(getSectionCriteria(section).map((criterion) => criterion.score));
 }
 
 function getOverallAverageScore(sections = []) {
-  const scores = sections
-    .flatMap((section) => getSectionCriteria(section).map((criterion) => criterion.score))
-    .filter((score) => typeof score === 'number');
+  return getAverageFromScores(sections.flatMap((section) => getSectionCriteria(section).map((criterion) => criterion.score)));
+}
 
-  if (!scores.length) {
+function getAverageFromScores(scores = []) {
+  const numericScores = scores.filter((score) => typeof score === 'number');
+
+  if (!numericScores.length) {
     return null;
   }
 
-  return Number((scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1));
+  return Number((numericScores.reduce((total, score) => total + score, 0) / numericScores.length).toFixed(1));
 }
 
 function normalizeSections(sections = []) {
@@ -163,6 +157,7 @@ function validateSectionsForSubmit(sections = []) {
 }
 
 module.exports = {
+  getAverageFromScores,
   getAverageScore,
   getEvaluationSummary,
   getOverallAverageScore,

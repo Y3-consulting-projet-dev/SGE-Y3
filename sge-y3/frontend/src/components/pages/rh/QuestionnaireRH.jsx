@@ -80,7 +80,7 @@ function QuestionnaireRH() {
   async function handleAddQuestion() {
     if (!selectedSection?.id || !questionText.trim()) {
       setStatusTone("error");
-      setStatus("Selectionnez une section et renseignez une question.");
+      setStatus("Sélectionnez une section et renseignez une question.");
       return;
     }
 
@@ -94,7 +94,7 @@ function QuestionnaireRH() {
       setQuestionnaireData(response);
       setQuestionText("");
       setStatusTone("success");
-      setStatus(response.message || "Question ajoutee a la section.");
+      setStatus(response.message || "Question ajoutée à la section.");
     } catch (error) {
       setStatusTone("error");
       setStatus(error.message || "Ajout de la question impossible.");
@@ -106,7 +106,7 @@ function QuestionnaireRH() {
   async function handleCreateSection() {
     if (!sectionTitle.trim() || !sourceSheet || !sectionKey) {
       setStatusTone("error");
-      setStatus("Renseignez le departement, le bloc et le nom de la section.");
+      setStatus("Renseignez le département, le bloc et le nom de la section.");
       return;
     }
 
@@ -134,11 +134,11 @@ function QuestionnaireRH() {
       setStatusTone("success");
       setStatus(
         response.message ||
-          "Section creee. Vous pouvez maintenant ajouter des questions.",
+          "Section créée. Vous pouvez maintenant ajouter des questions.",
       );
     } catch (error) {
       setStatusTone("error");
-      setStatus(error.message || "Creation de la section impossible.");
+      setStatus(error.message || "Création de la section impossible.");
     } finally {
       setIsCreatingSection(false);
     }
@@ -196,13 +196,13 @@ function QuestionnaireRH() {
 
       <article className="rounded-xl bg-white p-5 shadow-sm">
         <h2 className="text-xl font-extrabold text-[#0F3A63]">
-          Creer une section
+          Créer une section
         </h2>
         <label
           htmlFor="source-sheet"
           className="mt-4 block text-xs font-bold uppercase text-slate-500"
         >
-          Departement / feuille
+          Département / feuille
         </label>
         <select
           id="source-sheet"
@@ -261,19 +261,19 @@ function QuestionnaireRH() {
           disabled={isCreatingSection}
           className="mt-3 rounded-full bg-[#0D496A] px-5 py-2 text-sm font-bold text-white disabled:opacity-70"
         >
-          {isCreatingSection ? "Creation..." : "Creer la section"}
+          {isCreatingSection ? "Création..." : "Créer la section"}
         </button>
       </article>
 
       <article className="rounded-xl bg-white p-5 shadow-sm xl:col-span-2">
         <h2 className="text-xl font-extrabold text-[#0F3A63]">
-          Questions de la section selectionnee
+          Questions de la section sélectionnée
         </h2>
         {selectedSection ? (
           <div className="mt-4 space-y-3">
             <div className="rounded-lg bg-[#F8FAFC] px-4 py-3">
               <p className="text-xs font-bold uppercase text-slate-400">
-                Parametres de matrice
+                Paramètres de matrice
               </p>
               <p className="mt-1 text-sm font-semibold text-[#0F3A63]">
                 {selectedSection.sourceLabel} - {selectedSection.sectionTitle}

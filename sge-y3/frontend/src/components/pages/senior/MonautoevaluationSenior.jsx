@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   getMySeniorEvaluation,
@@ -10,10 +10,10 @@ import { getDisplayName } from "@/lib/userPresentation";
 
 const gradingHelp = [
   { level: "1", text: "Insuffisant - objectif non atteint", color: "text-[#FF7A00]" },
-  { level: "2", text: "En progression - a ameliorer", color: "text-[#0F3A63]" },
+  { level: "2", text: "En progression - à ameliorer", color: "text-[#0F3A63]" },
   { level: "3", text: "Satisfaisant - niveau attendu", color: "text-[#0F3A63]" },
-  { level: "4", text: "Bon - depasse les attentes", color: "text-[#0F3A63]" },
-  { level: "5", text: "Excellent - reference dans l'equipe", color: "text-[#76B82A]" },
+  { level: "4", text: "Bon - dépasse les attentes", color: "text-[#0F3A63]" },
+  { level: "5", text: "Excellent - référence dans l'équipe", color: "text-[#76B82A]" },
 ];
 
 function getRecipientLabel(recipient) {
@@ -319,7 +319,7 @@ function MonautoevaluationSenior({ user }) {
         );
       } catch (error) {
         if (!cancelled) {
-          setErrorMessage(error.message || "Chargement de l'auto-evaluation impossible.");
+          setErrorMessage(error.message || "Chargement de l'auto-évaluation impossible.");
         }
       } finally {
         if (!cancelled) {
@@ -394,7 +394,7 @@ function MonautoevaluationSenior({ user }) {
         const progress = getCycleSectionProgress(section);
         return {
           ...section,
-          status: progress === 0 ? "A faire" : progress === 100 ? "Complete" : "En cours",
+          status: progress === 0 ? "À faire" : progress === 100 ? "Complète" : "En cours",
         };
       });
     });
@@ -462,14 +462,14 @@ function MonautoevaluationSenior({ user }) {
 
     if (!selectedRecipient) {
       setFeedbackTone("error");
-      setFeedbackMessage("Selectionnez un manager destinataire pour cette mission.");
+      setFeedbackMessage("Sélectionnez un manager destinataire pour cette mission.");
       return;
     }
 
     const nextMission = {
       id: `${Date.now()}`,
       title,
-      period: missionPeriod.trim() || "Periode non renseignee",
+      period: missionPeriod.trim() || "Période non renseignée",
       department: selectedRecipient.department,
       recipients: [
         {
@@ -494,7 +494,7 @@ function MonautoevaluationSenior({ user }) {
     setMissionTitle("");
     setMissionPeriod("");
     setFeedbackTone("success");
-    setFeedbackMessage("Mission ajoutee. Vous pouvez maintenant la noter.");
+    setFeedbackMessage("Mission ajoutée. Vous pouvez maintenant la noter.");
   }
 
   async function persistEvaluation(nextSections = sections, nextMissionEvaluations = missionEvaluations) {
@@ -593,7 +593,7 @@ function MonautoevaluationSenior({ user }) {
 
     if (hasIncompleteCriterion) {
       setFeedbackTone("error");
-      setFeedbackMessage("Toutes les questions de la mission doivent etre renseignees avant soumission.");
+      setFeedbackMessage("Toutes les questions de la mission doivent etre renseignées avant soumission.");
       return;
     }
 
@@ -629,7 +629,7 @@ function MonautoevaluationSenior({ user }) {
       setMissionEvaluations(sanitizeMissionEvaluations(submittedResponse.mission_evaluations || []));
       setPageIndexes(createInitialPageIndexes(submittedResponse.evaluation.sections));
       setFeedbackTone("success");
-      setFeedbackMessage(submittedResponse.message || "Auto-evaluation soumise aux managers.");
+      setFeedbackMessage(submittedResponse.message || "Auto-évaluation soumise aux managers.");
     } catch (error) {
       setFeedbackTone("error");
       setFeedbackMessage(error.message || "Soumission impossible.");
@@ -673,7 +673,7 @@ function MonautoevaluationSenior({ user }) {
           <p className="text-xs font-bold uppercase">Etape 1</p>
           <h2 className="mt-2 text-[22px] font-extrabold">Evaluation par mission</h2>
           <p className={`mt-3 text-sm font-semibold ${step === "missions" ? "text-slate-200" : "text-slate-500"}`}>
-            Missions ajoutees par le Senior - {Math.round(((missionEvaluations.filter((mission) => mission.status === "Soumise").length) / (missionEvaluations.length || 1)) * 100)}%
+            Missions ajoutées par le Senior - {Math.round(((missionEvaluations.filter((mission) => mission.status === "Soumise").length) / (missionEvaluations.length || 1)) * 100)}%
           </p>
         </button>
 
@@ -705,7 +705,7 @@ function MonautoevaluationSenior({ user }) {
                 <input
                   value={missionPeriod}
                   onChange={(event) => setMissionPeriod(event.target.value)}
-                  placeholder="Periode de la mission"
+                  placeholder="Période de la mission"
                   className="w-full rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-[#0F3A63] outline-none"
                 />
                 <select
@@ -765,7 +765,7 @@ function MonautoevaluationSenior({ user }) {
                 <div className="rounded-xl bg-white p-4 shadow-sm">
                   <div className="mb-3 flex items-center justify-between">
                     <div>
-                      <p className="text-[12px] font-semibold text-slate-500">Mission sélectionnee</p>
+                      <p className="text-[12px] font-semibold text-slate-500">Mission sélectionnée</p>
                       <h3 className="text-[20px] font-extrabold text-[#0F3A63]">{activeMission.title}</h3>
                     </div>
                     <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-[12px] font-bold text-[#4E8B1B]">
@@ -807,7 +807,7 @@ function MonautoevaluationSenior({ user }) {
                           <div className={`h-1.5 rounded-full ${done ? "bg-[#7BC443]" : "bg-[#D6DCE2]"}`} style={{ width: `${progress}%` }} />
                         </div>
                         <p className="mt-1.5 text-[10px] font-semibold text-slate-200">
-                          {done ? "Complete" : progress ? `En cours - ${progress}%` : "A faire"}
+                          {done ? "Complète" : progress ? `En cours - ${progress}%` : "À faire"}
                         </p>
                       </button>
                     );
@@ -980,7 +980,7 @@ function MonautoevaluationSenior({ user }) {
                   <h3 className="text-[22px] font-bold text-[#0F3A63]">Progression globale</h3>
                   <span className="text-[13px] font-bold text-[#76B82A]">{globalProgress}%</span>
                 </div>
-                <p className="mb-4 text-[12px] font-semibold text-[#76B82A]">{completedSections} section(s) complete(s)</p>
+                <p className="mb-4 text-[12px] font-semibold text-[#76B82A]">{completedSections} section(s) complétée(s)</p>
 
                 <div className="space-y-3">
                   {sections.map((section) => (
@@ -993,7 +993,7 @@ function MonautoevaluationSenior({ user }) {
               </article>
 
               <article className="rounded-xl bg-white p-4 shadow-sm">
-                <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">Aide a la notation</h3>
+                <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">Aide à la notation</h3>
                 <div className="space-y-2">
                   {gradingHelp.map((item) => (
                     <div key={item.level} className="flex items-center gap-2 text-[12px]">

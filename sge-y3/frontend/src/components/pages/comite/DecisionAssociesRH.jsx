@@ -14,10 +14,10 @@ function formatDate(value) {
 }
 
 function DecisionAssociesRH({
-  emptyMessage = "Aucune decision des associes n'a encore ete envoyee a la RH.",
+  emptyMessage = "Aucune décision des associés n'a encore été envoyée à la RH.",
   scope = "associate-final",
-  subtitle = "La RH visualise ici les classements et taux d'augmentation envoyes par les associes. La vue se met a jour automatiquement.",
-  title = "Decisions et taux recus",
+  subtitle = "La RH visualise ici les classements et taux d'augmentation envoyés par les associés. La vue se met à jour automatiquement.",
+  title = "Décisions et taux reçus",
 }) {
   const [decision, setDecision] = useState(null);
   const [selectedLevelKey, setSelectedLevelKey] = useState(committeeLevels[0].key);
@@ -36,7 +36,7 @@ function DecisionAssociesRH({
           setStatus("");
         })
         .catch(() => {
-          if (!ignore) setStatus("Aucune decision associee chargee pour le moment.");
+          if (!ignore) setStatus("Aucune décision associée chargée pour le moment.");
         });
     };
 
@@ -53,13 +53,13 @@ function DecisionAssociesRH({
     <section className="rounded-xl bg-white p-5 shadow-sm">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase text-slate-400">Retour des associes</p>
+          <p className="text-xs font-bold uppercase text-slate-400">Retour des associés</p>
           <h2 className="text-xl font-extrabold text-[#0F3A63]">{title}</h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">{subtitle}</p>
         </div>
         {decision?.submitted_at ? (
           <span className="rounded-full bg-[#DDECCF] px-3 py-1 text-xs font-bold text-[#4E8B1B]">
-            Recu le {formatDate(decision.submitted_at)}
+            Reçu le {formatDate(decision.submitted_at)}
           </span>
         ) : null}
       </div>
@@ -72,7 +72,7 @@ function DecisionAssociesRH({
         <article className={`rounded-[24px] border p-4 ${selectedLevel.tone}`}>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-bold uppercase opacity-75">Categorie</p>
+              <p className="text-xs font-bold uppercase opacity-75">Catégorie</p>
               <h3 className="text-lg font-black">
                 {selectedLevel.label} - {selectedLevel.title}
               </h3>
@@ -105,7 +105,7 @@ function DecisionAssociesRH({
               ))
             ) : (
               <p className="rounded-lg bg-white/70 px-3 py-3 text-sm font-bold opacity-70">
-                Aucune personne dans cette categorie.
+                Aucune personne dans cette catégorie.
               </p>
             )}
           </div>
