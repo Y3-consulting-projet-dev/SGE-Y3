@@ -1,94 +1,126 @@
-﻿import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bell } from "lucide-react";
+import { getAssociateSyntheses } from "@/lib/associateOverview";
 
-const rows = [
-  {
-    initials: "DS",
-    name: "Diallo Seydou",
-    subtitle: "Auto-eval inclus",
-    role: "Manager",
-    manager: "Vous-meme",
-    score: "3.9/5",
-    scoreClass: "text-[#7DBA45]",
-    alert: "",
-    decision: "À décider",
-    decisionClass: "text-[#C53B3B]",
-    action: "Ouvrir",
-  },
-  {
-    initials: "KA",
-    name: "Kouame Assi",
-    subtitle: "Audit Senior",
-    role: "Senior",
-    manager: "Axelle A",
-    score: "4.1/5",
-    scoreClass: "text-[#7DBA45]",
-    alert: "",
-    decision: "",
-    decisionClass: "",
-    action: "Ouvrir",
-  },
-  {
-    initials: "YE",
-    name: "Yao Emmanuel",
-    subtitle: "Collaborateur",
-    role: "Collab",
-    manager: "Axelle A",
-    score: "2.8/5",
-    scoreClass: "text-[#C53B3B]",
-    alert: "Ecart",
-    decision: "",
-    decisionClass: "",
-    action: "Examiner",
-  },
-  {
-    initials: "GN",
-    name: "Gbagbo Nadege",
-    subtitle: "Collaboratrice",
-    role: "Collab",
-    manager: "Axelle A",
-    score: "4.2/5",
-    scoreClass: "text-[#7DBA45]",
-    alert: "",
-    decision: "Augmentation",
-    decisionClass: "text-[#7DBA45]",
-    action: "Voir",
-  },
-  {
-    initials: "TM",
-    name: "Traore Mamadou",
-    subtitle: "Collaborateur",
-    role: "Collab",
-    manager: "Axelle A",
-    score: "3.0/5",
-    scoreClass: "text-[#0F4A72]",
-    alert: "",
-    decision: "Maintien",
-    decisionClass: "text-[#0F4A72]",
-    action: "Voir",
-  },
-];
+function formatScore(score) {
+  return typeof score === "number" ? `${score.toFixed(1)}/5` : "--";
+}
+
+function getScoreTone(score) {
+  if (typeof score !== "number") return "text-[#0F3A63]";
+  if (score >= 4) return "text-[#78B843]";
+  if (score < 3) return "text-[#C53B3B]";
+  return "text-[#0F3A63]";
+}
+
+function formatDate(value) {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return date.toLocaleDateString("fr-FR");
+}
+
+function ScoreBreakdown({ title, details }) {
+  return (
+    <section className="rounded-lg bg-[#F8FAFC] p-4">
+      <h3 className="text-sm font-extrabold uppercase tracking-wide text-slate-500">{title}</h3>
+      {details.length ? (
+        <div className="mt-3 space-y-3">
+          {details.map((detail, index) => (
+            <div key={`${detail.source}-${detail.evaluatorName}-${detail.missionTitle}-${index}`} className="rounded-lg bg-white px-4 py-3">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-extrabold text-[#0F3A63]">
+                    {detail.source} - {detail.evaluatorName}
+                  </p>
+                  <p className="text-xs font-semibold text-slate-500">{detail.evaluatorGrade}</p>
+                  {detail.missionTitle ? <p className="mt-1 text-sm font-semibold text-[#1E5580]">{detail.missionTitle}</p> : null}
+                </div>
+                <div className="text-right">
+                  <p className={`text-lg font-black ${getScoreTone(detail.score)}`}>{formatScore(detail.score)}</p>
+                  <p className="text-xs font-semibold text-slate-500">{formatDate(detail.submittedAt)}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm font-semibold text-slate-500">Aucun détail disponible pour ce score.</p>
+      )}
+    </section>
+  );
+}
 
 function SyntheseRH() {
-  const [roleFilter, setRoleFilter] = useState("Tous les roles");
-  const [decisionFilter, setDecisionFilter] = useState("Toutes les décisions");
-  const [selectedRow, setSelectedRow] = useState(null);
+  const [data, setData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [gradeFilter, setGradeFilter] = useState("Tous les grades");
+  const [selectedId, setSelectedId] = useState("");
 
-  const filteredRows = useMemo(
-    () =>
-      rows.filter((row) => {
-        const roleMatch = roleFilter === "Tous les roles" || row.role === roleFilter;
-        const decisionValue = row.decision || "Sans décision";
-        const decisionMatch = decisionFilter === "Toutes les décisions" || decisionValue === decisionFilter;
-        return roleMatch && decisionMatch;
-      }),
-    [decisionFilter, roleFilter],
-  );
+  useEffect(() => {
+    let cancelled = false;
 
-  const handleRowAction = (row) => {
-    setSelectedRow(row.name);
-    window.alert(`${row.action} : ${row.name}`);
-  };
+    async function loadSyntheses() {
+      try {
+        setIsLoading(true);
+        setErrorMessage("");
+        const response = await getAssociateSyntheses();
+
+        if (!cancelled) {
+          setData(response);
+          const firstId = response?.items?.[0]?.id || "";
+          setSelectedId(firstId);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setErrorMessage(error.message || "Chargement des synthèses RH impossible.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadSyntheses();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const rows = data?.items || [];
+  const gradeOptions = useMemo(() => {
+    const uniqueGrades = Array.from(new Set(rows.map((row) => row.grade).filter(Boolean)));
+    return ["Tous les grades", ...uniqueGrades];
+  }, [rows]);
+
+  const filteredRows = useMemo(() => {
+    return rows.filter((row) => gradeFilter === "Tous les grades" || row.grade === gradeFilter);
+  }, [gradeFilter, rows]);
+
+  const selectedRow = filteredRows.find((row) => row.id === selectedId) || filteredRows[0] || null;
+
+  useEffect(() => {
+    if (!filteredRows.length) {
+      if (selectedId) setSelectedId("");
+      return;
+    }
+
+    if (!filteredRows.some((row) => row.id === selectedId)) {
+      setSelectedId(filteredRows[0].id);
+    }
+  }, [filteredRows, selectedId]);
+
+  if (isLoading) {
+    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement des synthèses RH...</section>;
+  }
+
+  if (errorMessage) {
+    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">{errorMessage}</section>;
+  }
 
   return (
     <div className="space-y-4">
@@ -105,31 +137,19 @@ function SyntheseRH() {
       </header>
 
       <section className="rounded-md border-l-4 border-[#6FB33E] bg-[#DDECD8] px-4 py-3 text-sm font-semibold text-[#204B2E]">
-        Seules les évaluations au statut Validé RH sont visibles ici. Vous n'avez pas accès aux évaluations en cours de validation.
+        Seules les synthèses transmises par la RH sont visibles ici. Cliquez sur une ligne pour consulter le détail complet des scores.
       </section>
 
       <section className="rounded-xl bg-white p-3 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
           <select
-            value={roleFilter}
-            onChange={(event) => setRoleFilter(event.target.value)}
+            value={gradeFilter}
+            onChange={(event) => setGradeFilter(event.target.value)}
             className="h-9 rounded-lg border border-[#0C4B6C] bg-white px-3 text-xs font-bold text-[#0C4B6C] outline-none transition hover:bg-[#0C4B6C] hover:text-white focus:bg-[#0C4B6C] focus:text-white"
           >
-            <option>Tous les roles</option>
-            <option>Manager</option>
-            <option>Senior</option>
-            <option>Collab</option>
-          </select>
-          <select
-            value={decisionFilter}
-            onChange={(event) => setDecisionFilter(event.target.value)}
-            className="h-9 rounded-lg border border-[#0C4B6C] bg-white px-3 text-xs font-bold text-[#0C4B6C] outline-none transition hover:bg-[#0C4B6C] hover:text-white focus:bg-[#0C4B6C] focus:text-white"
-          >
-            <option>Toutes les décisions</option>
-            <option>A decider</option>
-            <option>Augmentation</option>
-            <option>Maintien</option>
-            <option>Sans décision</option>
+            {gradeOptions.map((option) => (
+              <option key={option}>{option}</option>
+            ))}
           </select>
         </div>
 
@@ -138,46 +158,91 @@ function SyntheseRH() {
             <thead>
               <tr className="bg-[#0C4B6C] text-left text-xs font-semibold text-white">
                 <th className="px-3 py-3">Collaborateur</th>
-                <th className="px-3 py-3">Role</th>
-                <th className="px-3 py-3">Manager</th>
-                <th className="px-3 py-3">Score</th>
-                <th className="px-3 py-3">Alerte</th>
-                <th className="px-3 py-3">Decision</th>
-                <th className="px-3 py-3">Action</th>
+                <th className="px-3 py-3">Grade</th>
+                <th className="px-3 py-3">Évaluateur</th>
+                <th className="px-3 py-3">Score mission(s)</th>
+                <th className="px-3 py-3">Score globaux</th>
+                <th className="px-3 py-3">Score final</th>
               </tr>
             </thead>
             <tbody>
-              {filteredRows.map((row) => (
-                <tr key={row.name} className="border-b border-slate-100 text-sm text-[#0F3A63] last:border-0">
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-500">
-                        {row.initials}
-                      </span>
-                      <div>
-                        <p className="font-extrabold">{row.name}</p>
-                        <p className="text-xs font-semibold text-slate-500">{row.subtitle}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3">
-                    <span className="inline-flex rounded-md bg-[#DEE8F3] px-2 py-1 text-xs font-semibold text-[#356082]">{row.role}</span>
-                  </td>
-                  <td className="px-3 py-3 text-xs font-semibold">{row.manager}</td>
-                  <td className={`px-3 py-3 text-xs font-bold ${row.scoreClass}`}>{row.score}</td>
-                  <td className="px-3 py-3 text-xs font-semibold text-[#C53B3B]">{row.alert}</td>
-                  <td className={`px-3 py-3 text-xs font-bold ${row.decisionClass}`}>{row.decision}</td>
-                  <td className="px-3 py-3 text-xs font-bold text-[#0F4A72]">
-                    <button onClick={() => handleRowAction(row)} className="hover:underline">
-                      {selectedRow === row.name ? "Ouvert" : row.action}
-                    </button>
+              {filteredRows.length ? (
+                filteredRows.map((row) => {
+                  const isActive = selectedRow?.id === row.id;
+
+                  return (
+                    <tr
+                      key={row.id}
+                      onClick={() => setSelectedId(row.id)}
+                      className={`cursor-pointer border-b border-slate-100 text-sm text-[#0F3A63] last:border-0 ${isActive ? "bg-[#F4F8FC]" : "hover:bg-slate-50"}`}
+                    >
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-3">
+                          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-500">
+                            {row.initials}
+                          </span>
+                          <div>
+                            <p className="font-extrabold">{row.name}</p>
+                            <p className="text-xs font-semibold text-slate-500">{row.department}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <span className="inline-flex rounded-md bg-[#DEE8F3] px-2 py-1 text-xs font-semibold text-[#356082]">{row.grade}</span>
+                      </td>
+                      <td className="px-3 py-3 text-xs font-semibold">{row.managerName}</td>
+                      <td className={`px-3 py-3 text-xs font-bold ${getScoreTone(row.missionScore)}`}>{formatScore(row.missionScore)}</td>
+                      <td className={`px-3 py-3 text-xs font-bold ${getScoreTone(row.scoreGlobal)}`}>{formatScore(row.scoreGlobal)}</td>
+                      <td className={`px-3 py-3 text-xs font-black ${getScoreTone(row.finalScore)}`}>{formatScore(row.finalScore)}</td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={6} className="px-4 py-6 text-center text-sm font-semibold text-slate-500">
+                    Aucune synthèse transmise à l'associé pour le moment.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
       </section>
+
+      {selectedRow ? (
+        <section className="rounded-xl bg-white p-5 shadow-sm">
+          <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase text-slate-400">Détail de la synthèse</p>
+              <h2 className="mt-1 text-3xl font-black text-[#0F3A63]">{selectedRow.name}</h2>
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                {selectedRow.grade} - {selectedRow.department}
+              </p>
+            </div>
+            <span className="rounded-full bg-[#EEF5E2] px-4 py-2 text-sm font-extrabold text-[#78B843]">{formatScore(selectedRow.finalScore)}</span>
+          </div>
+
+          <div className="mb-5 grid grid-cols-1 gap-4 xl:grid-cols-3">
+            <article className="rounded-lg bg-[#F8FAFC] p-4">
+              <p className="text-sm font-extrabold uppercase tracking-wide text-slate-500">Score mission(s)</p>
+              <p className={`mt-3 text-3xl font-black ${getScoreTone(selectedRow.missionScore)}`}>{formatScore(selectedRow.missionScore)}</p>
+            </article>
+            <article className="rounded-lg bg-[#F8FAFC] p-4">
+              <p className="text-sm font-extrabold uppercase tracking-wide text-slate-500">Score globaux</p>
+              <p className={`mt-3 text-3xl font-black ${getScoreTone(selectedRow.scoreGlobal)}`}>{formatScore(selectedRow.scoreGlobal)}</p>
+            </article>
+            <article className="rounded-lg bg-[#F8FAFC] p-4">
+              <p className="text-sm font-extrabold uppercase tracking-wide text-slate-500">Score final</p>
+              <p className={`mt-3 text-3xl font-black ${getScoreTone(selectedRow.finalScore)}`}>{formatScore(selectedRow.finalScore)}</p>
+            </article>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+            <ScoreBreakdown title="Détail des scores mission(s)" details={selectedRow.missionScoreDetails || []} />
+            <ScoreBreakdown title="Détail des scores globaux" details={selectedRow.globalScoreDetails || []} />
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }
