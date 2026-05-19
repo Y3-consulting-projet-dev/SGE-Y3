@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const EvaluationInstance = require('../models/EvaluationInstance');
 const ManagerMemberReview = require('../models/ManagerMemberReview');
+const SeniorAssistantReview = require('../models/SeniorAssistantReview');
 const matrixData = require('../data/competencyMatrix.generated.json');
 const { buildEvaluationTemplateForUser } = require('../utils/competencyMatrix');
 const {
@@ -460,20 +461,20 @@ function getPriorityStatus(finalScore, unjustifiedLowScores) {
     return 'A completer';
   }
 
-  return 'A valider RH';
+  return 'À valider RH';
 }
 
 function getRhDisplayStatus(review, unjustifiedLowScores, finalScore) {
   if (review.status === 'Cloture' || review.status === 'Valide RH') return 'Valide';
-  if (review.status === 'Soumis a RH') return 'A valider RH';
-  if (review.rh_validation_selected) return 'A valider RH';
+  if (review.status === 'Soumis a RH') return 'À valider RH';
+  if (review.rh_validation_selected) return 'À valider RH';
   return getPriorityStatus(finalScore, unjustifiedLowScores);
 }
 
 function getAssistantRhDisplayStatus(instance) {
   if (instance.status === 'Cloture' || instance.status === 'Valide RH') return 'Valide';
-  if (instance.rh_validation_selected) return 'A valider RH';
-  if (instance.status === 'Soumis a RH') return 'A valider RH';
+  if (instance.rh_validation_selected) return 'À valider RH';
+  if (instance.status === 'Soumis a RH') return 'À valider RH';
   return 'En attente';
 }
 
@@ -506,6 +507,38 @@ function getMissionScoreCount(missions = [], allowedStatuses = []) {
   }).length;
 }
 
+function buildScoreDetail({
+  source = '',
+  evaluatorName = '',
+  evaluatorGrade = '',
+  missionTitle = '',
+  score = null,
+  submittedAt = null,
+}) {
+  return {
+    source,
+    evaluatorName,
+    evaluatorGrade,
+    missionTitle,
+    score,
+    submittedAt,
+  };
+}
+
+function getAverageFromDetailRows(details = []) {
+  return getAverageFromScores(details.map((detail) => detail.score));
+}
+
+function getSumFromScores(scores = []) {
+  const numericScores = scores.filter((score) => typeof score === 'number');
+
+  if (!numericScores.length) {
+    return null;
+  }
+
+  return Number(numericScores.reduce((total, score) => total + score, 0).toFixed(1));
+}
+
 function getReviewSectionSummaries(sections = []) {
   return sections
     .slice(0, 3)
@@ -533,18 +566,26 @@ function getReviewCommentSummary(sections = [], managerName = '') {
 
 async function loadRhReviewDataset(rhUserIds) {
   const recipientIds = Array.isArray(rhUserIds) ? rhUserIds.filter(Boolean) : [rhUserIds].filter(Boolean);
-    const reviews = await ManagerMemberReview.find({
-      cycle_label: CURRENT_CYCLE_LABEL,
-      submitted_to_user_ids: { $in: recipientIds },
-    }).select(
-      'member_id manager_id member_department status submitted_at sections mission_reviews rh_validation_selected rh_validation_selected_at rh_validated_at'
-    );
+  const reviews = await ManagerMemberReview.find({
+    cycle_label: CURRENT_CYCLE_LABEL,
+    submitted_to_user_ids: { $in: recipientIds },
+  }).select(
+    'member_id manager_id member_department status submitted_at sections mission_reviews rh_validation_selected rh_validation_selected_at rh_validated_at'
+  );
 
   const memberIds = reviews.map((review) => review.member_id).filter(Boolean);
   const managerIds = reviews.map((review) => review.manager_id).filter(Boolean);
+  const seniorReviews = memberIds.length
+    ? await SeniorAssistantReview.find({
+        cycle_label: CURRENT_CYCLE_LABEL,
+        assistant_id: { $in: memberIds },
+      }).select('assistant_id senior_id submitted_at sections mission_reviews')
+    : [];
+  const seniorIds = seniorReviews.map((review) => review.senior_id).filter(Boolean);
+
   const [users, populationMembers, departmentManagers] = await Promise.all([
     User.find({
-      _id: { $in: [...memberIds, ...managerIds] },
+      _id: { $in: [...memberIds, ...managerIds, ...seniorIds] },
     }).select('_id name first_name last_name grade department code_categorie'),
     User.find({
       is_active: true,
@@ -568,11 +609,19 @@ async function loadRhReviewDataset(rhUserIds) {
     }));
 
   const selfEvaluations = selfEvaluationQueries.length
-    ? await EvaluationInstance.find({ $or: selfEvaluationQueries }).select('evalue_id sections mission_evaluations')
+    ? await EvaluationInstance.find({ $or: selfEvaluationQueries }).select('evalue_id sections mission_evaluations submitted_at')
     : [];
   const selfEvaluationByMemberId = new Map(selfEvaluations.map((instance) => [String(instance.evalue_id), instance]));
   const reviewByMemberId = new Map(reviews.map((review) => [String(review.member_id), review]));
+  const seniorReviewsByAssistantId = new Map();
   const departmentManagersByDepartment = new Map();
+
+  seniorReviews.forEach((review) => {
+    const key = String(review.assistant_id);
+    const current = seniorReviewsByAssistantId.get(key) || [];
+    current.push(review);
+    seniorReviewsByAssistantId.set(key, current);
+  });
 
   departmentManagers.forEach((manager) => {
     const key = String(manager.department || '');
@@ -589,14 +638,107 @@ async function loadRhReviewDataset(rhUserIds) {
     const fallbackManager = reviewManager || departmentManagersByDepartment.get(String(fallbackMember?.department || ''));
     const sections = normalizeSections(review?.sections || []);
     const selfEvaluation = selfEvaluationByMemberId.get(String(fallbackMember._id));
+    const memberSeniorReviews = seniorReviewsByAssistantId.get(String(fallbackMember._id)) || [];
     const selfSections = normalizeSections(selfEvaluation?.sections || []);
     const selfScore = getOverallAverageScore(selfSections);
-    const missionScore = getMissionScoreTotal(selfEvaluation?.mission_evaluations || [], ['Soumise']);
-    const missionScoreCount = getMissionScoreCount(selfEvaluation?.mission_evaluations || [], ['Soumise']);
-    const managerMissionScore = getMissionScoreTotal(review?.mission_reviews || [], ['Soumise a RH']);
-    const managerMissionScoreCount = getMissionScoreCount(review?.mission_reviews || [], ['Soumise a RH']);
     const managerScore = getOverallAverageScore(sections);
-    const finalScore = getAverageFromScores([missionScore, managerMissionScore, selfScore, managerScore]);
+    const missionScoreDetails = [];
+    const globalScoreDetails = [];
+
+    if (selfEvaluation?.submitted_at && typeof selfScore === 'number') {
+      globalScoreDetails.push(
+        buildScoreDetail({
+          source: 'Auto-evaluation',
+          evaluatorName: fallbackMember?.name || 'Collaborateur',
+          evaluatorGrade: fallbackMember?.grade || 'Collaborateur',
+          score: selfScore,
+          submittedAt: selfEvaluation.submitted_at || null,
+        })
+      );
+    }
+
+    (selfEvaluation?.mission_evaluations || []).forEach((mission) => {
+      const score = getMissionAverage(mission.criteria || []);
+      if (mission.status === 'Soumise' && typeof score === 'number') {
+        missionScoreDetails.push(
+          buildScoreDetail({
+            source: 'Auto-evaluation',
+            evaluatorName: fallbackMember?.name || 'Collaborateur',
+            evaluatorGrade: fallbackMember?.grade || 'Collaborateur',
+            missionTitle: mission.title,
+            score,
+            submittedAt: mission.submitted_at || null,
+          })
+        );
+      }
+    });
+
+    memberSeniorReviews.forEach((seniorReview) => {
+      const seniorUser = userById.get(String(seniorReview.senior_id));
+      const seniorScore = getOverallAverageScore(normalizeSections(seniorReview.sections || []));
+
+      if (seniorReview.submitted_at && typeof seniorScore === 'number') {
+        globalScoreDetails.push(
+          buildScoreDetail({
+            source: 'Senior',
+            evaluatorName: seniorUser?.name || 'Senior',
+            evaluatorGrade: seniorUser?.grade || 'Senior',
+            score: seniorScore,
+            submittedAt: seniorReview.submitted_at || null,
+          })
+        );
+      }
+
+      (seniorReview.mission_reviews || []).forEach((missionReview) => {
+        const score = getMissionAverage(missionReview.criteria || []);
+        if (missionReview.status === 'Transmise' && typeof score === 'number') {
+          missionScoreDetails.push(
+            buildScoreDetail({
+              source: 'Senior',
+              evaluatorName: seniorUser?.name || 'Senior',
+              evaluatorGrade: seniorUser?.grade || 'Senior',
+              missionTitle: missionReview.title,
+              score,
+              submittedAt: missionReview.submitted_at || null,
+            })
+          );
+        }
+      });
+    });
+
+    if (review?.submitted_at && typeof managerScore === 'number') {
+      globalScoreDetails.push(
+        buildScoreDetail({
+          source: 'Manager',
+          evaluatorName: fallbackManager?.name || 'Manager',
+          evaluatorGrade: fallbackManager?.grade || 'Manager',
+          score: managerScore,
+          submittedAt: review.submitted_at || null,
+        })
+      );
+    }
+
+    (review?.mission_reviews || []).forEach((missionReview) => {
+      const score = getMissionAverage(missionReview.criteria || []);
+      if (missionReview.status === 'Soumise a RH' && typeof score === 'number') {
+        missionScoreDetails.push(
+          buildScoreDetail({
+            source: 'Manager',
+            evaluatorName: fallbackManager?.name || 'Manager',
+            evaluatorGrade: fallbackManager?.grade || 'Manager',
+            missionTitle: missionReview.title,
+            score,
+            submittedAt: missionReview.submitted_at || null,
+          })
+        );
+      }
+    });
+
+    const missionScore = getAverageFromDetailRows(missionScoreDetails);
+    const missionScoreCount = missionScoreDetails.length;
+    const scoreGlobal = getAverageFromDetailRows(globalScoreDetails);
+    const scoreGlobalCount = globalScoreDetails.length;
+    const finalScore = getAverageFromScores([missionScore, scoreGlobal]);
     const hasSubmittedManagerMission = (review?.mission_reviews || []).some((mission) => mission.status === 'Soumise a RH');
     const effectiveStatus =
       review?.status === 'Soumis a RH' || review?.status === 'Valide RH' || review?.status === 'Cloture'
@@ -619,10 +761,14 @@ async function loadRhReviewDataset(rhUserIds) {
       department: fallbackMember?.department || review?.member_department || '',
       managerName: fallbackManager?.name || 'Non soumis',
       selfScore,
+      scoreGlobal,
+      scoreGlobalCount,
       missionScore,
       missionScoreCount,
-      managerMissionScore,
-      managerMissionScoreCount,
+      missionScoreDetails,
+      globalScoreDetails,
+      managerMissionScore: getMissionScoreTotal(review?.mission_reviews || [], ['Soumise a RH']),
+      managerMissionScoreCount: getMissionScoreCount(review?.mission_reviews || [], ['Soumise a RH']),
       managerScore,
       finalScore,
       status: effectiveStatus,
@@ -657,7 +803,7 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
           cycle_label: CURRENT_CYCLE_LABEL,
           member_id: { $in: userIds },
           template_type: 'rh-assistant-evaluation',
-        }).select('member_id manager_id status submitted_at sections rh_validation_selected rh_validation_selected_at rh_validated_at')
+        }).select('member_id manager_id status submitted_at sections mission_reviews rh_validation_selected rh_validation_selected_at rh_validated_at')
       : [],
   ]);
   const userById = new Map(users.map((user) => [String(user._id), user]));
@@ -669,12 +815,57 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
     const sections = normalizeSections(instance.sections || []);
     const reviewSections = normalizeSections(review?.sections || []);
     const selfScore = getOverallAverageScore(sections);
-    const missionScore = 0;
-    const missionScoreCount = 0;
+    const managerScore = getOverallAverageScore(reviewSections);
+    const missionScoreDetails = [];
+    const globalScoreDetails = [];
+
+    if (instance.submitted_at && typeof selfScore === 'number') {
+      globalScoreDetails.push(
+        buildScoreDetail({
+          source: 'Auto-evaluation',
+          evaluatorName: assistantUser?.name || 'Assistante RH',
+          evaluatorGrade: assistantUser?.grade || 'Assistante RH',
+          score: selfScore,
+          submittedAt: instance.submitted_at || null,
+        })
+      );
+    }
+
+    (review?.mission_reviews || []).forEach((missionReview) => {
+      const score = getMissionAverage(missionReview.criteria || []);
+      if (missionReview.status === 'Soumise a RH' && typeof score === 'number') {
+        missionScoreDetails.push(
+          buildScoreDetail({
+            source: 'Manager',
+            evaluatorName: 'RH',
+            evaluatorGrade: 'RH',
+            missionTitle: missionReview.title,
+            score,
+            submittedAt: missionReview.submitted_at || null,
+          })
+        );
+      }
+    });
+
+    if (review?.submitted_at && typeof managerScore === 'number') {
+      globalScoreDetails.push(
+        buildScoreDetail({
+          source: 'Manager',
+          evaluatorName: 'RH',
+          evaluatorGrade: 'RH',
+          score: managerScore,
+          submittedAt: review.submitted_at || null,
+        })
+      );
+    }
+
+    const missionScore = getAverageFromDetailRows(missionScoreDetails);
+    const missionScoreCount = missionScoreDetails.length;
+    const scoreGlobal = getAverageFromDetailRows(globalScoreDetails);
+    const scoreGlobalCount = globalScoreDetails.length;
+    const finalScore = getAverageFromScores([missionScore, scoreGlobal]);
     const managerMissionScore = getMissionScoreTotal(review?.mission_reviews || [], ['Soumise a RH']);
     const managerMissionScoreCount = getMissionScoreCount(review?.mission_reviews || [], ['Soumise a RH']);
-    const managerScore = getOverallAverageScore(reviewSections);
-    const finalScore = getAverageFromScores([missionScore, managerMissionScore, selfScore, managerScore]);
     const reviewHasBeenSubmitted = review?.status === 'Soumis a RH' || review?.status === 'Valide RH' || review?.status === 'Cloture';
     const effectiveStatus = reviewHasBeenSubmitted ? review.status : instance.status;
     const rhValidationSelected =
@@ -692,8 +883,12 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
       department: assistantUser?.department || 'CAPITAL HUMAIN',
       managerName: 'Auto-evaluation Assistante RH',
       selfScore,
+      scoreGlobal,
+      scoreGlobalCount,
       missionScore,
       missionScoreCount,
+      missionScoreDetails,
+      globalScoreDetails,
       managerMissionScore,
       managerMissionScoreCount,
       managerScore,
@@ -730,6 +925,10 @@ function buildDepartmentGroups(rows = []) {
       name: row.name,
       role: row.role,
       evaluator: row.managerName,
+      missionScore: row.missionScore,
+      scoreGlobal: row.scoreGlobal,
+      missionScoreDetails: row.missionScoreDetails || [],
+      globalScoreDetails: row.globalScoreDetails || [],
       selfScore: row.selfScore,
       managerScore: row.managerScore,
       finalScore: row.finalScore,
@@ -839,26 +1038,26 @@ async function getRhOverview(request, response) {
     cycle_label: CURRENT_CYCLE_LABEL,
     stats: [
       {
-        title: 'Evaluations recues',
+        title: 'Évaluations reçues',
         value: `${receivedCount}/${totalEvaluatedPopulation}`,
         subtitle: totalEvaluatedPopulation
           ? `${Math.round((receivedCount / totalEvaluatedPopulation) * 100)}% du cycle ${CURRENT_CYCLE_LABEL.replace('Cycle ', '')}`
           : `0% du cycle ${CURRENT_CYCLE_LABEL.replace('Cycle ', '')}`,
       },
       {
-        title: 'A valider RH',
+        title: 'À valider RH',
         value: String(pendingRhItems.length),
         subtitle: pendingRhItems.length ? `Dont ${priorityRows.length} prioritaire(s)` : 'Aucune en attente',
       },
       {
-        title: 'Syntheses pretes',
+        title: 'Synthèses prêtes',
         value: String(readySynthesesCount),
-        subtitle: 'Transmission Associe',
+        subtitle: 'Transmission Associé',
       },
       {
         title: 'Entretiens planifies',
         value: '0',
-        subtitle: 'Donnee non planifiee',
+        subtitle: 'Donnée non planifiée',
       },
     ],
     priority_rows: priorityRows,

@@ -25,7 +25,7 @@ export const rhMenuGroups = [
   },
   {
     title: "Comite",
-    items: [{ key: "committee", label: "Comite d'evaluation", icon: UsersRound }],
+    items: [{ key: "committee", label: "Comité d'évaluation", icon: UsersRound }],
   },
   {
     title: "Compte",
