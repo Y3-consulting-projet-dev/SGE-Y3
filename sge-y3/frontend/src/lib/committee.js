@@ -1,25 +1,30 @@
 import { loadSession } from "@/lib/auth";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
-const COMMITTEE_DECISION_STORAGE_KEY = "sge-committee-latest-decision";
+
+function getCommitteeDecisionStorageKey(scope = "associate-final") {
+  return `sge-committee-latest-decision:${scope}`;
+}
 
 function saveLocalDecision(payload) {
+  const scope = payload.scope || "associate-final";
   const decision = {
     id: `local-${Date.now()}`,
     cycle_label: payload.cycle_label || "Cycle 2025-2026",
-    scope: payload.scope || "associate-final",
+    scope,
     decisions: payload.decisions || {},
-    submitted_by_name: "Associés",
+    submitted_by_name: "Associes",
     submitted_at: new Date().toISOString(),
     local_only: true,
   };
 
-  window.localStorage.setItem(COMMITTEE_DECISION_STORAGE_KEY, JSON.stringify(decision));
+  window.localStorage.setItem(getCommitteeDecisionStorageKey(scope), JSON.stringify(decision));
   return decision;
 }
 
 function loadLocalDecision(scope = "associate-final") {
-  const rawDecision = window.localStorage.getItem(COMMITTEE_DECISION_STORAGE_KEY);
+  const storageKey = getCommitteeDecisionStorageKey(scope);
+  const rawDecision = window.localStorage.getItem(storageKey);
 
   if (!rawDecision) {
     return null;
@@ -29,7 +34,7 @@ function loadLocalDecision(scope = "associate-final") {
     const decision = JSON.parse(rawDecision);
     return decision?.scope === scope ? decision : null;
   } catch (_error) {
-    window.localStorage.removeItem(COMMITTEE_DECISION_STORAGE_KEY);
+    window.localStorage.removeItem(storageKey);
     return null;
   }
 }
@@ -84,7 +89,7 @@ export async function saveCommitteeDecision(payload) {
     }
 
     const decision = data.decision || saveLocalDecision(payload);
-    window.localStorage.setItem(COMMITTEE_DECISION_STORAGE_KEY, JSON.stringify(decision));
+    window.localStorage.setItem(getCommitteeDecisionStorageKey(payload.scope || "associate-final"), JSON.stringify(decision));
     return data;
   } catch (_error) {
     const localDecision = saveLocalDecision(payload);

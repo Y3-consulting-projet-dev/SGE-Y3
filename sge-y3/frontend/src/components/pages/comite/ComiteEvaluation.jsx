@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { committeeAssistants, committeeLeaders, committeeLevels, committeeMembers, committeeSupport } from "@/components/pages/comite/comiteData";
-import { getCommitteeParticipants } from "@/lib/committee";
+import { getCommitteeParticipants, getLatestCommitteeDecision } from "@/lib/committee";
 
 function PersonCard({ person, draggable, onDragStart, onRateChange, compact = false, rateEnabled = false }) {
   return (
@@ -36,8 +36,9 @@ function PersonCard({ person, draggable, onDragStart, onRateChange, compact = fa
 function ComiteEvaluation({
   actorLabel = "La RH",
   allowClassification = true,
-  classifiableLabel = "Collaborateurs a classer",
+  classifiableLabel = "Collaborateurs à classer",
   lockPrimaryClassification = false,
+  primaryUnclassified = false,
   participantScope = "collaborators",
   readOnly = false,
   rateEnabled = false,
@@ -46,6 +47,8 @@ function ComiteEvaluation({
   tertiaryParticipantScope = null,
   tertiaryUnclassified = false,
   showSubmit = true,
+  showCommitteeMembers = true,
+  initialDecisionScope = null,
   submitLabel = "Transmettre aux associés",
   submittedLabel = "Transmis aux associés",
   successMessage = "Classement transmis.",
@@ -53,17 +56,24 @@ function ComiteEvaluation({
   onSubmit,
 }) {
   const fallbackParticipants = useMemo(() => {
-    const primaryFallback = participantScope === "leadership" ? committeeLeaders : participantScope === "support" ? committeeSupport : committeeAssistants;
+    const primaryFallback =
+      participantScope === "none" ? [] : participantScope === "leadership" ? committeeLeaders : participantScope === "support" ? committeeSupport : committeeAssistants;
     const secondaryFallback = secondaryParticipantScope === "leadership" ? committeeLeaders : [];
     const tertiaryFallback = tertiaryParticipantScope === "support" ? committeeSupport : [];
 
     return [
-      ...primaryFallback.map((person) => ({ ...person, lockedClassification: lockPrimaryClassification })),
+      ...primaryFallback.map((person) => ({
+        ...person,
+        level: primaryUnclassified ? null : person.level,
+        lockedClassification: lockPrimaryClassification,
+      })),
       ...secondaryFallback.map((person) => ({ ...person, level: secondaryUnclassified ? null : person.level })),
       ...tertiaryFallback.map((person) => ({ ...person, level: tertiaryUnclassified ? null : person.level })),
     ];
-  }, [lockPrimaryClassification, participantScope, secondaryParticipantScope, secondaryUnclassified, tertiaryParticipantScope, tertiaryUnclassified]);
+  }, [lockPrimaryClassification, participantScope, primaryUnclassified, secondaryParticipantScope, secondaryUnclassified, tertiaryParticipantScope, tertiaryUnclassified]);
+
   const [people, setPeople] = useState(fallbackParticipants);
+  const [committeeMemberNames, setCommitteeMemberNames] = useState(committeeMembers);
   const [draggedId, setDraggedId] = useState(null);
   const [status, setStatus] = useState("");
   const [loadStatus, setLoadStatus] = useState("");
@@ -78,6 +88,9 @@ function ComiteEvaluation({
     setStatus("");
 
     const loadScope = (scope, options = {}) =>
+      scope === "none"
+        ? Promise.resolve([])
+        :
       getCommitteeParticipants(scope).then((data) =>
         Array.isArray(data.participants)
           ? data.participants.map((participant) => ({
@@ -90,19 +103,75 @@ function ComiteEvaluation({
       );
 
     Promise.all([
-      loadScope(participantScope, { lockedClassification: lockPrimaryClassification }),
+      loadScope(participantScope, { lockedClassification: lockPrimaryClassification, unclassified: primaryUnclassified }),
       secondaryParticipantScope ? loadScope(secondaryParticipantScope, { unclassified: secondaryUnclassified }) : Promise.resolve([]),
       tertiaryParticipantScope ? loadScope(tertiaryParticipantScope, { unclassified: tertiaryUnclassified }) : Promise.resolve([]),
+      getCommitteeParticipants("committee").catch(() => ({ participants: [] })),
+      initialDecisionScope ? getLatestCommitteeDecision(initialDecisionScope).catch(() => ({ decision: null })) : Promise.resolve({ decision: null }),
     ])
-      .then(([primaryParticipants, secondaryParticipants, tertiaryParticipants]) => {
+      .then(([primaryParticipants, secondaryParticipants, tertiaryParticipants, committeeData, latestDecisionData]) => {
         if (ignore) return;
-        const loadedParticipants = [...primaryParticipants, ...secondaryParticipants, ...tertiaryParticipants];
-        if (!loadedParticipants.length) return;
-        setPeople(loadedParticipants);
+
+        const primaryDecisionLevelById = new Map(
+          initialDecisionScope
+            ? committeeLevels.flatMap((level) =>
+                Array.isArray(latestDecisionData?.decision?.decisions?.[level.key])
+                  ? latestDecisionData.decision.decisions[level.key].map((participant) => [participant.id, { level: level.key, increaseRate: participant.increaseRate || "" }])
+                  : []
+              )
+            : []
+        );
+
+        const primaryParticipantsWithDecision = primaryParticipants.length
+          ? primaryParticipants.map((participant) => {
+              const savedDecision = primaryDecisionLevelById.get(participant.id);
+
+              if (!savedDecision) {
+                return participant;
+              }
+
+              return {
+                ...participant,
+                level: savedDecision.level,
+                increaseRate: savedDecision.increaseRate,
+                lockedClassification: Boolean(lockPrimaryClassification),
+              };
+            })
+          : initialDecisionScope
+            ? committeeLevels.flatMap((level) =>
+                Array.isArray(latestDecisionData?.decision?.decisions?.[level.key])
+                  ? latestDecisionData.decision.decisions[level.key].map((participant) => ({
+                      ...participant,
+                      increaseRate: participant.increaseRate || "",
+                      level: level.key,
+                      lockedClassification: Boolean(lockPrimaryClassification),
+                    }))
+                  : []
+              )
+            : [];
+
+        const participantMap = new Map();
+        [...primaryParticipantsWithDecision, ...secondaryParticipants, ...tertiaryParticipants].forEach((participant) => {
+          if (!participant?.id || participantMap.has(participant.id)) {
+            return;
+          }
+          participantMap.set(participant.id, participant);
+        });
+        const loadedParticipants = Array.from(participantMap.values());
+        if (Array.isArray(committeeData?.participants) && committeeData.participants.length) {
+          setCommitteeMemberNames(Array.from(new Set(committeeData.participants.map((participant) => participant.name).filter(Boolean))));
+        } else {
+          setCommitteeMemberNames(committeeMembers);
+        }
+
+        if (loadedParticipants.length) {
+          setPeople(loadedParticipants);
+        }
         setLoadStatus("");
       })
       .catch(() => {
         if (!ignore) {
+          setCommitteeMemberNames(committeeMembers);
           setLoadStatus("Liste de secours affichee.");
         }
       });
@@ -114,10 +183,12 @@ function ComiteEvaluation({
     fallbackParticipants,
     lockPrimaryClassification,
     participantScope,
+    primaryUnclassified,
     secondaryParticipantScope,
     secondaryUnclassified,
     tertiaryParticipantScope,
     tertiaryUnclassified,
+    initialDecisionScope,
   ]);
 
   const groupedPeople = useMemo(
@@ -142,6 +213,7 @@ function ComiteEvaluation({
       acc[level.key] = people.filter((person) => person.level === level.key);
       return acc;
     }, {});
+
     try {
       await onSubmit?.(result);
       setSubmitted(true);
@@ -184,28 +256,27 @@ function ComiteEvaluation({
           <div>
             <p className="text-xs font-bold uppercase text-slate-400">Comité RH - Managers - Associés</p>
             <p className="mt-2 max-w-3xl text-sm font-semibold text-slate-500">
-              {workflowText || `${actorLabel} positionne les personnes dans la bulle de decision retenue pendant le comite.`}
+              {workflowText || `${actorLabel} positionne les personnes dans la bulle de décision retenue pendant le comité.`}
             </p>
           </div>
-          <span className={`rounded-full px-4 py-2 text-xs font-bold ${readOnly ? "bg-[#E7EDF3] text-[#0F4A72]" : "bg-[#DDECCF] text-[#4E8B1B]"}`}>
-            {readOnly ? "Consultation" : rateEnabled && !allowClassification ? "Taux uniquement" : rateEnabled ? "Classement + taux" : "Glisser-deposer actif"}
-          </span>
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-2">
-          {committeeMembers.map((member) => (
-            <span key={member} className="rounded-full bg-[#F3F6F8] px-3 py-1 text-xs font-bold text-[#0F4A72]">
-              {member}
-            </span>
-          ))}
-        </div>
+        {showCommitteeMembers ? (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {committeeMemberNames.map((member) => (
+              <span key={member} className="rounded-full bg-[#F3F6F8] px-3 py-1 text-xs font-bold text-[#0F4A72]">
+                {member}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </article>
 
       <aside onDrop={(event) => onDrop(event, null)} onDragOver={onDragOver} className="rounded-xl bg-white p-4 shadow-sm">
         <h3 className="text-lg font-extrabold text-[#0F3A63]">{classifiableLabel}</h3>
         <p className="mt-1 text-xs font-semibold text-slate-500">
           {readOnly
-            ? "Classement visible par le comite."
+            ? "Classement visible par le comité."
             : allowClassification
               ? "Glissez un nom vers CA, CB, CC ou CD."
               : "Classement verrouillé : renseignez uniquement les taux."}

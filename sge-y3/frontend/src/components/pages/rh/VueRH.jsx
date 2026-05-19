@@ -16,6 +16,7 @@ import EvaluationAssistanteRH from "@/components/pages/rh/EvaluationAssistanteRH
 import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
 import DecisionAssociesRH from "@/components/pages/comite/DecisionAssociesRH";
 import ProfilePanel from "@/components/profile/ProfilePanel";
+import { saveCommitteeDecision } from "@/lib/committee";
 import { getDisplayName } from "@/lib/userPresentation";
 
 function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
@@ -103,6 +104,9 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
         <div className="space-y-6">
           <ComiteEvaluation
             readOnly={assistantMode}
+            primaryUnclassified
+            initialDecisionScope="rh-final"
+            onSubmit={(decisions) => saveCommitteeDecision({ scope: "rh-final", cycle_label: "Cycle 2025-2026", decisions })}
             submitLabel="Transmettre aux associés"
             submittedLabel="Transmis aux associés"
             successMessage="Classement des assistants, seniors et assistants managers transmis aux associés."
