@@ -45,8 +45,8 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
 
   const pageTitle = useMemo(() => {
     if (activeSection === "overview") return "VUE D'ENSEMBLE";
-    if (activeSection === "team") return "MON";
-    if (activeSection === "team-goals") return "OBJECTIFS";
+    if (activeSection === "team") return "MON ÉQUIPE";
+    if (activeSection === "team-goals") return "OBJECTIFS D'ÉQUIPE";
     if (activeSection === "self-evaluation") return "MON AUTO-ÉVALUATION";
     if (activeSection === "reports") return "RAPPORTS";
     if (activeSection === "profile") return "MON PROFIL";

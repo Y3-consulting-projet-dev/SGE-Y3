@@ -41,6 +41,13 @@ export function getManagerSelfEvaluation() {
   return request("/manager/self-evaluation");
 }
 
+export function createManagerMissionEvaluation(payload) {
+  return request("/manager/self-evaluation/missions", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function saveManagerSelfEvaluation(payload) {
   return request("/manager/self-evaluation", {
     method: "PUT",
@@ -54,8 +61,22 @@ export function submitManagerSelfEvaluation() {
   });
 }
 
+export function submitManagerMissionEvaluation(missionId) {
+  return request("/manager/self-evaluation/missions/submit", {
+    method: "POST",
+    body: JSON.stringify({ missionId }),
+  });
+}
+
 export function getManagerMemberEvaluation(memberId) {
   return request(`/manager/members/${memberId}/evaluation`);
+}
+
+export function createManagerMemberMission(memberId, payload) {
+  return request(`/manager/members/${memberId}/evaluation/missions`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function saveManagerMemberEvaluation(memberId, payload) {
