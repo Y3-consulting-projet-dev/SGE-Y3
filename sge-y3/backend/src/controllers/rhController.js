@@ -2044,10 +2044,12 @@ async function downloadRhReport(request, response) {
 
 module.exports = {
   addRhQuestionnaireQuestion,
+  buildNonRhDepartmentClause,
   createRhQuestionnaireSection,
   CURRENT_CYCLE_LABEL,
   downloadRhReport,
   addRhSelfMissionEvaluation,
+  formatDepartmentLabel,
   getAssistantRhEvaluation,
   getRhCalibration,
   getRhDepartmentEvaluations,
@@ -2059,8 +2061,10 @@ module.exports = {
   getRhReports,
   getRhSyntheses,
   getRhValidations,
+  loadAssistantRhSelfDataset,
   loadRhReviewDataset,
   RH_RELEVANT_STATUSES,
+  resolveRhQueueUserIds,
   saveAssistantRhEvaluation,
   saveMyAssistantRhSelfEvaluation,
   saveMyRhSelfEvaluation,

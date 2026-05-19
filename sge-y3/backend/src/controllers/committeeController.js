@@ -1,14 +1,6 @@
 const User = require('../models/User');
 const CommitteeDecision = require('../models/CommitteeDecision');
 
-const LEADERSHIP_COMMITTEE_NAMES = [
-  'ISABELLA SINCLAIR BEDA',
-  'REVITA OULE',
-  'AUGUSTIN KPANTCHE',
-  'STEPHANE GNAHOUA',
-  'AXELLE AMANI',
-  'STEPHANIE TAKI',
-];
 const SUPPORT_COMMITTEE_EMAILS = [
   'fleur.nguessan@ycubeac.com',
   'porthela.kakou@ycubeac.com',
@@ -37,25 +29,31 @@ function buildParticipant(user, defaultLevel = null) {
 
 async function listCommitteeParticipants(request, response) {
   const requestedScope = String(request.query?.scope || 'collaborators');
-  const scope = ['leadership', 'support'].includes(requestedScope) ? requestedScope : 'collaborators';
+  const scope = ['leadership', 'support', 'committee'].includes(requestedScope) ? requestedScope : 'collaborators';
   const query = {
     is_active: true,
-    grade: { $in: ['Assistant', 'Senior', 'Assistant manager'] },
+    $or: [
+      { grade: { $in: ['Assistant', 'Senior', 'Assistant manager'] } },
+      { department: 'SERVICE SUPPORT' },
+      { department: 'CAPITAL HUMAIN' },
+    ],
   };
 
   let users = await User.find(query)
     .sort({ grade: 1, last_name: 1, first_name: 1 })
     .select('_id name first_name last_name grade department');
 
+  if (scope === 'collaborators') {
+    users = users.filter((user) => normalizeName(user.department || '') !== 'RH');
+  }
+
   if (scope === 'leadership') {
-    users = await User.find({ is_active: true })
+    users = await User.find({
+      is_active: true,
+      $or: [{ grade: { $in: ['Manager', 'Senior manager'] } }, { department: 'RH' }],
+    })
       .sort({ last_name: 1, first_name: 1 })
       .select('_id name first_name last_name grade department');
-
-    users = users.filter((user) => {
-      const fullName = normalizeName([user.first_name, user.last_name].filter(Boolean).join(' ') || user.name);
-      return LEADERSHIP_COMMITTEE_NAMES.includes(fullName);
-    });
   }
 
   if (scope === 'support') {
@@ -65,6 +63,25 @@ async function listCommitteeParticipants(request, response) {
     })
       .sort({ last_name: 1, first_name: 1 })
       .select('_id name first_name last_name grade department');
+  }
+
+  if (scope === 'committee') {
+    users = await User.find({ is_active: true })
+      .sort({ last_name: 1, first_name: 1 })
+      .select('_id name first_name last_name grade department code_categorie');
+
+    users = users.filter((user) => {
+      const normalizedDepartment = normalizeName(user.department || '');
+      const normalizedGrade = normalizeName(user.grade || '');
+      const isLeadershipMember =
+        normalizedDepartment === 'RH' || normalizedGrade === 'MANAGER' || normalizedGrade === 'SENIOR MANAGER';
+      const isAssociate =
+        String(user.code_categorie || '').trim() === '11' ||
+        normalizedGrade === 'ASSOCIÉ' ||
+        normalizedGrade === 'ASSOCIE';
+
+      return isLeadershipMember || isAssociate;
+    });
   }
 
   return response.json({

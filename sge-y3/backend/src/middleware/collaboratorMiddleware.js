@@ -50,8 +50,19 @@ function requireRh(request, response, next) {
   });
 }
 
+function requireAssociate(request, response, next) {
+  if (request.user?.code_categorie === '11' || request.user?.grade === 'Associé' || request.user?.grade === 'Associe') {
+    return next();
+  }
+
+  return response.status(403).json({
+    message: "Cette fonctionnalite est reservee aux associes.",
+  });
+}
+
 module.exports = {
   requireAssistant,
+  requireAssociate,
   requireManager,
   requireRh,
   requireSenior,
