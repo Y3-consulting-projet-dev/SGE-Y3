@@ -1,18 +1,101 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getRhDepartmentEvaluations, selectRhDepartmentEvaluation } from "@/lib/rhOverview";
 
 function statusClass(status) {
-  if (status === "Validé" || status === "Valide" || status === "Pret Associe") return "bg-[#DDECCF] text-[#4E8B1B]";
-  if (status === "Ecart a arbitrer") return "bg-[#F9DFDF] text-[#B63232]";
-  if (status === "A completer") return "bg-[#FFF2CC] text-[#8A6810]";
+  if (status === "Valide" || status === "Pret Associe" || status === "Prêt Associé") return "bg-[#DDECCF] text-[#4E8B1B]";
+  if (status === "Ecart a arbitrer" || status === "Ecart à arbitrer") return "bg-[#F9DFDF] text-[#B63232]";
+  if (status === "A completer" || status === "À compléter") return "bg-[#FFF2CC] text-[#8A6810]";
   return "bg-[#E7EDF3] text-[#0F4A72]";
 }
 
 function formatScore(score) {
-  return typeof score === "number" ? `${score}/5` : "--";
+  return typeof score === "number" ? `${score.toFixed(1)}/5` : "--";
 }
 
-function EvaluationséRH() {
+function formatDate(value) {
+  if (!value) return "";
+  return new Date(value).toLocaleDateString("fr-FR");
+}
+
+function ScoreWithTooltip({ score, details = [] }) {
+  const [isPinned, setIsPinned] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!isPinned) return undefined;
+
+    function handlePointerDown(event) {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsPinned(false);
+      }
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        setIsPinned(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isPinned]);
+
+  if (typeof score !== "number") {
+    return <span className="font-bold text-[#0F3A63]">--</span>;
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className="group relative inline-flex"
+      onClick={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+    >
+      <button
+        type="button"
+        onClick={() => setIsPinned((current) => !current)}
+        className="cursor-help font-bold text-[#0F3A63] underline decoration-dotted underline-offset-4"
+      >
+        {score.toFixed(1)}
+      </button>
+      {details.length ? (
+        <div
+          className={`absolute left-0 top-full z-20 mt-2 w-[320px] rounded-md bg-[#0F3A63] p-4 text-xs text-white shadow-xl transition-opacity duration-150 ${
+            isPinned
+              ? "pointer-events-auto visible opacity-100"
+              : "pointer-events-none invisible opacity-0 group-hover:visible group-hover:opacity-100"
+          }`}
+        >
+          <p className="mb-2 font-bold">Détail des scores calculés</p>
+          <div className="max-h-[360px] space-y-2 overflow-y-auto pr-2">
+            {details.map((detail, index) => (
+              <div
+                key={`${detail.source}-${detail.evaluatorName}-${detail.missionTitle}-${index}`}
+                className="border-b border-white/10 pb-2 last:border-b-0 last:pb-0"
+              >
+                <p className="font-semibold">
+                  {detail.source} - {detail.evaluatorName}
+                </p>
+                <p className="text-[11px] text-slate-200">{detail.evaluatorGrade || "Collaborateur"}</p>
+                {detail.missionTitle ? <p className="mt-1 text-[11px] text-slate-200">{detail.missionTitle}</p> : null}
+                <p className="mt-1 font-bold text-[#A7F3D0]">{typeof detail.score === "number" ? `${detail.score.toFixed(1)}/5` : "--"}</p>
+                {detail.submittedAt ? <p className="text-[11px] text-slate-300">{formatDate(detail.submittedAt)}</p> : null}
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[11px] font-semibold text-slate-300">Cliquez à l’extérieur ou sur `Echap` pour fermer.</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function EvaluationsDepartementRH() {
   const [data, setData] = useState(null);
   const [activeDepartment, setActiveDepartment] = useState("");
   const [selectedMember, setSelectedMember] = useState(null);
@@ -62,10 +145,6 @@ function EvaluationséRH() {
     () => departmentGroups.find((group) => group.department === activeDepartment) || departmentGroups[0],
     [departmentGroups, activeDepartment]
   );
-  const scoreGap =
-    selectedMember && typeof selectedMember.gap === "number"
-      ? selectedMember.gap.toFixed(1)
-      : "0.0";
 
   async function handleSelectForValidation() {
     if (!selectedMember?.id) return;
@@ -106,7 +185,7 @@ function EvaluationséRH() {
           <div>
             <h2 className="text-xl font-extrabold text-[#0F3A63]">Evaluations des équipes</h2>
             <p className="mt-1 text-sm font-semibold text-slate-500">
-              Vue RH de toutes les évaluations : auto-évaluation, évaluation manager et score final.
+              Vue RH des scores missions, globaux et finaux par département.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -165,8 +244,8 @@ function EvaluationséRH() {
               <tr>
                 <th className="px-4 py-3">Collaborateur</th>
                 <th className="px-4 py-3">Evaluateur</th>
-                <th className="px-4 py-3">Auto-évaluation</th>
-                <th className="px-4 py-3">Evaluation manager</th>
+                <th className="px-4 py-3">Score mission(s)</th>
+                <th className="px-4 py-3">Score globaux</th>
                 <th className="px-4 py-3">Score final</th>
                 <th className="px-4 py-3">Statut RH</th>
               </tr>
@@ -185,8 +264,12 @@ function EvaluationséRH() {
                     <p className="text-xs font-semibold text-slate-500">{member.role}</p>
                   </td>
                   <td className="px-4 py-4 font-semibold">{member.evaluator}</td>
-                  <td className="px-4 py-4 font-bold">{formatScore(member.selfScore)}</td>
-                  <td className="px-4 py-4 font-bold">{formatScore(member.managerScore)}</td>
+                  <td className="px-4 py-4">
+                    <ScoreWithTooltip score={member.missionScore} details={member.missionScoreDetails} />
+                  </td>
+                  <td className="px-4 py-4">
+                    <ScoreWithTooltip score={member.scoreGlobal} details={member.globalScoreDetails} />
+                  </td>
                   <td className="px-4 py-4 text-lg font-black text-[#78B843]">{formatScore(member.finalScore)}</td>
                   <td className="px-4 py-4">
                     <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass(member.status)}`}>
@@ -225,7 +308,7 @@ function EvaluationséRH() {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  disabled={selectedMember.rhValidationSelected || selectedMember.status === "Validé" || selectedMember.status === "Pret Associe" || !selectedMember.id || selectedMember.id.startsWith("pending-") || isSelecting}
+                  disabled={selectedMember.rhValidationSelected || selectedMember.status === "Valide" || selectedMember.status === "Pret Associe" || !selectedMember.id || selectedMember.id.startsWith("pending-") || isSelecting}
                   onClick={handleSelectForValidation}
                   className="rounded-full bg-[#E7EDF3] px-4 py-2 text-xs font-bold text-[#0F4A72] disabled:cursor-not-allowed disabled:opacity-60"
                 >
@@ -241,22 +324,18 @@ function EvaluationséRH() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="rounded-lg bg-[#F8FAFC] p-4">
-                <p className="text-xs font-bold uppercase text-slate-500">Auto-évaluation</p>
-                <p className="mt-2 text-2xl font-black text-[#0F3A63]">{formatScore(selectedMember.selfScore)}</p>
+                <p className="text-xs font-bold uppercase text-slate-500">Score mission(s)</p>
+                <p className="mt-2 text-2xl font-black text-[#0F3A63]">{formatScore(selectedMember.missionScore)}</p>
               </div>
               <div className="rounded-lg bg-[#F8FAFC] p-4">
-                <p className="text-xs font-bold uppercase text-slate-500">Evaluation manager</p>
-                <p className="mt-2 text-2xl font-black text-[#0F3A63]">{formatScore(selectedMember.managerScore)}</p>
+                <p className="text-xs font-bold uppercase text-slate-500">Score globaux</p>
+                <p className="mt-2 text-2xl font-black text-[#0F3A63]">{formatScore(selectedMember.scoreGlobal)}</p>
               </div>
               <div className="rounded-lg bg-[#F8FAFC] p-4">
                 <p className="text-xs font-bold uppercase text-slate-500">Score final</p>
                 <p className="mt-2 text-2xl font-black text-[#78B843]">{formatScore(selectedMember.finalScore)}</p>
-              </div>
-              <div className="rounded-lg bg-[#F8FAFC] p-4">
-                <p className="text-xs font-bold uppercase text-slate-500">Ecart constate</p>
-                <p className="mt-2 text-2xl font-black text-[#C53B3B]">{scoreGap}</p>
               </div>
             </div>
 
@@ -265,7 +344,7 @@ function EvaluationséRH() {
                 <h4 className="text-sm font-extrabold text-[#0F3A63]">Commentaires d'évaluation</h4>
                 <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{selectedMember.commentSummary}</p>
                 <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
-                  Point RH : {Number(scoreGap) >= 0.7 ? "écart significatif à arbitrer avec le manager." : "évaluation cohérente, prête pour validation RH."}
+                  Point RH : {typeof selectedMember.finalScore === "number" && selectedMember.finalScore < 3 ? "vigilance sur le score final, arbitrage conseillé." : "évaluation cohérente, prête pour validation RH."}
                 </p>
               </section>
 
@@ -297,4 +376,4 @@ function EvaluationséRH() {
   );
 }
 
-export default EvaluationséRH;
+export default EvaluationsDepartementRH;
