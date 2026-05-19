@@ -62,9 +62,9 @@ function ProfilePanel({ user, onLogout, onUserUpdate }) {
       setInfoStatus("");
       const session = await updateProfile(infoForm);
       onUserUpdate?.(session);
-      setInfoStatus(session.message || "Profil mis a jour.");
+      setInfoStatus(session.message || "Profil mis à jour.");
     } catch (error) {
-      setInfoStatus(error.message || "Mise a jour impossible.");
+      setInfoStatus(error.message || "Mise à jour impossible.");
     } finally {
       setIsSavingInfo(false);
     }
@@ -80,9 +80,9 @@ function ProfilePanel({ user, onLogout, onUserUpdate }) {
         newPassword: "",
         confirmPassword: "",
       });
-      setPasswordStatus(result.message || "Mot de passe mis a jour.");
+      setPasswordStatus(result.message || "Mot de passe mis à jour.");
     } catch (error) {
-      setPasswordStatus(error.message || "Mise a jour impossible.");
+      setPasswordStatus(error.message || "Mise à jour impossible.");
     } finally {
       setIsSavingPassword(false);
     }
@@ -129,7 +129,7 @@ function ProfilePanel({ user, onLogout, onUserUpdate }) {
             onClick={onLogout}
             className="flex w-full items-center justify-between rounded-[20px] bg-[#151F38] px-4 py-3 text-left text-base text-white"
           >
-            <span>Deconnexion</span>
+            <span>Déconnexion</span>
             <Power size={16} />
           </button>
         </div>
@@ -140,12 +140,12 @@ function ProfilePanel({ user, onLogout, onUserUpdate }) {
           <>
             <header className="mb-6">
               <h2 className="text-[28px] font-semibold text-[#071B49]">Informations personnelles</h2>
-              <p className="mt-1.5 text-base text-[#6882A4]">Profil de votre compte sur l'outil d'evaluation.</p>
+              <p className="mt-1.5 text-base text-[#6882A4]">Profil de votre compte sur l'outil d'évaluation.</p>
             </header>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <label className="block">
-                <span className="mb-2 block text-base text-[#3E5C81]">Prenoms</span>
+                <span className="mb-2 block text-base text-[#3E5C81]">Prénoms</span>
                 <input
                   value={infoForm.first_name}
                   onChange={(event) => handleInfoChange("first_name", event.target.value)}
@@ -173,7 +173,7 @@ function ProfilePanel({ user, onLogout, onUserUpdate }) {
                 />
                 <span className="ml-3 inline-flex items-center gap-2 rounded-full bg-[#F2F7ED] px-3 py-1 text-xs text-[#5B8D3E]">
                   <span className="h-2 w-2 rounded-full bg-[#76B82A]" />
-                  Renseigne
+                  Renseigné
                 </span>
               </div>
             </label>
@@ -195,7 +195,7 @@ function ProfilePanel({ user, onLogout, onUserUpdate }) {
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-base text-[#3E5C81]">Departement</span>
+                <span className="mb-2 block text-base text-[#3E5C81]">Département</span>
                 <select
                   value={infoForm.department}
                   onChange={(event) => handleInfoChange("department", event.target.value)}
@@ -232,7 +232,7 @@ function ProfilePanel({ user, onLogout, onUserUpdate }) {
           <>
             <header className="mb-6">
               <h2 className="text-[28px] font-semibold text-[#071B49]">Connexion & mot de passe</h2>
-              <p className="mt-1.5 text-base text-[#6882A4]">Securite du compte et gestion du mot de passe.</p>
+              <p className="mt-1.5 text-base text-[#6882A4]">Sécurité du compte et gestion du mot de passe.</p>
             </header>
 
             <section className="rounded-[22px] border border-[#E5ECF4] bg-white p-5">
@@ -289,7 +289,7 @@ function ProfilePanel({ user, onLogout, onUserUpdate }) {
                   disabled={isSavingPassword}
                   className="rounded-full bg-[#6DAC55] px-6 py-2.5 text-base font-semibold text-white disabled:opacity-70"
                 >
-                  {isSavingPassword ? "Mise a jour..." : "Modifier le mot de passe"}
+                  {isSavingPassword ? "Mise à jour..." : "Modifier le mot de passe"}
                 </button>
               </div>
             </section>

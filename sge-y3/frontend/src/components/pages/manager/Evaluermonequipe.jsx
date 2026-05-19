@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import {
+  createManagerMemberMission,
   getManagerMemberEvaluation,
   saveManagerMemberMissionReviews,
   saveManagerMemberEvaluation,
@@ -202,6 +203,8 @@ function Evaluermonequipe({ member }) {
   const [missionSectionIds, setMissionSectionIds] = useState({});
   const [missionPageIndexes, setMissionPageIndexes] = useState({});
   const [missionReviews, setMissionReviews] = useState([]);
+  const [missionTitle, setMissionTitle] = useState("");
+  const [missionPeriod, setMissionPeriod] = useState("");
   const [savedComments, setSavedComments] = useState({});
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackTone, setFeedbackTone] = useState("success");
@@ -230,6 +233,8 @@ function Evaluermonequipe({ member }) {
         setReviewData(response);
         setSections(response.review.sections || []);
         setMissionReviews(response.mission_reviews || []);
+        setMissionTitle("");
+        setMissionPeriod("");
         setActiveSectionId(Number(response.review.activeSectionId || response.review.sections?.[0]?.id || 1));
         setActiveMissionId((current) => current || response.submitted_missions?.[0]?.id || "");
         setMissionSectionIds({});
@@ -276,6 +281,10 @@ function Evaluermonequipe({ member }) {
   const evaluationDepartment = reviewData?.review_context?.evaluationDepartment || reviewData?.member?.department || "";
   const receivedGlobalScores = reviewData?.received_global_scores || [];
   const submittedMissions = reviewData?.submitted_missions || [];
+  const pendingAssignedMissions = missionReviews.filter(
+    (missionReview) =>
+      missionReview.origin === "manager-assigned" && !submittedMissions.some((mission) => mission.id === missionReview.id)
+  );
   const activeMission = submittedMissions.find((mission) => mission.id === activeMissionId) || submittedMissions[0] || null;
   const activeMissionReview = missionReviews.find((mission) => mission.id === activeMissionId) || null;
   const activeMissionGroups = useMemo(() => getMissionGroups(activeMissionReview?.criteria || []), [activeMissionReview]);
@@ -446,6 +455,40 @@ function Evaluermonequipe({ member }) {
       setFeedbackTone("error");
       setFeedbackMessage(error.message || "Sauvegarde de la mission impossible.");
       return null;
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleAddMission() {
+    if (!member?.id) return;
+
+    const title = missionTitle.trim();
+
+    if (!title) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Renseignez le titre de la mission.");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      setFeedbackMessage("");
+      const response = await createManagerMemberMission(member.id, {
+        title,
+        period: missionPeriod.trim(),
+      });
+
+      setReviewData(response);
+      setSections(response.review.sections || []);
+      setMissionReviews(response.mission_reviews || []);
+      setMissionTitle("");
+      setMissionPeriod("");
+      setFeedbackTone("success");
+      setFeedbackMessage(response.message || "Mission ajoutée pour ce membre.");
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedbackMessage(error.message || "Ajout de la mission impossible.");
     } finally {
       setIsSaving(false);
     }
@@ -664,6 +707,62 @@ function Evaluermonequipe({ member }) {
         {activeView === "mission" ? (
           <>
             <article className="space-y-4">
+              <div className="rounded-md border border-[#D9E3EE] bg-white p-4 shadow-sm">
+                <div className="mb-3">
+                  <p className="text-sm font-bold text-[#0B4C7A]">Nouvelle mission pour ce membre</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    Renseignez le titre et la période. Le membre la recevra dans son auto-évaluation par mission.
+                  </p>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <input
+                    value={missionTitle}
+                    onChange={(event) => setMissionTitle(event.target.value)}
+                    placeholder="Titre de la mission"
+                    className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
+                  />
+                  <input
+                    value={missionPeriod}
+                    onChange={(event) => setMissionPeriod(event.target.value)}
+                    placeholder="Période"
+                    className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddMission}
+                  disabled={isSaving || isSubmitting}
+                  className="mt-4 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                >
+                  {isSaving ? "Ajout..." : "Ajouter la mission"}
+                </button>
+              </div>
+
+              {pendingAssignedMissions.length ? (
+                <div className="rounded-md border border-[#D9E3EE] bg-white p-4 shadow-sm">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-[#0B4C7A]">Missions en attente de retour</p>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        Ces missions ont été ajoutées et attendent encore la soumission du membre.
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-[#EEF3F8] px-3 py-1 text-xs font-bold text-[#0F3A63]">
+                      {pendingAssignedMissions.length} mission(s)
+                    </span>
+                  </div>
+                  <div className="space-y-3">
+                    {pendingAssignedMissions.map((mission) => (
+                      <div key={mission.id} className="rounded-md border border-slate-100 bg-[#F8FAFC] p-3">
+                        <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
+                        <p className="mt-1 text-xs font-bold text-[#0F3A63]">{mission.status || "A démarrer"}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="rounded-md border border-[#BFD7EA] bg-[#F8FBFE] p-4 shadow-sm">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
