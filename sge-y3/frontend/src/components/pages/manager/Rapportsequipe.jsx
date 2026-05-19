@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getManagerTeamReport } from "@/lib/managerOverview";
 
-const recommendationOptions = ["Maintien", "Augmentation"];
-
 function downloadFile(filename, content, type) {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
@@ -19,37 +17,63 @@ function formatScore(score) {
   return typeof score === "number" ? `${score}/5` : "--";
 }
 
-function getRecommendationClass(recommendation) {
-  return recommendation === "Augmentation"
-    ? "bg-[#DFECD4] text-[#73AF2E]"
-    : "bg-[#F5DFC2] text-[#D48A2A]";
+function formatDate(value) {
+  if (!value) return "";
+  return new Date(value).toLocaleDateString("fr-FR");
 }
 
-function buildCsvReport(rows, sectionTitles, selectedRecommendations) {
-  const header = ["Collaborateur", ...sectionTitles, "Score final", "Recommandation"];
+function getFinalDecisionLabel(row) {
+  return row.finalDecision || row.final_decision || "En attente";
+}
+
+function getFinalDecisionClass(decision) {
+  if (decision === "Promu") {
+    return "bg-[#DFECD4] text-[#73AF2E]";
+  }
+
+  if (decision === "Maintenu" || decision === "Maintien") {
+    return "bg-[#F5DFC2] text-[#D48A2A]";
+  }
+
+  return "bg-slate-200 text-slate-600";
+}
+
+function buildScoreTooltip(details = []) {
+  if (!details.length) {
+    return "Aucun score soumis pour le moment.";
+  }
+
+  return details
+    .map((detail) => {
+      const evaluator = [detail.evaluatorName, detail.evaluatorGrade].filter(Boolean).join(" - ");
+      const mission = detail.missionTitle ? ` | Mission: ${detail.missionTitle}` : "";
+      const date = detail.submittedAt ? ` | ${formatDate(detail.submittedAt)}` : "";
+      return `${detail.source}: ${evaluator}${mission} | Score: ${formatScore(detail.score)}${date}`;
+    })
+    .join("\n");
+}
+
+function buildCsvReport(rows) {
+  const header = ["Collaborateur", "Score missions", "Score globaux", "Décision finale"];
   const values = rows.map((row) => [
     row.name,
-    ...row.sectionScores.map((section) => formatScore(section.score)),
-    formatScore(row.finalScore),
-    selectedRecommendations[row.id] || row.automaticRecommendation,
+    formatScore(row.missionScore),
+    formatScore(row.globalScore),
+    getFinalDecisionLabel(row),
   ]);
 
   return [header, ...values].map((line) => line.map((cell) => `"${cell}"`).join(";")).join("\n");
 }
 
-function buildPrintableReport(title, rows, sectionTitles, selectedRecommendations, cycleLabel) {
-  const headerCells = [...sectionTitles, "Score final", "Recommandation"]
-    .map((label) => `<th>${label}</th>`)
-    .join("");
-
+function buildPrintableReport(title, rows, cycleLabel) {
   const bodyRows = rows
     .map(
       (row) => `
         <tr>
           <td>${row.name}</td>
-          ${row.sectionScores.map((section) => `<td>${formatScore(section.score)}</td>`).join("")}
-          <td>${formatScore(row.finalScore)}</td>
-          <td>${selectedRecommendations[row.id] || row.automaticRecommendation}</td>
+          <td>${formatScore(row.missionScore)}</td>
+          <td>${formatScore(row.globalScore)}</td>
+          <td>${getFinalDecisionLabel(row)}</td>
         </tr>`
     )
     .join("");
@@ -75,7 +99,9 @@ function buildPrintableReport(title, rows, sectionTitles, selectedRecommendation
       <thead>
         <tr>
           <th>Collaborateur</th>
-          ${headerCells}
+          <th>Score missions</th>
+          <th>Score globaux</th>
+          <th>Decision finale</th>
         </tr>
       </thead>
       <tbody>${bodyRows}</tbody>
@@ -84,9 +110,42 @@ function buildPrintableReport(title, rows, sectionTitles, selectedRecommendation
 </html>`;
 }
 
+function ScoreWithTooltip({ score, details = [] }) {
+  const hasDetails = details.length > 0;
+
+  if (typeof score !== "number") {
+    return <span className="font-bold text-[#0F3A63]">--</span>;
+  }
+
+  return (
+    <div className="group relative inline-flex">
+      <span className="cursor-help font-bold text-[#0F3A63] underline decoration-dotted underline-offset-4">
+        {formatScore(score)}
+      </span>
+      {hasDetails ? (
+        <div className="pointer-events-none invisible absolute left-0 top-full z-20 mt-2 w-[320px] rounded-md bg-[#0F3A63] p-3 text-xs text-white opacity-0 shadow-xl transition-opacity duration-150 group-hover:visible group-hover:opacity-100">
+          <p className="mb-2 font-bold">Détail des scores calculés</p>
+          <div className="space-y-2">
+            {details.map((detail, index) => (
+              <div key={`${detail.source}-${detail.evaluatorName}-${detail.missionTitle}-${index}`} className="border-b border-white/10 pb-2 last:border-b-0 last:pb-0">
+                <p className="font-semibold">
+                  {detail.source} - {detail.evaluatorName}
+                </p>
+                <p className="text-[11px] text-slate-200">{detail.evaluatorGrade || "Collaborateur"}</p>
+                {detail.missionTitle ? <p className="mt-1 text-[11px] text-slate-200">{detail.missionTitle}</p> : null}
+                <p className="mt-1 font-bold text-[#A7F3D0]">{formatScore(detail.score)}</p>
+                {detail.submittedAt ? <p className="text-[11px] text-slate-300">{formatDate(detail.submittedAt)}</p> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function Rapportsequipe() {
   const [reportData, setReportData] = useState(null);
-  const [selectedRecommendations, setSelectedRecommendations] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -102,9 +161,6 @@ function Rapportsequipe() {
         if (cancelled) return;
 
         setReportData(response);
-        setSelectedRecommendations(
-          Object.fromEntries((response.rows || []).map((row) => [row.id, row.automaticRecommendation]))
-        );
       } catch (error) {
         if (!cancelled) {
           setErrorMessage(error.message || "Chargement du rapport équipe impossible.");
@@ -124,50 +180,50 @@ function Rapportsequipe() {
   }, []);
 
   const rows = reportData?.rows || [];
-  const sectionTitles = reportData?.section_titles || [];
   const kpis = reportData?.kpis || {};
   const cycleLabel = reportData?.cycle_label || "Cycle 2025-2026";
+  const finalDecisionCount = rows.filter((row) => getFinalDecisionLabel(row) !== "En attente").length;
 
   const reportCards = useMemo(
     () => [
       {
-        title: "Score moyen de l'équipe",
-        value: typeof kpis.teamAverage === "number" ? String(kpis.teamAverage) : "--",
-        subtitle: "Sur 5",
+        title: "Score mission moyen",
+        value: typeof kpis.missionTeamAverage === "number" ? String(kpis.missionTeamAverage) : "--",
+        subtitle: "Moyenne des scores mission",
         accent: "",
       },
       {
-        title: "Taux complétion",
+        title: "Score global moyen",
+        value: typeof kpis.globalTeamAverage === "number" ? String(kpis.globalTeamAverage) : "--",
+        subtitle: "Moyenne des scores globaux",
+        accent: "",
+      },
+      {
+        title: "Taux de complétion",
         value: `${kpis.completionRate || 0}%`,
-        subtitle: `${kpis.completedEvaluationsCount || 0}/${kpis.totalMembers || 0} eval(s) completes`,
+        subtitle: `${kpis.completedEvaluationsCount || 0}/${kpis.totalMembers || 0} évaluations complétées`,
         accent: "",
       },
       {
-        title: "Ecarts signales",
-        value: String(kpis.unjustifiedGapCount || 0),
-        subtitle: "A justifier",
-        accent: "text-[#F34D4D]",
-      },
-      {
-        title: "Augmentations recommandées",
-        value: String(kpis.augmentationCount || 0),
-        subtitle: "",
+        title: "Décisions finales reçues",
+        value: String(finalDecisionCount),
+        subtitle: `${rows.length || 0} collaborateur(s) suivis`,
         accent: "",
       },
     ],
-    [kpis]
+    [finalDecisionCount, kpis, rows.length]
   );
 
   const exportsList = [
     {
       title: "Rapport de synthèse d'équipe",
-      subtitle: "Scores, recommandations, sections - PDF",
+      subtitle: "Scores missions, scores globaux, décisions finales - PDF",
       action: "Export PDF",
       actionClass: "bg-[#1E88F4] text-white",
     },
     {
-      title: "Données detaillées de l'équipe",
-      subtitle: "Toutes les notes consolidées - Excel",
+      title: "Données détaillées de l'équipe",
+      subtitle: "Toutes les moyennes consolidées - Excel",
       action: "Export Excel",
       actionClass: "bg-[#EAF1F8] text-[#0F3A63]",
     },
@@ -177,19 +233,11 @@ function Rapportsequipe() {
     const slug = item.title.toLowerCase().replaceAll(" ", "-").replaceAll("'", "");
 
     if (item.action.includes("Excel")) {
-      downloadFile(
-        `${slug}.csv`,
-        buildCsvReport(rows, sectionTitles, selectedRecommendations),
-        "text/csv;charset=utf-8"
-      );
+      downloadFile(`${slug}.csv`, buildCsvReport(rows), "text/csv;charset=utf-8");
       return;
     }
 
-    downloadFile(
-      `${slug}.html`,
-      buildPrintableReport(item.title, rows, sectionTitles, selectedRecommendations, cycleLabel),
-      "text/html;charset=utf-8"
-    );
+    downloadFile(`${slug}.html`, buildPrintableReport(item.title, rows, cycleLabel), "text/html;charset=utf-8");
   };
 
   if (isLoading) {
@@ -221,13 +269,9 @@ function Rapportsequipe() {
             <thead>
               <tr className="bg-[#003B63] text-left text-white">
                 <th className="px-4 py-3 font-semibold">Collaborateur</th>
-                {sectionTitles.map((title) => (
-                  <th key={title} className="px-4 py-3 font-semibold">
-                    {title}
-                  </th>
-                ))}
-                <th className="px-4 py-3 font-semibold">Score final</th>
-                <th className="px-4 py-3 font-semibold">Recommandation</th>
+                <th className="px-4 py-3 font-semibold">Score missions</th>
+                <th className="px-4 py-3 font-semibold">Score globaux</th>
+                <th className="px-4 py-3 font-semibold">Décision finale</th>
               </tr>
             </thead>
             <tbody>
@@ -247,46 +291,26 @@ function Rapportsequipe() {
                         </div>
                       </div>
                     </td>
-                    {row.sectionScores.map((section) => (
-                      <td
-                        key={`${row.id}-${section.title}`}
-                        className={`px-4 py-3 font-semibold ${
-                          typeof section.score === "number" && section.score < 3
-                            ? "text-[#F34D4D]"
-                            : typeof section.score === "number" && section.score < 4
-                              ? "text-[#D48A2A]"
-                              : "text-[#73AF2E]"
-                        }`}
-                      >
-                        {formatScore(section.score)}
-                      </td>
-                    ))}
-                    <td className="px-4 py-3 font-bold">{formatScore(row.finalScore)}</td>
                     <td className="px-4 py-3">
-                      <select
-                        value={selectedRecommendations[row.id] || row.automaticRecommendation}
-                        onChange={(event) =>
-                          setSelectedRecommendations((current) => ({
-                            ...current,
-                            [row.id]: event.target.value,
-                          }))
-                        }
-                        className={`min-w-[150px] rounded-full px-3 py-1 text-xs font-semibold outline-none ${getRecommendationClass(
-                          selectedRecommendations[row.id] || row.automaticRecommendation
+                      <ScoreWithTooltip score={row.missionScore} details={row.missionScoreDetails} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <ScoreWithTooltip score={row.globalScore} details={row.globalScoreDetails} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex min-w-[150px] justify-center rounded-full px-3 py-1 text-xs font-semibold ${getFinalDecisionClass(
+                          getFinalDecisionLabel(row)
                         )}`}
                       >
-                        {recommendationOptions.map((option) => (
-                          <option key={option} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
+                        {getFinalDecisionLabel(row)}
+                      </span>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={sectionTitles.length + 3} className="px-4 py-6 text-center text-sm font-semibold text-slate-500">
+                  <td colSpan={4} className="px-4 py-6 text-center text-sm font-semibold text-slate-500">
                     Aucune évaluation manager disponible pour le reporting d'équipe.
                   </td>
                 </tr>
@@ -294,6 +318,9 @@ function Rapportsequipe() {
             </tbody>
           </table>
         </div>
+        <p className="mt-3 text-xs font-semibold text-slate-500">
+          Survolez un score mission ou global pour voir le détail complet des notes prises dans le calcul.
+        </p>
       </section>
 
       <section className="rounded-md bg-white p-4 shadow-sm">
