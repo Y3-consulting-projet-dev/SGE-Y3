@@ -127,7 +127,7 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
                       : "En attente de ma soumission",
                 },
                 { id: 2, title: "Mes managers évaluent", subtitle: "Selon les départements concernés" },
-                { id: 3, title: "Validation RH / Capital Humain", subtitle: "Validation métier" },
+                { id: 3, title: "Validation RH", subtitle: "Suivi administratif RH" },
                 { id: 4, title: "Decision de l'Associé", subtitle: "Résultat communiqué ensuite" },
               ].map((step) => (
                 <div key={step.id} className="flex items-start gap-2">

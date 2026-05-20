@@ -115,6 +115,15 @@ function getMissionSectionAverage(section) {
   return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
 }
 
+function getRhRecipientRoleLabel(recipient) {
+  const normalizedDepartment = String(recipient?.department || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+
+  return normalizedDepartment === "CAPITAL HUMAIN" ? "Assistante RH" : recipient?.department || "RH";
+}
+
 function hasRequiredSubmissionComment(sections = []) {
   return sections.length > 0 && sections.every((section) => String(section.comment || "").trim().length >= 3);
 }
@@ -305,7 +314,7 @@ function Evaluermonequipe({ member }) {
   const hasLowScoreOnActivePage = (activePage?.themes || []).some(
     (theme) => typeof theme.score === "number" && theme.score < 3
   );
-  const hasRequiredJustification = !hasLowScoreOnActivePage || Boolean((activeSection?.comment || "").trim());
+  const hasRequiredJustification = !hasLowScoreOnActivePage || String(activePage?.comment || "").trim().length >= 3;
 
   useEffect(() => {
     if (!activeMissionReview?.id || !missionSections.length) return;
@@ -366,6 +375,26 @@ function Evaluermonequipe({ member }) {
         return {
           ...section,
           comment,
+        };
+      })
+    );
+  }
+
+  function updatePageComment(comment) {
+    syncSections((currentSections) =>
+      currentSections.map((section) => {
+        if (Number(section.id) !== Number(activeSectionId)) return section;
+
+        return {
+          ...section,
+          pages: (section.pages || []).map((page, pageIndex) =>
+            pageIndex !== activePageIndex
+              ? page
+              : {
+                  ...page,
+                  comment,
+                }
+          ),
         };
       })
     );
@@ -1082,6 +1111,17 @@ function Evaluermonequipe({ member }) {
                     ))}
                   </div>
                 ) : null}
+                {(selfEvaluation.titleJustifications || []).length ? (
+                  <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
+                    {(selfEvaluation.titleJustifications || []).map((item) => (
+                      <div key={`${item.sectionId}-${item.pageId}`} className="rounded-md bg-[#F8FAFC] p-3">
+                        <p className="text-xs font-bold text-[#0F3A63]">{item.sectionTitle}</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">{item.pageTitle}</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-600">{item.comment}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 <p className="mt-4 border-t border-slate-100 pt-3 text-sm font-semibold text-slate-500">
                   Statut : {selfEvaluation.status || "En attente"} | Moyenne : {selfEvaluation.overallAverage ?? "--"} / 5
                 </p>
@@ -1114,6 +1154,17 @@ function Evaluermonequipe({ member }) {
                               <div key={`${item.evaluatorName}-${section.sectionId}`} className="rounded-md bg-white p-3">
                                 <p className="text-xs font-bold text-[#0F3A63]">{section.title}</p>
                                 <p className="mt-1 text-sm font-semibold text-slate-600">{section.comment}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                        {(item.titleJustifications || []).length ? (
+                          <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+                            {item.titleJustifications.map((title) => (
+                              <div key={`${item.evaluatorName}-${title.pageId}`} className="rounded-md bg-white p-3">
+                                <p className="text-xs font-bold text-[#0F3A63]">{title.sectionTitle}</p>
+                                <p className="mt-1 text-xs font-semibold text-slate-500">{title.pageTitle}</p>
+                                <p className="mt-1 text-sm font-semibold text-slate-600">{title.comment}</p>
                               </div>
                             ))}
                           </div>
@@ -1171,7 +1222,7 @@ function Evaluermonequipe({ member }) {
                 <div className="mt-3 space-y-2">
                   {rhRecipients.map((recipient) => (
                     <p key={recipient.id} className="text-sm font-semibold text-[#0F3A63]">
-                      {recipient.name} ({recipient.department})
+                      {recipient.name} ({getRhRecipientRoleLabel(recipient)})
                     </p>
                   ))}
                 </div>
@@ -1262,9 +1313,22 @@ function Evaluermonequipe({ member }) {
               </div>
             ) : null}
 
+            {hasLowScoreOnActivePage ? (
+              <div className="mt-4">
+                <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Justification du titre</p>
+                <textarea
+                  rows={3}
+                  value={activePage?.comment || ""}
+                  onChange={(event) => updatePageComment(event.target.value)}
+                  placeholder="Expliquez la raison des notes infÃ©rieures Ã  3 pour ce titre..."
+                  className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
+                />
+              </div>
+            ) : null}
+
             <div className="mt-4">
               <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">
-                {hasLowScoreOnActivePage ? "Justification de la section" : "Commentaire de section"}
+                Commentaire de section
               </p>
               <textarea
                 rows={4}

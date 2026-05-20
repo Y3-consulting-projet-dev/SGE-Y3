@@ -145,6 +145,21 @@ function EvaluationStepCard({ step }) {
           )}
         </div>
       </div>
+
+      <div className="mt-4 space-y-3">
+        <h5 className="text-xs font-extrabold uppercase text-slate-500">Justifications par titre</h5>
+        {step.titleJustifications?.length ? (
+          step.titleJustifications.map((title) => (
+            <div key={`${step.source}-${title.pageId}-${title.pageTitle}`} className="rounded-md bg-white px-3 py-3">
+              <p className="text-xs font-extrabold uppercase text-[#0F4A72]">{title.sectionTitle}</p>
+              <p className="mt-1 text-xs font-semibold text-slate-500">{title.pageTitle}</p>
+              <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{title.comment}</p>
+            </div>
+          ))
+        ) : (
+          <p className="text-sm font-semibold text-slate-500">Aucune justification de titre disponible.</p>
+        )}
+      </div>
     </section>
   );
 }

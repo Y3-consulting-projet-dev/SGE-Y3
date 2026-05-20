@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { getRhSyntheses } from "@/lib/rhOverview";
+import { getRhSyntheses, submitRhSyntheses } from "@/lib/rhOverview";
 
 function SynthesesRH({ readOnly = false }) {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -13,13 +15,14 @@ function SynthesesRH({ readOnly = false }) {
       try {
         setIsLoading(true);
         setErrorMessage("");
+        setFeedbackMessage("");
         const response = await getRhSyntheses();
         if (!cancelled) {
           setData(response);
         }
       } catch (error) {
         if (!cancelled) {
-          setErrorMessage(error.message || "Chargement des synthèses RH impossible.");
+          setErrorMessage(error.message || "Chargement des syntheses RH impossible.");
         }
       } finally {
         if (!cancelled) {
@@ -36,8 +39,26 @@ function SynthesesRH({ readOnly = false }) {
 
   const rows = data?.items || [];
 
+  async function handleSubmitSyntheses() {
+    try {
+      setIsSubmitting(true);
+      setErrorMessage("");
+      setFeedbackMessage("");
+      const response = await submitRhSyntheses();
+      setData({
+        cycle_label: response.cycle_label || data?.cycle_label,
+        items: response.items || [],
+      });
+      setFeedbackMessage(response.message || "Les syntheses ont bien ete transmises.");
+    } catch (error) {
+      setErrorMessage(error.message || "Transmission des syntheses impossible.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   if (isLoading) {
-    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement des synthèses RH...</section>;
+    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement des syntheses RH...</section>;
   }
 
   if (errorMessage) {
@@ -48,18 +69,26 @@ function SynthesesRH({ readOnly = false }) {
     <section className="rounded-xl bg-white p-5 shadow-sm">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-extrabold text-[#0F3A63]">Synthèses RH</h2>
-          <p className="text-sm font-semibold text-slate-500">Dossiers consolidés et prêts à être transmis.</p>
+          <h2 className="text-xl font-extrabold text-[#0F3A63]">Syntheses RH</h2>
+          <p className="text-sm font-semibold text-slate-500">Dossiers consolides et prets a etre transmis.</p>
         </div>
         <button
-          disabled={readOnly || !rows.length}
+          type="button"
+          onClick={handleSubmitSyntheses}
+          disabled={readOnly || !rows.length || isSubmitting}
           className={`rounded-full px-4 py-2 text-xs font-bold ${
-            readOnly || !rows.length ? "cursor-not-allowed bg-slate-200 text-slate-500" : "bg-[#0D496A] text-white"
+            readOnly || !rows.length || isSubmitting ? "cursor-not-allowed bg-slate-200 text-slate-500" : "bg-[#0D496A] text-white"
           }`}
         >
-          {readOnly ? "Lecture seule" : "Transmettre à l'Associé"}
+          {readOnly ? "Lecture seule" : isSubmitting ? "Transmission..." : "Transmettre a l'Associe"}
         </button>
       </div>
+
+      {feedbackMessage ? (
+        <div className="mb-4 rounded-md bg-[#DCECCB] px-4 py-3 text-sm font-semibold text-[#184D2E]">
+          {feedbackMessage}
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         {rows.length ? (
@@ -77,7 +106,7 @@ function SynthesesRH({ readOnly = false }) {
                   <p className="mt-1 font-bold">{typeof row.managerMissionScore === "number" ? row.managerMissionScore : "--"}</p>
                 </div>
                 <div className="rounded-md bg-white px-3 py-2">
-                  <p className="text-xs text-slate-500">Score auto-évaluation</p>
+                  <p className="text-xs text-slate-500">Score auto-evaluation</p>
                   <p className="mt-1 font-bold">{typeof row.selfScore === "number" ? row.selfScore : "--"}</p>
                 </div>
                 <div className="rounded-md bg-white px-3 py-2">
@@ -87,7 +116,7 @@ function SynthesesRH({ readOnly = false }) {
               </div>
               <div className="mt-4 flex items-end justify-between">
                 <div>
-                  <p className="text-xs font-semibold text-slate-500">Manager évaluateur</p>
+                  <p className="text-xs font-semibold text-slate-500">Manager evaluateur</p>
                   <p className="mt-1 text-sm font-bold text-[#0F4A72]">{row.managerName}</p>
                 </div>
                 <p className="text-2xl font-black text-[#78B843]">
@@ -95,13 +124,13 @@ function SynthesesRH({ readOnly = false }) {
                 </p>
               </div>
               <p className="mt-4 rounded-md bg-white px-3 py-2 text-xs font-bold text-slate-500">
-                Decision: RH validée, prête pour transmission
+                Decision: RH validee, prete pour transmission
               </p>
             </article>
           ))
         ) : (
           <div className="rounded-lg bg-slate-50 px-4 py-5 text-sm font-semibold text-slate-500 xl:col-span-3">
-            Aucune synthese prête a transmettre pour le moment.
+            Aucune synthese prete a transmettre pour le moment.
           </div>
         )}
       </div>

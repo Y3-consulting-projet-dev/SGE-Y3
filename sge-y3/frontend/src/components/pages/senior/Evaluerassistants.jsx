@@ -330,6 +330,8 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
     Math.max((activeMissionSection?.groups?.length || 1) - 1, 0)
   );
   const activeMissionGroup = activeMissionSection?.groups?.[activeMissionPageIndex] || activeMissionSection?.groups?.[0] || null;
+  const hasLowScoreOnActivePage = (activePage?.themes || []).some((theme) => typeof theme.score === "number" && theme.score < 3);
+  const hasRequiredJustification = !hasLowScoreOnActivePage || String(activePage?.comment || "").trim().length >= 3;
 
   useEffect(() => {
     if (!displayedSections.length) {
@@ -402,6 +404,28 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
         return {
           ...section,
           comment,
+        };
+      })
+    );
+  }
+
+  function updatePageComment(comment) {
+    syncSections((currentSections) =>
+      currentSections.map((section) => {
+        if (Number(section.id) !== Number(activeSectionId)) {
+          return section;
+        }
+
+        return {
+          ...section,
+          pages: (section.pages || []).map((page) =>
+            page.page_id !== activePage?.page_id
+              ? page
+              : {
+                  ...page,
+                  comment,
+                }
+          ),
         };
       })
     );
@@ -526,6 +550,12 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
   }
 
   async function handleSaveAndContinue() {
+    if (!hasRequiredJustification) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Une justification est requise pour toute note inférieure à 3.");
+      return;
+    }
+
     const response = await persistReview(sections, missionReviews);
     if (response) goToGlobalStep(1);
   }
@@ -535,6 +565,12 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
     if (!hasRequiredSubmissionComment(sections)) {
       setFeedbackTone("error");
       setFeedbackMessage("Un commentaire d'au moins 3 caractères est obligatoire pour chaque section avant transmission.");
+      return;
+    }
+
+    if (!hasRequiredJustification) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Une justification est requise pour toute note inférieure à 3.");
       return;
     }
 
@@ -586,7 +622,15 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
       const savedResponse = await persistReview(sections, missionReviews);
       if (!savedResponse) return;
 
-      const submittedResponse = await submitSeniorAssistantMissionEvaluation(selectedAssistantId, activeMission.id);
+      const submittedResponse = await submitSeniorAssistantMissionEvaluation(selectedAssistantId, activeMission.id, {
+        selectedManagerRecipient: selectedManager
+          ? {
+              id: selectedManager.id,
+              name: selectedManager.name,
+              department: selectedManager.department,
+            }
+          : null,
+      });
       setReviewData(submittedResponse);
       setSections(submittedResponse.review.sections);
       setMissionReviews(submittedResponse.mission_reviews || []);
@@ -767,6 +811,29 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                   ) : null}
                 </div>
 
+                {managerRecipients.length ? (
+                  <section className="mb-4 rounded-md bg-white p-4 shadow-sm">
+                    <label htmlFor="manager-select-mission" className="mb-2 block text-[12px] font-bold text-[#0F3A63]">
+                      Manager destinataire
+                    </label>
+                    <select
+                      id="manager-select-mission"
+                      value={selectedManagerValue}
+                      onChange={(event) => {
+                        setSelectedManagerValue(event.target.value);
+                        setFeedbackMessage("");
+                      }}
+                      className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-[#0F3A63] outline-none"
+                    >
+                      {managerRecipients.map((manager) => (
+                        <option key={getRecipientOptionValue(manager)} value={getRecipientOptionValue(manager)}>
+                          {manager.department} - {manager.name} ({manager.grade})
+                        </option>
+                      ))}
+                    </select>
+                  </section>
+                ) : null}
+
                 <section className="mb-4 rounded-md bg-[#F8FAFC] p-4">
                   <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                     {missionSections.map((section) => {
@@ -859,10 +926,10 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                         <button
                           type="button"
                           onClick={handleSubmitMission}
-                          disabled={isSaving || isSubmitting || activeMission?.status === "Transmise"}
+                          disabled={isSaving || isSubmitting}
                           className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
                         >
-                          {isSubmitting ? "Transmission..." : "Transmettre la mission au Manager"}
+                          {isSubmitting ? "Transmission..." : activeMission?.status === "Transmise" ? "Retransmettre la mission" : "Transmettre la mission au Manager"}
                         </button>
                         <button
                           type="button"
@@ -1076,8 +1143,31 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                 ))}
               </div>
 
+              {hasLowScoreOnActivePage ? (
+                <div className="mt-4 rounded-md bg-[#FDEBEC] px-3 py-2 text-[11px] font-semibold text-[#B93840]">
+                  Une note inférieure à 3 a été détectée. Merci de justifier cet écart sur ce titre.
+                </div>
+              ) : null}
+
               <div className="mt-4">
-                <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire de section</p>
+                {hasLowScoreOnActivePage ? (
+                  <>
+                    <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Justification du titre</p>
+                    <textarea
+                      rows={3}
+                      value={activePage?.comment || ""}
+                      onChange={(event) => updatePageComment(event.target.value)}
+                      placeholder="Expliquez la raison des notes inférieures à 3 pour ce titre..."
+                      className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
+                    />
+                  </>
+                ) : null}
+              </div>
+
+              <div className="mt-4">
+                <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">
+                  Commentaire de section
+                </p>
                 <textarea
                   rows={4}
                   value={activeSection.comment || ""}
@@ -1119,10 +1209,10 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={isSaving || isSubmitting || reviewData?.review?.status === "Transmis au Manager"}
+                    disabled={isSaving || isSubmitting}
                     className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
                   >
-                    {isSubmitting ? "Transmission..." : "Transmettre au Manager"}
+                    {isSubmitting ? "Transmission..." : reviewData?.review?.status === "Transmis au Manager" ? "Retransmettre au Manager" : "Transmettre au Manager"}
                   </button>
                 )}
               </div>

@@ -8,9 +8,11 @@ const {
   getAverageFromScores,
   getAverageScore,
   getEvaluationSummary,
+  getPageJustifications,
   getOverallAverageScore,
   normalizeSections,
   validateFinalCommentForSubmit,
+  validateLowScorePageComments,
   validateSectionCommentsForSubmit,
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
@@ -313,6 +315,7 @@ function buildSelfEvaluationPayload(instance) {
         title: section.title,
         comment: String(section.comment || '').trim(),
       })),
+    titleJustifications: getPageJustifications(sections),
   };
 }
 
@@ -663,6 +666,7 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
           title: section.title,
           comment: String(section.comment || '').trim(),
         })),
+      titleJustifications: getPageJustifications(normalizedSeniorSections),
     });
 
     for (const missionReview of review.mission_reviews || []) {
@@ -1716,6 +1720,14 @@ module.exports = {
     }
 
     const sections = normalizeSections(rawSections);
+    const missingPageComments = validateLowScorePageComments(sections, 3);
+
+    if (missingPageComments.length) {
+      return response.status(400).json({
+        message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+        missingPageComments,
+      });
+    }
 
     for (const section of sections) {
       for (const criterion of section.criteria) {
@@ -1787,6 +1799,15 @@ module.exports = {
       return response.status(400).json({
         message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
         missingSectionComments,
+      });
+    }
+
+    const missingPageComments = validateLowScorePageComments(sections, 3);
+
+    if (missingPageComments.length) {
+      return response.status(400).json({
+        message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+        missingPageComments,
       });
     }
 

@@ -82,7 +82,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
     }
 
     if (activeSection === "reports") {
-      return <RapportsRH readOnly={assistantMode} />;
+      return <RapportsRH readOnly={false} />;
     }
 
     if (activeSection === "assistant-rh-review") {
@@ -201,7 +201,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
               </button> */}
               {assistantMode ? (
                 <span className="rounded-full bg-[#E7EDF3] px-4 py-2 text-xs font-bold text-[#0F4A72]">
-                  Accès restreint
+                  {activeSection === "reports" ? "Accès total" : "Accès restreint"}
                 </span>
               ) : activeSection !== "profile" ? (
                 <button

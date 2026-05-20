@@ -63,10 +63,10 @@ export function saveSeniorAssistantEvaluation(assistantId, payload) {
   });
 }
 
-export function submitSeniorAssistantMissionEvaluation(assistantId, missionId) {
+export function submitSeniorAssistantMissionEvaluation(assistantId, missionId, payload = {}) {
   return request(`/senior/assistants/${assistantId}/evaluation/missions/submit`, {
     method: "POST",
-    body: JSON.stringify({ missionId }),
+    body: JSON.stringify({ missionId, ...payload }),
   });
 }
 

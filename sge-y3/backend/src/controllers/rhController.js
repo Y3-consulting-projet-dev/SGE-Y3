@@ -14,6 +14,7 @@ const {
   getAverageScore,
   getEvaluationSummary,
   getOverallAverageScore,
+  getPageJustifications,
   normalizeSections,
   validateFinalCommentForSubmit,
   validateSectionCommentsForSubmit,
@@ -21,7 +22,7 @@ const {
 } = require('../utils/evaluationHelpers');
 
 const CURRENT_CYCLE_LABEL = 'Cycle 2025-2026';
-const RH_RELEVANT_STATUSES = ['Soumis a RH', 'Valide RH', 'Cloture'];
+const RH_RELEVANT_STATUSES = ['Soumis a RH', 'Valide RH', 'Transmis a l associe', 'Cloture'];
 const QUESTIONNAIRE_SECTION_OPTIONS = [
   { value: 'SAVOIR FAIRE', label: 'SAVOIR FAIRE' },
   { value: 'SAVOIR ETRE', label: 'SAVOIR ETRE' },
@@ -467,14 +468,14 @@ function getPriorityStatus(finalScore, unjustifiedLowScores) {
 }
 
 function getRhDisplayStatus(review, unjustifiedLowScores, finalScore) {
-  if (review.status === 'Cloture' || review.status === 'Valide RH') return 'Valide';
+  if (review.status === 'Cloture' || review.status === 'Valide RH' || review.status === 'Transmis a l associe') return 'Valide';
   if (review.status === 'Soumis a RH') return 'À valider RH';
   if (review.rh_validation_selected) return 'À valider RH';
   return getPriorityStatus(finalScore, unjustifiedLowScores);
 }
 
 function getAssistantRhDisplayStatus(instance) {
-  if (instance.status === 'Cloture' || instance.status === 'Valide RH') return 'Valide';
+  if (instance.status === 'Cloture' || instance.status === 'Valide RH' || instance.status === 'Transmis a l associe') return 'Valide';
   if (instance.rh_validation_selected) return 'À valider RH';
   if (instance.status === 'Soumis a RH') return 'À valider RH';
   return 'En attente';
@@ -589,6 +590,7 @@ function buildSectionBreakdown(sections = [], source = '', evaluatorName = '', e
         title: section.title,
         comment: String(section.comment || '').trim(),
       })),
+    titleJustifications: getPageJustifications(normalizedSections),
   };
 }
 
@@ -794,7 +796,7 @@ async function loadRhReviewDataset(rhUserIds) {
     const finalScore = getAverageFromScores([missionScore, scoreGlobal]);
     const hasSubmittedManagerMission = (review?.mission_reviews || []).some((mission) => mission.status === 'Soumise a RH');
     const effectiveStatus =
-      review?.status === 'Soumis a RH' || review?.status === 'Valide RH' || review?.status === 'Cloture'
+      review?.status === 'Soumis a RH' || review?.status === 'Valide RH' || review?.status === 'Transmis a l associe' || review?.status === 'Cloture'
         ? review.status
         : hasSubmittedManagerMission
           ? 'Soumis a RH'
@@ -936,7 +938,11 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
     const finalScore = getAverageFromScores([missionScore, scoreGlobal]);
     const managerMissionScore = getMissionScoreTotal(review?.mission_reviews || [], ['Soumise a RH']);
     const managerMissionScoreCount = getMissionScoreCount(review?.mission_reviews || [], ['Soumise a RH']);
-    const reviewHasBeenSubmitted = review?.status === 'Soumis a RH' || review?.status === 'Valide RH' || review?.status === 'Cloture';
+    const reviewHasBeenSubmitted =
+      review?.status === 'Soumis a RH' ||
+      review?.status === 'Valide RH' ||
+      review?.status === 'Transmis a l associe' ||
+      review?.status === 'Cloture';
     const effectiveStatus = reviewHasBeenSubmitted ? review.status : instance.status;
     const rhValidationSelected =
       reviewHasBeenSubmitted && typeof review?.rh_validation_selected === 'boolean'
@@ -1067,7 +1073,9 @@ async function getRhOverview(request, response) {
     managerSelfEvaluations.filter((item) => RH_RELEVANT_STATUSES.includes(item.status)).length;
   const totalEvaluatedPopulation = evaluatedPopulation.length;
   const pendingRhItems = combinedReviewRows.filter((item) => item.status === 'Soumis a RH');
-  const readySynthesesCount = combinedReviewRows.filter((item) => item.status === 'Valide RH' || item.status === 'Cloture').length;
+  const readySynthesesCount = combinedReviewRows.filter(
+    (item) => item.status === 'Valide RH' || item.status === 'Transmis a l associe' || item.status === 'Cloture'
+  ).length;
   const priorityRows = combinedReviewRows
     .filter((row) => row.status === 'Soumis a RH')
     .sort((left, right) => {
@@ -1282,6 +1290,54 @@ async function getRhSyntheses(request, response) {
   return response.json({
     cycle_label: CURRENT_CYCLE_LABEL,
     items,
+  });
+}
+
+async function submitRhSyntheses(request, response) {
+  const rhUserIds = await resolveRhQueueUserIds();
+  const [rows, assistantRhRows] = await Promise.all([
+    loadRhReviewDataset(rhUserIds),
+    loadAssistantRhSelfDataset(rhUserIds),
+  ]);
+
+  const readyRows = [...rows, ...assistantRhRows].filter((row) => row.status === 'Valide RH' || row.status === 'Cloture');
+
+  if (!readyRows.length) {
+    return response.json({
+      message: "Aucune synthese RH n'est disponible pour transmission a l'associe.",
+      cycle_label: CURRENT_CYCLE_LABEL,
+      items: [],
+    });
+  }
+
+  const managerReviewIds = readyRows
+    .filter((row) => row.managerName !== 'RH')
+    .map((row) => row.id)
+    .filter(Boolean);
+  const assistantInstanceIds = readyRows
+    .filter((row) => row.managerName === 'RH')
+    .map((row) => row.id)
+    .filter(Boolean);
+
+  await Promise.all([
+    managerReviewIds.length
+      ? ManagerMemberReview.updateMany(
+          { _id: { $in: managerReviewIds } },
+          { $set: { status: 'Transmis a l associe', submitted_at: new Date() } }
+        )
+      : Promise.resolve(),
+    assistantInstanceIds.length
+      ? EvaluationInstance.updateMany(
+          { _id: { $in: assistantInstanceIds } },
+          { $set: { status: 'Transmis a l associe', submitted_at: new Date() } }
+        )
+      : Promise.resolve(),
+  ]);
+
+  return response.json({
+    message: 'Les syntheses ont bien ete transmises a l associe.',
+    cycle_label: CURRENT_CYCLE_LABEL,
+    items: [],
   });
 }
 
@@ -2200,5 +2256,6 @@ module.exports = {
   submitMyAssistantRhSelfEvaluation,
   submitMyRhSelfMissionEvaluation,
   submitMyRhSelfEvaluation,
+  submitRhSyntheses,
   validateRhSelection,
 };

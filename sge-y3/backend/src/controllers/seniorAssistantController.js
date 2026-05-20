@@ -6,8 +6,9 @@ const {
   getAverageScore,
   getEvaluationSummary,
   getOverallAverageScore,
+  getPageJustifications,
   normalizeSections,
-  validateFinalCommentForSubmit,
+  validateLowScorePageComments,
   validateSectionCommentsForSubmit,
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
@@ -569,6 +570,7 @@ function buildAssistantSelfEvaluationPayload(instance) {
         title: section.title,
         comment: String(section.comment || '').trim(),
       })),
+    titleJustifications: getPageJustifications(selfSections),
   };
 }
 
@@ -920,6 +922,14 @@ async function saveMyAssistantEvaluation(request, response) {
   }
 
   const sections = normalizeSections(rawSections);
+  const missingPageComments = validateLowScorePageComments(sections, 3);
+
+  if (missingPageComments.length) {
+    return response.status(400).json({
+      message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+      missingPageComments,
+    });
+  }
 
   for (const section of sections) {
     for (const criterion of section.criteria) {
@@ -1054,6 +1064,7 @@ async function submitMyAssistantMissionReview(request, response) {
     resolveManagersForSeniorReview(request.user, assistant),
     getOrCreateAssistantEvaluationInstance(assistant),
   ]);
+  const selectedManager = resolveSelectedManager(managers, request.body?.selectedManagerRecipient);
   const missionReview = (review.mission_reviews || []).find((mission) => mission.mission_id === missionId);
 
   if (!missionReview) {
@@ -1073,14 +1084,21 @@ async function submitMyAssistantMissionReview(request, response) {
   }
 
   missionReview.status = 'Transmise';
+  if (selectedManager) {
+    missionReview.recipient_name = selectedManager.name;
+    missionReview.recipient_grade = selectedManager.grade;
+    missionReview.recipient_department = selectedManager.department;
+  }
   missionReview.submitted_at = new Date();
-  review.submitted_to_user_ids = managers.map((manager) => manager._id);
-  review.submitted_to_names = managers.map((manager) => manager.name);
+  review.submitted_to_user_ids = selectedManager ? [selectedManager._id] : managers.map((manager) => manager._id);
+  review.submitted_to_names = selectedManager ? [selectedManager.name] : managers.map((manager) => manager.name);
   review.last_saved_at = new Date();
   await review.save();
 
   return response.json({
-    message: managers.length
+    message: selectedManager
+      ? `Mission transmise a ${selectedManager.name}.`
+      : managers.length
       ? `Mission transmise a ${managers.map((manager) => manager.name).join(', ')}.`
       : 'Mission transmise au(x) manager(s).',
     ...{
@@ -1124,6 +1142,15 @@ async function submitMyAssistantEvaluation(request, response) {
     return response.status(400).json({
       message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
       missingSectionComments,
+    });
+  }
+
+  const missingPageComments = validateLowScorePageComments(sections, 3);
+
+  if (missingPageComments.length) {
+    return response.status(400).json({
+      message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+      missingPageComments,
     });
   }
 

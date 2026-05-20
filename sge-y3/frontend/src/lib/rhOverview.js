@@ -196,3 +196,9 @@ export function validateRhSelection(reviewIds) {
 export function getRhSyntheses() {
   return request("/rh/syntheses");
 }
+
+export function submitRhSyntheses() {
+  return request("/rh/syntheses/submit", {
+    method: "POST",
+  });
+}
