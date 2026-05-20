@@ -6,6 +6,7 @@ const {
   createRhQuestionnaireSection,
   downloadRhReport,
   getRhCalibration,
+  getRhDepartmentEvaluationDetail,
   getRhDepartmentEvaluations,
   getAssistantRhEvaluation,
   getMyAssistantRhSelfEvaluation,
@@ -48,6 +49,7 @@ router.post('/questionnaire/sections', requireAuth, requireRh, createRhQuestionn
 router.post('/questionnaire/questions', requireAuth, requireRh, addRhQuestionnaireQuestion);
 router.get('/calibration', requireAuth, requireRh, getRhCalibration);
 router.get('/department-evaluations', requireAuth, requireRh, getRhDepartmentEvaluations);
+router.get('/department-evaluations/:reviewId', requireAuth, requireRh, getRhDepartmentEvaluationDetail);
 router.get('/population', requireAuth, requireRh, getRhPopulation);
 router.get('/reports', requireAuth, requireRh, getRhReports);
 router.get('/reports/:reportId/download', requireAuth, requireRh, downloadRhReport);

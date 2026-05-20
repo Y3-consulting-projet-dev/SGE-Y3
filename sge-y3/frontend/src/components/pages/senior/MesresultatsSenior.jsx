@@ -120,6 +120,41 @@ function MesresultatsSenior() {
               </tbody>
             </table>
           </div>
+
+          {row.globalEvaluation ? (
+            <div className="mt-5 rounded-lg border border-[#D9E3EE] bg-[#F8FBFE] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase text-slate-500">Evaluation globale</p>
+                  <p className="mt-1 text-sm font-bold text-[#0F3A63]">{row.globalEvaluation.status || "Brouillon"}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-semibold text-slate-500">Score moyen</p>
+                  <p className="mt-1 text-sm font-black text-[#4E8B1B]">
+                    {row.globalEvaluation.averageScore !== null ? `${row.globalEvaluation.averageScore} / 5` : "--"}
+                  </p>
+                </div>
+              </div>
+              <p className="mt-3 text-xs font-semibold text-slate-500">
+                Soumise le {formatDate(row.globalEvaluation.submittedAt)}
+              </p>
+
+              {row.globalEvaluation.sectionComments?.length ? (
+                <div className="mt-4 space-y-3">
+                  {row.globalEvaluation.sectionComments.map((sectionComment) => (
+                    <div key={sectionComment.sectionId} className="rounded-md bg-white px-3 py-3">
+                      <p className="text-xs font-bold text-[#0F3A63]">{sectionComment.sectionTitle}</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">{sectionComment.comment}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 rounded-md bg-white px-3 py-3 text-sm font-semibold text-slate-500">
+                  Aucun commentaire global de section n'a encore été saisi.
+                </p>
+              )}
+            </div>
+          ) : null}
         </article>
       ))}
     </section>

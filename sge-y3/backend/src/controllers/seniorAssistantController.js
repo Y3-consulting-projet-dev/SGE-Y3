@@ -5,7 +5,10 @@ const { buildEvaluationTemplateForUser } = require('../utils/competencyMatrix');
 const {
   getAverageScore,
   getEvaluationSummary,
+  getOverallAverageScore,
   normalizeSections,
+  validateFinalCommentForSubmit,
+  validateSectionCommentsForSubmit,
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
 
@@ -535,6 +538,7 @@ function buildReviewPayload(review, seniorUser, assistant, managers = []) {
     review_context: {
       evaluationDepartment: review.assistant_department || assistant.department,
     },
+    self_evaluation: null,
     mission_reviews: formatMissionReviews(review.mission_reviews || []),
     submitted_to: managers.map((manager) => ({
       id: manager._id.toString(),
@@ -542,6 +546,29 @@ function buildReviewPayload(review, seniorUser, assistant, managers = []) {
       department: manager.department,
       grade: manager.grade,
     })),
+  };
+}
+
+function buildAssistantSelfEvaluationPayload(instance) {
+  const selfSections = normalizeSections(instance?.sections || []);
+
+  return {
+    status: instance?.status || 'En attente',
+    submitted_at: instance?.submitted_at || null,
+    overallAverage: getOverallAverageScore(selfSections),
+    sectionScores: selfSections.map((section) => ({
+      sectionId: section.id,
+      title: section.title,
+      score: getAverageScore(section),
+      percent: Math.round(((getAverageScore(section) || 0) / 5) * 100),
+    })),
+    sectionComments: selfSections
+      .filter((section) => String(section.comment || '').trim())
+      .map((section) => ({
+        sectionId: section.id,
+        title: section.title,
+        comment: String(section.comment || '').trim(),
+      })),
   };
 }
 
@@ -625,7 +652,7 @@ async function listMyTransmittedSummaries(request, response) {
         cycle_label: CURRENT_CYCLE_LABEL,
         senior_id: request.user._id,
         assistant_id: { $in: assistants.map((assistant) => assistant._id) },
-      }).select('assistant_id mission_reviews submitted_to_names')
+      }).select('assistant_id status submitted_at sections mission_reviews submitted_to_names')
     : [];
 
   const assistantById = new Map(assistants.map((assistant) => [String(assistant._id), assistant]));
@@ -634,10 +661,13 @@ async function listMyTransmittedSummaries(request, response) {
     .map((review) => {
       const assistant = assistantById.get(String(review.assistant_id));
       const transmittedMissions = (review.mission_reviews || []).filter((mission) => mission.status === 'Transmise');
+      const hasGlobalSubmission = review.status === 'Transmis au Manager' && normalizeSections(review.sections || []).length > 0;
 
-      if (!assistant || !transmittedMissions.length) {
+      if (!assistant || (!transmittedMissions.length && !hasGlobalSubmission)) {
         return null;
       }
+
+      const normalizedSections = normalizeSections(review.sections || []);
 
       return {
         assistant: {
@@ -645,6 +675,18 @@ async function listMyTransmittedSummaries(request, response) {
           name: assistant.name,
           grade: assistant.grade,
           department: assistant.department,
+        },
+        globalEvaluation: {
+          status: review.status || 'Brouillon',
+          submittedAt: review.submitted_at || null,
+          averageScore: getOverallAverageScore(normalizedSections),
+          sectionComments: normalizedSections
+            .filter((section) => String(section.comment || '').trim())
+            .map((section) => ({
+              sectionId: section.id,
+              sectionTitle: section.title,
+              comment: String(section.comment || '').trim(),
+            })),
         },
         missions: transmittedMissions.map((mission) => ({
           id: mission.mission_id,
@@ -848,10 +890,15 @@ async function getMyAssistantEvaluation(request, response) {
     });
   }
 
-  const review = await getOrCreateSeniorAssistantReview(request.user, assistant);
-  const managers = await resolveManagersForSeniorReview(request.user, assistant);
+  const [review, managers, selfEvaluationInstance] = await Promise.all([
+    getOrCreateSeniorAssistantReview(request.user, assistant),
+    resolveManagersForSeniorReview(request.user, assistant),
+    getOrCreateAssistantEvaluationInstance(assistant),
+  ]);
+  const payload = buildReviewPayload(review, request.user, assistant, managers);
+  payload.self_evaluation = buildAssistantSelfEvaluationPayload(selfEvaluationInstance);
 
-  return response.json(buildReviewPayload(review, request.user, assistant, managers));
+  return response.json(payload);
 }
 
 async function saveMyAssistantEvaluation(request, response) {
@@ -888,7 +935,10 @@ async function saveMyAssistantEvaluation(request, response) {
 
   const review = await getOrCreateSeniorAssistantReview(request.user, assistant);
   const summary = getEvaluationSummary(sections);
-  const managers = await resolveManagersForSeniorReview(request.user, assistant);
+  const [managers, selfEvaluationInstance] = await Promise.all([
+    resolveManagersForSeniorReview(request.user, assistant),
+    getOrCreateAssistantEvaluationInstance(assistant),
+  ]);
 
   review.sections = toPersistenceSections(sections);
   if (rawMissionReviews) {
@@ -900,7 +950,10 @@ async function saveMyAssistantEvaluation(request, response) {
 
   return response.json({
     message: 'Evaluation enregistree.',
-    ...buildReviewPayload(review, request.user, assistant, managers),
+    ...{
+      ...buildReviewPayload(review, request.user, assistant, managers),
+      self_evaluation: buildAssistantSelfEvaluationPayload(selfEvaluationInstance),
+    },
   });
 }
 
@@ -972,7 +1025,10 @@ async function addMissionToAssistant(request, response) {
 
   return response.json({
     message: `Mission ajoutee pour ${assistant.name}. L'assistant la verra dans son espace d'auto-evaluation.`,
-    ...buildReviewPayload(review, request.user, assistant, managers),
+    ...{
+      ...buildReviewPayload(review, request.user, assistant, managers),
+      self_evaluation: buildAssistantSelfEvaluationPayload(evaluationInstance),
+    },
   });
 }
 
@@ -993,8 +1049,11 @@ async function submitMyAssistantMissionReview(request, response) {
     });
   }
 
-  const review = await getOrCreateSeniorAssistantReview(request.user, assistant);
-  const managers = await resolveManagersForSeniorReview(request.user, assistant);
+  const [review, managers, selfEvaluationInstance] = await Promise.all([
+    getOrCreateSeniorAssistantReview(request.user, assistant),
+    resolveManagersForSeniorReview(request.user, assistant),
+    getOrCreateAssistantEvaluationInstance(assistant),
+  ]);
   const missionReview = (review.mission_reviews || []).find((mission) => mission.mission_id === missionId);
 
   if (!missionReview) {
@@ -1024,7 +1083,10 @@ async function submitMyAssistantMissionReview(request, response) {
     message: managers.length
       ? `Mission transmise a ${managers.map((manager) => manager.name).join(', ')}.`
       : 'Mission transmise au(x) manager(s).',
-    ...buildReviewPayload(review, request.user, assistant, managers),
+    ...{
+      ...buildReviewPayload(review, request.user, assistant, managers),
+      self_evaluation: buildAssistantSelfEvaluationPayload(selfEvaluationInstance),
+    },
   });
 }
 
@@ -1037,9 +1099,12 @@ async function submitMyAssistantEvaluation(request, response) {
     });
   }
 
-  const review = await getOrCreateSeniorAssistantReview(request.user, assistant);
+  const [review, managers, selfEvaluationInstance] = await Promise.all([
+    getOrCreateSeniorAssistantReview(request.user, assistant),
+    resolveManagersForSeniorReview(request.user, assistant),
+    getOrCreateAssistantEvaluationInstance(assistant),
+  ]);
   const sections = normalizeSections(review.sections);
-  const managers = await resolveManagersForSeniorReview(request.user, assistant);
   const selectedManager = resolveSelectedManager(managers, request.body?.selectedManagerRecipient);
   const validationSections = selectedManager
     ? filterSectionsForManagerDepartment(sections, selectedManager.department)
@@ -1050,6 +1115,15 @@ async function submitMyAssistantEvaluation(request, response) {
     return response.status(400).json({
       message: 'Toutes les questions obligatoires doivent etre renseignees avant transmission.',
       missingAnswers,
+    });
+  }
+
+  const missingSectionComments = validateSectionCommentsForSubmit(sections, 3);
+
+  if (missingSectionComments.length) {
+    return response.status(400).json({
+      message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
+      missingSectionComments,
     });
   }
 
@@ -1067,7 +1141,10 @@ async function submitMyAssistantEvaluation(request, response) {
       : managers.length
       ? `Evaluation transmise a ${managers.map((manager) => manager.name).join(', ')}.`
       : 'Evaluation transmise au(x) manager(s).',
-    ...buildReviewPayload(review, request.user, assistant, managers),
+    ...{
+      ...buildReviewPayload(review, request.user, assistant, managers),
+      self_evaluation: buildAssistantSelfEvaluationPayload(selfEvaluationInstance),
+    },
   });
 }
 

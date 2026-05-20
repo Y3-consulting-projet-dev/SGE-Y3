@@ -7,6 +7,8 @@ const {
   getEvaluationSummary,
   getOverallAverageScore,
   normalizeSections,
+  validateFinalCommentForSubmit,
+  validateSectionCommentsForSubmit,
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
 
@@ -618,6 +620,15 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
     return response.status(400).json({
       message: 'Toutes les questions obligatoires doivent etre renseignees avant soumission.',
       missingAnswers,
+    });
+  }
+
+  const missingSectionComments = validateSectionCommentsForSubmit(sections, 3);
+
+  if (missingSectionComments.length) {
+    return response.status(400).json({
+      message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
+      missingSectionComments,
     });
   }
 

@@ -120,6 +120,10 @@ export function getRhDepartmentEvaluations() {
   return request("/rh/department-evaluations");
 }
 
+export function getRhDepartmentEvaluationDetail(reviewId) {
+  return request(`/rh/department-evaluations/${reviewId}`);
+}
+
 export function getRhCalibration() {
   return request("/rh/calibration");
 }

@@ -115,6 +115,10 @@ function getMissionSectionAverage(section) {
   return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
 }
 
+function hasRequiredSubmissionComment(sections = []) {
+  return sections.length > 0 && sections.every((section) => String(section.comment || "").trim().length >= 3);
+}
+
 function MissionScoreRow({ criterion, onSelect }) {
   return (
     <div className="rounded-md border border-[#E3EAF3] bg-[#F8FBFF] p-3">
@@ -243,9 +247,8 @@ function Evaluermonequipe({ member }) {
         setSavedComments(
           Object.fromEntries(
             (response.review.sections || [])
-              .flatMap((section) => section.pages || [])
-              .filter((page) => page.comment?.trim())
-              .map((page) => [page.page_id, page.comment.trim()])
+              .filter((section) => section.comment?.trim())
+              .map((section) => [section.id, section.comment.trim()])
           )
         );
       } catch (error) {
@@ -302,7 +305,7 @@ function Evaluermonequipe({ member }) {
   const hasLowScoreOnActivePage = (activePage?.themes || []).some(
     (theme) => typeof theme.score === "number" && theme.score < 3
   );
-  const hasRequiredJustification = !hasLowScoreOnActivePage || Boolean((activePage?.comment || "").trim());
+  const hasRequiredJustification = !hasLowScoreOnActivePage || Boolean((activeSection?.comment || "").trim());
 
   useEffect(() => {
     if (!activeMissionReview?.id || !missionSections.length) return;
@@ -362,9 +365,7 @@ function Evaluermonequipe({ member }) {
 
         return {
           ...section,
-          pages: (section.pages || []).map((page, pageIndex) =>
-            pageIndex !== activePageIndex ? page : { ...page, comment }
-          ),
+          comment,
         };
       })
     );
@@ -387,9 +388,8 @@ function Evaluermonequipe({ member }) {
       setSavedComments(
         Object.fromEntries(
           (response.review.sections || [])
-            .flatMap((section) => section.pages || [])
-            .filter((page) => page.comment?.trim())
-            .map((page) => [page.page_id, page.comment.trim()])
+            .filter((section) => section.comment?.trim())
+            .map((section) => [section.id, section.comment.trim()])
         )
       );
       setFeedbackTone("success");
@@ -589,6 +589,12 @@ function Evaluermonequipe({ member }) {
   }
 
   async function handleSubmit() {
+    if (!hasRequiredSubmissionComment(sections)) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Un commentaire d'au moins 3 caractères est obligatoire pour chaque section avant soumission.");
+      return;
+    }
+
     if (!hasRequiredJustification) {
       setFeedbackTone("error");
       setFeedbackMessage("Une justification est requise pour toute note inférieure à 3.");
@@ -1066,6 +1072,16 @@ function Evaluermonequipe({ member }) {
                     </div>
                   ))}
                 </div>
+                {(selfEvaluation.sectionComments || []).length ? (
+                  <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
+                    {(selfEvaluation.sectionComments || []).map((section) => (
+                      <div key={section.sectionId} className="rounded-md bg-[#F8FAFC] p-3">
+                        <p className="text-xs font-bold text-[#0F3A63]">{section.title}</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-600">{section.comment}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 <p className="mt-4 border-t border-slate-100 pt-3 text-sm font-semibold text-slate-500">
                   Statut : {selfEvaluation.status || "En attente"} | Moyenne : {selfEvaluation.overallAverage ?? "--"} / 5
                 </p>
@@ -1092,6 +1108,16 @@ function Evaluermonequipe({ member }) {
                             <p className="text-xs text-slate-500">{formatSubmittedAt(item.submittedAt)}</p>
                           </div>
                         </div>
+                        {(item.sectionComments || []).length ? (
+                          <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+                            {item.sectionComments.map((section) => (
+                              <div key={`${item.evaluatorName}-${section.sectionId}`} className="rounded-md bg-white p-3">
+                                <p className="text-xs font-bold text-[#0F3A63]">{section.title}</p>
+                                <p className="mt-1 text-sm font-semibold text-slate-600">{section.comment}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -1238,25 +1264,25 @@ function Evaluermonequipe({ member }) {
 
             <div className="mt-4">
               <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">
-                {hasLowScoreOnActivePage ? "Justification de l'écart" : "Commentaire du titre"}
+                {hasLowScoreOnActivePage ? "Justification de la section" : "Commentaire de section"}
               </p>
               <textarea
                 rows={4}
-                value={activePage.comment || ""}
+                value={activeSection.comment || ""}
                 onChange={(event) => updateComment(event.target.value)}
                 placeholder={
                   hasLowScoreOnActivePage
-                    ? "Expliquez la raison de la note inférieure à 3..."
-                    : "Faits marquants, écarts constates, recommandations..."
+                    ? "Expliquez la raison globale des notes inférieures à 3 dans cette section..."
+                    : "Faits marquants, écarts constates, recommandations pour la section..."
                 }
                 className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
               />
             </div>
 
-            {savedComments[activePage.page_id] ? (
+            {savedComments[activeSection.id] ? (
               <div className="mt-3 rounded-sm bg-[#DCECCB] px-3 py-2">
                 <p className="text-[10px] font-bold text-[#5A8A3A]">Commentaire sauvegarde</p>
-                <p className="mt-1 text-[11px] font-semibold text-[#0F3A63]">{savedComments[activePage.page_id]}</p>
+                <p className="mt-1 text-[11px] font-semibold text-[#0F3A63]">{savedComments[activeSection.id]}</p>
               </div>
             ) : null}
 

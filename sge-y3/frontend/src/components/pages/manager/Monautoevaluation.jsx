@@ -124,6 +124,10 @@ function getMissionSectionProgress(section) {
   return Math.round((answered / criteria.length) * 100);
 }
 
+function hasRequiredSubmissionComment(sections = []) {
+  return sections.length > 0 && sections.every((section) => String(section.comment || "").trim().length >= 3);
+}
+
 function ScoreSelector({ selected, onSelect }) {
   return (
     <div className="space-y-2">
@@ -210,9 +214,8 @@ function Monautoevaluation() {
         setSavedComments(
           Object.fromEntries(
             (response.evaluation.sections || [])
-              .flatMap((section) => section.pages || [])
-              .filter((page) => page.comment?.trim())
-              .map((page) => [page.page_id, page.comment.trim()])
+              .filter((section) => section.comment?.trim())
+              .map((section) => [section.id, section.comment.trim()])
           )
         );
       } catch (error) {
@@ -320,9 +323,7 @@ function Monautoevaluation() {
 
         return {
           ...section,
-          pages: (section.pages || []).map((page, pageIndex) =>
-            pageIndex !== activePageIndex ? page : { ...page, comment }
-          ),
+          comment,
         };
       })
     );
@@ -381,9 +382,8 @@ function Monautoevaluation() {
       setSavedComments(
         Object.fromEntries(
           (response.evaluation.sections || [])
-            .flatMap((section) => section.pages || [])
-            .filter((page) => page.comment?.trim())
-            .map((page) => [page.page_id, page.comment.trim()])
+            .filter((section) => section.comment?.trim())
+            .map((section) => [section.id, section.comment.trim()])
         )
       );
       setFeedbackTone("success");
@@ -496,6 +496,11 @@ function Monautoevaluation() {
   }
 
   async function handleSubmit() {
+    if (!hasRequiredSubmissionComment(sections)) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Un commentaire d'au moins 3 caractères est obligatoire pour chaque section avant soumission.");
+      return;
+    }
     const savedEvaluation = await persistSections(sections, "Auto-évaluation manager prête pour soumission.");
 
     if (!savedEvaluation) {
@@ -673,19 +678,15 @@ function Monautoevaluation() {
               <article className="rounded-md bg-white p-4 shadow-sm">
                 <h3 className="mb-3 text-xs font-semibold text-[#79B742]">Commentaires sauvegardés</h3>
                 <div className="mb-4 space-y-3">
-                  {sections.some((section) => (section.pages || []).some((page) => savedComments[page.page_id])) ? (
-                    sections.flatMap((section) =>
-                      (section.pages || [])
-                        .filter((page) => savedComments[page.page_id])
-                        .map((page) => (
-                          <div key={page.page_id} className="rounded-md bg-slate-50 px-3 py-3">
-                            <p className="text-xs font-bold text-[#0F3A63]">
-                              {section.title} - {page.title}
-                            </p>
-                            <p className="mt-1 text-xs font-semibold text-slate-500">{savedComments[page.page_id]}</p>
-                          </div>
-                        ))
-                    )
+                  {sections.some((section) => savedComments[section.id]) ? (
+                    sections
+                      .filter((section) => savedComments[section.id])
+                      .map((section) => (
+                        <div key={section.id} className="rounded-md bg-slate-50 px-3 py-3">
+                          <p className="text-xs font-bold text-[#0F3A63]">{section.title}</p>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">{savedComments[section.id]}</p>
+                        </div>
+                      ))
                   ) : (
                     <p className="rounded-md bg-slate-50 px-3 py-3 text-xs font-semibold text-slate-500">
                       Aucun commentaire sauvegardé pour le moment.
@@ -806,20 +807,20 @@ function Monautoevaluation() {
                 </div>
 
                 <div className="mt-4">
-                  <p className="mb-2 text-xs font-semibold text-[#79B742]">Commentaire du titre</p>
+                  <p className="mb-2 text-xs font-semibold text-[#79B742]">Commentaire de section</p>
                   <textarea
                     rows={3}
-                    value={activePage.comment || ""}
+                    value={activeSection.comment || ""}
                     onChange={(event) => updateComment(event.target.value)}
-                    placeholder="Exemples concrets, points forts, axes d'amelioration..."
+                    placeholder="Synthèse globale de la section, points forts, axes d'amelioration..."
                     className="w-full resize-none rounded-md border border-slate-200 bg-slate-100 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
                   />
                 </div>
 
-                {savedComments[activePage.page_id] ? (
+                {savedComments[activeSection.id] ? (
                   <div className="mt-3 rounded-md bg-[#DCECCB] px-3 py-3">
                     <p className="mb-1 text-xs font-bold text-[#79B742]">Commentaire sauvegardé</p>
-                    <p className="text-sm font-semibold text-[#0F3A63]">{savedComments[activePage.page_id]}</p>
+                    <p className="text-sm font-semibold text-[#0F3A63]">{savedComments[activeSection.id]}</p>
                   </div>
                 ) : null}
 
@@ -1105,3 +1106,4 @@ function Monautoevaluation() {
 }
 
 export default Monautoevaluation;
+

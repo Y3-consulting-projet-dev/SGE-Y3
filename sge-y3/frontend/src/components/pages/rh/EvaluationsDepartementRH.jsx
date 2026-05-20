@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getRhDepartmentEvaluations, selectRhDepartmentEvaluation } from "@/lib/rhOverview";
+import { getRhDepartmentEvaluationDetail, getRhDepartmentEvaluations, selectRhDepartmentEvaluation } from "@/lib/rhOverview";
 
 function statusClass(status) {
   if (status === "Valide" || status === "Pret Associe" || status === "Prêt Associé") return "bg-[#DDECCF] text-[#4E8B1B]";
@@ -95,6 +95,60 @@ function ScoreWithTooltip({ score, details = [] }) {
   );
 }
 
+function EvaluationStepCard({ step }) {
+  return (
+    <section className="rounded-lg bg-[#F8FAFC] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-extrabold text-[#0F3A63]">{step.source}</h4>
+          <p className="text-xs font-semibold text-slate-500">
+            {step.evaluatorName} - {step.evaluatorGrade}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-lg font-black text-[#0F3A63]">{formatScore(step.overallScore)}</p>
+          {step.submittedAt ? <p className="text-xs font-semibold text-slate-400">{formatDate(step.submittedAt)}</p> : null}
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="space-y-3">
+          <h5 className="text-xs font-extrabold uppercase text-slate-500">Notes par section</h5>
+          {step.sectionScores.length ? (
+            step.sectionScores.map((section) => (
+              <div key={`${step.source}-${section.sectionId}-${section.title}`}>
+                <div className="mb-1 flex items-center justify-between text-xs font-bold text-[#0F4A72]">
+                  <span>{section.title}</span>
+                  <span>{formatScore(section.score)}</span>
+                </div>
+                <div className="h-2 rounded-full bg-slate-200">
+                  <div className="h-2 rounded-full bg-[#4E75C7]" style={{ width: `${Number(section.score) * 20}%` }} />
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm font-semibold text-slate-500">Aucune note de section disponible.</p>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          <h5 className="text-xs font-extrabold uppercase text-slate-500">Commentaires de section</h5>
+          {step.sectionComments.length ? (
+            step.sectionComments.map((section) => (
+              <div key={`${step.source}-${section.sectionId}-${section.title}`} className="rounded-md bg-white px-3 py-3">
+                <p className="text-xs font-extrabold uppercase text-[#0F4A72]">{section.title}</p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{section.comment}</p>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm font-semibold text-slate-500">Aucun commentaire de section disponible.</p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function EvaluationsDepartementRH() {
   const [data, setData] = useState(null);
   const [activeDepartment, setActiveDepartment] = useState("");
@@ -103,6 +157,7 @@ function EvaluationsDepartementRH() {
   const [errorMessage, setErrorMessage] = useState("");
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [isSelecting, setIsSelecting] = useState(false);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
   async function loadData() {
     setIsLoading(true);
@@ -159,6 +214,24 @@ function EvaluationsDepartementRH() {
       setErrorMessage(error.message || "Sélection RH impossible.");
     } finally {
       setIsSelecting(false);
+    }
+  }
+
+  async function handleOpenMember(member) {
+    setSelectedMember(member);
+
+    if (!member?.id || String(member.id).startsWith("pending-")) {
+      return;
+    }
+
+    try {
+      setIsLoadingDetail(true);
+      const detail = await getRhDepartmentEvaluationDetail(member.id);
+      setSelectedMember(detail);
+    } catch (error) {
+      setErrorMessage(error.message || "Chargement du detail RH impossible.");
+    } finally {
+      setIsLoadingDetail(false);
     }
   }
 
@@ -254,7 +327,7 @@ function EvaluationsDepartementRH() {
               {selectedDepartment.members.map((member) => (
                 <tr
                   key={member.id}
-                  onClick={() => setSelectedMember(member)}
+                  onClick={() => handleOpenMember(member)}
                   className={`cursor-pointer border-b border-slate-100 text-[#0F3A63] last:border-0 hover:bg-[#F8FAFC] ${
                     selectedMember?.id === member.id ? "bg-[#EEF6E8]" : ""
                   }`}
@@ -339,36 +412,25 @@ function EvaluationsDepartementRH() {
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
-              <section className="rounded-lg bg-[#F8FAFC] p-4">
-                <h4 className="text-sm font-extrabold text-[#0F3A63]">Commentaires d'évaluation</h4>
-                <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{selectedMember.commentSummary}</p>
-                <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
-                  Point RH : {typeof selectedMember.finalScore === "number" && selectedMember.finalScore < 3 ? "vigilance sur le score final, arbitrage conseillé." : "évaluation cohérente, prête pour validation RH."}
-                </p>
-              </section>
+            
 
-              <section className="rounded-lg bg-[#F8FAFC] p-4">
-                <h4 className="text-sm font-extrabold text-[#0F3A63]">Critères principaux</h4>
-                <div className="mt-3 space-y-3">
-                  {selectedMember.sectionSummaries.length ? (
-                    selectedMember.sectionSummaries.map((criterion) => (
-                      <div key={criterion.label}>
-                        <div className="mb-1 flex items-center justify-between text-xs font-bold text-[#0F4A72]">
-                          <span>{criterion.label}</span>
-                          <span>{formatScore(criterion.score)}</span>
-                        </div>
-                        <div className="h-2 rounded-full bg-slate-200">
-                          <div className="h-2 rounded-full bg-[#4E75C7]" style={{ width: `${Number(criterion.score) * 20}%` }} />
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm font-semibold text-slate-500">Aucun critère principal disponible.</p>
-                  )}
-                </div>
-              </section>
-            </div>
+            <section className="mt-5 rounded-lg bg-[#F8FAFC] p-4">
+              <h4 className="text-sm font-extrabold text-[#0F3A63]">Détail complet de l'évaluation</h4>
+              <p className="mt-2 text-sm font-semibold text-slate-500">
+                Toutes les notes et tous les commentaires, de l'assistant jusqu'au manager.
+              </p>
+              <div className="mt-4 space-y-4">
+                {isLoadingDetail ? (
+                  <p className="text-sm font-semibold text-slate-500">Chargement du detail de l'evaluation...</p>
+                ) : (selectedMember.evaluationTrail || []).length ? (
+                  selectedMember.evaluationTrail.map((step, index) => (
+                    <EvaluationStepCard key={`${step.source}-${step.evaluatorName}-${index}`} step={step} />
+                  ))
+                ) : (
+                  <p className="text-sm font-semibold text-slate-500">Aucun détail d'évaluation disponible pour ce collaborateur.</p>
+                )}
+              </div>
+            </section>
           </article>
         </div>
       ) : null}
