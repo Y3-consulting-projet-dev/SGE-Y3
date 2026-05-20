@@ -127,6 +127,10 @@ function getMissionSections(groups = []) {
   return sections;
 }
 
+function hasRequiredSubmissionComment(sections = []) {
+  return sections.length > 0 && sections.every((section) => String(section.comment || "").trim().length >= 3);
+}
+
 function getMissionSectionProgress(section) {
   const criteria = (section?.groups || []).flatMap((group) => group.criteria || []);
   const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
@@ -260,9 +264,8 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
         setSavedComments(
           Object.fromEntries(
             (response.review.sections || [])
-              .flatMap((section) => section.pages || [])
-              .filter((page) => page.comment?.trim())
-              .map((page) => [page.page_id, page.comment.trim()])
+              .filter((section) => section.comment?.trim())
+              .map((section) => [section.id, section.comment.trim()])
           )
         );
       } catch (error) {
@@ -312,6 +315,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
   const shouldShowSourceLabel = reviewData?.assistant?.department === "AUDIT & EXPERTISE COMPTABLE";
   const activePageSourceBadgeLabel = getSourceBadgeLabel(activePage);
   const completedSections = displayedSections.filter((section) => getSectionProgress(section) === 100).length;
+  const selfEvaluation = reviewData?.self_evaluation || {};
   const globalProgress = Math.round(
     displayedSections.reduce((total, section) => total + getSectionProgress(section), 0) / (displayedSections.length || 1)
   );
@@ -391,9 +395,13 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
   function updateComment(comment) {
     syncSections((currentSections) =>
       currentSections.map((section) => {
+        if (Number(section.id) !== Number(activeSectionId)) {
+          return section;
+        }
+
         return {
           ...section,
-          pages: (section.pages || []).map((page) => (page.page_id !== activePage?.page_id ? page : { ...page, comment })),
+          comment,
         };
       })
     );
@@ -453,6 +461,13 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
       setSections(response.review.sections);
       setMissionReviews(response.mission_reviews || []);
       setPageIndexes((current) => clampPageIndexes(response.review.sections, current));
+      setSavedComments(
+        Object.fromEntries(
+          (response.review.sections || [])
+            .filter((section) => section.comment?.trim())
+            .map((section) => [section.id, section.comment.trim()])
+        )
+      );
       setFeedbackTone("success");
       setFeedbackMessage(response.message || "Sauvegarde réussie.");
       return response;
@@ -517,6 +532,11 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
 
   async function handleSubmit() {
     if (!selectedAssistantId) return;
+    if (!hasRequiredSubmissionComment(sections)) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Un commentaire d'au moins 3 caractères est obligatoire pour chaque section avant transmission.");
+      return;
+    }
 
     setIsSubmitting(true);
 
@@ -880,7 +900,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
             </div>
 
             <div className="mt-5 rounded-lg bg-slate-50 p-4 text-sm font-semibold text-[#0F3A63]">
-              Le Sénior peut évaluer l'assistant globalement sur le cycle, sans voir les réponses de son auto-évaluation globale.
+              Le Sénior peut évaluer l'assistant globalement sur le cycle et voir les réponses de son auto-évaluation globale.
             </div>
             {reviewData?.assistant?.department === "AUDIT & EXPERTISE COMPTABLE" &&
             evaluationDepartment &&
@@ -909,6 +929,31 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
               </article>
 
               <article className="rounded-xl bg-white p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h3 className="text-[20px] font-bold text-[#0F3A63]">Auto-evaluation de l'assistant</h3>
+                  <span className="rounded-full bg-[#EEF3F8] px-3 py-1 text-[11px] font-bold text-[#0F3A63]">
+                    {typeof selfEvaluation.overallAverage === "number" ? `${selfEvaluation.overallAverage} / 5` : "--"}
+                  </span>
+                </div>
+                <p className="text-[12px] font-semibold text-slate-500">{selfEvaluation.status || "En attente"}</p>
+                <div className="mt-3 space-y-2">
+                  {(selfEvaluation.sectionScores || []).map((section) => {
+                    const comment = (selfEvaluation.sectionComments || []).find((item) => item.sectionId === section.sectionId)?.comment;
+
+                    return (
+                      <div key={section.sectionId} className="rounded-md bg-slate-50 px-3 py-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-[12px] font-bold text-[#0F3A63]">{section.title}</p>
+                          <p className="text-[12px] font-bold text-[#76B82A]">{section.score ?? "--"} / 5</p>
+                        </div>
+                        <p className="mt-2 text-[12px] font-semibold text-slate-600">{comment || "Aucun commentaire de section."}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </article>
+
+              <article className="rounded-xl bg-white p-4 shadow-sm">
                 <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">Aide à la notation</h3>
                 <div className="space-y-2">
                   {gradingHelp.map((item) => (
@@ -926,7 +971,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-4 shadow-sm">
               <div>
                 <p className="text-xs font-semibold text-slate-500">Dernière sauvegarde</p>
-                <p className="text-sm font-semibold text-[#0F3A63]">{reviewData?.review?.last_saved_at ? "Enregistree" : "Non disponible"}</p>
+                <p className="text-sm font-semibold text-[#0F3A63]">{reviewData?.review?.last_saved_at ? "Enregistrée" : "Non disponible"}</p>
               </div>
               <div className="flex items-center gap-4 text-sm">
                 <span className="font-semibold text-[#0F3A63]">Section {displayedSections.findIndex((section) => Number(section.id) === Number(activeSectionId)) + 1} / {displayedSections.length}</span>
@@ -1032,15 +1077,22 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
               </div>
 
               <div className="mt-4">
-                <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire du titre (facultatif)</p>
+                <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire de section</p>
                 <textarea
                   rows={4}
-                  value={activePage.comment || ""}
+                  value={activeSection.comment || ""}
                   onChange={(event) => updateComment(event.target.value)}
-                  placeholder="Avis Senior, faits observes, points forts, axes de progres..."
+                  placeholder="Avis global du Senior sur la section, faits observés, points forts, axes de progrès..."
                   className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
                 />
               </div>
+
+              {savedComments[activeSection.id] ? (
+                <div className="mt-3 rounded-sm bg-[#DCECCB] px-3 py-2">
+                  <p className="text-[10px] font-bold text-[#5A8A3A]">Commentaire sauvegardé</p>
+                  <p className="mt-1 text-[11px] font-semibold text-[#0F3A63]">{savedComments[activeSection.id]}</p>
+                </div>
+              ) : null}
 
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                 <button

@@ -34,7 +34,7 @@ function Vueensemble({ onOpen, overviewData, isLoading, errorMessage }) {
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           onClick={() => onOpen("assistants")}
-          label="Assistants encadres"
+          label="Assistants encadrés"
           value={isLoading ? "..." : summary.assistantsEncadresCount || 0}
           subtitle="sur missions communes"
         />

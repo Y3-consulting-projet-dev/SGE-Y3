@@ -80,6 +80,10 @@ function getMissionEvaluationDepartment(mission) {
   return mission?.primaryRecipientDepartment || mission?.department || mission?.recipients?.[0]?.department || "";
 }
 
+function hasRequiredSubmissionComment(sections = []) {
+  return sections.length > 0 && sections.every((section) => String(section.comment || "").trim().length >= 3);
+}
+
 function getMissionPrimaryRecipient(mission) {
   if (mission?.createdByRole === "senior") {
     return mission?.assignedByName || "";
@@ -345,9 +349,8 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   const [savedComments, setSavedComments] = useState(() =>
     Object.fromEntries(
       (evaluationData?.evaluation?.sections || [])
-        .flatMap((section) => section.pages || [])
-        .filter((page) => page.comment?.trim())
-        .map((page) => [page.page_id, page.comment.trim()])
+        .filter((section) => section.comment?.trim())
+        .map((section) => [section.id, section.comment.trim()])
     )
   );
 
@@ -554,9 +557,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
 
         return {
           ...section,
-          pages: (section.pages || []).map((page, pageIndex) =>
-            pageIndex !== PageIndex ? page : { ...page, comment }
-          ),
+          comment,
         };
       })
     );
@@ -578,9 +579,8 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
       setFeedbackMessage(response.message || "Sauvegarde réussie.");
 
       const currentSection = response.evaluation.sections.find((section) => Number(section.id) === Number(SectionId));
-      const currentPage = currentSection?.pages?.[PageIndex];
-      if (currentPage?.comment?.trim()) {
-        setSavedComments((comments) => ({ ...comments, [currentPage.page_id]: currentPage.comment.trim() }));
+      if (currentSection?.comment?.trim()) {
+        setSavedComments((comments) => ({ ...comments, [currentSection.id]: currentSection.comment.trim() }));
       }
 
       onEvaluationChange?.(response);
@@ -657,6 +657,12 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   };
 
   const handleSubmit = async () => {
+    if (!hasRequiredSubmissionComment(sections)) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Un commentaire d'au moins 3 caractères est obligatoire pour chaque section avant soumission.");
+      return;
+    }
+
 
     setIsSubmitting(true);
 
@@ -1162,20 +1168,20 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
               </div>
 
               <div className="mt-4">
-                <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire du titre (facultatif)</p>
+                <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire de section</p>
                 <textarea
                   rows={4}
-                  value={Page.comment || ""}
+                  value={Section.comment || ""}
                   onChange={(event) => updateComment(event.target.value)}
-                  placeholder="Points forts, exemples concrets, contexte..."
+                  placeholder="Synthèse globale de la section, points forts, contexte..."
                   className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
                 />
               </div>
 
-              {savedComments[Page.page_id] ? (
+              {savedComments[Section.id] ? (
                 <div className="mt-3 rounded-sm bg-[#DCECCB] px-3 py-2">
                   <p className="text-[10px] font-bold text-[#5A8A3A]">Commentaire sauvegardé</p>
-                  <p className="mt-1 text-[11px] font-semibold text-[#0F3A63]">{savedComments[Page.page_id]}</p>
+                  <p className="mt-1 text-[11px] font-semibold text-[#0F3A63]">{savedComments[Section.id]}</p>
                 </div>
               ) : null}
 
