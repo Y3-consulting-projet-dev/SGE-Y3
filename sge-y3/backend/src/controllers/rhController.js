@@ -15,6 +15,8 @@ const {
   getEvaluationSummary,
   getOverallAverageScore,
   normalizeSections,
+  validateFinalCommentForSubmit,
+  validateSectionCommentsForSubmit,
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
 
@@ -441,12 +443,12 @@ function getExpectedTemplateType(member) {
 
 function countUnjustifiedLowScorePages(sections = []) {
   return (sections || []).reduce((total, section) => {
+    const hasSectionComment = Boolean(String(section.comment || '').trim());
     return (
       total +
       (section.pages || []).reduce((pageTotal, page) => {
         const hasLowScore = (page.themes || []).some((theme) => typeof theme.score === 'number' && theme.score < 3);
-        const hasComment = Boolean(String(page.comment || '').trim());
-        return pageTotal + (hasLowScore && !hasComment ? 1 : 0);
+        return pageTotal + (hasLowScore && !hasSectionComment ? 1 : 0);
       }, 0)
     );
   }, 0);
@@ -551,7 +553,7 @@ function getReviewSectionSummaries(sections = []) {
 
 function getReviewCommentSummary(sections = [], managerName = '') {
   const comments = sections
-    .flatMap((section) => (section.pages || []).map((page) => String(page.comment || '').trim()))
+    .map((section) => String(section.comment || '').trim())
     .filter(Boolean)
     .slice(0, 2);
 
@@ -562,6 +564,32 @@ function getReviewCommentSummary(sections = [], managerName = '') {
   return managerName
     ? `Evaluateur : ${managerName}. Les scores sont consultables par la RH pour verifier la coherence de l'evaluation.`
     : "Les scores sont consultables par la RH pour verifier la coherence de l'evaluation.";
+}
+
+function buildSectionBreakdown(sections = [], source = '', evaluatorName = '', evaluatorGrade = '', submittedAt = null) {
+  const normalizedSections = normalizeSections(sections);
+
+  return {
+    source,
+    evaluatorName,
+    evaluatorGrade,
+    submittedAt,
+    overallScore: getOverallAverageScore(normalizedSections),
+    sectionScores: normalizedSections
+      .map((section) => ({
+        sectionId: section.id,
+        title: section.title,
+        score: getAverageScore(section),
+      }))
+      .filter((item) => typeof item.score === 'number'),
+    sectionComments: normalizedSections
+      .filter((section) => String(section.comment || '').trim())
+      .map((section) => ({
+        sectionId: section.id,
+        title: section.title,
+        comment: String(section.comment || '').trim(),
+      })),
+  };
 }
 
 async function loadRhReviewDataset(rhUserIds) {
@@ -642,6 +670,31 @@ async function loadRhReviewDataset(rhUserIds) {
     const selfSections = normalizeSections(selfEvaluation?.sections || []);
     const selfScore = getOverallAverageScore(selfSections);
     const managerScore = getOverallAverageScore(sections);
+    const selfEvaluationBreakdown = buildSectionBreakdown(
+      selfSections,
+      'Auto-evaluation',
+      fallbackMember?.name || 'Collaborateur',
+      fallbackMember?.grade || 'Collaborateur',
+      selfEvaluation?.submitted_at || null
+    );
+    const seniorEvaluationBreakdowns = memberSeniorReviews.map((seniorReview) => {
+      const seniorUser = userById.get(String(seniorReview.senior_id));
+
+      return buildSectionBreakdown(
+        seniorReview.sections || [],
+        'Senior',
+        seniorUser?.name || 'Senior',
+        seniorUser?.grade || 'Senior',
+        seniorReview?.submitted_at || null
+      );
+    });
+    const managerEvaluationBreakdown = buildSectionBreakdown(
+      sections,
+      'Manager',
+      fallbackManager?.name || 'Manager',
+      fallbackManager?.grade || 'Manager',
+      review?.submitted_at || null
+    );
     const missionScoreDetails = [];
     const globalScoreDetails = [];
 
@@ -779,6 +832,9 @@ async function loadRhReviewDataset(rhUserIds) {
       sectionSummaries,
       commentSummary,
       gap,
+      evaluationTrail: [selfEvaluationBreakdown, ...seniorEvaluationBreakdowns, managerEvaluationBreakdown].filter(
+        (item) => item.sectionScores.length || item.sectionComments.length || typeof item.overallScore === 'number'
+      ),
     };
   });
 }
@@ -816,6 +872,20 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
     const reviewSections = normalizeSections(review?.sections || []);
     const selfScore = getOverallAverageScore(sections);
     const managerScore = getOverallAverageScore(reviewSections);
+    const selfEvaluationBreakdown = buildSectionBreakdown(
+      sections,
+      'Auto-evaluation',
+      assistantUser?.name || 'Assistante RH',
+      assistantUser?.grade || 'Assistante RH',
+      instance?.submitted_at || null
+    );
+    const managerEvaluationBreakdown = buildSectionBreakdown(
+      reviewSections,
+      'Manager',
+      'RH',
+      'RH',
+      review?.submitted_at || null
+    );
     const missionScoreDetails = [];
     const globalScoreDetails = [];
 
@@ -901,6 +971,9 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
       sectionSummaries: getReviewSectionSummaries(reviewSections.length ? reviewSections : sections),
       commentSummary: getReviewCommentSummary(reviewSections.length ? reviewSections : sections, 'RH'),
       gap: null,
+      evaluationTrail: [selfEvaluationBreakdown, managerEvaluationBreakdown].filter(
+        (item) => item.sectionScores.length || item.sectionComments.length || typeof item.overallScore === 'number'
+      ),
     };
   });
 }
@@ -937,6 +1010,7 @@ function buildDepartmentGroups(rows = []) {
       commentSummary: row.commentSummary,
       sectionSummaries: row.sectionSummaries,
       gap: row.gap,
+      evaluationTrail: row.evaluationTrail || [],
     });
 
     groups.set(key, current);
@@ -1073,6 +1147,24 @@ async function getRhDepartmentEvaluations(request, response) {
     cycle_label: CURRENT_CYCLE_LABEL,
     departments: groups,
   });
+}
+
+async function getRhDepartmentEvaluationDetail(request, response) {
+  const reviewId = String(request.params.reviewId || '').trim();
+  const rhUserIds = await resolveRhQueueUserIds();
+  const [rows, assistantRhRows] = await Promise.all([
+    loadRhReviewDataset(rhUserIds),
+    loadAssistantRhSelfDataset(rhUserIds),
+  ]);
+  const item = [...rows, ...assistantRhRows].find((row) => String(row.id) === reviewId);
+
+  if (!item) {
+    return response.status(404).json({
+      message: "Detail d'evaluation introuvable pour cette RH.",
+    });
+  }
+
+  return response.json(item);
 }
 
 async function selectRhDepartmentEvaluation(request, response) {
@@ -1433,6 +1525,13 @@ function buildAssistantRhReviewPayload(review, rhUser, member, selfEvaluation, a
           percent: Math.round(((getAverageScore(section) || 0) / 5) * 100),
         }))
         .filter((item) => typeof item.score === 'number'),
+      sectionComments: selfSections
+        .filter((section) => String(section.comment || '').trim())
+        .map((section) => ({
+          sectionId: section.id,
+          title: section.title,
+          comment: String(section.comment || '').trim(),
+        })),
     },
     submitted_to: associateRecipients.map((recipient) => ({
       id: recipient._id.toString(),
@@ -1609,6 +1708,15 @@ async function submitMyRhSelfEvaluation(request, response) {
     });
   }
 
+  const missingSectionComments = validateSectionCommentsForSubmit(normalizedSections, 3);
+
+  if (missingSectionComments.length) {
+    return response.status(400).json({
+      message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
+      missingSectionComments,
+    });
+  }
+
   const associateRecipients = await resolveAssociateRecipients();
 
   if (!associateRecipients.length) {
@@ -1706,6 +1814,15 @@ async function submitMyAssistantRhSelfEvaluation(request, response) {
     });
   }
 
+  const missingAssistantSectionComments = validateSectionCommentsForSubmit(normalizedSections, 3);
+
+  if (missingAssistantSectionComments.length) {
+    return response.status(400).json({
+      message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
+      missingSectionComments: missingAssistantSectionComments,
+    });
+  }
+
   const rhRecipients = await resolveFullRhRecipients();
 
   if (!rhRecipients.length) {
@@ -1747,6 +1864,15 @@ async function submitAssistantRhEvaluation(request, response) {
     return response.status(400).json({
       message: "Toutes les questions de l'evaluation RH doivent etre renseignees avant validation.",
       missingAnswers,
+    });
+  }
+
+  const missingReviewSectionComments = validateSectionCommentsForSubmit(normalizedSections, 3);
+
+  if (missingReviewSectionComments.length) {
+    return response.status(400).json({
+      message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
+      missingSectionComments: missingReviewSectionComments,
     });
   }
 
@@ -2052,6 +2178,7 @@ module.exports = {
   formatDepartmentLabel,
   getAssistantRhEvaluation,
   getRhCalibration,
+  getRhDepartmentEvaluationDetail,
   getRhDepartmentEvaluations,
   getMyAssistantRhSelfEvaluation,
   getRhQuestionnaire,

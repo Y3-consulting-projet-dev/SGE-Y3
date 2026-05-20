@@ -117,6 +117,10 @@ function buildMissionCriteriaFromSections(sections = [], recipientDepartment = "
   );
 }
 
+function hasRequiredSubmissionComment(sections = []) {
+  return sections.length > 0 && sections.every((section) => String(section.comment || "").trim().length >= 3);
+}
+
 function getMissionCriteriaGroups(criteria = []) {
   const groups = [];
 
@@ -312,9 +316,8 @@ function MonautoevaluationSenior({ user }) {
         setSavedComments(
           Object.fromEntries(
             (response.evaluation.sections || [])
-              .flatMap((section) => section.pages || [])
-              .filter((page) => page.comment?.trim())
-              .map((page) => [page.page_id, page.comment.trim()])
+              .filter((section) => section.comment?.trim())
+              .map((section) => [section.id, section.comment.trim()])
           )
         );
       } catch (error) {
@@ -445,7 +448,7 @@ function MonautoevaluationSenior({ user }) {
 
         return {
           ...section,
-          pages: (section.pages || []).map((page, pageIndex) => (pageIndex !== activePageIndex ? page : { ...page, comment })),
+          comment,
         };
       })
     );
@@ -513,9 +516,8 @@ function MonautoevaluationSenior({ user }) {
       setFeedbackMessage(response.message || "Sauvegarde reussie.");
 
       const currentSection = response.evaluation.sections.find((section) => Number(section.id) === Number(activeSectionId));
-      const currentPage = currentSection?.pages?.[activePageIndex];
-      if (currentPage?.comment?.trim()) {
-        setSavedComments((comments) => ({ ...comments, [currentPage.page_id]: currentPage.comment.trim() }));
+      if (currentSection?.comment?.trim()) {
+        setSavedComments((comments) => ({ ...comments, [currentSection.id]: currentSection.comment.trim() }));
       }
 
       if (!activeMissionId) {
@@ -617,6 +619,12 @@ function MonautoevaluationSenior({ user }) {
   }
 
   async function handleSubmitCycle() {
+    if (!hasRequiredSubmissionComment(sections)) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Un commentaire d'au moins 3 caractères est obligatoire pour chaque section avant soumission.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -1129,20 +1137,20 @@ function MonautoevaluationSenior({ user }) {
                 </div>
 
                 <div className="mt-4">
-                  <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire du titre (facultatif)</p>
+                  <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire de section</p>
                   <textarea
                     rows={4}
-                    value={activePage.comment || ""}
+                    value={activeSection.comment || ""}
                     onChange={(event) => updateComment(event.target.value)}
-                    placeholder="Points forts, exemples concrets, contexte..."
+                    placeholder="Synthèse globale de la section, points forts, contexte..."
                     className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
                   />
                 </div>
 
-                {savedComments[activePage.page_id] ? (
+                {savedComments[activeSection.id] ? (
                   <div className="mt-3 rounded-sm bg-[#DCECCB] px-3 py-2">
                     <p className="text-[10px] font-bold text-[#5A8A3A]">Commentaire sauvegardé</p>
-                    <p className="mt-1 text-[11px] font-semibold text-[#0F3A63]">{savedComments[activePage.page_id]}</p>
+                    <p className="mt-1 text-[11px] font-semibold text-[#0F3A63]">{savedComments[activeSection.id]}</p>
                   </div>
                 ) : null}
 

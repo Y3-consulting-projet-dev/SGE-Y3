@@ -100,6 +100,16 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
     setRelanceMessage(`Relance envoyée à ${member.name} pour finaliser son évaluation.`);
   };
 
+  const openMemberEvaluation = (member) => {
+    const resolvedMember = members.find((item) => item.id === member?.id) || member;
+
+    setSelectedMember({
+      ...resolvedMember,
+      role: resolvedMember?.role || resolvedMember?.grade,
+      status: resolvedMember?.status || resolvedMember?.evaluationStatus || "En attente",
+    });
+  };
+
   const renderOverview = () => {
     if (overviewError) {
       return <section className="rounded-lg bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">{overviewError}</section>;
@@ -177,7 +187,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
                   <button
                     key={evaluation.id}
                     type="button"
-                    onClick={() => setActiveSection("team")}
+                    onClick={() => openMemberEvaluation(evaluation)}
                     className="w-full rounded-lg bg-[#DFECD4] p-3 text-left transition hover:bg-[#D1E6C0]"
                   >
                     <p className="text-sm font-semibold text-[#0F3A63]">{evaluation.name}</p>
@@ -306,7 +316,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
               onAction={setActiveSection}
-              onEvaluate={setSelectedMember}
+              onEvaluate={openMemberEvaluation}
               onRelance={relanceMember}
               relanceMessage={relanceMessage}
               members={members}

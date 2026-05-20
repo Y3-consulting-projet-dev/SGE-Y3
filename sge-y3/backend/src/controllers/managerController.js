@@ -10,6 +10,8 @@ const {
   getEvaluationSummary,
   getOverallAverageScore,
   normalizeSections,
+  validateFinalCommentForSubmit,
+  validateSectionCommentsForSubmit,
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
 const FULL_RH_EMAILS = ['isabella.beda@ycubeac.com'];
@@ -304,6 +306,13 @@ function buildSelfEvaluationPayload(instance) {
       score: getAverageScore(section),
       percent: Math.round(((getAverageScore(section) || 0) / 5) * 100),
     })),
+    sectionComments: sections
+      .filter((section) => String(section.comment || '').trim())
+      .map((section) => ({
+        sectionId: section.id,
+        title: section.title,
+        comment: String(section.comment || '').trim(),
+      })),
   };
 }
 
@@ -617,19 +626,6 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
     missions: [],
   };
 
-  if (
-    selfEvaluationInstance &&
-    (selfEvaluationInstance.submitted_to_user_ids || []).some((userId) => String(userId) === String(managerUser._id))
-  ) {
-    payload.globalScores.push({
-      source: 'self-evaluation',
-      evaluatorName: member.name,
-      evaluatorGrade: member.grade,
-      finalScore: getOverallAverageScore(normalizeSections(selfEvaluationInstance.sections || [])),
-      submittedAt: selfEvaluationInstance.submitted_at || null,
-    });
-  }
-
   if (member.code_categorie !== '8C') {
     return payload;
   }
@@ -652,12 +648,21 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
 
   for (const review of seniorReviews) {
     const seniorUser = seniorUserById.get(String(review.senior_id));
+    const normalizedSeniorSections = normalizeSections(review.sections || []);
+
     payload.globalScores.push({
       source: 'senior-review',
       evaluatorName: seniorUser?.name || 'Senior',
       evaluatorGrade: seniorUser?.grade || 'Senior',
-      finalScore: getOverallAverageScore(normalizeSections(review.sections || [])),
+      finalScore: getOverallAverageScore(normalizedSeniorSections),
       submittedAt: review.submitted_at || null,
+      sectionComments: normalizedSeniorSections
+        .filter((section) => String(section.comment || '').trim())
+        .map((section) => ({
+          sectionId: section.id,
+          title: section.title,
+          comment: String(section.comment || '').trim(),
+        })),
     });
 
     for (const missionReview of review.mission_reviews || []) {
@@ -808,7 +813,7 @@ function buildManagerReviewPayload(review, managerUser, member, selfEvaluation, 
   };
 }
 
-function formatMember(member, evaluationInstance) {
+function formatMember(member, evaluationInstance, managerReview) {
   return {
     id: member._id.toString(),
     name: member.name,
@@ -817,8 +822,8 @@ function formatMember(member, evaluationInstance) {
     grade: member.grade,
     department: member.department,
     code_categorie: member.code_categorie,
-    evaluationStatus: evaluationInstance?.status || 'En attente',
-    evaluationSubmittedAt: evaluationInstance?.submitted_at || null,
+    evaluationStatus: managerReview?.status || 'En attente',
+    evaluationSubmittedAt: managerReview?.submitted_at || null,
     selfEvaluationScore: getOverallAverageScore(normalizeSections(evaluationInstance?.sections || [])),
   };
 }
@@ -960,12 +965,12 @@ function getAutomaticRecommendation(finalScore) {
 
 function countUnjustifiedLowScorePages(sections = []) {
   return (sections || []).reduce((total, section) => {
+    const hasSectionComment = Boolean(String(section.comment || '').trim());
     return (
       total +
       (section.pages || []).reduce((pageTotal, page) => {
         const hasLowScore = (page.themes || []).some((theme) => typeof theme.score === 'number' && theme.score < 3);
-        const hasComment = Boolean(String(page.comment || '').trim());
-        return pageTotal + (hasLowScore && !hasComment ? 1 : 0);
+        return pageTotal + (hasLowScore && !hasSectionComment ? 1 : 0);
       }, 0)
     );
   }, 0);
@@ -998,15 +1003,25 @@ async function getManagerOverview(request, response) {
     : [];
 
   const memberIds = members.map((member) => member._id);
-  const evaluationInstances = memberIds.length
-    ? await EvaluationInstance.find({
-        evalue_id: { $in: memberIds },
-        cycle_label: CURRENT_CYCLE_LABEL,
-        template_type: { $in: ['assistant-self-evaluation', 'senior-self-evaluation'] },
-      }).select('evalue_id template_type status submitted_at submitted_to_user_ids')
-    : [];
+  const [evaluationInstances, managerReviews] = memberIds.length
+    ? await Promise.all([
+        EvaluationInstance.find({
+          evalue_id: { $in: memberIds },
+          cycle_label: CURRENT_CYCLE_LABEL,
+          template_type: { $in: ['assistant-self-evaluation', 'senior-self-evaluation'] },
+        }).select('evalue_id template_type status submitted_at submitted_to_user_ids sections'),
+        ManagerMemberReview.find({
+          cycle_label: CURRENT_CYCLE_LABEL,
+          manager_id: request.user._id,
+          member_id: { $in: memberIds },
+        }).select('member_id status submitted_at sections'),
+      ])
+    : [[], []];
 
   const relevantInstancesByMemberId = new Map();
+  const managerReviewsByMemberId = new Map(
+    managerReviews.map((review) => [String(review.member_id), review])
+  );
 
   for (const member of members) {
     const expectedTemplateType = getExpectedTemplateType(member);
@@ -1032,6 +1047,11 @@ async function getManagerOverview(request, response) {
 
   const pendingEvaluations = receivedEvaluations.map((member) => {
     const instance = relevantInstancesByMemberId.get(String(member._id));
+    const review = managerReviewsByMemberId.get(String(member._id));
+
+    if (review?.status === 'Soumis a RH') {
+      return null;
+    }
 
     return {
       id: member._id.toString(),
@@ -1042,7 +1062,7 @@ async function getManagerOverview(request, response) {
       status: instance?.status || 'Soumis aux Managers',
       templateType: instance?.template_type || getExpectedTemplateType(member),
     };
-  });
+  }).filter(Boolean);
 
   const assistantsCount = members.filter((member) => member.code_categorie === '8C').length;
   const seniorsCount = members.filter((member) => member.code_categorie === '9A').length;
@@ -1077,7 +1097,13 @@ async function getManagerOverview(request, response) {
       selfEvaluationStatus: selfEvaluationInstance?.status || 'En attente',
       selfEvaluationSubmittedAt: selfEvaluationInstance?.submitted_at || null,
     },
-    members: members.map((member) => formatMember(member, relevantInstancesByMemberId.get(String(member._id)))),
+    members: members.map((member) =>
+      formatMember(
+        member,
+        relevantInstancesByMemberId.get(String(member._id)),
+        managerReviewsByMemberId.get(String(member._id))
+      )
+    ),
     pendingEvaluations,
   });
 }
@@ -1547,6 +1573,15 @@ async function submitMyManagerEvaluation(request, response) {
     });
   }
 
+  const missingSectionComments = validateSectionCommentsForSubmit(sections, 3);
+
+  if (missingSectionComments.length) {
+    return response.status(400).json({
+      message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
+      missingSectionComments,
+    });
+  }
+
   instance.sections = toPersistenceSections(sections);
   instance.status = 'Soumis a RH';
   instance.submitted_to_role = 'rh';
@@ -1743,6 +1778,15 @@ module.exports = {
       return response.status(400).json({
         message: "Toutes les questions obligatoires doivent etre renseignees avant soumission a la RH.",
         missingAnswers,
+      });
+    }
+
+    const missingSectionComments = validateSectionCommentsForSubmit(sections, 3);
+
+    if (missingSectionComments.length) {
+      return response.status(400).json({
+        message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
+        missingSectionComments,
       });
     }
 

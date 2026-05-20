@@ -48,6 +48,10 @@ function clampPageIndexes(sections = [], currentIndexes = {}) {
   );
 }
 
+function hasRequiredSubmissionComment(sections = []) {
+  return sections.length > 0 && sections.every((section) => String(section.comment || "").trim().length >= 3);
+}
+
 function ScoreSelector({ selected, onSelect }) {
   return (
     <div className="space-y-2">
@@ -131,9 +135,8 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
         setSavedComments(
           Object.fromEntries(
             (response.review.sections || [])
-              .flatMap((section) => section.pages || [])
-              .filter((page) => page.comment?.trim())
-              .map((page) => [page.page_id, page.comment.trim()])
+              .filter((section) => section.comment?.trim())
+              .map((section) => [section.id, section.comment.trim()])
           )
         );
       } catch (error) {
@@ -208,9 +211,7 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
 
         return {
           ...section,
-          pages: (section.pages || []).map((page, pageIndex) =>
-            pageIndex !== activePageIndex ? page : { ...page, comment }
-          ),
+          comment,
         };
       })
     );
@@ -230,9 +231,8 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
       setSavedComments(
         Object.fromEntries(
           (response.review.sections || [])
-            .flatMap((section) => section.pages || [])
-            .filter((page) => page.comment?.trim())
-            .map((page) => [page.page_id, page.comment.trim()])
+            .filter((section) => section.comment?.trim())
+            .map((section) => [section.id, section.comment.trim()])
         )
       );
       setFeedbackTone("success");
@@ -276,6 +276,12 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
   }
 
   async function handleSubmit() {
+    if (!hasRequiredSubmissionComment(sections)) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Un commentaire d'au moins 3 caractères est obligatoire pour chaque section avant soumission.");
+      return;
+    }
+
     const savedReview = await persistSections(sections, "Evaluation RH prete pour validation.");
 
     if (!savedReview) {
@@ -378,6 +384,12 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
                 <div key={item.sectionId} className="rounded-md bg-slate-50 px-3 py-3">
                   <p className="text-xs font-bold text-[#0F3A63]">{item.title}</p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">{item.score}/5</p>
+                </div>
+              ))}
+              {(selfEvaluation.sectionComments || []).map((item) => (
+                <div key={`comment-${item.sectionId}`} className="rounded-md bg-slate-50 px-3 py-3">
+                  <p className="text-xs font-bold text-[#0F3A63]">{item.title}</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">{item.comment}</p>
                 </div>
               ))}
             </div>
@@ -484,20 +496,20 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
             </div>
 
             <div className="mt-4">
-              <p className="mb-2 text-xs font-semibold text-[#79B742]">Commentaire du titre</p>
+              <p className="mb-2 text-xs font-semibold text-[#79B742]">Commentaire de section</p>
               <textarea
                 rows={3}
-                value={activePage.comment || ""}
+                value={activeSection.comment || ""}
                 onChange={(event) => updateComment(event.target.value)}
-                placeholder="Exemples concrets, points forts, axes d'amelioration..."
+                placeholder="Synthèse globale de la section, points forts, axes d'amelioration..."
                 className="w-full resize-none rounded-md border border-slate-200 bg-slate-100 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
               />
             </div>
 
-            {savedComments[activePage.page_id] ? (
+            {savedComments[activeSection.id] ? (
               <div className="mt-3 rounded-md bg-[#DCECCB] px-3 py-3">
                 <p className="mb-1 text-xs font-bold text-[#79B742]">Commentaire sauvegarde</p>
-                <p className="text-sm font-semibold text-[#0F3A63]">{savedComments[activePage.page_id]}</p>
+                <p className="text-sm font-semibold text-[#0F3A63]">{savedComments[activeSection.id]}</p>
               </div>
             ) : null}
 

@@ -156,6 +156,24 @@ function validateSectionsForSubmit(sections = []) {
   return missingAnswers;
 }
 
+function validateFinalCommentForSubmit(sections = [], minimumLength = 3) {
+  const normalizedMinimumLength = Math.max(Number(minimumLength) || 0, 1);
+  const comments = sections.map((section) => String(section.comment || '').trim());
+
+  return comments.some((comment) => comment.length >= normalizedMinimumLength);
+}
+
+function validateSectionCommentsForSubmit(sections = [], minimumLength = 3) {
+  const normalizedMinimumLength = Math.max(Number(minimumLength) || 0, 1);
+
+  return sections
+    .filter((section) => String(section.comment || '').trim().length < normalizedMinimumLength)
+    .map((section) => ({
+      sectionId: section.id,
+      sectionTitle: section.title,
+    }));
+}
+
 module.exports = {
   getAverageFromScores,
   getAverageScore,
@@ -165,5 +183,7 @@ module.exports = {
   getSectionProgress,
   getSectionStatus,
   normalizeSections,
+  validateFinalCommentForSubmit,
+  validateSectionCommentsForSubmit,
   validateSectionsForSubmit,
 };
