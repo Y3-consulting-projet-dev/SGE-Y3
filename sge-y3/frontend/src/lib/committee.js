@@ -39,6 +39,30 @@ function loadLocalDecision(scope = "associate-final") {
   }
 }
 
+function countFilledIncreaseRates(decision) {
+  const decisions = decision?.decisions || {};
+
+  return Object.values(decisions).reduce((total, participants) => {
+    if (!Array.isArray(participants)) {
+      return total;
+    }
+
+    return total + participants.filter((participant) => String(participant?.increaseRate ?? "").trim() !== "").length;
+  }, 0);
+}
+
+function pickMostCompleteDecision(serverDecision, localDecision) {
+  if (!serverDecision) {
+    return localDecision;
+  }
+
+  if (!localDecision) {
+    return serverDecision;
+  }
+
+  return countFilledIncreaseRates(localDecision) > countFilledIncreaseRates(serverDecision) ? localDecision : serverDecision;
+}
+
 export async function getCommitteeParticipants(scope = "collaborators") {
   const session = loadSession();
   const headers = {
@@ -66,6 +90,7 @@ export async function saveCommitteeDecision(payload) {
   const headers = {
     "Content-Type": "application/json",
   };
+  const localDecision = saveLocalDecision(payload);
 
   if (session?.token) {
     headers.Authorization = `Bearer ${session.token}`;
@@ -80,7 +105,6 @@ export async function saveCommitteeDecision(payload) {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      const localDecision = saveLocalDecision(payload);
       return {
         message: "Decision sauvegardee localement pour la RH.",
         decision: localDecision,
@@ -88,11 +112,18 @@ export async function saveCommitteeDecision(payload) {
       };
     }
 
-    const decision = data.decision || saveLocalDecision(payload);
+    const decision = data.decision
+      ? {
+          ...data.decision,
+          decisions: payload.decisions || data.decision.decisions || {},
+        }
+      : localDecision;
     window.localStorage.setItem(getCommitteeDecisionStorageKey(payload.scope || "associate-final"), JSON.stringify(decision));
-    return data;
+    return {
+      ...data,
+      decision,
+    };
   } catch (_error) {
-    const localDecision = saveLocalDecision(payload);
     return {
       message: "Decision sauvegardee localement pour la RH.",
       decision: localDecision,
@@ -106,6 +137,7 @@ export async function getLatestCommitteeDecision(scope = "associate-final") {
   const headers = {
     "Content-Type": "application/json",
   };
+  const localDecision = loadLocalDecision(scope);
 
   if (session?.token) {
     headers.Authorization = `Bearer ${session.token}`;
@@ -118,12 +150,14 @@ export async function getLatestCommitteeDecision(scope = "associate-final") {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      const localDecision = loadLocalDecision(scope);
       return { decision: localDecision };
     }
 
-    return data.decision ? data : { decision: loadLocalDecision(scope) };
+    return {
+      ...data,
+      decision: pickMostCompleteDecision(data.decision, localDecision),
+    };
   } catch (_error) {
-    return { decision: loadLocalDecision(scope) };
+    return { decision: localDecision };
   }
 }

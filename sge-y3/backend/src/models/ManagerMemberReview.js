@@ -61,6 +61,8 @@ const missionReviewCriterionSchema = new mongoose.Schema(
     source_sheet: { type: String, default: '', trim: true },
     source_label: { type: String, default: '', trim: true },
     theme_code: { type: String, default: '', trim: true },
+    section_comment: { type: String, default: '', trim: true },
+    page_comment: { type: String, default: '', trim: true },
     label: { type: String, required: true, trim: true },
     statement: { type: String, default: '', trim: true },
     score: { type: Number, default: null, min: 1, max: 5 },

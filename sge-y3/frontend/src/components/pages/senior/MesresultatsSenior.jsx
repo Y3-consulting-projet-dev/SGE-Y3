@@ -30,7 +30,7 @@ function MesresultatsSenior() {
         setData(response);
       } catch (error) {
         if (!cancelled) {
-          setErrorMessage(error.message || "Chargement des syntheses transmises impossible.");
+          setErrorMessage(error.message || "Chargement des synthèses transmises impossible.");
         }
       } finally {
         if (!cancelled) {
@@ -113,7 +113,7 @@ function MesresultatsSenior() {
                       {mission.averageScore !== null ? `${mission.averageScore} / 5` : "--"}
                     </td>
                     <td className="px-4 py-4">{mission.status}</td>
-                    <td className="px-4 py-4">{(mission.managerNames || []).join(", ") || "Manager du departement"}</td>
+                    <td className="px-4 py-4">{(mission.managerNames || []).join(", ") || "Manager du département"}</td>
                     <td className="px-4 py-4">{formatDate(mission.submittedAt)}</td>
                   </tr>
                 ))}
@@ -125,7 +125,7 @@ function MesresultatsSenior() {
             <div className="mt-5 rounded-lg border border-[#D9E3EE] bg-[#F8FBFE] p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase text-slate-500">Evaluation globale</p>
+                  <p className="text-xs font-semibold uppercase text-slate-500">Évaluation globale</p>
                   <p className="mt-1 text-sm font-bold text-[#0F3A63]">{row.globalEvaluation.status || "Brouillon"}</p>
                 </div>
                 <div className="text-right">

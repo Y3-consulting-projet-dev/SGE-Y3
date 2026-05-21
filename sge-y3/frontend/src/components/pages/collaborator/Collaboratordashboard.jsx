@@ -15,7 +15,7 @@ function formatProgressSubtitle(evaluation) {
 }
 
 function getSectionStepTitle(section) {
-  const status = section.status === "Complete" ? "complétée" : section.status === "En cours" ? "en cours" : "à faire";
+  const status = section.status === "Complete" ? "complète" : section.status === "En cours" ? "En cours" : "À faire";
   return `${section.title} ${status}`;
 }
 
@@ -52,9 +52,9 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
     <div className="space-y-4">
       <div className="rounded-sm bg-[#BFE2B9] px-3 py-2 text-[11px] font-semibold text-[#114F35]">
         {evaluation?.evaluation?.status === "Soumis aux Managers"
-          ? "Auto-évaluation soumise aux managers concernés. En attente de retour."
+          ? "Auto-évaluation soumise ?ux managers concernés. En attente de retour."
           : evaluation?.evaluation?.status === "Soumis au Manager"
-          ? "Auto-évaluation soumise au(x) manager(s). En attente de traitement."
+          ? "Auto-évaluation soumise ?u(x) manager(s). En attente de traitement."
           : evaluation?.evaluation?.status === "Soumis à la RH"
           ? "Auto-évaluation soumise à la RH. En attente de traitement."
           : "Auto-évaluation en cours -  à soumettre avant le 18/04/2026. Sauvegarde automatique activée"}
@@ -128,7 +128,7 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
                 },
                 { id: 2, title: "Mes managers évaluent", subtitle: "Selon les départements concernés" },
                 { id: 3, title: "Validation RH", subtitle: "Suivi administratif RH" },
-                { id: 4, title: "Decision de l'Associé", subtitle: "Résultat communiqué ensuite" },
+                { id: 4, title: "Décision de l'Associé", subtitle: "Résultat communiqué ensuite" },
               ].map((step) => (
                 <div key={step.id} className="flex items-start gap-2">
                   <span className="mt-1 inline-flex h-4.5 w-4.5 items-center justify-center rounded-full bg-slate-100 text-[9px] font-bold text-slate-500">
@@ -154,7 +154,7 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
               ))}
             </div>
             <p className="mt-4 text-[11px] font-semibold text-[#0F3A63]">
-              {completedSections} section(s) completée(s) sur {evaluation?.summary?.totalSections || 4}.
+              {completedSections} section(s) complétée(s) sur {evaluation?.summary?.totalSections || 4}.
             </p>
           </article>
         </div>

@@ -678,8 +678,8 @@ function MonautoevaluationSenior({ user }) {
           onClick={() => setStep("missions")}
           className={`rounded-xl p-5 text-left ${step === "missions" ? "bg-[#003B63] text-white" : "bg-white text-[#0F3A63] shadow-sm"}`}
         >
-          <p className="text-xs font-bold uppercase">Etape 1</p>
-          <h2 className="mt-2 text-[22px] font-extrabold">Evaluation par mission</h2>
+          <p className="text-xs font-bold uppercase">Étape 1</p>
+          <h2 className="mt-2 text-[22px] font-extrabold">Évaluation par mission</h2>
           <p className={`mt-3 text-sm font-semibold ${step === "missions" ? "text-slate-200" : "text-slate-500"}`}>
             Missions ajoutées par le Senior - {Math.round(((missionEvaluations.filter((mission) => mission.status === "Soumise").length) / (missionEvaluations.length || 1)) * 100)}%
           </p>
@@ -690,8 +690,8 @@ function MonautoevaluationSenior({ user }) {
           onClick={() => setStep("cycle")}
           className={`rounded-xl p-5 text-left ${step === "cycle" ? "bg-[#003B63] text-white" : "bg-white text-[#0F3A63] shadow-sm"}`}
         >
-          <p className="text-xs font-bold uppercase">Etape 2</p>
-          <h2 className="mt-2 text-[22px] font-extrabold">Evaluation globale du cycle</h2>
+          <p className="text-xs font-bold uppercase">Étape 2</p>
+          <h2 className="mt-2 text-[22px] font-extrabold">Évaluation globale du cycle</h2>
           <p className={`mt-3 text-sm font-semibold ${step === "cycle" ? "text-slate-200" : "text-slate-500"}`}>
             {evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"} - {globalProgress}%
           </p>
@@ -905,7 +905,7 @@ function MonautoevaluationSenior({ user }) {
                             className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <ChevronLeft size={14} />
-                            Precedent
+                            Précédent
                           </button>
 
                           {!isLastMissionStep ? (
@@ -974,7 +974,7 @@ function MonautoevaluationSenior({ user }) {
               </div>
               <div className="flex justify-between gap-4">
                 <span className="font-semibold text-[#0F3A63]">Destinataire</span>
-                <span className="text-right font-bold text-slate-500">{evaluationData?.assignee?.submitted_to || "Manager du departement"}</span>
+                <span className="text-right font-bold text-slate-500">{evaluationData?.assignee?.submitted_to || "Manager du département"}</span>
               </div>
             </div>
 

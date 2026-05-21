@@ -132,6 +132,7 @@ const evaluationInstanceSchema = new mongoose.Schema(
     rh_validation_selected_at: { type: Date, default: null },
     rh_validated_at: { type: Date, default: null },
     peer_review_comment: { type: String, default: '', trim: true },
+    peer_review_sections: { type: [sectionSchema], default: [] },
     peer_review_comment_by_user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     peer_review_comment_by_name: { type: String, default: '', trim: true },
     peer_review_comment_saved_at: { type: Date, default: null },

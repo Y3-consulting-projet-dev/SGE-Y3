@@ -121,7 +121,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
           {isLoadingOverview
             ? "Chargement de la vue d'ensemble..."
             : summary.selfEvaluationStatus === "Soumis aux Managers" || summary.selfEvaluationStatus === "Soumis au Manager"
-              ? "Mon auto-évaluation a deja été soumise."
+              ? "Mon auto-évaluation a déjà été soumise."
               : "Mon auto-évaluation est en attente."}
         </div>
 
@@ -156,7 +156,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
             className="rounded-lg bg-[#003B63] p-5 text-left text-white transition hover:bg-[#0B4C7A]"
           >
             <div className="mb-4 flex items-start justify-between">
-              <p className="text-sm">Evaluations à donner</p>
+              <p className="text-sm">Évaluations à donner</p>
               <p className="text-2xl font-extrabold text-[#F34D4D]">{isLoadingOverview ? "..." : summary.pendingEvaluationsCount || 0}</p>
             </div>
             <p className="text-sm text-slate-200">{pendingSummaryText}</p>
@@ -175,9 +175,9 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <article className="rounded-xl bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold text-[#0F3A63]">Evaluations globales en attente</h2>
+              <h2 className="text-sm font-semibold text-[#0F3A63]">Évaluations globales en attente</h2>
               <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">
-                {isLoadingOverview ? "..." : `${pendingEvaluations.length} evaluation(s)`}
+                {isLoadingOverview ? "..." : `${pendingEvaluations.length} évaluation(s)`}
               </span>
             </div>
 
@@ -212,7 +212,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
                 Cette vue prend en compte les assistants, seniors et assistants managers du même département.
               </p>
               <p>
-                Si vous êtes en AUDIT, vous recuperez aussi les profils en AUDIT & EXPERTISE COMPTABLE. Meme logique pour EXPERTISE COMPTABLE.
+                Si vous êtes en AUDIT, vous récupérez aussi les profils en AUDIT & EXPERTISE COMPTABLE. Même logique pour EXPERTISE COMPTABLE.
               </p>
               <p>
                 Les cartes du haut montrent uniquement les auto-évaluations globales soumises à votre compte manager.
@@ -345,7 +345,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
           >
             <header className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
               <div>
-                <p className="text-xs font-bold text-[#79B742]">Evaluation Manager</p>
+                <p className="text-xs font-bold text-[#79B742]">Évaluation Manager</p>
                 <h2 className="text-2xl font-black text-[#0F3A63]">{selectedMember.name}</h2>
                 <p className="text-sm font-semibold text-slate-500">
                   {selectedMember.role || selectedMember.grade} - {selectedMember.status || "En attente"}

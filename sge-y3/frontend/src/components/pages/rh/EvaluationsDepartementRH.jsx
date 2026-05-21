@@ -223,7 +223,7 @@ function EvaluationsDepartementRH() {
       setIsSelecting(true);
       setFeedbackMessage("");
       const response = await selectRhDepartmentEvaluation(selectedMember.id);
-      setFeedbackMessage(response.message || "Evaluation ajoutée à la validation RH.");
+      setFeedbackMessage(response.message || "Évaluation ajoutée à la validation RH.");
       await loadData();
     } catch (error) {
       setErrorMessage(error.message || "Sélection RH impossible.");
@@ -271,7 +271,7 @@ function EvaluationsDepartementRH() {
       <div className="rounded-xl bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-extrabold text-[#0F3A63]">Evaluations des équipes</h2>
+            <h2 className="text-xl font-extrabold text-[#0F3A63]">Évaluations des équipes</h2>
             <p className="mt-1 text-sm font-semibold text-slate-500">
               Vue RH des scores missions, globaux et finaux par département.
             </p>
@@ -302,7 +302,7 @@ function EvaluationsDepartementRH() {
           <p className="mt-2 text-2xl font-black leading-none">{selectedDepartment.department}</p>
         </article>
         <article className="rounded-lg bg-white p-4 shadow-sm">
-          <p className="text-sm font-semibold text-slate-500">Evaluations visibles</p>
+          <p className="text-sm font-semibold text-slate-500">Évaluations visibles</p>
           <p className="mt-2 text-2xl font-black leading-none text-[#0F3A63]">{selectedDepartment.members.length}</p>
         </article>
         <article className="rounded-lg bg-white p-4 shadow-sm">

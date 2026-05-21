@@ -27,7 +27,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
 
   const pageTitle = useMemo(() => {
     if (activeSection === "validations") return "VALIDATIONS RH";
-    if (activeSection === "self-evaluation-rh") return assistantMode ? "MON AUTO-EVALUATION ASSISTANTE RH" : "MON AUTO-ÉVALUATION RH";
+    if (activeSection === "self-evaluation-rh") return assistantMode ? "MON AUTO-ÉVALUATION ASSISTANTE RH" : "MON AUTO-ÉVALUATION RH";
     if (activeSection === "questionnaire") return "SECTIONS & QUESTIONS";
     if (activeSection === "assistant-rh-review") return "EVALUATION ASSISTANTE RH";
     if (activeSection === "syntheses") return "SYNTHÈSES À TRANSMETTRE";
@@ -110,7 +110,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
             submitLabel="Transmettre aux associés"
             submittedLabel="Transmis aux associés"
             successMessage="Classement des assistants, seniors et assistants managers transmis aux associés."
-            workflowText="La RH classe les assistants, seniors et assistants managers, puis transmet le classement aux associés pour decision du taux d'augmentation."
+            workflowText="La RH classe les assistants, seniors et assistants managers, puis transmet le classement aux associés pour décision du taux d'augmentation."
           />
           <DecisionAssociesRH />
           <DecisionAssociesRH

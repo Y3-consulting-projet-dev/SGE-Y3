@@ -101,7 +101,7 @@ function buildPrintableReport(title, rows, cycleLabel) {
           <th>Collaborateur</th>
           <th>Score missions</th>
           <th>Score globaux</th>
-          <th>Decision finale</th>
+          <th>Décision finale</th>
         </tr>
       </thead>
       <tbody>${bodyRows}</tbody>

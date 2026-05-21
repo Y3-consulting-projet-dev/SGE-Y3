@@ -78,7 +78,7 @@ function Vueensemble({ onOpen, overviewData, isLoading, errorMessage }) {
                   <div>
                     <p className="font-bold text-[#0F3A63]">{assistant.name}</p>
                     <p className="text-xs font-semibold text-slate-500">
-                      {assistant.department || "Departement non renseigné"} - {assistant.sharedMissionsCount} mission(s) commune(s)
+                      {assistant.department || "Département non renseigné"} - {assistant.sharedMissionsCount} mission(s) commune(s)
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs font-bold">

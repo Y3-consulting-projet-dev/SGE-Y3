@@ -25,7 +25,7 @@ const sideMenu = [
     items: [{ key: "vue-cabinet", label: "Vue cabinet", icon: LayoutDashboard }],
   },
   {
-    title: "Evaluations",
+    title: "Évaluations",
     items: [
       { key: "syntheses-rh", label: "Synthèses validées RH", icon: FileStack },
       { key: "committee", label: "Comité d'évaluation", icon: UsersRound },
@@ -246,6 +246,7 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
               rateEnabled
               showCommitteeMembers={false}
               initialDecisionScope="rh-final"
+              editableDecisionScope="associate-final"
               submitLabel="Envoyer les taux d'augmentation à la RH"
               submittedLabel="Taux d'augmentation envoyés à la RH"
               successMessage="Les classements et les taux d'augmentation ont été transmis à la RH."

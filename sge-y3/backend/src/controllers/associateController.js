@@ -34,6 +34,34 @@ function roundScore(score) {
   return typeof score === 'number' ? Number(score.toFixed(1)) : null;
 }
 
+function normalizeText(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toUpperCase();
+}
+
+function isRhDepartment(user) {
+  return normalizeText(user?.department) === 'RH';
+}
+
+function isCapitalHumainDepartment(user) {
+  return normalizeText(user?.department) === 'CAPITAL HUMAIN';
+}
+
+function isAssociateManagerEvaluationTarget(user) {
+  if (!user || isCapitalHumainDepartment(user)) {
+    return false;
+  }
+
+  return ['10B', '10C'].includes(String(user.code_categorie || '').trim()) || isRhDepartment(user);
+}
+
+function getAssociateManagerSelfTemplateType(user) {
+  return isRhDepartment(user) ? 'rh-self-evaluation' : 'manager-self-evaluation';
+}
+
 function toPersistenceSections(sections = []) {
   return sections.map((section) => ({
     section_id: section.id || section.section_id,
@@ -89,7 +117,7 @@ async function resolveOtherAssociates(currentUserId) {
   return User.find({
     is_active: true,
     _id: { $ne: currentUserId },
-    $or: [{ code_categorie: '11' }, { grade: 'AssociÃ©' }, { grade: 'Associe' }],
+    $or: [{ code_categorie: '11' }, { grade: 'Associé' }, { grade: 'Associe' }],
   })
     .sort({ last_name: 1, first_name: 1 })
     .select('_id name first_name last_name grade department code_categorie');
@@ -107,6 +135,16 @@ function cloneSectionsForAssociate(user) {
     })),
     criteria: (section.criteria || []).map((criterion) => ({ ...criterion })),
   }));
+}
+
+function getAssociatePeerReviewSections(instance, submitter) {
+  const savedSections = normalizeSections(instance.peer_review_sections || []);
+
+  if (savedSections.length) {
+    return savedSections;
+  }
+
+  return cloneSectionsForAssociate(submitter);
 }
 
 async function getOrCreateAssociateSelfEvaluation(user) {
@@ -142,6 +180,7 @@ async function getOrCreateAssociateSelfEvaluation(user) {
 
 function buildAssociateSelfEvaluationPayload(instance, user, recipients = []) {
   const sections = normalizeSections(instance.sections || []);
+  const peerReviewSections = normalizeSections(instance.peer_review_sections || []);
   const activeSection = sections.find((section) => section.status !== 'Complete') || sections[0] || null;
 
   return {
@@ -161,11 +200,16 @@ function buildAssociateSelfEvaluationPayload(instance, user, recipients = []) {
             department: recipients[0].department,
           }
         : null,
-      peerComment: instance.peer_review_comment
+      peerComment: instance.peer_review_comment || peerReviewSections.length
         ? {
             comment: instance.peer_review_comment,
             authorName: instance.peer_review_comment_by_name || '',
             savedAt: instance.peer_review_comment_saved_at || null,
+            sections: peerReviewSections,
+            summary: {
+              ...getEvaluationSummary(peerReviewSections),
+              overallAverage: getOverallAverageScore(peerReviewSections),
+            },
           }
         : null,
     },
@@ -186,6 +230,7 @@ function buildAssociateSelfEvaluationPayload(instance, user, recipients = []) {
 
 function buildAssociateIncomingListItem(instance, submitter) {
   const sections = normalizeSections(instance.sections || []);
+  const peerReviewSections = normalizeSections(instance.peer_review_sections || []);
   return {
     id: instance._id.toString(),
     submitterId: submitter?._id?.toString?.() || '',
@@ -195,12 +240,14 @@ function buildAssociateIncomingListItem(instance, submitter) {
     submittedAt: instance.submitted_at || null,
     status: instance.status || 'En attente',
     overallAverage: getOverallAverageScore(sections),
-    commentSaved: Boolean(String(instance.peer_review_comment || '').trim()),
+    commentSaved: Boolean(String(instance.peer_review_comment || '').trim() || peerReviewSections.length),
+    peerReviewAverage: getOverallAverageScore(peerReviewSections),
   };
 }
 
 function buildAssociateIncomingEvaluationPayload(instance, submitter) {
   const sections = normalizeSections(instance.sections || []);
+  const peerReviewSections = getAssociatePeerReviewSections(instance, submitter);
   const activeSection = sections[0] || null;
 
   return {
@@ -228,6 +275,12 @@ function buildAssociateIncomingEvaluationPayload(instance, submitter) {
       comment: instance.peer_review_comment || '',
       authorName: instance.peer_review_comment_by_name || '',
       savedAt: instance.peer_review_comment_saved_at || null,
+      sections: peerReviewSections,
+      activeSectionId: peerReviewSections[0]?.id || 1,
+      summary: {
+        ...getEvaluationSummary(peerReviewSections),
+        overallAverage: getOverallAverageScore(peerReviewSections),
+      },
     },
   };
 }
@@ -494,6 +547,10 @@ function buildManagerAutoEvaluationRows(instances = [], userById = new Map()) {
   return instances
     .map((instance) => {
       const manager = userById.get(String(instance.evalue_id || ''));
+      if (!manager) {
+        return null;
+      }
+
       const score = roundScore(getOverallAverageScore(normalizeSections(instance.sections || [])));
 
       return {
@@ -506,7 +563,7 @@ function buildManagerAutoEvaluationRows(instances = [], userById = new Map()) {
         submittedAt: instance.submitted_at || null,
       };
     })
-    .filter((item) => item.score !== null)
+    .filter((item) => item && item.score !== null)
     .sort((left, right) => {
       const leftDate = left.submittedAt ? new Date(left.submittedAt).getTime() : 0;
       const rightDate = right.submittedAt ? new Date(right.submittedAt).getTime() : 0;
@@ -533,15 +590,18 @@ async function getAssociateOverview(_request, response) {
       CommitteeDecision.findOne({ scope: 'associate-final', cycle_label: CURRENT_CYCLE_LABEL }).sort({ submitted_at: -1 }),
       EvaluationInstance.find({
         cycle_label: CURRENT_CYCLE_LABEL,
-        template_type: 'manager-self-evaluation',
+        template_type: { $in: ['manager-self-evaluation', 'rh-self-evaluation'] },
         status: { $in: ['Soumis a RH', 'Valide RH', 'Cloture'] },
         submitted_at: { $ne: null },
       }).select('evalue_id submitted_at sections'),
       User.find({
         is_active: true,
-        code_categorie: { $in: ['9B', '10B', '10C'] },
-        ...buildNonRhDepartmentClause(),
-      }).select('_id name first_name last_name grade department'),
+        $or: [
+          { code_categorie: { $in: ['10B', '10C'] } },
+          { department: /^RH$/i },
+        ],
+        $nor: [{ department: /^CAPITAL HUMAIN$/i }],
+      }).select('_id name first_name last_name grade department code_categorie'),
     ]);
 
   const combinedRows = [...reviewRows, ...assistantRhRows];
@@ -680,7 +740,7 @@ module.exports = {
     await instance.save();
 
     return response.json({
-      message: "Auto-evaluation associe enregistree.",
+      message: "Auto-évaluation associé enregistrée.",
       ...buildAssociateSelfEvaluationPayload(instance, request.user, recipients),
     });
   },
@@ -692,7 +752,7 @@ module.exports = {
 
     if (!recipients.length) {
       return response.status(400).json({
-        message: "Aucun autre associe destinataire n'est disponible pour le moment.",
+        message: "Aucun autre associé destinataire n'est disponible pour le moment.",
       });
     }
 
@@ -700,7 +760,7 @@ module.exports = {
     const missingAnswers = validateSectionsForSubmit(sections);
     if (missingAnswers.length) {
       return response.status(400).json({
-        message: "Toutes les questions doivent etre renseignees avant la soumission.",
+        message: "Toutes les questions doivent être renseignées avant la soumission.",
         missingAnswers,
       });
     }
@@ -708,7 +768,7 @@ module.exports = {
     const missingComments = validateSectionCommentsForSubmit(sections, 3);
     if (missingComments.length) {
       return response.status(400).json({
-        message: "Un commentaire d'au moins 3 caracteres est obligatoire pour chaque section.",
+        message: "Un commentaire d'au moins 3 caractères est obligatoire pour chaque section.",
         missingComments,
       });
     }
@@ -723,7 +783,7 @@ module.exports = {
     await instance.save();
 
     return response.json({
-      message: `Auto-evaluation associe soumise a ${recipient.name}.`,
+      message: `Auto-évaluation associé soumise à ${recipient.name}.`,
       ...buildAssociateSelfEvaluationPayload(instance, request.user, recipients),
     });
   },
@@ -734,7 +794,7 @@ module.exports = {
       evalue_id: { $ne: request.user._id },
       submitted_to_user_ids: request.user._id,
     }).select(
-      '_id evalue_id status submitted_at sections peer_review_comment peer_review_comment_by_name peer_review_comment_saved_at'
+      '_id evalue_id status submitted_at sections peer_review_comment peer_review_sections peer_review_comment_by_name peer_review_comment_saved_at'
     );
 
     const submitterIds = instances.map((instance) => instance.evalue_id).filter(Boolean);
@@ -762,11 +822,11 @@ module.exports = {
       evalue_id: { $ne: request.user._id },
       submitted_to_user_ids: request.user._id,
     }).select(
-      '_id evalue_id status submitted_at sections peer_review_comment peer_review_comment_by_name peer_review_comment_saved_at'
+      '_id evalue_id status submitted_at sections peer_review_comment peer_review_sections peer_review_comment_by_name peer_review_comment_saved_at'
     );
 
     if (!instance) {
-      return response.status(404).json({ message: "Evaluation associe introuvable." });
+      return response.status(404).json({ message: "Évaluation associé introuvable." });
     }
 
     const submitter = await User.findById(instance.evalue_id).select('_id name first_name last_name grade department');
@@ -781,13 +841,38 @@ module.exports = {
       evalue_id: { $ne: request.user._id },
       submitted_to_user_ids: request.user._id,
     }).select(
-      '_id evalue_id status submitted_at sections peer_review_comment peer_review_comment_by_name peer_review_comment_saved_at'
+      '_id evalue_id status submitted_at sections peer_review_comment peer_review_sections peer_review_comment_by_name peer_review_comment_saved_at'
     );
 
     if (!instance) {
-      return response.status(404).json({ message: "Evaluation associe introuvable." });
+      return response.status(404).json({ message: "Évaluation associé introuvable." });
     }
 
+    const rawSections = Array.isArray(request.body?.sections) ? request.body.sections : [];
+    const peerReviewSections = normalizeSections(rawSections);
+    if (!peerReviewSections.length) {
+      return response.status(400).json({
+        message: "La matrice d'évaluation de l'associé est requise.",
+      });
+    }
+
+    const missingAnswers = validateSectionsForSubmit(peerReviewSections);
+    if (missingAnswers.length) {
+      return response.status(400).json({
+        message: "Toutes les questions doivent être renseignées avant l'enregistrement.",
+        missingAnswers,
+      });
+    }
+
+    const missingComments = validateSectionCommentsForSubmit(peerReviewSections, 3);
+    if (missingComments.length) {
+      return response.status(400).json({
+        message: "Un commentaire d'au moins 3 caractères est obligatoire pour chaque section.",
+        missingComments,
+      });
+    }
+
+    instance.peer_review_sections = toPersistenceSections(peerReviewSections);
     instance.peer_review_comment = String(request.body?.comment || '').trim();
     instance.peer_review_comment_by_user_id = request.user._id;
     instance.peer_review_comment_by_name =
@@ -798,25 +883,34 @@ module.exports = {
     const submitter = await User.findById(instance.evalue_id).select('_id name first_name last_name grade department');
 
     return response.json({
-      message: "Commentaire associe enregistre.",
+      message: "Évaluation associé enregistrée.",
       ...buildAssociateIncomingEvaluationPayload(instance, submitter),
     });
   },
   async getAssociateManagerEvaluations(request, response) {
-    const managerSelfEvaluations = await EvaluationInstance.find({
-      cycle_label: CURRENT_CYCLE_LABEL,
-      template_type: 'manager-self-evaluation',
-      status: { $in: ['Soumis a RH', 'Valide RH', 'Cloture'] },
-      submitted_at: { $ne: null },
-    }).select('_id evalue_id status submitted_at sections mission_evaluations');
-
-    const selfEvaluationByManagerId = new Map(managerSelfEvaluations.map((instance) => [String(instance.evalue_id), instance]));
     const managers = await User.find({
       is_active: true,
-      code_categorie: { $in: ['9B', '10B', '10C'] },
-      ...buildNonRhDepartmentClause(),
-    }).select('_id name grade department');
+      $or: [
+        { code_categorie: { $in: ['10B', '10C'] } },
+        { department: /^RH$/i },
+      ],
+      $nor: [{ department: /^CAPITAL HUMAIN$/i }],
+    }).select('_id name grade department code_categorie');
+    const managersById = new Map(managers.map((manager) => [String(manager._id), manager]));
     const managerIds = managers.map((manager) => manager._id);
+    const managerSelfEvaluations = await EvaluationInstance.find({
+      cycle_label: CURRENT_CYCLE_LABEL,
+      evalue_id: { $in: managerIds },
+      template_type: { $in: ['manager-self-evaluation', 'rh-self-evaluation'] },
+      status: { $in: ['Soumis a RH', 'Valide RH', 'Cloture'] },
+      submitted_at: { $ne: null },
+    }).select('_id evalue_id template_type status submitted_at sections mission_evaluations');
+
+    const selfEvaluationByManagerId = new Map(
+      managerSelfEvaluations
+        .filter((instance) => instance.template_type === getAssociateManagerSelfTemplateType(managersById.get(String(instance.evalue_id))))
+        .map((instance) => [String(instance.evalue_id), instance])
+    );
     const associateReviews = managerIds.length
       ? await AssociateManagerReview.find({
           cycle_label: CURRENT_CYCLE_LABEL,
@@ -841,16 +935,16 @@ module.exports = {
     });
   },
   async getAssociateManagerEvaluation(request, response) {
-    const manager = await User.findById(request.params.managerId).select('_id name grade department');
+    const manager = await User.findById(request.params.managerId).select('_id name grade department code_categorie');
 
-    if (!manager) {
+    if (!manager || !isAssociateManagerEvaluationTarget(manager)) {
       return response.status(404).json({ message: 'Manager introuvable.' });
     }
 
     const selfEvaluation = await EvaluationInstance.findOne({
       cycle_label: CURRENT_CYCLE_LABEL,
       evalue_id: manager._id,
-      template_type: 'manager-self-evaluation',
+      template_type: getAssociateManagerSelfTemplateType(manager),
       status: { $in: ['Soumis a RH', 'Valide RH', 'Cloture'] },
       submitted_at: { $ne: null },
     }).select('status submitted_at sections mission_evaluations');
@@ -860,16 +954,16 @@ module.exports = {
     return response.json(buildAssociateManagerPayload(manager, selfEvaluation, associateReview));
   },
   async saveAssociateManagerEvaluation(request, response) {
-    const manager = await User.findById(request.params.managerId).select('_id name grade department');
+    const manager = await User.findById(request.params.managerId).select('_id name grade department code_categorie');
 
-    if (!manager) {
+    if (!manager || !isAssociateManagerEvaluationTarget(manager)) {
       return response.status(404).json({ message: 'Manager introuvable.' });
     }
 
     const selfEvaluation = await EvaluationInstance.findOne({
       cycle_label: CURRENT_CYCLE_LABEL,
       evalue_id: manager._id,
-      template_type: 'manager-self-evaluation',
+      template_type: getAssociateManagerSelfTemplateType(manager),
       status: { $in: ['Soumis a RH', 'Valide RH', 'Cloture'] },
       submitted_at: { $ne: null },
     }).select('status submitted_at sections mission_evaluations');
@@ -885,7 +979,7 @@ module.exports = {
     if (rawMissionReviews.length) {
       const incomingMissionMap = new Map(normalizeMissionReviews(rawMissionReviews).map((mission) => [mission.mission_id, mission]));
       const availableMissionIds = new Set(
-        (selfEvaluation.mission_evaluations || []).filter((mission) => mission.status === 'Soumise').map((mission) => String(mission.mission_id))
+        (selfEvaluation?.mission_evaluations || []).filter((mission) => mission.status === 'Soumise').map((mission) => String(mission.mission_id))
       );
       associateReview.mission_reviews = normalizeMissionReviews(associateReview.mission_reviews || []).map((mission) =>
         availableMissionIds.has(mission.mission_id) && incomingMissionMap.has(mission.mission_id)
@@ -899,7 +993,7 @@ module.exports = {
     await associateReview.save();
 
     return response.json({
-      message: "Evaluation de l'associe enregistree.",
+      message: "Évaluation de l'associé enregistrée.",
       ...buildAssociateManagerPayload(manager, selfEvaluation, associateReview),
     });
   },

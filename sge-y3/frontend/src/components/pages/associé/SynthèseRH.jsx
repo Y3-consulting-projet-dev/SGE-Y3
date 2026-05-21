@@ -107,6 +107,27 @@ function ScoreBreakdown({ title, details }) {
                   <p className="text-xs font-semibold text-slate-500">{formatDate(detail.submittedAt)}</p>
                 </div>
               </div>
+              {(detail.sectionComments || []).length ? (
+                <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                  {detail.sectionComments.map((section) => (
+                    <div key={`${detail.source}-${detail.missionTitle}-comment-${section.sectionId}`} className="rounded-lg bg-[#F8FAFC] p-3">
+                      <p className="text-xs font-bold text-[#0F3A63]">{section.title}</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">{section.comment}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {(detail.titleJustifications || []).length ? (
+                <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                  {detail.titleJustifications.map((title) => (
+                    <div key={`${detail.source}-${detail.missionTitle}-gap-${title.pageId}`} className="rounded-lg bg-[#FFF7ED] p-3">
+                      <p className="text-xs font-bold text-[#0F3A63]">{title.sectionTitle}</p>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">{title.pageTitle}</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">{title.comment}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ))}
         </div>

@@ -517,6 +517,8 @@ function buildScoreDetail({
   missionTitle = '',
   score = null,
   submittedAt = null,
+  sectionComments = [],
+  titleJustifications = [],
 }) {
   return {
     source,
@@ -525,7 +527,68 @@ function buildScoreDetail({
     missionTitle,
     score,
     submittedAt,
+    sectionComments,
+    titleJustifications,
   };
+}
+
+function getMissionReviewSections(missionReview) {
+  const sectionMap = new Map();
+
+  (missionReview?.criteria || []).forEach((criterion) => {
+    const sectionTitle = String(criterion.section_title || criterion.sectionTitle || '').trim();
+    const pageTitle = String(criterion.page_title || criterion.pageTitle || '').trim();
+    const sectionKey = sectionTitle || 'Section';
+    const pageKey = `${sectionKey}::${pageTitle || 'Titre'}`;
+
+    if (!sectionMap.has(sectionKey)) {
+      sectionMap.set(sectionKey, {
+        title: sectionTitle,
+        comment: String(criterion.section_comment || criterion.sectionComment || '').trim(),
+        pages: new Map(),
+      });
+    }
+
+    const section = sectionMap.get(sectionKey);
+    const sectionComment = String(criterion.section_comment || criterion.sectionComment || '').trim();
+    if (!section.comment && sectionComment) section.comment = sectionComment;
+
+    if (!section.pages.has(pageKey)) {
+      section.pages.set(pageKey, {
+        title: pageTitle,
+        comment: String(criterion.page_comment || criterion.pageComment || '').trim(),
+      });
+    }
+
+    const page = section.pages.get(pageKey);
+    const pageComment = String(criterion.page_comment || criterion.pageComment || '').trim();
+    if (!page.comment && pageComment) page.comment = pageComment;
+  });
+
+  return Array.from(sectionMap.values()).map((section) => ({
+    ...section,
+    pages: Array.from(section.pages.values()),
+  }));
+}
+
+function getMissionSectionComments(missionReview) {
+  return getMissionReviewSections(missionReview)
+    .filter((section) => String(section.comment || '').trim())
+    .map((section) => ({ sectionId: section.title, title: section.title, comment: String(section.comment || '').trim() }));
+}
+
+function getMissionTitleJustifications(missionReview) {
+  return getMissionReviewSections(missionReview).flatMap((section) =>
+    section.pages
+      .filter((page) => String(page.comment || '').trim())
+      .map((page) => ({
+        sectionId: section.title,
+        sectionTitle: section.title,
+        pageId: `${section.title}-${page.title}`,
+        pageTitle: page.title,
+        comment: String(page.comment || '').trim(),
+      }))
+  );
 }
 
 function getAverageFromDetailRows(details = []) {
@@ -755,6 +818,8 @@ async function loadRhReviewDataset(rhUserIds) {
               missionTitle: missionReview.title,
               score,
               submittedAt: missionReview.submitted_at || null,
+              sectionComments: getMissionSectionComments(missionReview),
+              titleJustifications: getMissionTitleJustifications(missionReview),
             })
           );
         }
@@ -784,6 +849,8 @@ async function loadRhReviewDataset(rhUserIds) {
             missionTitle: missionReview.title,
             score,
             submittedAt: missionReview.submitted_at || null,
+            sectionComments: getMissionSectionComments(missionReview),
+            titleJustifications: getMissionTitleJustifications(missionReview),
           })
         );
       }
@@ -914,6 +981,8 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
             missionTitle: missionReview.title,
             score,
             submittedAt: missionReview.submitted_at || null,
+            sectionComments: getMissionSectionComments(missionReview),
+            titleJustifications: getMissionTitleJustifications(missionReview),
           })
         );
       }
