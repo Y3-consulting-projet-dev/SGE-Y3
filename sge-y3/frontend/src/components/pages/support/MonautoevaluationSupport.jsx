@@ -52,16 +52,16 @@ function MonautoevaluationSupport({ user }) {
   }, [answers]);
 
   const submitToAssociates = () => {
-    setStatus("Auto-evaluation support soumise directement aux associes.");
+    setStatus("Auto-évaluation support soumise directement aux associés.");
   };
 
   return (
     <section className="space-y-5">
       <article className="rounded-xl bg-white p-5 shadow-sm">
-        <p className="text-xs font-bold uppercase text-slate-400">Departement support</p>
-        <h2 className="mt-1 text-2xl font-black text-[#0F3A63]">Mon auto-evaluation</h2>
+        <p className="text-xs font-bold uppercase text-slate-400">Département support</p>
+        <h2 className="mt-1 text-2xl font-black text-[#0F3A63]">Mon auto-évaluation</h2>
         <p className="mt-1 text-sm font-semibold text-slate-500">
-          {user?.first_name} {user?.last_name} - Soumission directe aux associes.
+          {user?.first_name} {user?.last_name} - Soumission directe aux associés.
         </p>
         <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="rounded-lg bg-[#0D496A] p-4 text-white">
@@ -101,7 +101,7 @@ function MonautoevaluationSupport({ user }) {
       <div className="flex flex-wrap items-center justify-end gap-3">
         {status ? <p className="text-sm font-bold text-[#4E8B1B]">{status}</p> : null}
         <button onClick={submitToAssociates} className="rounded-full bg-[#0F3A63] px-6 py-3 text-sm font-extrabold text-white">
-          Soumettre aux associes
+          Soumettre aux associés
         </button>
       </div>
     </section>

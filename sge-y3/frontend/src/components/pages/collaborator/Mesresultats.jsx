@@ -59,6 +59,7 @@ function buildLiveResults(evaluationData, resultsData) {
     cycle_label: evaluationData?.evaluation?.cycle_label || resultsData?.cycle_label,
     status: evaluationData?.evaluation?.status || resultsData?.status,
     sectionScores,
+    managerComments: resultsData?.managerComments || [],
     kpis: {
       ...(resultsData?.kpis || {}),
       scoreFinal,
@@ -94,6 +95,7 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
   const comparaisonEquipeLabel = displayResults?.kpis?.comparaisonEquipeLabel || "0.0";
   const comparaisonEquipeSubtitle = displayResults?.kpis?.comparaisonEquipeSubtitle || "Égal à la moyenne";
   const sectionScores = displayResults?.sectionScores || [];
+  const managerComments = displayResults?.managerComments || [];
   const evaluationStatus = displayResults?.status || "En cours";
   const missionScores = buildMissionScores(missionEvaluations);
   const managerRecipients = getManagerRecipients(missionEvaluations);
@@ -115,6 +117,13 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
       subtitle: comparaisonEquipeSubtitle,
     },
   ];
+
+  function formatCommentDate(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleDateString("fr-FR");
+  }
 
   return (
     <div className="space-y-4">
@@ -202,12 +211,24 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
 
           <article className="rounded-md bg-white p-4 shadow-sm">
             <h3 className="mb-3 text-[22px] font-bold leading-tight text-[#0F3A63]">Commentaire du Manager</h3>
-            <div className="rounded-md bg-slate-100 p-4">
-              <p className="text-[12px] text-slate-600">
-                "Mamadou fait preuve d'une bonne rigueur sur les dossiers. Des progres attendus sur la rapidite de
-                rendu des rapports. Formation recommandee sur CEGID avance."
-              </p>
-              <p className="mt-8 text-[12px] font-semibold text-[#0F3A63]">Diallo Seydou - Manager - 28/04/2026</p>
+            <div className="space-y-3">
+              {managerComments.length ? (
+                managerComments.map((item, index) => (
+                  <div key={`${item.managerId}-${index}`} className="rounded-md bg-slate-100 p-4">
+                    <p className="text-[12px] text-slate-600">{item.comment}</p>
+                    <p className="mt-8 text-[12px] font-semibold text-[#0F3A63]">
+                      {item.authorName} - {item.authorGrade}
+                      {formatCommentDate(item.submittedAt) ? ` - ${formatCommentDate(item.submittedAt)}` : ""}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-md bg-slate-100 p-4">
+                  <p className="text-[12px] text-slate-600">
+                    Les commentaires du ou des managers apparaîtront ici lorsqu&apos;ils seront disponibles après le circuit de validation.
+                  </p>
+                </div>
+              )}
             </div>
           </article>
         </div>
@@ -222,7 +243,7 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
             </div>
 
             <div className="rounded-md bg-slate-100 p-3">
-              <p className="text-[18px] font-bold text-[#0F3A63]">Auto-évaluation soumise aux managers</p>
+              <p className="text-[18px] font-bold text-[#0F3A63]">Auto-évaluation soumise ?ux managers</p>
               <p className="mt-1 text-[12px] font-semibold text-[#76B82A]">
                 Chaque manager reçoit les missions de son département.
               </p>
@@ -244,7 +265,7 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
             </div>
           </article>
 
-          <article className="rounded-md bg-white p-4 shadow-sm">
+          {/* <article className="rounded-md bg-white p-4 shadow-sm">
             <h3 className="mb-4 text-[20px] font-bold text-[#0F3A63]">Évolution sur 2 cycles</h3>
             <div className="space-y-3 text-[13px] font-semibold">
               <div className="flex items-center justify-between text-[#0F3A63]">
@@ -262,7 +283,7 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
             <p className="mt-1 text-[12px] font-semibold text-[#0F3A63]">
               Comparaison basée sur les scores de {assistantsEvalues} autre(s) Assistant(s).
             </p>
-          </article>
+          </article> */}
 
           <button
             onClick={() => {

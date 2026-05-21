@@ -99,6 +99,7 @@ function getMissionCriteriaGroups(criteria = []) {
       pageTitle: criterion.pageTitle,
       sourceSheet: criterion.sourceSheet,
       sourceLabel: criterion.sourceLabel,
+      pageComment: criterion.pageComment || "",
       criteria: [criterion],
     });
   }
@@ -114,12 +115,16 @@ function getMissionSections(groups = []) {
 
     if (existingSection) {
       existingSection.groups.push(group);
+      if (!existingSection.comment) {
+        existingSection.comment = group.criteria?.find((criterion) => String(criterion.sectionComment || "").trim())?.sectionComment || "";
+      }
       continue;
     }
 
     sections.push({
       id: group.sectionTitle,
       title: group.sectionTitle,
+      comment: group.criteria?.find((criterion) => String(criterion.sectionComment || "").trim())?.sectionComment || "",
       groups: [group],
     });
   }
@@ -143,6 +148,24 @@ function getMissionGroupProgress(group) {
   const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
   if (!criteria.length) return 0;
   return Math.round((answered / criteria.length) * 100);
+}
+
+function hasRequiredMissionSectionComments(sections = []) {
+  return sections.length > 0 && sections.every((section) => String(section.comment || "").trim().length >= 3);
+}
+
+function getMissionMissingLowScorePageComments(sections = []) {
+  return sections.flatMap((section) =>
+    (section.groups || [])
+      .filter((group) => {
+        const hasLowScore = (group.criteria || []).some((criterion) => typeof criterion.score === "number" && criterion.score < 3);
+        return hasLowScore && String(group.pageComment || "").trim().length < 3;
+      })
+      .map((group) => ({
+        sectionTitle: section.title,
+        pageTitle: group.pageTitle,
+      }))
+  );
 }
 
 function createInitialPageIndexes(sections = []) {
@@ -330,6 +353,13 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
     Math.max((activeMissionSection?.groups?.length || 1) - 1, 0)
   );
   const activeMissionGroup = activeMissionSection?.groups?.[activeMissionPageIndex] || activeMissionSection?.groups?.[0] || null;
+  const hasLowScoreOnActiveMissionPage = (activeMissionGroup?.criteria || []).some(
+    (criterion) => typeof criterion.score === "number" && criterion.score < 3
+  );
+  const hasRequiredMissionPageJustification =
+    !hasLowScoreOnActiveMissionPage || String(activeMissionGroup?.pageComment || "").trim().length >= 3;
+  const hasLowScoreOnActivePage = (activePage?.themes || []).some((theme) => typeof theme.score === "number" && theme.score < 3);
+  const hasRequiredJustification = !hasLowScoreOnActivePage || String(activePage?.comment || "").trim().length >= 3;
 
   useEffect(() => {
     if (!displayedSections.length) {
@@ -392,6 +422,40 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
     setFeedbackMessage("");
   }
 
+  function updateMissionSectionComment(comment) {
+    setMissionReviews((currentMissions) =>
+      currentMissions.map((mission) =>
+        mission.id !== activeMissionId
+          ? mission
+          : {
+              ...mission,
+              criteria: mission.criteria.map((criterion) =>
+                criterion.sectionTitle === activeMissionSection?.title ? { ...criterion, sectionComment: comment } : criterion
+              ),
+            }
+      )
+    );
+    setFeedbackMessage("");
+  }
+
+  function updateMissionPageComment(comment) {
+    setMissionReviews((currentMissions) =>
+      currentMissions.map((mission) =>
+        mission.id !== activeMissionId
+          ? mission
+          : {
+              ...mission,
+              criteria: mission.criteria.map((criterion) =>
+                criterion.sectionTitle === activeMissionGroup?.sectionTitle && criterion.pageTitle === activeMissionGroup?.pageTitle
+                  ? { ...criterion, pageComment: comment }
+                  : criterion
+              ),
+            }
+      )
+    );
+    setFeedbackMessage("");
+  }
+
   function updateComment(comment) {
     syncSections((currentSections) =>
       currentSections.map((section) => {
@@ -402,6 +466,28 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
         return {
           ...section,
           comment,
+        };
+      })
+    );
+  }
+
+  function updatePageComment(comment) {
+    syncSections((currentSections) =>
+      currentSections.map((section) => {
+        if (Number(section.id) !== Number(activeSectionId)) {
+          return section;
+        }
+
+        return {
+          ...section,
+          pages: (section.pages || []).map((page) =>
+            page.page_id !== activePage?.page_id
+              ? page
+              : {
+                  ...page,
+                  comment,
+                }
+          ),
         };
       })
     );
@@ -526,6 +612,12 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
   }
 
   async function handleSaveAndContinue() {
+    if (!hasRequiredJustification) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Une justification est requise pour toute note inférieure à 3.");
+      return;
+    }
+
     const response = await persistReview(sections, missionReviews);
     if (response) goToGlobalStep(1);
   }
@@ -535,6 +627,12 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
     if (!hasRequiredSubmissionComment(sections)) {
       setFeedbackTone("error");
       setFeedbackMessage("Un commentaire d'au moins 3 caractères est obligatoire pour chaque section avant transmission.");
+      return;
+    }
+
+    if (!hasRequiredJustification) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Une justification est requise pour toute note inférieure à 3.");
       return;
     }
 
@@ -558,13 +656,24 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
       setMissionReviews(submittedResponse.mission_reviews || []);
       setPageIndexes(createInitialPageIndexes(submittedResponse.review.sections));
       setFeedbackTone("success");
-      setFeedbackMessage(submittedResponse.message || "Evaluation transmise au(x) manager(s).");
+      setFeedbackMessage(submittedResponse.message || "Évaluation transmise au(x) manager(s).");
     } catch (error) {
       setFeedbackTone("error");
       setFeedbackMessage(error.message || "Transmission impossible.");
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handleSaveMissionAndContinue() {
+    if (!hasRequiredMissionPageJustification) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Une justification est requise pour toute note inférieure à 3 sur ce titre.");
+      return;
+    }
+
+    const response = await persistReview(sections, missionReviews);
+    if (response) goToMissionStep(1);
   }
 
   async function handleSubmitMission() {
@@ -580,13 +689,33 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
       return;
     }
 
+    if (!hasRequiredMissionSectionComments(missionSections)) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Un commentaire d'au moins 3 caractères est obligatoire pour chaque section de la mission.");
+      return;
+    }
+
+    if (getMissionMissingLowScorePageComments(missionSections).length) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Une justification est requise pour chaque titre contenant une note inférieure à 3.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const savedResponse = await persistReview(sections, missionReviews);
       if (!savedResponse) return;
 
-      const submittedResponse = await submitSeniorAssistantMissionEvaluation(selectedAssistantId, activeMission.id);
+      const submittedResponse = await submitSeniorAssistantMissionEvaluation(selectedAssistantId, activeMission.id, {
+        selectedManagerRecipient: selectedManager
+          ? {
+              id: selectedManager.id,
+              name: selectedManager.name,
+              department: selectedManager.department,
+            }
+          : null,
+      });
       setReviewData(submittedResponse);
       setSections(submittedResponse.review.sections);
       setMissionReviews(submittedResponse.mission_reviews || []);
@@ -640,7 +769,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
           className={`rounded-lg p-4 text-left transition ${step === "missions" ? "bg-[#003B63] text-white" : "bg-white text-[#0F3A63] shadow-sm"}`}
         >
           <p className="text-xs font-bold uppercase opacity-80">ETAPE 1</p>
-          <h2 className="mt-1 text-lg font-black">Evaluation par mission</h2>
+          <h2 className="mt-1 text-lg font-black">Évaluation par mission</h2>
           <p className="mt-2 text-xs font-semibold opacity-80">
             Missions partagées avec l'assistant - {Math.round(((missionReviews.filter((mission) => mission.status === "Soumise" || mission.status === "Transmise").length) / (missionReviews.length || 1)) * 100)}%
           </p>
@@ -651,7 +780,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
           className={`rounded-lg p-4 text-left transition ${step === "global" ? "bg-[#003B63] text-white" : "bg-white text-[#0F3A63] shadow-sm"}`}
         >
           <p className="text-xs font-bold uppercase opacity-80">ETAPE 2</p>
-          <h2 className="mt-1 text-lg font-black">Evaluation globale du cycle</h2>
+          <h2 className="mt-1 text-lg font-black">Évaluation globale du cycle</h2>
           <p className="mt-2 text-xs font-semibold opacity-80">Cycle 2025-2026 {globalProgress}%</p>
         </button>
       </section>
@@ -757,7 +886,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
             {activeMission ? (
               <>
                 <div className="mb-4">
-                  <p className="text-xs font-semibold text-slate-400">Evaluation selon la mission réalisée ensemble</p>
+                  <p className="text-xs font-semibold text-slate-400">Évaluation selon la mission réalisée ensemble</p>
                   <h2 className="text-xl font-extrabold text-[#0F3A63]">{activeMission.title}</h2>
                   <p className="mt-1 text-sm font-semibold text-slate-500">{activeMission.period || "Période non renseignée"}</p>
                   {activeMission.origin === "senior-assigned" ? (
@@ -766,6 +895,29 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                     </p>
                   ) : null}
                 </div>
+
+                {managerRecipients.length ? (
+                  <section className="mb-4 rounded-md bg-white p-4 shadow-sm">
+                    <label htmlFor="manager-select-mission" className="mb-2 block text-[12px] font-bold text-[#0F3A63]">
+                      Manager destinataire
+                    </label>
+                    <select
+                      id="manager-select-mission"
+                      value={selectedManagerValue}
+                      onChange={(event) => {
+                        setSelectedManagerValue(event.target.value);
+                        setFeedbackMessage("");
+                      }}
+                      className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-[#0F3A63] outline-none"
+                    >
+                      {managerRecipients.map((manager) => (
+                        <option key={getRecipientOptionValue(manager)} value={getRecipientOptionValue(manager)}>
+                          {manager.department} - {manager.name} ({manager.grade})
+                        </option>
+                      ))}
+                    </select>
+                  </section>
+                ) : null}
 
                 <section className="mb-4 rounded-md bg-[#F8FAFC] p-4">
                   <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -831,6 +983,32 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                     {activeMissionGroup.criteria.map((criterion) => (
                       <MissionScoreRow key={criterion.id} criterion={criterion} onSelect={(score) => updateMissionScore(criterion.id, score)} />
                     ))}
+                    {hasLowScoreOnActiveMissionPage ? (
+                      <div className="rounded-md border border-[#F0C7C7] bg-[#FFF7F7] p-3">
+                        <label className="text-[12px] font-bold text-[#A4252F]">
+                          Justification de l'écart pour ce titre <span className="text-[11px] text-slate-500">(minimum 3 caractères)</span>
+                        </label>
+                        <textarea
+                          value={activeMissionGroup.pageComment || ""}
+                          onChange={(event) => updateMissionPageComment(event.target.value)}
+                          rows={3}
+                          placeholder="Expliquez la note inférieure à 3 pour ce titre..."
+                          className="mt-2 w-full resize-none rounded-md bg-white px-3 py-2 text-[12px] text-[#0F3A63] outline-none ring-1 ring-[#F0C7C7] focus:ring-[#A4252F]"
+                        />
+                      </div>
+                    ) : null}
+                    <div className="rounded-md bg-[#F8FAFC] p-3">
+                      <label className="text-[12px] font-bold text-[#0F3A63]">
+                        Commentaire global de la section <span className="text-[11px] text-slate-500">(minimum 3 caractères)</span>
+                      </label>
+                      <textarea
+                        value={activeMissionSection?.comment || ""}
+                        onChange={(event) => updateMissionSectionComment(event.target.value)}
+                        rows={3}
+                        placeholder="Synthèse globale de la section pour cette mission..."
+                        className="mt-2 w-full resize-none rounded-md bg-white px-3 py-2 text-[12px] text-[#0F3A63] outline-none ring-1 ring-[#D9E3EE] focus:ring-[#76B82A]"
+                      />
+                    </div>
                   </div>
                 ) : null}
 
@@ -848,7 +1026,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                     {!isLastMissionStep ? (
                       <button
                         type="button"
-                        onClick={() => goToMissionStep(1)}
+                        onClick={handleSaveMissionAndContinue}
                         className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
                       >
                         Sauvegarder et continuer
@@ -859,10 +1037,10 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                         <button
                           type="button"
                           onClick={handleSubmitMission}
-                          disabled={isSaving || isSubmitting || activeMission?.status === "Transmise"}
+                          disabled={isSaving || isSubmitting}
                           className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
                         >
-                          {isSubmitting ? "Transmission..." : "Transmettre la mission au Manager"}
+                          {isSubmitting ? "Transmission..." : activeMission?.status === "Transmise" ? "Retransmettre la mission" : "Transmettre la mission au Manager"}
                         </button>
                         <button
                           type="button"
@@ -930,7 +1108,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
 
               <article className="rounded-xl bg-white p-4 shadow-sm">
                 <div className="mb-3 flex items-center justify-between gap-3">
-                  <h3 className="text-[20px] font-bold text-[#0F3A63]">Auto-evaluation de l'assistant</h3>
+                  <h3 className="text-[20px] font-bold text-[#0F3A63]">Auto-évaluation de l'assistant</h3>
                   <span className="rounded-full bg-[#EEF3F8] px-3 py-1 text-[11px] font-bold text-[#0F3A63]">
                     {typeof selfEvaluation.overallAverage === "number" ? `${selfEvaluation.overallAverage} / 5` : "--"}
                   </span>
@@ -1076,8 +1254,31 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                 ))}
               </div>
 
+              {hasLowScoreOnActivePage ? (
+                <div className="mt-4 rounded-md bg-[#FDEBEC] px-3 py-2 text-[11px] font-semibold text-[#B93840]">
+                  Une note inférieure à 3 a été détectée. Merci de justifier cet écart sur ce titre.
+                </div>
+              ) : null}
+
               <div className="mt-4">
-                <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire de section</p>
+                {hasLowScoreOnActivePage ? (
+                  <>
+                    <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Justification du titre</p>
+                    <textarea
+                      rows={3}
+                      value={activePage?.comment || ""}
+                      onChange={(event) => updatePageComment(event.target.value)}
+                      placeholder="Expliquez la raison des notes inférieures à 3 pour ce titre..."
+                      className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
+                    />
+                  </>
+                ) : null}
+              </div>
+
+              <div className="mt-4">
+                <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">
+                  Commentaire de section
+                </p>
                 <textarea
                   rows={4}
                   value={activeSection.comment || ""}
@@ -1119,10 +1320,10 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={isSaving || isSubmitting || reviewData?.review?.status === "Transmis au Manager"}
+                    disabled={isSaving || isSubmitting}
                     className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
                   >
-                    {isSubmitting ? "Transmission..." : "Transmettre au Manager"}
+                    {isSubmitting ? "Transmission..." : reviewData?.review?.status === "Transmis au Manager" ? "Retransmettre au Manager" : "Transmettre au Manager"}
                   </button>
                 )}
               </div>

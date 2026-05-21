@@ -174,16 +174,58 @@ function validateSectionCommentsForSubmit(sections = [], minimumLength = 3) {
     }));
 }
 
+function validateLowScorePageComments(sections = [], minimumLength = 3) {
+  const normalizedMinimumLength = Math.max(Number(minimumLength) || 0, 1);
+  const missingPageComments = [];
+
+  sections.forEach((section) => {
+    (section.pages || []).forEach((page) => {
+      const hasLowScore = (page.themes || []).some((theme) => typeof theme.score === 'number' && theme.score < 3);
+
+      if (!hasLowScore) {
+        return;
+      }
+
+      if (String(page.comment || '').trim().length < normalizedMinimumLength) {
+        missingPageComments.push({
+          sectionId: section.id,
+          sectionTitle: section.title,
+          pageId: page.page_id,
+          pageTitle: page.title,
+        });
+      }
+    });
+  });
+
+  return missingPageComments;
+}
+
+function getPageJustifications(sections = []) {
+  return sections.flatMap((section) =>
+    (section.pages || [])
+      .filter((page) => String(page.comment || '').trim())
+      .map((page) => ({
+        sectionId: section.id,
+        sectionTitle: section.title,
+        pageId: page.page_id,
+        pageTitle: page.title,
+        comment: String(page.comment || '').trim(),
+      }))
+  );
+}
+
 module.exports = {
   getAverageFromScores,
   getAverageScore,
   getEvaluationSummary,
   getOverallAverageScore,
+  getPageJustifications,
   getSectionCriteria,
   getSectionProgress,
   getSectionStatus,
   normalizeSections,
   validateFinalCommentForSubmit,
+  validateLowScorePageComments,
   validateSectionCommentsForSubmit,
   validateSectionsForSubmit,
 };

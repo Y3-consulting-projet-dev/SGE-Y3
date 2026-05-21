@@ -8,9 +8,11 @@ const {
   getAverageFromScores,
   getAverageScore,
   getEvaluationSummary,
+  getPageJustifications,
   getOverallAverageScore,
   normalizeSections,
   validateFinalCommentForSubmit,
+  validateLowScorePageComments,
   validateSectionCommentsForSubmit,
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
@@ -121,6 +123,8 @@ function buildManagerMissionCriteria(sections = []) {
         source_sheet: page.source_sheet || '',
         source_label: page.source_label || '',
         theme_code: theme.code,
+        section_comment: '',
+        page_comment: '',
         label: theme.label,
         statement: theme.statement || '',
         score: null,
@@ -168,6 +172,8 @@ function normalizeManagerMissionEvaluations(missionEvaluations = []) {
           source_sheet: String(criterion.sourceSheet || criterion.source_sheet || '').trim(),
           source_label: String(criterion.sourceLabel || criterion.source_label || '').trim(),
           theme_code: String(criterion.themeCode || criterion.theme_code || '').trim(),
+          section_comment: String(criterion.sectionComment || criterion.section_comment || '').trim(),
+          page_comment: String(criterion.pageComment || criterion.page_comment || '').trim(),
           label: String(criterion.label || '').trim(),
           statement: String(criterion.statement || '').trim(),
           score: criterion.score === null || criterion.score === undefined ? null : Number(criterion.score),
@@ -208,6 +214,8 @@ function formatManagerMissionEvaluations(missionEvaluations = []) {
       sourceSheet: criterion.source_sheet,
       sourceLabel: criterion.source_label,
       themeCode: criterion.theme_code,
+      sectionComment: criterion.section_comment || '',
+      pageComment: criterion.page_comment || '',
       label: criterion.label,
       statement: criterion.statement,
       score: criterion.score,
@@ -313,6 +321,7 @@ function buildSelfEvaluationPayload(instance) {
         title: section.title,
         comment: String(section.comment || '').trim(),
       })),
+    titleJustifications: getPageJustifications(sections),
   };
 }
 
@@ -417,6 +426,90 @@ function getMissionAverage(criteria = []) {
   return Number((scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1));
 }
 
+function getMissionReviewSections(missionReview) {
+  const sectionMap = new Map();
+
+  (missionReview?.criteria || []).forEach((criterion) => {
+    const sectionTitle = String(criterion.section_title || criterion.sectionTitle || '').trim();
+    const pageTitle = String(criterion.page_title || criterion.pageTitle || '').trim();
+    const sectionKey = sectionTitle || 'Section';
+    const pageKey = `${sectionKey}::${pageTitle || 'Titre'}`;
+
+    if (!sectionMap.has(sectionKey)) {
+      sectionMap.set(sectionKey, {
+        title: sectionTitle,
+        comment: String(criterion.section_comment || criterion.sectionComment || '').trim(),
+        pages: new Map(),
+      });
+    }
+
+    const section = sectionMap.get(sectionKey);
+    const sectionComment = String(criterion.section_comment || criterion.sectionComment || '').trim();
+    if (!section.comment && sectionComment) section.comment = sectionComment;
+
+    if (!section.pages.has(pageKey)) {
+      section.pages.set(pageKey, {
+        title: pageTitle,
+        comment: String(criterion.page_comment || criterion.pageComment || '').trim(),
+        criteria: [],
+      });
+    }
+
+    const page = section.pages.get(pageKey);
+    const pageComment = String(criterion.page_comment || criterion.pageComment || '').trim();
+    if (!page.comment && pageComment) page.comment = pageComment;
+    page.criteria.push(criterion);
+  });
+
+  return Array.from(sectionMap.values()).map((section) => ({
+    ...section,
+    pages: Array.from(section.pages.values()),
+  }));
+}
+
+function getMissionSectionComments(missionReview) {
+  return getMissionReviewSections(missionReview)
+    .filter((section) => String(section.comment || '').trim())
+    .map((section) => ({ sectionId: section.title, title: section.title, comment: String(section.comment || '').trim() }));
+}
+
+function getMissionTitleJustifications(missionReview) {
+  return getMissionReviewSections(missionReview).flatMap((section) =>
+    section.pages
+      .filter((page) => String(page.comment || '').trim())
+      .map((page) => ({
+        sectionId: section.title,
+        sectionTitle: section.title,
+        pageId: `${section.title}-${page.title}`,
+        pageTitle: page.title,
+        comment: String(page.comment || '').trim(),
+      }))
+  );
+}
+
+function validateMissionSectionCommentsForSubmit(missionReview, minimumLength = 3) {
+  const normalizedMinimumLength = Math.max(Number(minimumLength) || 0, 1);
+  return getMissionReviewSections(missionReview)
+    .filter((section) => String(section.comment || '').trim().length < normalizedMinimumLength)
+    .map((section) => ({ sectionTitle: section.title }));
+}
+
+function validateMissionLowScorePageComments(missionReview, minimumLength = 3) {
+  const normalizedMinimumLength = Math.max(Number(minimumLength) || 0, 1);
+  const missingPageComments = [];
+
+  getMissionReviewSections(missionReview).forEach((section) => {
+    section.pages.forEach((page) => {
+      const hasLowScore = page.criteria.some((criterion) => typeof criterion.score === 'number' && criterion.score < 3);
+      if (hasLowScore && String(page.comment || '').trim().length < normalizedMinimumLength) {
+        missingPageComments.push({ sectionTitle: section.title, pageTitle: page.title });
+      }
+    });
+  });
+
+  return missingPageComments;
+}
+
 function isRecipientUser(recipient, user) {
   if (!recipient || !user) {
     return false;
@@ -455,6 +548,8 @@ function normalizeMissionReviews(missionReviews = []) {
           source_sheet: String(criterion.sourceSheet || criterion.source_sheet || '').trim(),
           source_label: String(criterion.sourceLabel || criterion.source_label || '').trim(),
           theme_code: String(criterion.themeCode || criterion.theme_code || '').trim(),
+          section_comment: String(criterion.sectionComment || criterion.section_comment || '').trim(),
+          page_comment: String(criterion.pageComment || criterion.page_comment || '').trim(),
           label: String(criterion.label || '').trim(),
           statement: String(criterion.statement || '').trim(),
           score: criterion.score ?? null,
@@ -546,6 +641,8 @@ function createMissionReviewFromAssistantMission(mission, managerUser) {
       source_sheet: criterion.source_sheet,
       source_label: criterion.source_label,
       theme_code: criterion.theme_code,
+      section_comment: criterion.section_comment || '',
+      page_comment: criterion.page_comment || '',
       label: criterion.label,
       statement: criterion.statement,
       score: null,
@@ -556,7 +653,7 @@ function createMissionReviewFromAssistantMission(mission, managerUser) {
 
 function createManagerAssignedMissionReview({ missionId, title, period, member, managerUser }) {
   const evaluationDepartment = resolveEvaluationDepartmentForManagerReview(managerUser, member);
-  const missionCriteria = buildManagerMissionCriteria(cloneAssistantTemplateForDepartment(evaluationDepartment));
+  const missionCriteria = buildManagerMissionCriteria(cloneTemplateForMember(member, evaluationDepartment));
 
   return {
     mission_id: missionId,
@@ -663,6 +760,7 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
           title: section.title,
           comment: String(section.comment || '').trim(),
         })),
+      titleJustifications: getPageJustifications(normalizedSeniorSections),
     });
 
     for (const missionReview of review.mission_reviews || []) {
@@ -1450,7 +1548,7 @@ async function addMissionToManagerMember(request, response) {
 
   const missionId = `manager-${request.user._id}-${member._id}-${Date.now()}`;
   const assignedAt = new Date();
-  const missionCriteria = buildAssistantMissionCriteria(cloneAssistantTemplateForDepartment(evaluationDepartment));
+  const missionCriteria = buildManagerMissionCriteria(cloneTemplateForMember(member, evaluationDepartment));
 
   selfEvaluationInstance.mission_evaluations = [
     ...(selfEvaluationInstance.mission_evaluations || []),
@@ -1716,6 +1814,14 @@ module.exports = {
     }
 
     const sections = normalizeSections(rawSections);
+    const missingPageComments = validateLowScorePageComments(sections, 3);
+
+    if (missingPageComments.length) {
+      return response.status(400).json({
+        message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+        missingPageComments,
+      });
+    }
 
     for (const section of sections) {
       for (const criterion of section.criteria) {
@@ -1787,6 +1893,15 @@ module.exports = {
       return response.status(400).json({
         message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
         missingSectionComments,
+      });
+    }
+
+    const missingPageComments = validateLowScorePageComments(sections, 3);
+
+    if (missingPageComments.length) {
+      return response.status(400).json({
+        message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+        missingPageComments,
       });
     }
 
@@ -1904,6 +2019,24 @@ module.exports = {
     if (hasIncompleteCriterion) {
       return response.status(400).json({
         message: 'Toutes les questions de la mission doivent etre renseignees avant soumission a la RH.',
+      });
+    }
+
+    const missingSectionComments = validateMissionSectionCommentsForSubmit(missionReview, 3);
+
+    if (missingSectionComments.length) {
+      return response.status(400).json({
+        message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
+        missingSectionComments,
+      });
+    }
+
+    const missingPageComments = validateMissionLowScorePageComments(missionReview, 3);
+
+    if (missingPageComments.length) {
+      return response.status(400).json({
+        message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+        missingPageComments,
       });
     }
 

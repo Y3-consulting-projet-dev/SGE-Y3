@@ -187,7 +187,7 @@ function Autoevamanager() {
         setSelectedMissionId(nextMissions[0]?.id || "");
       } catch (error) {
         if (!cancelled) {
-          setErrorMessage(error.message || "Chargement du detail impossible.");
+          setErrorMessage(error.message || "Chargement du détail impossible.");
         }
       } finally {
         if (!cancelled) {
@@ -302,7 +302,7 @@ function Autoevamanager() {
       setAssociateSections(nextSections);
       setAssociateMissions(nextMissions);
       setNote(response?.associate_review?.note || "");
-      setStatus("Evaluation associé enregistree.");
+      setStatus("Évaluation associé enregistrée.");
       setListData((current) => ({
         ...current,
         items: (current?.items || []).map((item) =>
@@ -421,13 +421,13 @@ function Autoevamanager() {
                   onClick={() => setActiveTab("global")}
                   className={`${activeTab === "global" ? "border-b-2 border-[#F34B4B]" : ""} pb-1 font-bold`}
                 >
-                  Evaluation globale
+                  Évaluation globale
                 </button>
                 <button
                   onClick={() => setActiveTab("missions")}
                   className={`${activeTab === "missions" ? "border-b-2 border-[#F34B4B]" : ""} pb-1 font-bold`}
                 >
-                  Evaluation par mission
+                  Évaluation par mission
                 </button>
               </div>
 

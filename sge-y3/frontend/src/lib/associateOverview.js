@@ -37,6 +37,38 @@ export function getAssociateSyntheses() {
   return request("/associate/syntheses");
 }
 
+export function getAssociateSelfEvaluation() {
+  return request("/associate/self-evaluation");
+}
+
+export function saveAssociateSelfEvaluation(payload) {
+  return request("/associate/self-evaluation", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function submitAssociateSelfEvaluation() {
+  return request("/associate/self-evaluation/submit", {
+    method: "POST",
+  });
+}
+
+export function getReceivedAssociateEvaluations() {
+  return request("/associate/received-evaluations");
+}
+
+export function getReceivedAssociateEvaluation(evaluationId) {
+  return request(`/associate/received-evaluations/${evaluationId}`);
+}
+
+export function saveReceivedAssociateEvaluationComment(evaluationId, payload) {
+  return request(`/associate/received-evaluations/${evaluationId}/comment`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getAssociateManagerEvaluations() {
   return request("/associate/manager-evaluations");
 }
