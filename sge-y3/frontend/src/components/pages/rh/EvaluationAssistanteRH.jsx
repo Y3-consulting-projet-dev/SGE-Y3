@@ -141,7 +141,7 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
         );
       } catch (error) {
         if (!cancelled) {
-          setErrorMessage(error.message || "Chargement de l'evaluation RH impossible.");
+          setErrorMessage(error.message || "Chargement de l'évaluation RH impossible.");
         }
       } finally {
         if (!cancelled) {
@@ -217,7 +217,7 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
     );
   }
 
-  async function persistSections(nextSections = sections, successMessage = "Evaluation RH enregistree.") {
+  async function persistSections(nextSections = sections, successMessage = "Évaluation RH enregistrée.") {
     try {
       setIsSaving(true);
       setFeedbackMessage("");
@@ -282,7 +282,7 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
       return;
     }
 
-    const savedReview = await persistSections(sections, "Evaluation RH prete pour validation.");
+    const savedReview = await persistSections(sections, "Évaluation RH prête pour validation.");
 
     if (!savedReview) {
       return;
@@ -294,7 +294,7 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
       setReviewData(response);
       setSections(response.review.sections || []);
       setFeedbackTone("success");
-      setFeedbackMessage(response.message || "Evaluation RH de l'assistante RH soumise.");
+      setFeedbackMessage(response.message || "Évaluation RH de l'assistante RH soumise.");
       onSubmitted?.();
     } catch (error) {
       setFeedbackTone("error");
@@ -305,7 +305,7 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
   }
 
   if (isLoading) {
-    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement de l'evaluation RH...</section>;
+    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement de l'évaluation RH...</section>;
   }
 
   if (errorMessage) {
@@ -313,7 +313,7 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
   }
 
   if (!reviewData || !sections.length || !activeSection || !activePage) {
-    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Aucune evaluation RH disponible pour cette assistante.</section>;
+    return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Aucune évaluation RH disponible pour cette assistante.</section>;
   }
 
   const isLastStep =
@@ -348,7 +348,7 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
         <div className="space-y-3 xl:col-span-5">
           <article className="rounded-md bg-white p-4 shadow-sm">
             <p className="text-xs font-semibold text-slate-400">{reviewData.review.cycle_label}</p>
-            <h2 className="mt-1 text-2xl font-black text-[#0F3A63]">Evaluation RH de l'assistante RH</h2>
+            <h2 className="mt-1 text-2xl font-black text-[#0F3A63]">Évaluation RH de l'assistante RH</h2>
             <p className="mt-1 text-sm font-semibold text-slate-500">
               {reviewData.member.name} - {reviewData.member.department}
             </p>
@@ -368,14 +368,14 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
           </article>
 
           <article className="rounded-md bg-white p-4 shadow-sm">
-            <h3 className="mb-3 text-xs font-semibold text-[#79B742]">Auto-evaluation recue</h3>
+            <h3 className="mb-3 text-xs font-semibold text-[#79B742]">Auto-évaluation reçue</h3>
             <div className="space-y-2">
               <div className="rounded-md bg-slate-50 px-3 py-3">
                 <p className="text-xs font-bold text-[#0F3A63]">Statut</p>
                 <p className="mt-1 text-xs font-semibold text-slate-500">{selfEvaluation.status || "En attente"}</p>
               </div>
               <div className="rounded-md bg-slate-50 px-3 py-3">
-                <p className="text-xs font-bold text-[#0F3A63]">Score auto-evaluation</p>
+                <p className="text-xs font-bold text-[#0F3A63]">Score auto-évaluation</p>
                 <p className="mt-1 text-xs font-semibold text-slate-500">
                   {typeof selfEvaluation.overallAverage === "number" ? `${selfEvaluation.overallAverage}/5` : "--"}
                 </p>
@@ -521,7 +521,7 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
                 className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ChevronLeft size={14} />
-                Precedent
+                Précédent
               </button>
 
               <div className="flex flex-wrap items-center gap-3">
@@ -558,7 +558,7 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
             </div>
 
             <div className="mt-4 rounded-md bg-[#F8FAFC] px-4 py-3 text-xs font-semibold text-slate-500">
-              Une fois cette evaluation RH soumise, vous pourrez la valider depuis la file RH puis la transmettre a l'associe.
+              Une fois cette évaluation RH soumise, vous pourrez la valider depuis la file RH puis la transmettre à l'associé.
             </div>
           </article>
         </div>

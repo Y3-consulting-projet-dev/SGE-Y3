@@ -423,7 +423,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
         const progress = getCycleSectionProgress(section);
         return {
           ...section,
-          status: progress === 0 ? "À faire" : progress === 100 ? "Complète" : "En cours",
+          status: progress === 0 ? "À faire" : progress === 100 ? "Complete" : "En cours",
         };
       });
     });
@@ -719,7 +719,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   return (
     <div className="space-y-3">
       <div className="text-[10px] text-slate-500">
-        {evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"} - Auto-évaluation en deux etapes - Sauvegarde progressive activée
+        {evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"} - Auto-évaluation en deux étapes - Sauvegarde progressive activée
       </div>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -730,8 +730,8 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
             step === "missions" ? "bg-[#003B63] text-white" : "bg-white text-[#0F3A63] shadow-sm"
           }`}
         >
-          <p className="text-xs font-bold uppercase opacity-80">Etape 1</p>
-          <h2 className="mt-1 text-lg font-black">Evaluation par mission</h2>
+          <p className="text-xs font-bold uppercase opacity-80">Étape 1</p>
+          <h2 className="mt-1 text-lg font-black">Évaluation par mission</h2>
           <p className="mt-2 text-xs font-semibold opacity-80">Optionnelle - missions ajoutées par le collaborateur - {missionProgress}%</p>
         </button>
         <button
@@ -741,8 +741,8 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
             step === "cycle" ? "bg-[#003B63] text-white" : "bg-white text-[#0F3A63] shadow-sm"
           }`}
         >
-          <p className="text-xs font-bold uppercase opacity-80">Etape 2</p>
-          <h2 className="mt-1 text-lg font-black">Evaluation globale du cycle</h2>
+          <p className="text-xs font-bold uppercase opacity-80">Étape 2</p>
+          <h2 className="mt-1 text-lg font-black">Évaluation globale du cycle</h2>
           <p className="mt-2 text-xs font-semibold opacity-80">
             {evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"} - {globalProgress}%
           </p>
@@ -758,7 +758,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
             </p>
 
             <div className="mt-4 rounded-lg bg-[#F8FAFC] p-3">
-              <p className="text-xs font-bold uppercase text-slate-500">Ajoutéer une mission</p>
+              <p className="text-xs font-bold uppercase text-slate-500">Ajouter une mission</p>
               <input
                 value={missionTitle}
                 onChange={(event) => setMissionTitle(event.target.value)}
@@ -835,7 +835,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                       <div className="mt-3 h-1.5 rounded-full bg-slate-200">
                         <div className="h-1.5 rounded-full bg-[#76B82A]" style={{ width: `${progress}%` }} />
                       </div>
-                      <p className="mt-1 text-xs font-bold text-[#76B82A]">{progress}% complt</p>
+                      <p className="mt-1 text-xs font-bold text-[#76B82A]">{progress}% complète</p>
                     </button>
                   );
                 })

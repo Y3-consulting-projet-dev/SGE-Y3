@@ -1,4 +1,5 @@
 const EvaluationInstance = require('../models/EvaluationInstance');
+const ManagerMemberReview = require('../models/ManagerMemberReview');
 const User = require('../models/User');
 const { cloneAssistantEvaluationTemplate } = require('../utils/assistantEvaluationTemplate');
 const { cloneSeniorEvaluationTemplate } = require('../utils/seniorEvaluationTemplate');
@@ -307,6 +308,23 @@ function formatManagerRecipients(recipients = []) {
     .map((recipient) => recipient.manager)
     .filter(Boolean)
     .join(', ');
+}
+
+function buildManagerCommentText(review) {
+  const sections = normalizeSections(review?.sections || []);
+  const sectionComments = sections
+    .map((section) => String(section.comment || '').trim())
+    .filter(Boolean);
+  const missionComments = (review?.mission_reviews || [])
+    .map((mission) => String(mission.comment || '').trim())
+    .filter(Boolean);
+  const combined = [...sectionComments, ...missionComments];
+
+  if (!combined.length) {
+    return '';
+  }
+
+  return combined.join(' ');
 }
 
 async function buildEvaluationPayload(instance, user) {
@@ -661,6 +679,38 @@ async function getMyAssistantResults(request, response) {
   const instance = await getOrCreateAssistantEvaluation(request.user);
   const sections = normalizeSections(instance.sections);
   const scoreFinal = getOverallAverageScore(sections);
+  const managerReviews = await ManagerMemberReview.find({
+    cycle_label: CURRENT_CYCLE_LABEL,
+    member_id: request.user._id,
+    status: { $in: ['Valide RH', 'Transmis a l associe', 'Cloture'] },
+  }).select('manager_id submitted_at sections mission_reviews status');
+  const managerIds = managerReviews.map((review) => review.manager_id).filter(Boolean);
+  const managerUsers = managerIds.length
+    ? await User.find({ _id: { $in: managerIds } }).select('_id name grade')
+    : [];
+  const managerById = new Map(managerUsers.map((manager) => [String(manager._id), manager]));
+  const managerComments = managerReviews
+    .map((review) => {
+      const comment = buildManagerCommentText(review);
+      if (!comment) {
+        return null;
+      }
+
+      const manager = managerById.get(String(review.manager_id));
+      return {
+        managerId: String(review.manager_id || ''),
+        comment,
+        authorName: manager?.name || 'Manager',
+        authorGrade: manager?.grade || 'Manager',
+        submittedAt: review.submitted_at || null,
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => {
+      const leftDate = left.submittedAt ? new Date(left.submittedAt).getTime() : 0;
+      const rightDate = right.submittedAt ? new Date(right.submittedAt).getTime() : 0;
+      return rightDate - leftDate;
+    });
 
   const assistantUsers = await User.find({
     grade: 'Assistant',
@@ -713,6 +763,7 @@ async function getMyAssistantResults(request, response) {
       moyenneEquipe: teamAverage || 0,
       assistantsEvalues: comparedAssistantsCount,
     },
+    managerComments,
   });
 }
 

@@ -124,6 +124,24 @@ function getMissionSectionProgress(section) {
   return Math.round((answered / criteria.length) * 100);
 }
 
+function getRhRecipientRoleLabel(recipient) {
+  const normalizedDepartment = String(recipient?.department || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+
+  return normalizedDepartment === "CAPITAL HUMAIN" ? "Assistante RH" : recipient?.department || "RH";
+}
+
+function isRhValidationRecipient(recipient) {
+  const normalizedDepartment = String(recipient?.department || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+
+  return normalizedDepartment === "RH";
+}
+
 function hasRequiredSubmissionComment(sections = []) {
   return sections.length > 0 && sections.every((section) => String(section.comment || "").trim().length >= 3);
 }
@@ -247,6 +265,7 @@ function Monautoevaluation() {
   );
   const averageScore = useMemo(() => getPageAverage(activePage), [activePage]);
   const rhRecipients = evaluationData?.submitted_to || [];
+  const rhValidationRecipients = rhRecipients.filter(isRhValidationRecipient);
 
   const missionProgress = missionEvaluations.length
     ? Math.round(missionEvaluations.reduce((total, mission) => total + getMissionProgress(mission), 0) / missionEvaluations.length)
@@ -711,13 +730,13 @@ function Monautoevaluation() {
                       <p className="text-[11px] text-slate-400">Après complétion de toutes les sections de la matrice</p>
                     </div>
                   </div>
-                  {rhRecipients.map((recipient, index) => (
+                  {rhValidationRecipients.map((recipient, index) => (
                     <div key={recipient.id} className="flex items-start gap-3">
                       <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-200 text-slate-600">
                         {index + 2}
                       </span>
                       <p>
-                        Validation RH - {recipient.name} ({recipient.department})
+                        Validation RH - {recipient.name} ({getRhRecipientRoleLabel(recipient)})
                       </p>
                     </div>
                   ))}
@@ -832,7 +851,7 @@ function Monautoevaluation() {
                     className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <ChevronLeft size={14} />
-                    Precedent
+                    Précédent
                   </button>
 
                   <div className="flex flex-wrap items-center gap-3">
@@ -1070,7 +1089,7 @@ function Monautoevaluation() {
                     className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <ChevronLeft size={14} />
-                    Precedent
+                    Précédent
                   </button>
 
                   <div className="flex flex-wrap items-center gap-3">

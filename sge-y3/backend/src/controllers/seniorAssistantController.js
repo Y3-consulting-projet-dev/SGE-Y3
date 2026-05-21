@@ -6,8 +6,9 @@ const {
   getAverageScore,
   getEvaluationSummary,
   getOverallAverageScore,
+  getPageJustifications,
   normalizeSections,
-  validateFinalCommentForSubmit,
+  validateLowScorePageComments,
   validateSectionCommentsForSubmit,
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
@@ -155,6 +156,8 @@ function buildAssistantMissionCriteria(sections = []) {
         source_sheet: page.source_sheet || '',
         source_label: page.source_label || '',
         theme_code: theme.code,
+        section_comment: '',
+        page_comment: '',
         label: theme.label,
         statement: theme.statement || '',
         score: null,
@@ -207,6 +210,8 @@ function normalizeMissionReviews(missionReviews = []) {
           source_sheet: String(criterion.sourceSheet || criterion.source_sheet || '').trim(),
           source_label: String(criterion.sourceLabel || criterion.source_label || '').trim(),
           theme_code: String(criterion.themeCode || criterion.theme_code || '').trim(),
+          section_comment: String(criterion.sectionComment || criterion.section_comment || '').trim(),
+          page_comment: String(criterion.pageComment || criterion.page_comment || '').trim(),
           label: String(criterion.label || '').trim(),
           statement: String(criterion.statement || '').trim(),
           score: criterion.score ?? null,
@@ -239,12 +244,89 @@ function formatMissionReviews(missionReviews = []) {
       sourceSheet: criterion.source_sheet,
       sourceLabel: criterion.source_label,
       themeCode: criterion.theme_code,
+      sectionComment: criterion.section_comment || '',
+      pageComment: criterion.page_comment || '',
       label: criterion.label,
       statement: criterion.statement,
       score: criterion.score,
     })),
     submittedAt: mission.submitted_at,
   }));
+}
+
+function getMissionReviewSections(missionReview) {
+  const sectionMap = new Map();
+
+  (missionReview?.criteria || []).forEach((criterion) => {
+    const sectionTitle = String(criterion.section_title || criterion.sectionTitle || '').trim();
+    const pageTitle = String(criterion.page_title || criterion.pageTitle || '').trim();
+    const sectionKey = sectionTitle || 'Section';
+    const pageKey = `${sectionKey}::${pageTitle || 'Titre'}`;
+
+    if (!sectionMap.has(sectionKey)) {
+      sectionMap.set(sectionKey, {
+        title: sectionTitle,
+        comment: String(criterion.section_comment || criterion.sectionComment || '').trim(),
+        pages: new Map(),
+      });
+    }
+
+    const section = sectionMap.get(sectionKey);
+    const sectionComment = String(criterion.section_comment || criterion.sectionComment || '').trim();
+    if (!section.comment && sectionComment) {
+      section.comment = sectionComment;
+    }
+
+    if (!section.pages.has(pageKey)) {
+      section.pages.set(pageKey, {
+        title: pageTitle,
+        comment: String(criterion.page_comment || criterion.pageComment || '').trim(),
+        criteria: [],
+      });
+    }
+
+    const page = section.pages.get(pageKey);
+    const pageComment = String(criterion.page_comment || criterion.pageComment || '').trim();
+    if (!page.comment && pageComment) {
+      page.comment = pageComment;
+    }
+    page.criteria.push(criterion);
+  });
+
+  return Array.from(sectionMap.values()).map((section) => ({
+    ...section,
+    pages: Array.from(section.pages.values()),
+  }));
+}
+
+function validateMissionSectionCommentsForSubmit(missionReview, minimumLength = 3) {
+  const normalizedMinimumLength = Math.max(Number(minimumLength) || 0, 1);
+
+  return getMissionReviewSections(missionReview)
+    .filter((section) => String(section.comment || '').trim().length < normalizedMinimumLength)
+    .map((section) => ({
+      sectionTitle: section.title,
+    }));
+}
+
+function validateMissionLowScorePageComments(missionReview, minimumLength = 3) {
+  const normalizedMinimumLength = Math.max(Number(minimumLength) || 0, 1);
+  const missingPageComments = [];
+
+  getMissionReviewSections(missionReview).forEach((section) => {
+    section.pages.forEach((page) => {
+      const hasLowScore = page.criteria.some((criterion) => typeof criterion.score === 'number' && criterion.score < 3);
+
+      if (hasLowScore && String(page.comment || '').trim().length < normalizedMinimumLength) {
+        missingPageComments.push({
+          sectionTitle: section.title,
+          pageTitle: page.title,
+        });
+      }
+    });
+  });
+
+  return missingPageComments;
 }
 
 function createMissionReviewFromAssistantMission(mission, seniorUser) {
@@ -275,6 +357,8 @@ function createMissionReviewFromAssistantMission(mission, seniorUser) {
       source_sheet: criterion.source_sheet,
       source_label: criterion.source_label,
       theme_code: criterion.theme_code,
+      section_comment: criterion.section_comment || '',
+      page_comment: criterion.page_comment || '',
       label: criterion.label,
       statement: criterion.statement,
       score: null,
@@ -569,6 +653,7 @@ function buildAssistantSelfEvaluationPayload(instance) {
         title: section.title,
         comment: String(section.comment || '').trim(),
       })),
+    titleJustifications: getPageJustifications(selfSections),
   };
 }
 
@@ -920,6 +1005,14 @@ async function saveMyAssistantEvaluation(request, response) {
   }
 
   const sections = normalizeSections(rawSections);
+  const missingPageComments = validateLowScorePageComments(sections, 3);
+
+  if (missingPageComments.length) {
+    return response.status(400).json({
+      message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+      missingPageComments,
+    });
+  }
 
   for (const section of sections) {
     for (const criterion of section.criteria) {
@@ -1054,6 +1147,7 @@ async function submitMyAssistantMissionReview(request, response) {
     resolveManagersForSeniorReview(request.user, assistant),
     getOrCreateAssistantEvaluationInstance(assistant),
   ]);
+  const selectedManager = resolveSelectedManager(managers, request.body?.selectedManagerRecipient);
   const missionReview = (review.mission_reviews || []).find((mission) => mission.mission_id === missionId);
 
   if (!missionReview) {
@@ -1072,15 +1166,40 @@ async function submitMyAssistantMissionReview(request, response) {
     });
   }
 
+  const missingSectionComments = validateMissionSectionCommentsForSubmit(missionReview, 3);
+
+  if (missingSectionComments.length) {
+    return response.status(400).json({
+      message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant transmission.',
+      missingSectionComments,
+    });
+  }
+
+  const missingPageComments = validateMissionLowScorePageComments(missionReview, 3);
+
+  if (missingPageComments.length) {
+    return response.status(400).json({
+      message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+      missingPageComments,
+    });
+  }
+
   missionReview.status = 'Transmise';
+  if (selectedManager) {
+    missionReview.recipient_name = selectedManager.name;
+    missionReview.recipient_grade = selectedManager.grade;
+    missionReview.recipient_department = selectedManager.department;
+  }
   missionReview.submitted_at = new Date();
-  review.submitted_to_user_ids = managers.map((manager) => manager._id);
-  review.submitted_to_names = managers.map((manager) => manager.name);
+  review.submitted_to_user_ids = selectedManager ? [selectedManager._id] : managers.map((manager) => manager._id);
+  review.submitted_to_names = selectedManager ? [selectedManager.name] : managers.map((manager) => manager.name);
   review.last_saved_at = new Date();
   await review.save();
 
   return response.json({
-    message: managers.length
+    message: selectedManager
+      ? `Mission transmise a ${selectedManager.name}.`
+      : managers.length
       ? `Mission transmise a ${managers.map((manager) => manager.name).join(', ')}.`
       : 'Mission transmise au(x) manager(s).',
     ...{
@@ -1124,6 +1243,15 @@ async function submitMyAssistantEvaluation(request, response) {
     return response.status(400).json({
       message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
       missingSectionComments,
+    });
+  }
+
+  const missingPageComments = validateLowScorePageComments(sections, 3);
+
+  if (missingPageComments.length) {
+    return response.status(400).json({
+      message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+      missingPageComments,
     });
   }
 
