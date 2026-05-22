@@ -329,6 +329,48 @@ function validateMissionLowScorePageComments(missionReview, minimumLength = 3) {
   return missingPageComments;
 }
 
+function getMissionReviewProgress(missionReview) {
+  const criteria = missionReview?.criteria || [];
+  const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
+
+  if (!criteria.length) {
+    return 0;
+  }
+
+  return Math.round((answered / criteria.length) * 100);
+}
+
+function getMissionReviewAverageScore(criteria = []) {
+  const scoredCriteria = criteria
+    .map((criterion) => criterion.score)
+    .filter((score) => typeof score === 'number');
+
+  if (!scoredCriteria.length) {
+    return null;
+  }
+
+  return Number((scoredCriteria.reduce((total, score) => total + score, 0) / scoredCriteria.length).toFixed(1));
+}
+
+function getMissionReviewSummary(missionReviews = []) {
+  const completedMissions = missionReviews.filter((mission) => getMissionReviewProgress(mission) === 100).length;
+  const globalProgress = missionReviews.length
+    ? Math.round(missionReviews.reduce((total, mission) => total + getMissionReviewProgress(mission), 0) / missionReviews.length)
+    : 0;
+  const missionScores = missionReviews
+    .map((mission) => getMissionReviewAverageScore(mission.criteria || []))
+    .filter((score) => typeof score === 'number');
+
+  return {
+    completedMissions,
+    totalMissions: missionReviews.length,
+    globalProgress,
+    finalScore: missionScores.length
+      ? Number((missionScores.reduce((total, score) => total + score, 0) / missionScores.length).toFixed(1))
+      : null,
+  };
+}
+
 function createMissionReviewFromAssistantMission(mission, seniorUser) {
   const evaluationDepartment = resolveEvaluationDepartmentForSeniorReview(seniorUser, { department: mission.department });
   const recipient = (mission.recipients || []).find(
@@ -635,6 +677,8 @@ function buildReviewPayload(review, seniorUser, assistant, managers = []) {
 
 function buildAssistantSelfEvaluationPayload(instance) {
   const selfSections = normalizeSections(instance?.sections || []);
+  const missionEvaluations = formatMissionReviews(instance?.mission_evaluations || []);
+  const missionSummary = getMissionReviewSummary(instance?.mission_evaluations || []);
 
   return {
     status: instance?.status || 'En attente',
@@ -654,6 +698,8 @@ function buildAssistantSelfEvaluationPayload(instance) {
         comment: String(section.comment || '').trim(),
       })),
     titleJustifications: getPageJustifications(selfSections),
+    missionEvaluations,
+    missionSummary,
   };
 }
 
@@ -990,12 +1036,6 @@ async function saveMyAssistantEvaluation(request, response) {
   const rawSections = Array.isArray(request.body?.sections) ? request.body.sections : null;
   const rawMissionReviews = Array.isArray(request.body?.missionReviews) ? request.body.missionReviews : null;
 
-  if (!rawSections?.length) {
-    return response.status(400).json({
-      message: "Les sections de l'evaluation sont requises.",
-    });
-  }
-
   const assistant = await getAssistantForSenior(request.user, request.params.assistantId);
 
   if (!assistant) {
@@ -1004,8 +1044,16 @@ async function saveMyAssistantEvaluation(request, response) {
     });
   }
 
-  const sections = normalizeSections(rawSections);
-  const missingPageComments = validateLowScorePageComments(sections, 3);
+  const sections = rawSections ? normalizeSections(rawSections) : null;
+  const missionReviews = rawMissionReviews ? normalizeMissionReviews(rawMissionReviews) : null;
+
+  if (!sections?.length && !missionReviews?.length) {
+    return response.status(400).json({
+      message: "Les évaluations par mission sont requises.",
+    });
+  }
+
+  const missingPageComments = sections ? validateLowScorePageComments(sections, 3) : [];
 
   if (missingPageComments.length) {
     return response.status(400).json({
@@ -1014,7 +1062,7 @@ async function saveMyAssistantEvaluation(request, response) {
     });
   }
 
-  for (const section of sections) {
+  for (const section of sections || []) {
     for (const criterion of section.criteria) {
       if (criterion.score !== null && criterion.score !== undefined) {
         if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
@@ -1026,23 +1074,38 @@ async function saveMyAssistantEvaluation(request, response) {
     }
   }
 
+  for (const missionReview of missionReviews || []) {
+    for (const criterion of missionReview.criteria || []) {
+      if (criterion.score !== null && criterion.score !== undefined) {
+        if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
+          return response.status(400).json({
+            message: `La note du critere "${criterion.label}" doit etre comprise entre 1 et 5.`,
+          });
+        }
+      }
+    }
+  }
+
   const review = await getOrCreateSeniorAssistantReview(request.user, assistant);
-  const summary = getEvaluationSummary(sections);
   const [managers, selfEvaluationInstance] = await Promise.all([
     resolveManagersForSeniorReview(request.user, assistant),
     getOrCreateAssistantEvaluationInstance(assistant),
   ]);
 
-  review.sections = toPersistenceSections(sections);
-  if (rawMissionReviews) {
-    review.mission_reviews = normalizeMissionReviews(rawMissionReviews);
+  if (sections) {
+    review.sections = toPersistenceSections(sections);
   }
-  review.status = summary.globalProgress === 0 ? 'Brouillon' : 'En cours';
+  if (missionReviews) {
+    review.mission_reviews = missionReviews;
+  }
+
+  const missionSummary = getMissionReviewSummary(review.mission_reviews || []);
+  review.status = missionSummary.globalProgress === 0 ? 'Brouillon' : 'En cours';
   review.last_saved_at = new Date();
   await review.save();
 
   return response.json({
-    message: 'Evaluation enregistree.',
+    message: 'Évaluation par mission enregistrée.',
     ...{
       ...buildReviewPayload(review, request.user, assistant, managers),
       self_evaluation: buildAssistantSelfEvaluationPayload(selfEvaluationInstance),
@@ -1223,21 +1286,31 @@ async function submitMyAssistantEvaluation(request, response) {
     resolveManagersForSeniorReview(request.user, assistant),
     getOrCreateAssistantEvaluationInstance(assistant),
   ]);
-  const sections = normalizeSections(review.sections);
   const selectedManager = resolveSelectedManager(managers, request.body?.selectedManagerRecipient);
-  const validationSections = selectedManager
-    ? filterSectionsForManagerDepartment(sections, selectedManager.department)
-    : sections;
-  const missingAnswers = validateSectionsForSubmit(validationSections);
+  const missionReviews = normalizeMissionReviews(review.mission_reviews || []);
 
-  if (missingAnswers.length) {
+  if (!missionReviews.length) {
     return response.status(400).json({
-      message: 'Toutes les questions obligatoires doivent etre renseignees avant transmission.',
-      missingAnswers,
+      message: 'Ajoutez au moins une mission avant la soumission finale.',
     });
   }
 
-  const missingSectionComments = validateSectionCommentsForSubmit(sections, 3);
+  const pendingMissions = missionReviews.filter((mission) => mission.status !== 'Transmise');
+
+  if (pendingMissions.length) {
+    return response.status(400).json({
+      message: 'Chaque mission doit etre transmise avant la soumission finale.',
+      pendingMissionIds: pendingMissions.map((mission) => mission.mission_id),
+    });
+  }
+
+  const missingSectionComments = missionReviews.flatMap((missionReview) =>
+    validateMissionSectionCommentsForSubmit(missionReview, 3).map((item) => ({
+      missionId: missionReview.mission_id,
+      missionTitle: missionReview.title,
+      ...item,
+    }))
+  );
 
   if (missingSectionComments.length) {
     return response.status(400).json({
@@ -1246,7 +1319,13 @@ async function submitMyAssistantEvaluation(request, response) {
     });
   }
 
-  const missingPageComments = validateLowScorePageComments(sections, 3);
+  const missingPageComments = missionReviews.flatMap((missionReview) =>
+    validateMissionLowScorePageComments(missionReview, 3).map((item) => ({
+      missionId: missionReview.mission_id,
+      missionTitle: missionReview.title,
+      ...item,
+    }))
+  );
 
   if (missingPageComments.length) {
     return response.status(400).json({
@@ -1255,7 +1334,7 @@ async function submitMyAssistantEvaluation(request, response) {
     });
   }
 
-  review.sections = toPersistenceSections(sections);
+  review.mission_reviews = missionReviews;
   review.status = 'Transmis au Manager';
   review.submitted_to_user_ids = selectedManager ? [selectedManager._id] : managers.map((manager) => manager._id);
   review.submitted_to_names = selectedManager ? [selectedManager.name] : managers.map((manager) => manager.name);
@@ -1265,10 +1344,10 @@ async function submitMyAssistantEvaluation(request, response) {
 
   return response.json({
     message: selectedManager
-      ? `Evaluation transmise a ${selectedManager.name}.`
+      ? `Évaluations par mission transmises à ${selectedManager.name}.`
       : managers.length
-      ? `Evaluation transmise a ${managers.map((manager) => manager.name).join(', ')}.`
-      : 'Evaluation transmise au(x) manager(s).',
+      ? `Évaluations par mission transmises à ${managers.map((manager) => manager.name).join(', ')}.`
+      : 'Évaluations par mission transmises au(x) manager(s).',
     ...{
       ...buildReviewPayload(review, request.user, assistant, managers),
       self_evaluation: buildAssistantSelfEvaluationPayload(selfEvaluationInstance),

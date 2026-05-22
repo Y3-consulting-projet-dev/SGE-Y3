@@ -1,5 +1,5 @@
-﻿import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   getMySeniorEvaluation,
   saveMySeniorEvaluation,
@@ -10,7 +10,7 @@ import { getDisplayName } from "@/lib/userPresentation";
 
 const gradingHelp = [
   { level: "1", text: "Insuffisant - objectif non atteint", color: "text-[#FF7A00]" },
-  { level: "2", text: "En progression - à ameliorer", color: "text-[#0F3A63]" },
+  { level: "2", text: "En progression - à améliorer", color: "text-[#0F3A63]" },
   { level: "3", text: "Satisfaisant - niveau attendu", color: "text-[#0F3A63]" },
   { level: "4", text: "Bon - dépasse les attentes", color: "text-[#0F3A63]" },
   { level: "5", text: "Excellent - référence dans l'équipe", color: "text-[#76B82A]" },
@@ -26,6 +26,10 @@ function getRecipientOptionValue(recipient) {
   return `${recipient.department}::${recipient.id}`;
 }
 
+function normalizeDepartment(value = "") {
+  return String(value).replace(/\s+/g, " ").trim().toUpperCase();
+}
+
 function getSourceBadgeLabel(page) {
   if (page?.source_label) return page.source_label;
   if (page?.source_sheet === "AUDIT") return "Audit";
@@ -33,45 +37,22 @@ function getSourceBadgeLabel(page) {
   return "";
 }
 
-function getPageProgress(page) {
-  const themes = page?.themes || [];
-  const answered = themes.filter((theme) => theme.score !== null && theme.score !== undefined).length;
-  if (!themes.length) return 0;
-  return Math.round((answered / themes.length) * 100);
+function formatDisplayDate(value) {
+  if (!value) return "";
+
+  const [year, month, day] = String(value).split("-");
+  if (!year || !month || !day) return value;
+  return `${day}-${month}-${year}`;
 }
 
-function getCycleSectionProgress(section) {
-  const pages = section?.pages || [];
-  const totalThemes = pages.reduce((total, page) => total + (page.themes?.length || 0), 0);
-  const answeredThemes = pages.reduce(
-    (total, page) => total + (page.themes || []).filter((theme) => theme.score !== null && theme.score !== undefined).length,
-    0
-  );
-  if (!totalThemes) return 0;
-  return Math.round((answeredThemes / totalThemes) * 100);
-}
+function formatMissionPeriodLabel(startDate, endDate) {
+  const formattedStartDate = formatDisplayDate(startDate);
+  const formattedEndDate = formatDisplayDate(endDate);
 
-function getMissionProgress(mission) {
-  const criteria = mission?.criteria || [];
-  const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
-  if (!criteria.length) return 0;
-  return Math.round((answered / criteria.length) * 100);
-}
-
-function getPageAverage(page) {
-  const scores = (page?.themes || []).map((theme) => theme.score).filter((score) => typeof score === "number");
-  if (!scores.length) return "--";
-  return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
-}
-
-function getMissionAverage(criteria = []) {
-  const scores = criteria.map((criterion) => criterion.score).filter((score) => typeof score === "number");
-  if (!scores.length) return "--";
-  return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
-}
-
-function normalizeDepartment(value = "") {
-  return String(value).replace(/\s+/g, " ").trim().toUpperCase();
+  if (!formattedStartDate && !formattedEndDate) return "Période non renseignée";
+  if (formattedStartDate && formattedEndDate) return `Du ${formattedStartDate} au ${formattedEndDate}`;
+  if (formattedStartDate) return `À partir du ${formattedStartDate}`;
+  return `Jusqu'au ${formattedEndDate}`;
 }
 
 function shouldShowMissionGroupForRecipient(group, recipientDepartment) {
@@ -104,6 +85,7 @@ function buildMissionCriteriaFromSections(sections = [], recipientDepartment = "
         ? (page.themes || []).map((theme) => ({
             id: `${page.page_id}-${theme.theme_id}`,
             sectionTitle: section.title,
+            sectionComment: "",
             pageTitle: page.title,
             sourceSheet: page.source_sheet || "",
             sourceLabel: page.source_label || "",
@@ -115,10 +97,6 @@ function buildMissionCriteriaFromSections(sections = [], recipientDepartment = "
         : []
     )
   );
-}
-
-function hasRequiredSubmissionComment(sections = []) {
-  return sections.length > 0 && sections.every((section) => String(section.comment || "").trim().length >= 3);
 }
 
 function getMissionCriteriaGroups(criteria = []) {
@@ -146,11 +124,69 @@ function getMissionCriteriaGroups(criteria = []) {
   return groups;
 }
 
+function getMissionSections(groups = []) {
+  const sections = [];
+
+  for (const group of groups) {
+    const existingSection = sections.find((section) => section.title === group.sectionTitle);
+
+    if (existingSection) {
+      if (!existingSection.comment) {
+        existingSection.comment =
+          group.criteria?.find((criterion) => String(criterion.sectionComment || "").trim())?.sectionComment || "";
+      }
+      existingSection.groups.push(group);
+      continue;
+    }
+
+    sections.push({
+      id: group.sectionTitle,
+      title: group.sectionTitle,
+      comment: group.criteria?.find((criterion) => String(criterion.sectionComment || "").trim())?.sectionComment || "",
+      groups: [group],
+    });
+  }
+
+  return sections;
+}
+
 function getMissionGroupProgress(group) {
   const criteria = group?.criteria || [];
   const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
   if (!criteria.length) return 0;
   return Math.round((answered / criteria.length) * 100);
+}
+
+function getMissionSectionProgress(section) {
+  const criteria = (section?.groups || []).flatMap((group) => group.criteria || []);
+  const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
+  if (!criteria.length) return 0;
+  return Math.round((answered / criteria.length) * 100);
+}
+
+function getMissionProgress(mission) {
+  const criteria = mission?.criteria || [];
+  const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
+  if (!criteria.length) return 0;
+  return Math.round((answered / criteria.length) * 100);
+}
+
+function getMissionAverage(criteria = []) {
+  const scores = criteria.map((criterion) => criterion.score).filter((score) => typeof score === "number");
+  if (!scores.length) return "--";
+  return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
+}
+
+function getMissionFinalScore(missions = []) {
+  const missionScores = missions
+    .map((mission) => {
+      const score = getMissionAverage(mission.criteria || []);
+      return score === "--" ? null : Number(score);
+    })
+    .filter((score) => typeof score === "number");
+
+  if (!missionScores.length) return "--";
+  return (missionScores.reduce((total, score) => total + score, 0) / missionScores.length).toFixed(1);
 }
 
 function sanitizeMissionEvaluation(mission) {
@@ -161,9 +197,7 @@ function sanitizeMissionEvaluation(mission) {
     ...mission,
     criteria: (mission.criteria || []).filter((criterion) =>
       shouldShowMissionGroupForRecipient(
-        {
-          sourceSheet: criterion.sourceSheet || criterion.source_sheet || "",
-        },
+        { sourceSheet: criterion.sourceSheet || criterion.source_sheet || "" },
         recipientDepartment
       )
     ),
@@ -174,97 +208,36 @@ function sanitizeMissionEvaluations(missions = []) {
   return missions.map(sanitizeMissionEvaluation);
 }
 
-function getMissionSections(groups = []) {
-  const sections = [];
+function InlineFeedback({ feedback }) {
+  if (!feedback?.message) return null;
 
-  for (const group of groups) {
-    const existingSection = sections.find((section) => section.title === group.sectionTitle);
-
-    if (existingSection) {
-      existingSection.groups.push(group);
-      continue;
-    }
-
-    sections.push({
-      id: group.sectionTitle,
-      title: group.sectionTitle,
-      groups: [group],
-    });
-  }
-
-  return sections;
-}
-
-function getMissionSectionProgress(section) {
-  const criteria = (section?.groups || []).flatMap((group) => group.criteria || []);
-  const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
-  if (!criteria.length) return 0;
-  return Math.round((answered / criteria.length) * 100);
-}
-
-function createInitialPageIndexes(sections = []) {
-  return Object.fromEntries(
-    sections.map((section) => {
-      const firstIncompletePageIndex = (section.pages || []).findIndex((page) => getPageProgress(page) < 100);
-      return [section.id, firstIncompletePageIndex >= 0 ? firstIncompletePageIndex : 0];
-    })
-  );
-}
-
-function clampPageIndexes(sections = [], currentIndexes = {}) {
-  return Object.fromEntries(
-    sections.map((section) => {
-      const maxIndex = Math.max((section.pages?.length || 1) - 1, 0);
-      return [section.id, Math.min(currentIndexes[section.id] || 0, maxIndex)];
-    })
-  );
-}
-
-function CycleScoreRow({ theme, onSelect }) {
   return (
-    <div className="rounded-md border border-[#E3EAF3] bg-[#F8FBFF] p-3">
-      <div className="mb-3">
-        <p className="text-[13px] font-bold text-[#0F3A63]">
-          {theme.code}. {theme.label}
-        </p>
-        <p className="mt-1 text-[12px] leading-6 text-slate-600">{theme.statement}</p>
-      </div>
-
-      <div className="flex items-center gap-2">
-        {[1, 2, 3, 4, 5].map((score) => (
-          <button
-            key={score}
-            type="button"
-            onClick={() => onSelect(score)}
-            className={`inline-flex h-8 w-9 items-center justify-center rounded text-[12px] font-bold ${
-              theme.score === score ? "bg-[#0B4C7A] text-white" : "bg-slate-200 text-slate-500 hover:bg-slate-300"
-            }`}
-          >
-            {score}
-          </button>
-        ))}
-      </div>
+    <div
+      className={`rounded-md px-3 py-2 text-xs font-semibold ${
+        feedback.tone === "error" ? "bg-[#FDEBEC] text-[#B93840]" : "bg-[#DCECCB] text-[#184D2E]"
+      }`}
+    >
+      {feedback.message}
     </div>
   );
 }
 
-function MissionScoreRow({ themeCode, label, statement, selected, onSelect }) {
+function MissionScoreRow({ criterion, onSelect }) {
   return (
     <div className="rounded-md border border-[#E3EAF3] bg-[#F8FBFF] p-3">
       <p className="text-[12px] font-semibold text-[#0F3A63]">
-        {themeCode ? `${themeCode}. ` : ""}
-        {label}
+        {criterion.themeCode ? `${criterion.themeCode}. ` : ""}
+        {criterion.label}
       </p>
-      {statement ? <p className="mt-1 text-[11px] leading-5 text-slate-600">{statement}</p> : null}
-
-      <div className="mt-3 flex items-center gap-2">
+      {criterion.statement ? <p className="mt-1 text-[11px] leading-5 text-slate-600">{criterion.statement}</p> : null}
+      <div className="mt-2 flex items-center gap-2">
         {[1, 2, 3, 4, 5].map((score) => (
           <button
             key={score}
             type="button"
             onClick={() => onSelect(score)}
-            className={`inline-flex h-8 w-9 items-center justify-center rounded text-[12px] font-bold ${
-              selected === score ? "bg-[#0B4C7A] text-white" : "bg-slate-200 text-slate-500 hover:bg-slate-300"
+            className={`inline-flex h-6 w-8 items-center justify-center rounded text-[12px] font-bold ${
+              criterion.score === score ? "bg-[#0B4C7A] text-white" : "bg-slate-200 text-slate-500 hover:bg-slate-300"
             }`}
           >
             {score}
@@ -277,24 +250,26 @@ function MissionScoreRow({ themeCode, label, statement, selected, onSelect }) {
 
 function MonautoevaluationSenior({ user }) {
   const [evaluationData, setEvaluationData] = useState(null);
-  const [step, setStep] = useState("missions");
   const [sections, setSections] = useState([]);
   const [missionEvaluations, setMissionEvaluations] = useState([]);
-  const [activeSectionId, setActiveSectionId] = useState(1);
-  const [pageIndexes, setPageIndexes] = useState({});
-  const [activeMissionId, setActiveMissionId] = useState("");
+  const [activeMissionId, setActiveMissionId] = useState(null);
   const [missionSectionIds, setMissionSectionIds] = useState({});
   const [missionPageIndexes, setMissionPageIndexes] = useState({});
   const [missionTitle, setMissionTitle] = useState("");
-  const [missionPeriod, setMissionPeriod] = useState("");
+  const [missionStartDate, setMissionStartDate] = useState("");
+  const [missionEndDate, setMissionEndDate] = useState("");
   const [selectedRecipientValue, setSelectedRecipientValue] = useState("");
-  const [savedComments, setSavedComments] = useState({});
-  const [feedbackMessage, setFeedbackMessage] = useState("");
-  const [feedbackTone, setFeedbackTone] = useState("success");
+  const [addMissionFeedback, setAddMissionFeedback] = useState(null);
+  const [missionFeedback, setMissionFeedback] = useState(null);
+  const [finalFeedback, setFinalFeedback] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const missionCreationCounterRef = useRef(0);
+  const skipAutoSaveRef = useRef(true);
+  const autoSaveTimeoutRef = useRef(null);
+  const dirtyMissionRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -310,16 +285,7 @@ function MonautoevaluationSenior({ user }) {
         setEvaluationData(response);
         setSections(response.evaluation.sections || []);
         setMissionEvaluations(sanitizeMissionEvaluations(response.mission_evaluations || []));
-        setActiveMissionId(response.mission_evaluations?.[0]?.id || "");
-        setActiveSectionId(Number(response.evaluation.activeSectionId || response.evaluation.sections?.[0]?.id || 1));
-        setPageIndexes(createInitialPageIndexes(response.evaluation.sections || []));
-        setSavedComments(
-          Object.fromEntries(
-            (response.evaluation.sections || [])
-              .filter((section) => section.comment?.trim())
-              .map((section) => [section.id, section.comment.trim()])
-          )
-        );
+        setActiveMissionId(response.mission_evaluations?.[0]?.id || null);
       } catch (error) {
         if (!cancelled) {
           setErrorMessage(error.message || "Chargement de l'auto-évaluation impossible.");
@@ -350,129 +316,147 @@ function MonautoevaluationSenior({ user }) {
     selectedRecipientValue && recipientOptions.some((recipient) => getRecipientOptionValue(recipient) === selectedRecipientValue)
       ? selectedRecipientValue
       : initialRecipientValue;
-
   const selectedRecipient = useMemo(
     () => recipientOptions.find((recipient) => getRecipientOptionValue(recipient) === effectiveRecipientValue) || null,
     [effectiveRecipientValue, recipientOptions]
   );
 
-  const activeSection = sections.find((section) => Number(section.id) === Number(activeSectionId)) || sections[0];
-  const activePageIndex = pageIndexes[activeSection?.id] || 0;
-  const activePage = activeSection?.pages?.[activePageIndex] || activeSection?.pages?.[0];
-  const shouldShowSourceLabel = evaluationData?.assignee?.department === "AUDIT & EXPERTISE COMPTABLE";
-  const activePageSourceBadgeLabel = getSourceBadgeLabel(activePage);
-  const completedSections = sections.filter((section) => section.status === "Complete").length;
-  const globalProgress = Math.round(
-    sections.reduce((total, section) => total + getCycleSectionProgress(section), 0) / (sections.length || 1)
-  );
-  const averageScore = useMemo(() => getPageAverage(activePage), [activePage]);
-  const displayName = getDisplayName(user || evaluationData?.assignee || {});
-
-  const activeMission = missionEvaluations.find((mission) => mission.id === activeMissionId) || missionEvaluations[0] || null;
+  const effectiveMissionId =
+    missionEvaluations.some((mission) => mission.id === activeMissionId) ? activeMissionId : missionEvaluations[0]?.id || null;
+  const activeMission = missionEvaluations.find((mission) => mission.id === effectiveMissionId) || null;
   const missionCriteriaGroups = useMemo(() => getMissionCriteriaGroups(activeMission?.criteria || []), [activeMission]);
   const filteredMissionCriteriaGroups = useMemo(() => {
-    const recipientDepartment = activeMission?.recipients?.[0]?.department || "";
+    const recipientDepartment = activeMission?.recipients?.[0]?.department || activeMission?.department || "";
     return missionCriteriaGroups.filter((group) => shouldShowMissionGroupForRecipient(group, recipientDepartment));
   }, [activeMission, missionCriteriaGroups]);
   const missionSections = useMemo(() => getMissionSections(filteredMissionCriteriaGroups), [filteredMissionCriteriaGroups]);
-  const activeMissionSectionId = missionSectionIds[activeMissionId] || missionSections[0]?.id || "";
+  const activeMissionSectionId = missionSectionIds[effectiveMissionId] || missionSections[0]?.id || "";
   const activeMissionSection = missionSections.find((section) => section.id === activeMissionSectionId) || missionSections[0] || null;
   const activeMissionSectionIndex = missionSections.findIndex((section) => section.id === activeMissionSection?.id);
   const activeMissionPageIndex = Math.min(
-    missionPageIndexes[activeMissionId] || 0,
+    missionPageIndexes[effectiveMissionId] || 0,
     Math.max((activeMissionSection?.groups?.length || 1) - 1, 0)
   );
   const activeMissionGroup = activeMissionSection?.groups?.[activeMissionPageIndex] || activeMissionSection?.groups?.[0] || null;
-  const activeMissionAverage = getMissionAverage(activeMissionGroup?.criteria || []);
-  const activeMissionSourceBadgeLabel = getSourceBadgeLabel({
-    source_label: activeMissionGroup?.sourceLabel,
-    source_sheet: activeMissionGroup?.sourceSheet,
-  });
+  const shouldShowSourceLabel = evaluationData?.assignee?.department === "AUDIT & EXPERTISE COMPTABLE";
+  const activeMissionAverage = getMissionAverage(activeMission?.criteria || []);
+  const finalMissionScore = useMemo(() => getMissionFinalScore(missionEvaluations), [missionEvaluations]);
+  const missionProgress = missionEvaluations.length
+    ? Math.round(missionEvaluations.reduce((total, mission) => total + getMissionProgress(mission), 0) / missionEvaluations.length)
+    : 0;
+  const submittedMissionsCount = missionEvaluations.filter((mission) => mission.status === "Soumise").length;
+  const displayName = getDisplayName(user || evaluationData?.assignee || {});
 
-  function syncSections(updater) {
-    setSections((currentSections) => {
-      const nextSections = typeof updater === "function" ? updater(currentSections) : updater;
+  function clearScopedFeedback(scope) {
+    if (scope === "addMission") setAddMissionFeedback(null);
+    if (scope === "mission") setMissionFeedback(null);
+    if (scope === "final") setFinalFeedback(null);
+  }
 
-      return nextSections.map((section) => {
-        const progress = getCycleSectionProgress(section);
-        return {
-          ...section,
-          status: progress === 0 ? "À faire" : progress === 100 ? "Complète" : "En cours",
-        };
+  function setScopedFeedback(scope, tone, message) {
+    const payload = message ? { tone, message } : null;
+
+    if (scope === "addMission") setAddMissionFeedback(payload);
+    if (scope === "mission") setMissionFeedback(payload);
+    if (scope === "final") setFinalFeedback(payload);
+  }
+
+  async function persistMissionEvaluations(
+    nextMissionEvaluations = missionEvaluations,
+    { scope = null, showSuccess = true, showError = true } = {}
+  ) {
+    clearTimeout(autoSaveTimeoutRef.current);
+    setIsSaving(true);
+
+    try {
+      const response = await saveMySeniorEvaluation({
+        missionEvaluations: nextMissionEvaluations,
       });
-    });
-
-    setFeedbackMessage("");
+      dirtyMissionRef.current = false;
+      skipAutoSaveRef.current = true;
+      setEvaluationData(response);
+      setMissionEvaluations(sanitizeMissionEvaluations(response.mission_evaluations || []));
+      if (scope && showSuccess) {
+        setScopedFeedback(scope, "success", response.message || "Sauvegarde réussie.");
+      }
+      return response;
+    } catch (error) {
+      if (scope && showError) {
+        setScopedFeedback(scope, "error", error.message || "Sauvegarde impossible.");
+      }
+      return null;
+    } finally {
+      setIsSaving(false);
+    }
   }
 
-  function updateScore(themeId, score) {
-    syncSections((currentSections) =>
-      currentSections.map((section) => {
-        if (Number(section.id) !== Number(activeSectionId)) return section;
+  useEffect(() => {
+    if (skipAutoSaveRef.current) {
+      skipAutoSaveRef.current = false;
+      return undefined;
+    }
 
-        return {
-          ...section,
-          pages: (section.pages || []).map((page, pageIndex) =>
-            pageIndex !== activePageIndex
-              ? page
-              : {
-                  ...page,
-                  themes: (page.themes || []).map((theme) => (theme.theme_id === themeId ? { ...theme, score } : theme)),
-                }
-          ),
-        };
+    if (!dirtyMissionRef.current || !missionEvaluations.length) {
+      return undefined;
+    }
+
+    clearTimeout(autoSaveTimeoutRef.current);
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      void saveMySeniorEvaluation({
+        missionEvaluations,
       })
-    );
-  }
+        .then((response) => {
+          dirtyMissionRef.current = false;
+          setEvaluationData(response);
+        })
+        .catch((error) => {
+          setScopedFeedback("mission", "error", error.message || "Sauvegarde impossible.");
+        });
+    }, 300);
 
-  function updateMissionScore(criterionId, score) {
-    setMissionEvaluations((currentMissions) =>
-      currentMissions.map((mission) =>
-        mission.id !== activeMissionId
-          ? mission
-          : {
-              ...mission,
-              criteria: mission.criteria.map((criterion) =>
-                criterion.id === criterionId ? { ...criterion, score } : criterion
-              ),
-            }
-      )
-    );
-    setFeedbackMessage("");
-  }
+    return () => {
+      clearTimeout(autoSaveTimeoutRef.current);
+    };
+  }, [missionEvaluations]);
 
-  function updateComment(comment) {
-    syncSections((currentSections) =>
-      currentSections.map((section) => {
-        if (Number(section.id) !== Number(activeSectionId)) return section;
+  useEffect(() => {
+    return () => {
+      clearTimeout(autoSaveTimeoutRef.current);
 
-        return {
-          ...section,
-          comment,
-        };
-      })
-    );
-  }
+      if (dirtyMissionRef.current && missionEvaluations.length) {
+        void saveMySeniorEvaluation({
+          missionEvaluations,
+        });
+      }
+    };
+  }, [missionEvaluations]);
 
-  function handleAddMission() {
+  async function handleAddMission() {
     const title = missionTitle.trim();
 
     if (!title) {
-      setFeedbackTone("error");
-      setFeedbackMessage("Renseignez le nom de la mission.");
+      setScopedFeedback("addMission", "error", "Renseignez le nom de la mission.");
       return;
     }
 
     if (!selectedRecipient) {
-      setFeedbackTone("error");
-      setFeedbackMessage("Sélectionnez un manager destinataire pour cette mission.");
+      setScopedFeedback("addMission", "error", "Sélectionnez un manager destinataire pour cette mission.");
       return;
     }
 
+    if (missionStartDate && missionEndDate && missionEndDate < missionStartDate) {
+      setScopedFeedback("addMission", "error", "La date de fin doit être postérieure ou égale à la date de début.");
+      return;
+    }
+
+    clearScopedFeedback("addMission");
+
+    missionCreationCounterRef.current += 1;
+
     const nextMission = {
-      id: `${Date.now()}`,
+      id: `senior-mission-${missionCreationCounterRef.current}-${missionEvaluations.length + 1}`,
       title,
-      period: missionPeriod.trim() || "Période non renseignée",
+      period: formatMissionPeriodLabel(missionStartDate, missionEndDate),
       department: selectedRecipient.department,
       recipients: [
         {
@@ -483,11 +467,14 @@ function MonautoevaluationSenior({ user }) {
         },
       ],
       criteria: buildMissionCriteriaFromSections(sections, selectedRecipient.department),
-      comment: "",
       status: "Brouillon",
     };
 
-    setMissionEvaluations((missions) => [...missions, nextMission]);
+    const nextMissionEvaluations = [...missionEvaluations, nextMission];
+    clearTimeout(autoSaveTimeoutRef.current);
+    skipAutoSaveRef.current = true;
+    dirtyMissionRef.current = true;
+    setMissionEvaluations(nextMissionEvaluations);
     setActiveMissionId(nextMission.id);
     setMissionSectionIds((current) => ({
       ...current,
@@ -495,65 +482,50 @@ function MonautoevaluationSenior({ user }) {
     }));
     setMissionPageIndexes((current) => ({ ...current, [nextMission.id]: 0 }));
     setMissionTitle("");
-    setMissionPeriod("");
-    setFeedbackTone("success");
-    setFeedbackMessage("Mission ajoutée. Vous pouvez maintenant la noter.");
+    setMissionStartDate("");
+    setMissionEndDate("");
+    setSelectedRecipientValue(initialRecipientValue);
+
+    const savedResponse = await persistMissionEvaluations(nextMissionEvaluations, {
+      scope: "addMission",
+    });
+    if (!savedResponse) return;
+
+    setScopedFeedback("addMission", "success", "Mission ajoutée et enregistrée.");
   }
 
-  async function persistEvaluation(nextSections = sections, nextMissionEvaluations = missionEvaluations) {
-    setIsSaving(true);
-
-    try {
-      const response = await saveMySeniorEvaluation({
-        sections: nextSections,
-        missionEvaluations: nextMissionEvaluations,
-      });
-      setEvaluationData(response);
-      setSections(response.evaluation.sections);
-      setMissionEvaluations(sanitizeMissionEvaluations(response.mission_evaluations || []));
-      setPageIndexes((current) => clampPageIndexes(response.evaluation.sections, current));
-      setFeedbackTone("success");
-      setFeedbackMessage(response.message || "Sauvegarde reussie.");
-
-      const currentSection = response.evaluation.sections.find((section) => Number(section.id) === Number(activeSectionId));
-      if (currentSection?.comment?.trim()) {
-        setSavedComments((comments) => ({ ...comments, [currentSection.id]: currentSection.comment.trim() }));
-      }
-
-      if (!activeMissionId) {
-        setActiveMissionId(response.mission_evaluations?.[0]?.id || "");
-      }
-
-      return response;
-    } catch (error) {
-      setFeedbackTone("error");
-      setFeedbackMessage(error.message || "Sauvegarde impossible.");
-      return null;
-    } finally {
-      setIsSaving(false);
-    }
+  function updateMissionScore(criterionId, score) {
+    dirtyMissionRef.current = true;
+    clearScopedFeedback("mission");
+    clearScopedFeedback("final");
+    setMissionEvaluations((currentMissions) =>
+      currentMissions.map((mission) =>
+        mission.id !== effectiveMissionId
+          ? mission
+          : {
+              ...mission,
+              criteria: mission.criteria.map((criterion) => (criterion.id === criterionId ? { ...criterion, score } : criterion)),
+            }
+      )
+    );
   }
 
-  function goToCycleStep(direction) {
-    const sectionIndex = sections.findIndex((section) => Number(section.id) === Number(activeSectionId));
-    const pages = activeSection?.pages || [];
-    const nextPageIndex = activePageIndex + direction;
-
-    if (nextPageIndex >= 0 && nextPageIndex < pages.length) {
-      setPageIndexes((current) => ({ ...current, [activeSectionId]: nextPageIndex }));
-      setFeedbackMessage("");
-      return;
-    }
-
-    const nextSection = sections[sectionIndex + direction];
-    if (!nextSection) return;
-
-    setActiveSectionId(Number(nextSection.id));
-    setPageIndexes((current) => ({
-      ...current,
-      [nextSection.id]: direction > 0 ? 0 : Math.max((nextSection.pages?.length || 1) - 1, 0),
-    }));
-    setFeedbackMessage("");
+  function updateMissionSectionComment(comment) {
+    dirtyMissionRef.current = true;
+    clearScopedFeedback("mission");
+    clearScopedFeedback("final");
+    setMissionEvaluations((currentMissions) =>
+      currentMissions.map((mission) =>
+        mission.id !== effectiveMissionId
+          ? mission
+          : {
+              ...mission,
+              criteria: mission.criteria.map((criterion) =>
+                criterion.sectionTitle === activeMissionSection?.title ? { ...criterion, sectionComment: comment } : criterion
+              ),
+            }
+      )
+    );
   }
 
   function goToMissionStep(direction) {
@@ -582,8 +554,14 @@ function MonautoevaluationSenior({ user }) {
   }
 
   async function handleSaveAndContinue() {
-    const response = await persistEvaluation(sections, missionEvaluations);
-    if (response) goToCycleStep(1);
+    const response = await persistMissionEvaluations(missionEvaluations, {
+      scope: "mission",
+      showSuccess: false,
+    });
+
+    if (response) {
+      goToMissionStep(1);
+    }
   }
 
   async function handleSubmitMission() {
@@ -594,164 +572,183 @@ function MonautoevaluationSenior({ user }) {
     );
 
     if (hasIncompleteCriterion) {
-      setFeedbackTone("error");
-      setFeedbackMessage("Toutes les questions de la mission doivent etre renseignées avant soumission.");
+      setScopedFeedback("mission", "error", "Toutes les questions de la mission doivent être renseignées avant soumission.");
       return;
     }
 
+    const hasSectionWithoutComment = missionSections.some((section) => String(section.comment || "").trim().length < 3);
+    if (hasSectionWithoutComment) {
+      setScopedFeedback("mission", "error", "Un commentaire d'au moins 3 caractères est obligatoire pour chaque section de la mission.");
+      return;
+    }
+
+    clearScopedFeedback("mission");
     setIsSubmitting(true);
 
     try {
-      const savedResponse = await persistEvaluation(sections, missionEvaluations);
+      const savedResponse = await persistMissionEvaluations(missionEvaluations, {
+        scope: "mission",
+        showSuccess: false,
+      });
       if (!savedResponse) return;
 
       const response = await submitMySeniorMissionEvaluation(activeMission.id);
+      dirtyMissionRef.current = false;
       setEvaluationData(response);
       setMissionEvaluations(sanitizeMissionEvaluations(response.mission_evaluations || []));
-      setFeedbackTone("success");
-      setFeedbackMessage(response.message || "Mission soumise au manager.");
+      setScopedFeedback("mission", "success", response.message || "Mission soumise.");
     } catch (error) {
-      setFeedbackTone("error");
-      setFeedbackMessage(error.message || "Soumission impossible.");
+      setScopedFeedback("mission", "error", error.message || "Soumission impossible.");
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  async function handleSubmitCycle() {
-    if (!hasRequiredSubmissionComment(sections)) {
-      setFeedbackTone("error");
-      setFeedbackMessage("Un commentaire d'au moins 3 caractères est obligatoire pour chaque section avant soumission.");
+  async function handleSubmitFinal() {
+    if (!missionEvaluations.length) {
+      setScopedFeedback("final", "error", "Ajoutez au moins une mission avant la soumission finale.");
+      return;
+    }
+
+    const pendingMissions = missionEvaluations.some((mission) => mission.status !== "Soumise");
+    if (pendingMissions) {
+      setScopedFeedback("final", "error", "Chaque mission doit être soumise avant la soumission finale.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const savedResponse = await persistEvaluation(sections, missionEvaluations);
+      const savedResponse = await persistMissionEvaluations(missionEvaluations, {
+        scope: "final",
+        showSuccess: false,
+      });
       if (!savedResponse) return;
 
-      const submittedResponse = await submitMySeniorEvaluation();
-      setEvaluationData(submittedResponse);
-      setSections(submittedResponse.evaluation.sections);
-      setMissionEvaluations(sanitizeMissionEvaluations(submittedResponse.mission_evaluations || []));
-      setPageIndexes(createInitialPageIndexes(submittedResponse.evaluation.sections));
-      setFeedbackTone("success");
-      setFeedbackMessage(submittedResponse.message || "Auto-évaluation soumise aux managers.");
+      const response = await submitMySeniorEvaluation();
+      dirtyMissionRef.current = false;
+      setEvaluationData(response);
+      setMissionEvaluations(sanitizeMissionEvaluations(response.mission_evaluations || []));
+      setScopedFeedback("final", "success", response.message || "Évaluations par mission soumises aux managers.");
     } catch (error) {
-      setFeedbackTone("error");
-      setFeedbackMessage(error.message || "Soumission impossible.");
+      setScopedFeedback("final", "error", error.message || "Soumission impossible.");
     } finally {
       setIsSubmitting(false);
     }
   }
 
   if (isLoading) {
-    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement de l'auto-évaluation...</section>;
+    return (
+      <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">
+        Chargement de l'auto-évaluation...
+      </section>
+    );
   }
 
   if (errorMessage) {
-    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">{errorMessage}</section>;
+    return (
+      <section className="rounded-xl bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">
+        {errorMessage}
+      </section>
+    );
   }
-
-  if (!activeSection || !activePage) {
-    return <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Aucune auto-évaluation disponible.</section>;
-  }
-
-  const isLastCycleStep =
-    sections.findIndex((section) => Number(section.id) === Number(activeSectionId)) === sections.length - 1 &&
-    activePageIndex === (activeSection.pages?.length || 1) - 1;
-
-  const isLastMissionStep =
-    activeMissionSectionIndex === missionSections.length - 1 &&
-    activeMissionPageIndex === Math.max((activeMissionSection?.groups?.length || 1) - 1, 0);
 
   return (
     <section className="space-y-4">
       <div className="rounded-lg bg-[#DCECCB] px-4 py-3 text-sm font-semibold text-[#184D2E]">
-        Le Senior peut saisir son évaluation par mission puis son évaluation globale du cycle. Les missions comme l'auto-évaluation globale sont transmises au(x) manager(s) concernés.
+        Le Senior s'évalue désormais uniquement par mission. Les commentaires de section sont obligatoires.
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <button
-          type="button"
-          onClick={() => setStep("missions")}
-          className={`rounded-xl p-5 text-left ${step === "missions" ? "bg-[#003B63] text-white" : "bg-white text-[#0F3A63] shadow-sm"}`}
-        >
-          <p className="text-xs font-bold uppercase">Étape 1</p>
-          <h2 className="mt-2 text-[22px] font-extrabold">Évaluation par mission</h2>
-          <p className={`mt-3 text-sm font-semibold ${step === "missions" ? "text-slate-200" : "text-slate-500"}`}>
-            Missions ajoutées par le Senior - {Math.round(((missionEvaluations.filter((mission) => mission.status === "Soumise").length) / (missionEvaluations.length || 1)) * 100)}%
-          </p>
-        </button>
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+        <article className="space-y-4">
+          <div className="rounded-xl bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold text-slate-400">{evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"}</p>
+            <h2 className="mt-1 text-xl font-extrabold text-[#0F3A63]">{displayName}</h2>
+            <p className="text-sm font-semibold text-slate-500">{user?.grade || evaluationData?.assignee?.grade || "Senior"}</p>
+          </div>
 
-        <button
-          type="button"
-          onClick={() => setStep("cycle")}
-          className={`rounded-xl p-5 text-left ${step === "cycle" ? "bg-[#003B63] text-white" : "bg-white text-[#0F3A63] shadow-sm"}`}
-        >
-          <p className="text-xs font-bold uppercase">Étape 2</p>
-          <h2 className="mt-2 text-[22px] font-extrabold">Évaluation globale du cycle</h2>
-          <p className={`mt-3 text-sm font-semibold ${step === "cycle" ? "text-slate-200" : "text-slate-500"}`}>
-            {evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"} - {globalProgress}%
-          </p>
-        </button>
-      </div>
-
-      {step === "missions" ? (
-        <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.72fr_1.28fr]">
-          <article className="space-y-4">
-            <div className="rounded-xl bg-white p-4 shadow-sm">
-              <h3 className="mb-3 text-[18px] font-bold text-[#0F3A63]">Ajouter une mission</h3>
-              <div className="space-y-3">
-                <input
-                  value={missionTitle}
-                  onChange={(event) => setMissionTitle(event.target.value)}
-                  placeholder="Nom ou type de mission"
-                  className="w-full rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-[#0F3A63] outline-none"
-                />
-                <input
-                  value={missionPeriod}
-                  onChange={(event) => setMissionPeriod(event.target.value)}
-                  placeholder="Période de la mission"
-                  className="w-full rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-[#0F3A63] outline-none"
-                />
-                <select
-                  value={effectiveRecipientValue}
-                  onChange={(event) => setSelectedRecipientValue(event.target.value)}
-                  className="w-full rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-[#0F3A63] outline-none"
-                >
-                  {recipientOptions.map((recipient) => (
-                    <option key={getRecipientOptionValue(recipient)} value={getRecipientOptionValue(recipient)}>
-                      {recipient.department} - Destinataire : {getRecipientLabel(recipient)}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={handleAddMission}
-                  className="rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
-                >
-                  Ajouter la mission
-                </button>
-              </div>
-            </div>
-
+          <div className="rounded-xl bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-[18px] font-bold text-[#0F3A63]">Ajouter une mission</h3>
             <div className="space-y-3">
-              {missionEvaluations.map((mission) => (
+              <input
+                value={missionTitle}
+                onChange={(event) => {
+                  setMissionTitle(event.target.value);
+                  clearScopedFeedback("addMission");
+                }}
+                placeholder="Nom ou type de mission"
+                className="w-full rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-[#0F3A63] outline-none"
+              />
+              <div className="text-[11px] font-semibold text-slate-500">Date de début</div>
+              <input
+                type="date"
+                value={missionStartDate}
+                onChange={(event) => {
+                  setMissionStartDate(event.target.value);
+                  clearScopedFeedback("addMission");
+                }}
+                className="w-full rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-[#0F3A63] outline-none"
+              />
+              <div className="text-[11px] font-semibold text-slate-500">Date de fin</div>
+              <input
+                type="date"
+                min={missionStartDate || undefined}
+                value={missionEndDate}
+                onChange={(event) => {
+                  setMissionEndDate(event.target.value);
+                  clearScopedFeedback("addMission");
+                }}
+                className="w-full rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-[#0F3A63] outline-none"
+              />
+              <select
+                value={effectiveRecipientValue}
+                onChange={(event) => {
+                  setSelectedRecipientValue(event.target.value);
+                  clearScopedFeedback("addMission");
+                }}
+                className="w-full rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-[#0F3A63] outline-none"
+              >
+                {recipientOptions.map((recipient) => (
+                  <option key={getRecipientOptionValue(recipient)} value={getRecipientOptionValue(recipient)}>
+                    {recipient.department} - Destinataire : {getRecipientLabel(recipient)}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={handleAddMission}
+                className="rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
+              >
+                Ajouter la mission
+              </button>
+              <InlineFeedback feedback={addMissionFeedback} />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {missionEvaluations.length ? (
+              missionEvaluations.map((mission) => (
                 <button
                   key={mission.id}
                   type="button"
                   onClick={() => {
                     setActiveMissionId(mission.id);
-                    setFeedbackMessage("");
+                    setMissionSectionIds((current) => ({
+                      ...current,
+                      [mission.id]: current[mission.id] || mission.criteria?.[0]?.sectionTitle || "",
+                    }));
+                    setMissionPageIndexes((current) => ({
+                      ...current,
+                      [mission.id]: current[mission.id] || 0,
+                    }));
+                    clearScopedFeedback("mission");
                   }}
                   className={`w-full rounded-xl border p-4 text-left shadow-sm transition ${
-                    mission.id === activeMissionId ? "border-[#76B82A] bg-[#F3FAEA]" : "border-transparent bg-white"
+                    mission.id === effectiveMissionId ? "border-[#76B82A] bg-[#F3FAEA]" : "border-transparent bg-white"
                   }`}
                 >
                   <p className="text-[18px] font-bold text-[#0F3A63]">{mission.title}</p>
-                  <p className="mt-1 text-[12px] font-semibold text-slate-500">{mission.period}</p>
+                  <p className="mt-1 text-[12px] font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
                   <p className="mt-2 text-[12px] font-semibold text-[#0F3A63]">
                     {mission.department} - {mission.recipients.map(getRecipientLabel).join(", ")}
                   </p>
@@ -759,448 +756,280 @@ function MonautoevaluationSenior({ user }) {
                     <div className="h-2 rounded-full bg-[#76B82A]" style={{ width: `${getMissionProgress(mission)}%` }} />
                   </div>
                   <div className="mt-2 flex items-center justify-between">
-                    <p className="text-[12px] font-bold text-[#76B82A]">{getMissionProgress(mission)}% complète</p>
-                    <span className="rounded-full bg-white px-3 py-1 text-[10px] font-bold text-[#0F3A63]">{mission.status || "Brouillon"}</span>
+                    <span className="text-xs font-semibold text-slate-500">{getMissionProgress(mission)}%</span>
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#4E8B1B]">{mission.status || "Brouillon"}</span>
                   </div>
                 </button>
-              ))}
-            </div>
-          </article>
+              ))
+            ) : (
+              <div className="rounded-md bg-[#EEF2F6] p-4 text-sm font-semibold text-slate-500">Aucune mission ajoutée pour le moment.</div>
+            )}
+          </div>
+        </article>
 
-          <article className="space-y-4">
-            {activeMission ? (
-              <>
-                <div className="rounded-xl bg-white p-4 shadow-sm">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-[12px] font-semibold text-slate-500">Mission sélectionnée</p>
-                      <h3 className="text-[20px] font-extrabold text-[#0F3A63]">{activeMission.title}</h3>
-                    </div>
-                    <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-[12px] font-bold text-[#4E8B1B]">
-                      Moyenne {activeMissionAverage} / 5
-                    </span>
+        <article className="space-y-4">
+          <div className="rounded-xl bg-white p-4 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-[22px] font-bold text-[#0F3A63]">Synthèse des missions</h3>
+                <p className="mt-1 text-[12px] font-semibold text-slate-500">
+                  Score final = somme des scores de mission divisée par le nombre de missions notées.
+                </p>
+              </div>
+              <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">
+                Score final {finalMissionScore} / 5
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <p className="font-semibold text-[#0F3A63]">Progression globale des missions</p>
+                <span className="font-bold text-[#76B82A]">{missionProgress}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-slate-200">
+                <div className="h-2 rounded-full bg-[#76B82A]" style={{ width: `${missionProgress}%` }} />
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
+                  <p className="text-[11px] font-semibold text-slate-500">Missions</p>
+                  <p className="mt-1 text-lg font-black text-[#0F3A63]">{missionEvaluations.length}</p>
+                </div>
+                <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
+                  <p className="text-[11px] font-semibold text-slate-500">Missions soumises</p>
+                  <p className="mt-1 text-lg font-black text-[#0F3A63]">{submittedMissionsCount}</p>
+                </div>
+                <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
+                  <p className="text-[11px] font-semibold text-slate-500">Statut</p>
+                  <p className="mt-1 text-sm font-black text-[#0F3A63]">{evaluationData?.evaluation?.status || "En cours"}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {activeMission ? (
+            <>
+              <section className="rounded-xl bg-white p-4 shadow-sm">
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-2xl font-black leading-tight text-[#0F3A63]">{activeMission.title}</h3>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">{activeMission.period || "Période non renseignée"}</p>
+                    <p className="mt-1 text-sm font-bold text-[#0F4A72]">
+                      Validation : {activeMission.department} - Destinataire : {activeMission.recipients?.[0]?.name || "Manager"}
+                    </p>
                   </div>
-                  <p className="text-[12px] font-semibold text-slate-500">{activeMission.period}</p>
-                  <p className="mt-2 text-[12px] font-semibold text-[#0F3A63]">
-                    Département : {activeMission.department} - Destinataire : {activeMission.recipients.map(getRecipientLabel).join(", ")}
-                  </p>
+                  <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">
+                    Moyenne {activeMissionAverage} / 5
+                  </span>
                 </div>
 
-                <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                   {missionSections.map((section) => {
+                    const isActive = section.id === activeMissionSection?.id;
                     const progress = getMissionSectionProgress(section);
-                    const isActive = section.id === activeMissionSectionId;
-                    const done = progress === 100;
 
                     return (
                       <button
                         key={section.id}
                         type="button"
-                        onClick={() =>
+                        onClick={() => {
                           setMissionSectionIds((current) => ({
                             ...current,
                             [activeMission.id]: section.id,
-                          }))
-                        }
+                          }));
+                          setMissionPageIndexes((current) => ({
+                            ...current,
+                            [activeMission.id]: 0,
+                          }));
+                        }}
                         className={`rounded-md border px-3 py-3 text-left text-white transition ${
-                          isActive ? "border-[#76B82A] bg-[#003B63] shadow-[0_0_0_1px_#76B82A]" : "border-transparent bg-[#003B63]"
+                          isActive ? "border-[#76B82A] bg-[#003B63] shadow-[0_0_0_1px_#76B82A]" : "border-transparent bg-[#003B63] hover:bg-[#0B4C7A]"
                         }`}
                       >
-                        <div className="mb-2 flex items-center justify-between">
-                          <h2 className="text-[13px] font-bold">{section.title}</h2>
-                          {done ? <Check size={14} className="text-white" /> : null}
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-bold">{section.title}</p>
+                          <span className="text-xs font-semibold">{progress}%</span>
                         </div>
-                        <p className="text-[12px] font-semibold">{section.groups?.length || 0} titre(s)</p>
-                        <div className="mt-3 h-1.5 rounded-full bg-slate-200">
-                          <div className={`h-1.5 rounded-full ${done ? "bg-[#7BC443]" : "bg-[#D6DCE2]"}`} style={{ width: `${progress}%` }} />
-                        </div>
-                        <p className="mt-1.5 text-[10px] font-semibold text-slate-200">
-                          {done ? "Complète" : progress ? `En cours - ${progress}%` : "À faire"}
-                        </p>
                       </button>
                     );
                   })}
-                </section>
-
-                {activeMissionSection && activeMissionGroup ? (
-                  <>
-                    <section className="rounded-xl bg-white p-4 shadow-sm">
-                      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-[12px] font-semibold text-slate-500">Pagination dans la mission</p>
-                          <h3 className="text-[18px] font-bold text-[#0F3A63]">{activeMissionSection.title}</h3>
-                        </div>
-                        <span className="text-[12px] font-semibold text-[#0F3A63]">
-                          Titre {activeMissionPageIndex + 1} / {activeMissionSection.groups?.length || 1}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        {(activeMissionSection.groups || []).map((group, index) => (
-                          <button
-                            key={group.key}
-                            type="button"
-                            onClick={() =>
-                              setMissionPageIndexes((current) => ({
-                                ...current,
-                                [activeMission.id]: index,
-                              }))
-                            }
-                            className={`rounded-md border px-3 py-2 text-left transition ${
-                              index === activeMissionPageIndex
-                                ? "border-[#76B82A] bg-[#F3FAEA] text-[#0F3A63]"
-                                : "border-[#D9E3EE] bg-white text-slate-600"
-                            }`}
-                          >
-                            <p className="text-[11px] font-bold">Titre {index + 1}</p>
-                            <p className="mt-1 text-[12px] font-semibold">{group.pageTitle}</p>
-                            {shouldShowSourceLabel && getSourceBadgeLabel({ source_label: group.sourceLabel, source_sheet: group.sourceSheet }) && group.sourceSheet !== "TRONC COMMUN" ? (
-                              <span className="mt-2 inline-flex rounded-full bg-[#EEF3F8] px-2 py-0.5 text-[10px] font-semibold text-[#0F3A63]">
-                                {getSourceBadgeLabel({ source_label: group.sourceLabel, source_sheet: group.sourceSheet })}
-                              </span>
-                            ) : null}
-                            <p className="mt-1 text-[10px] font-semibold text-[#76B82A]">{getMissionGroupProgress(group)}%</p>
-                          </button>
-                        ))}
-                      </div>
-                    </section>
-
-                    <section className="grid grid-cols-1">
-                      <article className="rounded-xl bg-white p-4 shadow-sm">
-                        <div className="mb-4 flex items-center justify-between gap-3">
-                          <div>
-                            <h3 className="text-[28px] font-bold leading-none text-[#0F3A63]">{activeMissionSection.title}</h3>
-                            <p className="mt-2 text-[18px] font-semibold text-[#0F3A63]">{activeMissionGroup.pageTitle}</p>
-                            {shouldShowSourceLabel && activeMissionSourceBadgeLabel && activeMissionGroup.sourceSheet !== "TRONC COMMUN" ? (
-                              <span className="mt-2 inline-flex rounded-full bg-[#EEF3F8] px-2.5 py-1 text-[11px] font-semibold text-[#0F3A63]">
-                                {activeMissionSourceBadgeLabel}
-                              </span>
-                            ) : null}
-                            <p className="mt-2 text-[12px] font-semibold text-slate-500">Score moyen : {activeMissionAverage} / 5</p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3.5">
-                          {(activeMissionGroup.criteria || []).map((criterion) => (
-                            <MissionScoreRow
-                              key={criterion.id}
-                              themeCode={criterion.themeCode}
-                              label={criterion.label}
-                              statement={criterion.statement}
-                              selected={criterion.score}
-                              onSelect={(score) => updateMissionScore(criterion.id, score)}
-                            />
-                          ))}
-                        </div>
-
-                        <div className="mt-3 rounded-sm bg-[#DCECCB] px-3 py-2 text-[10px] font-semibold text-[#5A8A3A]">
-                          Les questions obligatoires sans réponse bloqueront la soumission de la mission au manager.
-                        </div>
-
-                        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                          <button
-                            type="button"
-                            onClick={() => goToMissionStep(-1)}
-                            disabled={activeMissionSectionIndex <= 0 && activeMissionPageIndex === 0}
-                            className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <ChevronLeft size={14} />
-                            Précédent
-                          </button>
-
-                          {!isLastMissionStep ? (
-                            <button
-                              type="button"
-                              onClick={() => goToMissionStep(1)}
-                              className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
-                            >
-                              Titre suivant
-                              <ChevronRight size={14} />
-                            </button>
-                          ) : (
-                            <div className="flex flex-wrap items-center gap-3">
-                              <button
-                                type="button"
-                                onClick={handleSubmitMission}
-                                disabled={isSaving || isSubmitting || activeMission.status === "Soumise"}
-                                className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
-                              >
-                                {isSubmitting ? "Soumission..." : "Soumettre la mission"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setStep("cycle")}
-                                className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
-                              >
-                                Continuer vers l'évaluation globale
-                                <ChevronRight size={14} />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </article>
-                    </section>
-                  </>
-                ) : null}
-              </>
-            ) : (
-              <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">
-                Aucune mission ajoutée pour le moment.
-              </section>
-            )}
-          </article>
-        </section>
-      ) : (
-        <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.8fr_1.4fr]">
-          <article className="rounded-xl bg-white p-5 shadow-sm">
-            <div className="mb-5">
-              <p className="text-xs font-semibold text-slate-400">{evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"}</p>
-              <h2 className="text-xl font-extrabold text-[#0F3A63]">{displayName}</h2>
-              <p className="text-sm font-semibold text-slate-500">{user?.grade || evaluationData?.assignee?.grade || "Senior"}</p>
-            </div>
-
-            <div className="mb-4 flex items-center justify-between text-sm font-bold">
-              <span className="text-[#0F3A63]">Progression</span>
-              <span className="text-[#76B82A]">{globalProgress}%</span>
-            </div>
-            <div className="h-2 rounded-full bg-slate-200">
-              <div className="h-2 rounded-full bg-[#76B82A]" style={{ width: `${globalProgress}%` }} />
-            </div>
-
-            <div className="mt-5 space-y-3 text-sm">
-              <div className="flex justify-between gap-4">
-                <span className="font-semibold text-[#0F3A63]">Statut</span>
-                <span className="text-right font-bold text-[#0F3A63]">{evaluationData?.evaluation?.status || "En cours"}</span>
-              </div>
-              <div className="flex justify-between gap-4">
-                <span className="font-semibold text-[#0F3A63]">Destinataire</span>
-                <span className="text-right font-bold text-slate-500">{evaluationData?.assignee?.submitted_to || "Manager du département"}</span>
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-lg bg-slate-50 p-4 text-sm font-semibold text-[#0F3A63]">
-              Cette auto-évaluation personnelle sera envoyée au(x) manager(s) concernés pour complèter l'appréciation du cycle.
-            </div>
-
-            <div className="mt-4 space-y-4">
-              <article className="rounded-xl bg-white p-4 shadow-sm">
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-[22px] font-bold text-[#0F3A63]">Progression globale</h3>
-                  <span className="text-[13px] font-bold text-[#76B82A]">{globalProgress}%</span>
                 </div>
-                <p className="mb-4 text-[12px] font-semibold text-[#76B82A]">{completedSections} section(s) complétée(s)</p>
 
-                <div className="space-y-3">
-                  {sections.map((section) => (
-                    <div key={section.id} className="flex items-center justify-between text-[12px]">
-                      <p className="font-semibold text-[#0F3A63]">{section.title}</p>
-                      <span className="font-bold text-[#76B82A]">{getCycleSectionProgress(section)}%</span>
-                    </div>
-                  ))}
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[12px] font-semibold text-slate-500">Pagination dans la mission</p>
+                    <h4 className="text-[16px] font-bold text-[#0F3A63]">{activeMissionSection?.title}</h4>
+                  </div>
+                  <span className="text-[12px] font-semibold text-[#0F3A63]">
+                    Titre {activeMissionPageIndex + 1} / {activeMissionSection?.groups?.length || 1}
+                  </span>
                 </div>
-              </article>
 
-              <article className="rounded-xl bg-white p-4 shadow-sm">
-                <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">Aide à la notation</h3>
-                <div className="space-y-2">
-                  {gradingHelp.map((item) => (
-                    <div key={item.level} className="flex items-center gap-2 text-[12px]">
-                      <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-200 font-bold text-slate-500">
-                        {item.level}
-                      </span>
-                      <p className={`font-semibold ${item.color}`}>{item.text}</p>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            </div>
-          </article>
-
-          <article className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-4 shadow-sm">
-              <div>
-                <p className="text-xs font-semibold text-slate-500">Dernière sauvegarde</p>
-                <p className="text-sm font-semibold text-[#0F3A63]">{evaluationData?.evaluation?.last_saved_at ? "Enregistree" : "Non disponible"}</p>
-              </div>
-              <div className="flex items-center gap-4 text-sm">
-                <span className="font-semibold text-[#0F3A63]">
-                  Section {sections.findIndex((section) => Number(section.id) === Number(activeSectionId)) + 1} / {sections.length}
-                </span>
-                <button type="button" onClick={() => persistEvaluation(sections, missionEvaluations)} className="font-semibold text-[#76B82A] hover:underline">
-                  {isSaving ? "Sauvegarde..." : "Sauvegarder maintenant"}
-                </button>
-              </div>
-            </div>
-
-            <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {sections.map((section) => {
-                const progress = getCycleSectionProgress(section);
-                const done = section.status === "Complete";
-
-                return (
-                  <button
-                    key={section.id}
-                    type="button"
-                    onClick={() => {
-                      setActiveSectionId(Number(section.id));
-                      setFeedbackMessage("");
-                    }}
-                    className={`rounded-md border px-3 py-3 text-left text-white transition ${
-                      Number(activeSectionId) === Number(section.id)
-                        ? "border-[#76B82A] bg-[#003B63] shadow-[0_0_0_1px_#76B82A]"
-                        : "border-transparent bg-[#003B63] hover:bg-[#0B4C7A]"
-                    }`}
-                  >
-                    <div className="mb-2 flex items-center justify-between">
-                      <h2 className="text-[13px] font-bold">{section.title}</h2>
-                      {done ? <Check size={14} className="text-white" /> : null}
-                    </div>
-                    <p className="text-[12px] font-semibold">{section.pages?.length || 0} titre(s)</p>
-                    <div className="mt-3 h-1.5 rounded-full bg-slate-200">
-                      <div className={`h-1.5 rounded-full ${done ? "bg-[#7BC443]" : "bg-[#D6DCE2]"}`} style={{ width: `${progress}%` }} />
-                    </div>
-                    <p className="mt-1.5 text-[10px] font-semibold text-slate-200">
-                      {done ? "Complete" : progress ? `En cours - ${progress}%` : "A faire"}
-                    </p>
-                  </button>
-                );
-              })}
-            </section>
-
-            <section className="rounded-xl bg-white p-4 shadow-sm">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-[12px] font-semibold text-slate-500">Pagination dans la section</p>
-                  <h3 className="text-[18px] font-bold text-[#0F3A63]">{activeSection.title}</h3>
-                </div>
-                <span className="text-[12px] font-semibold text-[#0F3A63]">
-                  Titre {activePageIndex + 1} / {activeSection.pages?.length || 1}
-                </span>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {(activeSection.pages || []).map((page, index) => {
-                  const isActive = index === activePageIndex;
-                  const progress = getPageProgress(page);
-                  const sourceBadgeLabel = getSourceBadgeLabel(page);
-
-                  return (
+                <div className="flex flex-wrap gap-2">
+                  {(activeMissionSection?.groups || []).map((group, index) => (
                     <button
-                      key={page.page_id}
+                      key={group.key}
                       type="button"
                       onClick={() =>
-                        setPageIndexes((current) => ({
+                        setMissionPageIndexes((current) => ({
                           ...current,
-                          [activeSection.id]: index,
+                          [activeMission.id]: index,
                         }))
                       }
                       className={`rounded-md border px-3 py-2 text-left transition ${
-                        isActive
+                        index === activeMissionPageIndex
                           ? "border-[#76B82A] bg-[#F3FAEA] text-[#0F3A63]"
                           : "border-[#D9E3EE] bg-white text-slate-600 hover:bg-slate-50"
                       }`}
                     >
                       <p className="text-[11px] font-bold">Titre {index + 1}</p>
-                      <p className="mt-1 text-[12px] font-semibold">{page.title}</p>
-                      {shouldShowSourceLabel && sourceBadgeLabel && page.source_sheet !== "TRONC COMMUN" ? (
+                      <p className="mt-1 text-[12px] font-semibold">{group.pageTitle}</p>
+                      {shouldShowSourceLabel &&
+                      getSourceBadgeLabel({ source_label: group.sourceLabel, source_sheet: group.sourceSheet }) &&
+                      group.sourceSheet !== "TRONC COMMUN" ? (
                         <span className="mt-2 inline-flex rounded-full bg-[#EEF3F8] px-2 py-0.5 text-[10px] font-semibold text-[#0F3A63]">
-                          {sourceBadgeLabel}
+                          {getSourceBadgeLabel({ source_label: group.sourceLabel, source_sheet: group.sourceSheet })}
                         </span>
                       ) : null}
-                      <p className="mt-1 text-[10px] font-semibold text-[#76B82A]">{progress}%</p>
+                      <p className="mt-1 text-[10px] font-semibold text-[#76B82A]">{getMissionGroupProgress(group)}%</p>
                     </button>
-                  );
-                })}
-              </div>
-            </section>
-
-            <section className="grid grid-cols-1">
-              <article className="rounded-xl bg-white p-4 shadow-sm">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-[28px] font-bold leading-none text-[#0F3A63]">{activeSection.title}</h3>
-                    <p className="mt-2 text-[18px] font-semibold text-[#0F3A63]">{activePage.title}</p>
-                    {shouldShowSourceLabel && activePageSourceBadgeLabel && activePage.source_sheet !== "TRONC COMMUN" ? (
-                      <span className="mt-2 inline-flex rounded-full bg-[#EEF3F8] px-2.5 py-1 text-[11px] font-semibold text-[#0F3A63]">
-                        {activePageSourceBadgeLabel}
-                      </span>
-                    ) : null}
-                    <p className="mt-2 text-[12px] font-semibold text-slate-500">Score moyen : {averageScore} / 5</p>
-                  </div>
-                  <span className="text-[16px] font-bold text-[#32B3E0]">{activeSection.status}</span>
-                </div>
-
-                <div className="space-y-3.5">
-                  {(activePage.themes || []).map((theme) => (
-                    <CycleScoreRow key={theme.theme_id} theme={theme} onSelect={(score) => updateScore(theme.theme_id, score)} />
                   ))}
                 </div>
+              </section>
 
-                <div className="mt-4">
-                  <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire de section</p>
-                  <textarea
-                    rows={4}
-                    value={activeSection.comment || ""}
-                    onChange={(event) => updateComment(event.target.value)}
-                    placeholder="Synthèse globale de la section, points forts, contexte..."
-                    className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
-                  />
-                </div>
-
-                {savedComments[activeSection.id] ? (
-                  <div className="mt-3 rounded-sm bg-[#DCECCB] px-3 py-2">
-                    <p className="text-[10px] font-bold text-[#5A8A3A]">Commentaire sauvegardé</p>
-                    <p className="mt-1 text-[11px] font-semibold text-[#0F3A63]">{savedComments[activeSection.id]}</p>
+              {activeMissionGroup ? (
+                <section className="rounded-xl bg-white p-4 shadow-sm">
+                  <div className="mb-4">
+                    <p className="text-[11px] font-bold uppercase text-slate-500">{activeMissionGroup.sectionTitle}</p>
+                    <p className="mt-1 text-[15px] font-bold text-[#0F3A63]">{activeMissionGroup.pageTitle}</p>
+                    {shouldShowSourceLabel &&
+                    getSourceBadgeLabel({ source_label: activeMissionGroup.sourceLabel, source_sheet: activeMissionGroup.sourceSheet }) &&
+                    activeMissionGroup.sourceSheet !== "TRONC COMMUN" ? (
+                      <span className="mt-2 inline-flex rounded-full bg-[#EEF3F8] px-2.5 py-1 text-[11px] font-semibold text-[#0F3A63]">
+                        {getSourceBadgeLabel({ source_label: activeMissionGroup.sourceLabel, source_sheet: activeMissionGroup.sourceSheet })}
+                      </span>
+                    ) : null}
                   </div>
-                ) : null}
 
-                <div className="mt-3 rounded-sm bg-[#DCECCB] px-3 py-2 text-[10px] font-semibold text-[#5A8A3A]">
-                  Les questions obligatoires sans réponse bloqueront la soumission aux managers concernés.
-                </div>
+                  <div className="space-y-3.5">
+                    {(activeMissionGroup.criteria || []).map((criterion) => (
+                      <MissionScoreRow key={criterion.id} criterion={criterion} onSelect={(score) => updateMissionScore(criterion.id, score)} />
+                    ))}
+                  </div>
 
-                <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() => goToCycleStep(-1)}
-                    disabled={Number(activeSectionId) === Number(sections[0]?.id) && activePageIndex === 0}
-                    className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <ChevronLeft size={14} />
-                    Précédent
-                  </button>
+                  <div className="mt-4 rounded-md bg-[#F8FAFC] p-3">
+                    <label className="text-[12px] font-bold text-[#0F3A63]">
+                      Commentaire de section <span className="text-[11px] text-slate-500">(minimum 3 caractères)</span>
+                    </label>
+                    <textarea
+                      value={activeMissionSection?.comment || ""}
+                      onChange={(event) => updateMissionSectionComment(event.target.value)}
+                      rows={3}
+                      placeholder="Synthèse de la section pour cette mission..."
+                      className="mt-2 w-full resize-none rounded-md bg-white px-3 py-2 text-[12px] text-[#0F3A63] outline-none ring-1 ring-[#D9E3EE] focus:ring-[#76B82A]"
+                    />
+                  </div>
 
-                  {!isLastCycleStep ? (
-                    <button
-                      type="button"
-                      onClick={handleSaveAndContinue}
-                      disabled={isSaving || isSubmitting}
-                      className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
-                    >
-                      Sauvegarder et continuer
-                      <ChevronRight size={14} />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleSubmitCycle}
-                      disabled={isSaving || isSubmitting || evaluationData?.evaluation?.status === "Soumis aux Managers"}
-                      className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
-                    >
-                      {isSubmitting ? "Soumission..." : "Soumettre aux managers"}
-                    </button>
-                  )}
-                </div>
-
-                {feedbackMessage ? (
-                  <p className={`mt-2 text-right text-[11px] font-semibold ${feedbackTone === "error" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>
-                    {feedbackMessage}
-                  </p>
-                ) : null}
-              </article>
+                  <div className="mt-5 flex justify-end">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => goToMissionStep(-1)}
+                        disabled={activeMissionSectionIndex === 0 && activeMissionPageIndex === 0}
+                        className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <ChevronLeft size={14} />
+                        Précédent
+                      </button>
+                      {!(activeMissionSectionIndex === missionSections.length - 1 && activeMissionPageIndex === Math.max((activeMissionSection?.groups?.length || 1) - 1, 0)) ? (
+                        <button
+                          type="button"
+                          onClick={handleSaveAndContinue}
+                          className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
+                        >
+                          Sauvegarder et continuer
+                          <ChevronRight size={14} />
+                        </button>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={handleSubmitMission}
+                            disabled={isSaving || isSubmitting}
+                            className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                          >
+                            {isSubmitting ? "Soumission..." : activeMission.status === "Soumise" ? "Retransmettre la mission" : "Soumettre la mission"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              persistMissionEvaluations(missionEvaluations, {
+                                scope: "mission",
+                              })
+                            }
+                            className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
+                          >
+                            Enregistrer la mission
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <InlineFeedback feedback={missionFeedback} />
+                  </div>
+                </section>
+              ) : null}
+            </>
+          ) : (
+            <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">
+              Aucune mission ajoutée pour le moment.
             </section>
-          </article>
-        </section>
-      )}
+          )}
+
+          <section className="rounded-xl bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-[20px] font-bold text-[#0F3A63]">Aide à la notation</h3>
+            </div>
+            <div className="space-y-2">
+              {gradingHelp.map((item) => (
+                <div key={item.level} className="flex items-center gap-2 text-[12px]">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-200 font-bold text-slate-500">
+                    {item.level}
+                  </span>
+                  <p className={`font-semibold ${item.color}`}>{item.text}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  persistMissionEvaluations(missionEvaluations, {
+                    scope: "final",
+                  })
+                }
+                disabled={isSaving || isSubmitting}
+                className="rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600 disabled:opacity-70"
+              >
+                {isSaving ? "Sauvegarde..." : "Enregistrer"}
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitFinal}
+                disabled={isSaving || isSubmitting}
+                className="rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+              >
+                {isSubmitting ? "Soumission..." : "Finaliser l'évaluation"}
+              </button>
+            </div>
+            <div className="mt-3">
+              <InlineFeedback feedback={finalFeedback} />
+            </div>
+          </section>
+        </article>
+      </section>
     </section>
   );
 }

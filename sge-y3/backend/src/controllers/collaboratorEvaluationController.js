@@ -222,6 +222,7 @@ function normalizeMissionEvaluations(missionEvaluations = []) {
           section_title: String(criterion.sectionTitle || criterion.section_title || '').trim(),
           section_comment: String(criterion.sectionComment || criterion.section_comment || '').trim(),
           page_title: String(criterion.pageTitle || criterion.page_title || '').trim(),
+          page_comment: String(criterion.pageComment || criterion.page_comment || '').trim(),
           source_sheet: String(criterion.sourceSheet || criterion.source_sheet || '').trim(),
           source_label: String(criterion.sourceLabel || criterion.source_label || '').trim(),
           theme_code: String(criterion.themeCode || criterion.theme_code || '').trim(),
@@ -263,6 +264,7 @@ function formatMissionEvaluations(missionEvaluations = []) {
       sectionTitle: criterion.section_title,
       sectionComment: criterion.section_comment || '',
       pageTitle: criterion.page_title,
+      pageComment: criterion.page_comment || '',
       sourceSheet: criterion.source_sheet,
       sourceLabel: criterion.source_label,
       themeCode: criterion.theme_code,
@@ -330,6 +332,47 @@ function validateMissionSectionCommentsForSubmit(mission, minimumLength = 3) {
   return getMissionSections(mission)
     .filter((section) => String(section.comment || '').trim().length < normalizedMinimumLength)
     .map((section) => ({ sectionTitle: section.title }));
+}
+
+function validateMissionLowScorePageComments(mission, minimumLength = 3) {
+  const normalizedMinimumLength = Math.max(Number(minimumLength) || 0, 1);
+  const missingPageComments = [];
+  const sectionMap = new Map();
+
+  (mission.criteria || []).forEach((criterion) => {
+    const sectionTitle = String(criterion.section_title || criterion.sectionTitle || '').trim() || 'Section';
+    const pageTitle = String(criterion.page_title || criterion.pageTitle || '').trim() || 'Titre';
+    const key = `${sectionTitle}::${pageTitle}`;
+
+    if (!sectionMap.has(key)) {
+      sectionMap.set(key, {
+        sectionTitle,
+        pageTitle,
+        pageComment: String(criterion.page_comment || criterion.pageComment || '').trim(),
+        criteria: [],
+      });
+    }
+
+    const page = sectionMap.get(key);
+    const pageComment = String(criterion.page_comment || criterion.pageComment || '').trim();
+    if (!page.pageComment && pageComment) {
+      page.pageComment = pageComment;
+    }
+    page.criteria.push(criterion);
+  });
+
+  Array.from(sectionMap.values()).forEach((page) => {
+    const hasLowScore = page.criteria.some((criterion) => typeof criterion.score === 'number' && criterion.score < 3);
+
+    if (hasLowScore && String(page.pageComment || '').trim().length < normalizedMinimumLength) {
+      missingPageComments.push({
+        sectionTitle: page.sectionTitle,
+        pageTitle: page.pageTitle,
+      });
+    }
+  });
+
+  return missingPageComments;
 }
 
 function getMissionAverageScore(criteria = []) {
@@ -553,9 +596,11 @@ async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
   const rawMissionEvaluations = Array.isArray(request.body?.missionEvaluations) ? request.body.missionEvaluations : null;
   const instance = await getOrCreateEvaluation(request.user);
   const isAssistantEvaluation = instance.template_type === 'assistant-self-evaluation';
+  const isSeniorEvaluation = instance.template_type === 'senior-self-evaluation';
+  const isMissionOnlySelfEvaluation = isAssistantEvaluation || isSeniorEvaluation;
   const sections = rawSections?.length ? normalizeSections(rawSections) : normalizeSections(instance.sections);
 
-  if (!isAssistantEvaluation && !rawSections?.length) {
+  if (!isMissionOnlySelfEvaluation && !rawSections?.length) {
     return response.status(400).json({
       message: "Les sections de l'auto-evaluation sont requises.",
     });
@@ -584,14 +629,14 @@ async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
     });
   }
 
-  const summary = isAssistantEvaluation ? getMissionEvaluationSummary(missionEvaluations || instance.mission_evaluations || []) : getEvaluationSummary(sections);
+  const summary = isMissionOnlySelfEvaluation ? getMissionEvaluationSummary(missionEvaluations || instance.mission_evaluations || []) : getEvaluationSummary(sections);
   const resolvedManagers = await resolveRecipientsForInstance(instance, request.user);
   const resolvedMissionRecipients =
     isAssistantEvaluation
       ? await resolveMissionRecipientsForAssistant(request.user)
       : resolvedManagers;
 
-  if (missionEvaluations && isAssistantEvaluation) {
+  if (missionEvaluations && isMissionOnlySelfEvaluation) {
     const availableRecipients = buildMissionRecipients(resolvedMissionRecipients);
     missionEvaluations = missionEvaluations.map((mission) => ({
       ...mission,
@@ -635,7 +680,7 @@ async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
     }));
   }
 
-  if (rawSections?.length || !isAssistantEvaluation) {
+  if (rawSections?.length || !isMissionOnlySelfEvaluation) {
     instance.sections = toPersistenceSections(sections);
   }
   if (missionEvaluations) {
@@ -722,6 +767,8 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
   const sections = normalizeSections(instance.sections);
   const missionEvaluations = normalizeMissionEvaluations(instance.mission_evaluations || []);
   const isAssistantEvaluation = instance.template_type === 'assistant-self-evaluation';
+  const isSeniorEvaluation = instance.template_type === 'senior-self-evaluation';
+  const isMissionOnlySelfEvaluation = isAssistantEvaluation || isSeniorEvaluation;
   const managerRecipients =
     allowExplicitRecipients && Array.isArray(request.body?.managerRecipients)
       ? request.body.managerRecipients
@@ -743,7 +790,7 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
     resolvedManagers
   );
 
-  if (isAssistantEvaluation) {
+  if (isMissionOnlySelfEvaluation) {
     if (!missionEvaluations.length) {
       return response.status(400).json({
         message: 'Ajoutez au moins une mission avant la soumission finale.',

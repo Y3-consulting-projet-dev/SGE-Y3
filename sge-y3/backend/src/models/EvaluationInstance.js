@@ -57,6 +57,7 @@ const missionCriterionSchema = new mongoose.Schema(
     section_title: { type: String, default: '', trim: true },
     section_comment: { type: String, default: '', trim: true },
     page_title: { type: String, default: '', trim: true },
+    page_comment: { type: String, default: '', trim: true },
     source_sheet: { type: String, default: '', trim: true },
     source_label: { type: String, default: '', trim: true },
     theme_code: { type: String, default: '', trim: true },
