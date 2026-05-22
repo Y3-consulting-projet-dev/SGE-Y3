@@ -7,16 +7,21 @@ const reminders = [
 ];
 
 function formatProgressSubtitle(evaluation) {
-  const completed = evaluation?.summary?.completedSections || 0;
-  const total = evaluation?.summary?.totalSections || 4;
+  const completed = evaluation?.summary?.completedMissions || 0;
+  const total = evaluation?.summary?.totalMissions || 0;
   const progress = evaluation?.summary?.globalProgress || 0;
 
-  return `Section ${Math.min(completed + 1, total)} / ${total} - ${progress}%`;
+  if (!total) {
+    return `0 mission - ${progress}%`;
+  }
+
+  return `${completed} / ${total} mission(s) - ${progress}%`;
 }
 
-function getSectionStepTitle(section) {
-  const status = section.status === "Complete" ? "complète" : section.status === "En cours" ? "En cours" : "À faire";
-  return `${section.title} ${status}`;
+function getMissionStepTitle(mission) {
+  const progress = mission?.progress ?? 0;
+  const status = mission?.status === "Soumise" ? "soumise" : progress === 100 ? "complète" : progress > 0 ? "en cours" : "à faire";
+  return `${mission.title} ${status}`;
 }
 
 function getEvaluationStatusLabel(status) {
@@ -38,15 +43,22 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
   ];
 
   const progressSteps =
-    evaluation?.evaluation?.sections?.map((section) => ({
-      id: section.id,
-      title: getSectionStepTitle(section),
-      subtitle: section.subtitle,
-      done: section.status === "Complete",
+    evaluation?.mission_evaluations?.map((mission) => ({
+      id: mission.id,
+      title: getMissionStepTitle({
+        ...mission,
+        progress: mission?.criteria?.length
+          ? Math.round(
+              (mission.criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length / mission.criteria.length) * 100
+            )
+          : 0,
+      }),
+      subtitle: `${mission.period || "Période non renseignée"} - ${mission.department || "Département non renseigné"}`,
+      done: mission.status === "Soumise",
     })) || [];
 
   const globalProgress = evaluation?.summary?.globalProgress || 0;
-  const completedSections = evaluation?.summary?.completedSections || 0;
+  const completedMissions = evaluation?.summary?.completedMissions || 0;
 
   return (
     <div className="space-y-4">
@@ -154,7 +166,7 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
               ))}
             </div>
             <p className="mt-4 text-[11px] font-semibold text-[#0F3A63]">
-              {completedSections} section(s) complétée(s) sur {evaluation?.summary?.totalSections || 4}.
+              {completedMissions} mission(s) complétée(s) sur {evaluation?.summary?.totalMissions || 0}.
             </p>
           </article>
         </div>

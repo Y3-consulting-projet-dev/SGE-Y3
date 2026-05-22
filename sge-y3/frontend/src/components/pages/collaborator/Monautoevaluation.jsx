@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { useRef } from "react";
 import {
   saveMyAssistantEvaluation,
   submitMyAssistantEvaluation,
@@ -31,24 +32,6 @@ function getSourceBadgeLabel(page) {
   return "";
 }
 
-function getPageProgress(page) {
-  const themes = page?.themes || [];
-  const answered = themes.filter((theme) => theme.score !== null && theme.score !== undefined).length;
-  if (!themes.length) return 0;
-  return Math.round((answered / themes.length) * 100);
-}
-
-function getCycleSectionProgress(section) {
-  const pages = section?.pages || [];
-  const totalThemes = pages.reduce((total, page) => total + (page.themes?.length || 0), 0);
-  const answeredThemes = pages.reduce(
-    (total, page) => total + (page.themes || []).filter((theme) => theme.score !== null && theme.score !== undefined).length,
-    0
-  );
-  if (!totalThemes) return 0;
-  return Math.round((answeredThemes / totalThemes) * 100);
-}
-
 function getMissionProgress(mission) {
   const criteria = mission?.criteria || [];
   const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
@@ -56,16 +39,39 @@ function getMissionProgress(mission) {
   return Math.round((answered / criteria.length) * 100);
 }
 
-function getPageAverage(page) {
-  const scores = (page?.themes || []).map((theme) => theme.score).filter((score) => typeof score === "number");
-  if (!scores.length) return "--";
-  return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
-}
-
 function getMissionAverage(criteria = []) {
   const scores = criteria.map((criterion) => criterion.score).filter((score) => typeof score === "number");
   if (!scores.length) return "--";
   return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
+}
+
+function formatMissionPeriodLabel(startDate, endDate) {
+  const formatDate = (value) => {
+    if (!value) return "";
+    const [year, month, day] = String(value).split("-");
+    if (!year || !month || !day) return value;
+    return `${day}-${month}-${year}`;
+  };
+
+  const formattedStartDate = formatDate(startDate);
+  const formattedEndDate = formatDate(endDate);
+
+  if (!formattedStartDate && !formattedEndDate) return "Période non renseignée";
+  if (formattedStartDate && formattedEndDate) return `Du ${formattedStartDate} au ${formattedEndDate}`;
+  if (formattedStartDate) return `À partir du ${formattedStartDate}`;
+  return `Jusqu'au ${formattedEndDate}`;
+}
+
+function getMissionFinalScore(missions = []) {
+  const missionScores = missions
+    .map((mission) => {
+      const average = getMissionAverage(mission.criteria || []);
+      return average === "--" ? null : Number(average);
+    })
+    .filter((score) => typeof score === "number");
+
+  if (!missionScores.length) return "--";
+  return (missionScores.reduce((total, score) => total + score, 0) / missionScores.length).toFixed(1);
 }
 
 function getMissionAssignmentLabel(mission) {
@@ -78,10 +84,6 @@ function getMissionAssignmentLabel(mission) {
 
 function getMissionEvaluationDepartment(mission) {
   return mission?.primaryRecipientDepartment || mission?.department || mission?.recipients?.[0]?.department || "";
-}
-
-function hasRequiredSubmissionComment(sections = []) {
-  return sections.length > 0 && sections.every((section) => String(section.comment || "").trim().length >= 3);
 }
 
 function getMissionPrimaryRecipient(mission) {
@@ -127,6 +129,7 @@ function buildMissionCriteriaFromSections(sections = [], recipientDepartment = "
         ? (page.themes || []).map((theme) => ({
             id: `${page.page_id}-${theme.theme_id}`,
             sectionTitle: section.title,
+            sectionComment: "",
             pageTitle: page.title,
             sourceSheet: page.source_sheet || "",
             sourceLabel: page.source_label || "",
@@ -228,6 +231,9 @@ function getMissionSections(groups = []) {
     const existingSection = sections.find((section) => section.title === group.sectionTitle);
 
     if (existingSection) {
+      if (!existingSection.comment && group.criteria?.[0]?.sectionComment) {
+        existingSection.comment = group.criteria[0].sectionComment;
+      }
       existingSection.groups.push(group);
       continue;
     }
@@ -235,6 +241,7 @@ function getMissionSections(groups = []) {
     sections.push({
       id: group.sectionTitle,
       title: group.sectionTitle,
+      comment: group.criteria?.[0]?.sectionComment || "",
       groups: [group],
     });
   }
@@ -247,24 +254,6 @@ function getMissionSectionProgress(section) {
   const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
   if (!criteria.length) return 0;
   return Math.round((answered / criteria.length) * 100);
-}
-
-function createInitialPageIndexes(sections = []) {
-  return Object.fromEntries(
-    sections.map((section) => {
-      const firstIncompletePageIndex = (section.pages || []).findIndex((page) => getPageProgress(page) < 100);
-      return [section.id, firstIncompletePageIndex >= 0 ? firstIncompletePageIndex : 0];
-    })
-  );
-}
-
-function clampPageIndexes(sections = [], currentIndexes = {}) {
-  return Object.fromEntries(
-    sections.map((section) => {
-      const maxIndex = Math.max((section.pages?.length || 1) - 1, 0);
-      return [section.id, Math.min(currentIndexes[section.id] || 0, maxIndex)];
-    })
-  );
 }
 
 function CycleScoreRow({ theme, onSelect }) {
@@ -330,45 +319,31 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     }))
   );
   const initialRecipientValue = recipientOptions[0] ? getRecipientOptionValue(recipientOptions[0]) : "";
-  const [step, setStep] = useState("missions");
   const [missionEvaluations, setMissionEvaluations] = useState(() => sanitizeMissionEvaluations(evaluationData?.mission_evaluations || []));
   const [MissionId, setMissionId] = useState(null);
   const [missionSectionIds, setMissionSectionIds] = useState({});
   const [missionPageIndexes, setMissionPageIndexes] = useState({});
   const [missionTitle, setMissionTitle] = useState("");
-  const [missionPeriod, setMissionPeriod] = useState("");
+  const [missionStartDate, setMissionStartDate] = useState("");
+  const [missionEndDate, setMissionEndDate] = useState("");
   const [selectedRecipientValue, setSelectedRecipientValue] = useState(initialRecipientValue);
-  const [sections, setSections] = useState(() => evaluationData?.evaluation?.sections || []);
-  const [SectionId, setSectionId] = useState(Number(evaluationData?.evaluation?.SectionId || 1));
-  const [pageIndexes, setPageIndexes] = useState(() => createInitialPageIndexes(evaluationData?.evaluation?.sections || []));
-  const [saved, setSaved] = useState(false);
+  const [sections] = useState(() => evaluationData?.evaluation?.sections || []);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackTone, setFeedbackTone] = useState("success");
-  const [savedComments, setSavedComments] = useState(() =>
-    Object.fromEntries(
-      (evaluationData?.evaluation?.sections || [])
-        .filter((section) => section.comment?.trim())
-        .map((section) => [section.id, section.comment.trim()])
-    )
-  );
+  const missionCreationCounterRef = useRef(0);
 
   const shouldShowSourceLabel = evaluationData?.assignee?.department === "AUDIT & EXPERTISE COMPTABLE";
-  const Mission = missionEvaluations.find((mission) => isSameMissionId(mission.id, MissionId)) || null;
-  const Section = sections.find((section) => Number(section.id) === Number(SectionId)) || sections[0];
-  const PageIndex = pageIndexes[Section?.id] || 0;
-  const Page = Section?.pages?.[PageIndex] || Section?.pages?.[0];
-  const PageSourceBadgeLabel = getSourceBadgeLabel(Page);
-  const completedSections = sections.filter((section) => section.status === "Complete").length;
-  const globalProgress = Math.round(
-    sections.reduce((total, section) => total + getCycleSectionProgress(section), 0) / (sections.length || 1)
-  );
+  const effectiveMissionId =
+    missionEvaluations.some((mission) => isSameMissionId(mission.id, MissionId)) ? MissionId : missionEvaluations[0]?.id || null;
+  const Mission = missionEvaluations.find((mission) => isSameMissionId(mission.id, effectiveMissionId)) || null;
   const missionProgress = missionEvaluations.length
     ? Math.round(missionEvaluations.reduce((total, mission) => total + getMissionProgress(mission), 0) / missionEvaluations.length)
     : 0;
-  const averageScore = useMemo(() => getPageAverage(Page), [Page]);
   const MissionAverage = useMemo(() => getMissionAverage(Mission?.criteria), [Mission]);
+  const finalMissionScore = useMemo(() => getMissionFinalScore(missionEvaluations), [missionEvaluations]);
+  const submittedMissionsCount = missionEvaluations.filter((mission) => mission.status === "Soumise").length;
   const filteredMissionCriteriaGroups = useMemo(() => {
     const allGroups = getMissionCriteriaGroups(Mission?.criteria || []);
     const recipientDepartment = getMissionEvaluationDepartment(Mission);
@@ -376,12 +351,12 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     return allGroups.filter((group) => shouldShowMissionGroupForRecipient(group, recipientDepartment));
   }, [Mission]);
   const missionSections = useMemo(() => getMissionSections(filteredMissionCriteriaGroups), [filteredMissionCriteriaGroups]);
-  const MissionSectionId = missionSectionIds[MissionId] || missionSections[0]?.id || "";
+  const MissionSectionId = missionSectionIds[effectiveMissionId] || missionSections[0]?.id || "";
   const MissionSection =
     missionSections.find((section) => section.id === MissionSectionId) || missionSections[0] || null;
   const MissionSectionIndex = missionSections.findIndex((section) => section.id === MissionSection?.id);
   const MissionPageIndex = Math.min(
-    missionPageIndexes[MissionId] || 0,
+    missionPageIndexes[effectiveMissionId] || 0,
     Math.max((MissionSection?.groups?.length || 1) - 1, 0)
   );
   const MissionGroup = MissionSection?.groups?.[MissionPageIndex] || MissionSection?.groups?.[0] || null;
@@ -415,24 +390,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     onMissionEvaluationsChange?.(missionEvaluations);
   }, [missionEvaluations, onMissionEvaluationsChange]);
 
-  const syncSections = (updater) => {
-    setSections((currentSections) => {
-      const nextSections = typeof updater === "function" ? updater(currentSections) : updater;
-
-      return nextSections.map((section) => {
-        const progress = getCycleSectionProgress(section);
-        return {
-          ...section,
-          status: progress === 0 ? "À faire" : progress === 100 ? "Complete" : "En cours",
-        };
-      });
-    });
-
-    setSaved(false);
-    setFeedbackMessage("");
-  };
-
-  const addMission = () => {
+  const addMission = async () => {
     const title = missionTitle.trim();
     if (!title) {
       setFeedbackTone("error");
@@ -446,6 +404,12 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
       return;
     }
 
+    if (missionStartDate && missionEndDate && missionEndDate < missionStartDate) {
+      setFeedbackTone("error");
+      setFeedbackMessage("La date de fin doit être postérieure ou égale à la date de début.");
+      return;
+    }
+
     const autoRecipients = [selectedRecipient].map((recipient) => ({
       id: recipient.id,
       name: recipient.name,
@@ -453,10 +417,12 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
       department: recipient.department,
     }));
 
+    missionCreationCounterRef.current += 1;
+
     const nextMission = {
-      id: Date.now(),
+      id: `mission-${missionCreationCounterRef.current}-${missionEvaluations.length + 1}`,
       title,
-      period: missionPeriod.trim() || "Période non renseignée",
+      period: formatMissionPeriodLabel(missionStartDate, missionEndDate),
       department: selectedRecipient.department || evaluationData?.assignee?.department || "",
       createdByRole: "self",
       primaryRecipientUserId: selectedRecipient.id,
@@ -468,7 +434,9 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
       comment: "",
     };
 
-    setMissionEvaluations((missions) => [...missions, nextMission]);
+    const nextMissionEvaluations = [...missionEvaluations, nextMission];
+
+    setMissionEvaluations(nextMissionEvaluations);
     setMissionId(nextMission.id);
     setMissionSectionIds((current) => ({
       ...current,
@@ -476,16 +444,23 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     }));
     setMissionPageIndexes((current) => ({ ...current, [nextMission.id]: 0 }));
     setMissionTitle("");
-    setMissionPeriod("");
+    setMissionStartDate("");
+    setMissionEndDate("");
     setSelectedRecipientValue(initialRecipientValue);
+
+    const savedResponse = await persistMissionEvaluations(nextMissionEvaluations);
+    if (!savedResponse) {
+      return;
+    }
+
     setFeedbackTone("success");
-    setFeedbackMessage("Mission ajoutée. Elle sera soumise uniquement au destinataire sélectionné.");
+    setFeedbackMessage("Mission ajoutée et enregistrée. Elle restera disponible même si vous quittez la page.");
   };
 
   const updateMissionScore = (criterionLabel, score) => {
     setMissionEvaluations((missions) =>
       missions.map((mission) =>
-        !isSameMissionId(mission.id, MissionId)
+        !isSameMissionId(mission.id, effectiveMissionId)
           ? mission
           : {
               ...mission,
@@ -497,9 +472,18 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     );
   };
 
-  const updateMissionComment = (comment) => {
+  const updateMissionSectionComment = (comment) => {
     setMissionEvaluations((missions) =>
-      missions.map((mission) => (isSameMissionId(mission.id, MissionId) ? { ...mission, comment } : mission))
+      missions.map((mission) =>
+        !isSameMissionId(mission.id, effectiveMissionId)
+          ? mission
+          : {
+              ...mission,
+              criteria: mission.criteria.map((criterion) =>
+                criterion.sectionTitle === MissionSection?.title ? { ...criterion, sectionComment: comment } : criterion
+              ),
+            }
+      )
     );
   };
 
@@ -528,61 +512,16 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     }));
   };
 
-  const updateScore = (themeId, score) => {
-    syncSections((currentSections) =>
-      currentSections.map((section) => {
-        if (Number(section.id) !== Number(SectionId)) return section;
-
-        return {
-          ...section,
-          pages: (section.pages || []).map((page, pageIndex) =>
-            pageIndex !== PageIndex
-              ? page
-              : {
-                  ...page,
-                  themes: (page.themes || []).map((theme) =>
-                    theme.theme_id === themeId ? { ...theme, score } : theme
-                  ),
-                }
-          ),
-        };
-      })
-    );
-  };
-
-  const updateComment = (comment) => {
-    syncSections((currentSections) =>
-      currentSections.map((section) => {
-        if (Number(section.id) !== Number(SectionId)) return section;
-
-        return {
-          ...section,
-          comment,
-        };
-      })
-    );
-  };
-
-  const persistSections = async (nextSections = sections) => {
+  const persistMissionEvaluations = async (nextMissionEvaluations = missionEvaluations) => {
     setIsSaving(true);
 
     try {
       const response = await saveMyAssistantEvaluation({
-        sections: nextSections,
-        missionEvaluations,
+        missionEvaluations: nextMissionEvaluations,
       });
-      setSections(response.evaluation.sections);
       setMissionEvaluations(sanitizeMissionEvaluations(response.mission_evaluations || []));
-      setPageIndexes((current) => clampPageIndexes(response.evaluation.sections, current));
-      setSaved(true);
       setFeedbackTone("success");
       setFeedbackMessage(response.message || "Sauvegarde réussie.");
-
-      const currentSection = response.evaluation.sections.find((section) => Number(section.id) === Number(SectionId));
-      if (currentSection?.comment?.trim()) {
-        setSavedComments((comments) => ({ ...comments, [currentSection.id]: currentSection.comment.trim() }));
-      }
-
       onEvaluationChange?.(response);
       return response;
     } catch (error) {
@@ -607,14 +546,23 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
       return;
     }
 
+    const hasSectionWithoutComment = missionSections.some(
+      (section) => String(section.comment || "").trim().length < 3
+    );
+
+    if (hasSectionWithoutComment) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Un commentaire de section d'au moins 3 caractères est obligatoire pour chaque section avant soumission.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const savedResponse = await persistSections(sections);
+      const savedResponse = await persistMissionEvaluations(missionEvaluations);
       if (!savedResponse) return;
 
       const response = await submitMyAssistantMissionEvaluation(Mission.id);
-      setSections(response.evaluation.sections);
       setMissionEvaluations(sanitizeMissionEvaluations(response.mission_evaluations || []));
       setFeedbackTone("success");
       setFeedbackMessage(response.message || "Mission soumise.");
@@ -627,91 +575,48 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     }
   };
 
-  const goToStep = (direction) => {
-    const sectionIndex = sections.findIndex((section) => Number(section.id) === Number(SectionId));
-    const pages = Section?.pages || [];
-    const nextPageIndex = PageIndex + direction;
-
-    if (nextPageIndex >= 0 && nextPageIndex < pages.length) {
-      setPageIndexes((current) => ({ ...current, [SectionId]: nextPageIndex }));
-      setSaved(false);
-      setFeedbackMessage("");
-      return;
-    }
-
-    const nextSection = sections[sectionIndex + direction];
-    if (!nextSection) return;
-
-    setSectionId(Number(nextSection.id));
-    setPageIndexes((current) => ({
-      ...current,
-      [nextSection.id]: direction > 0 ? 0 : Math.max((nextSection.pages?.length || 1) - 1, 0),
-    }));
-    setSaved(false);
-    setFeedbackMessage("");
-  };
-
-  const handleSaveAndContinue = async () => {
-    const response = await persistSections(sections);
-    if (response) goToStep(1);
-  };
-
   const handleSubmit = async () => {
-    if (!hasRequiredSubmissionComment(sections)) {
+    if (!missionEvaluations.length) {
       setFeedbackTone("error");
-      setFeedbackMessage("Un commentaire d'au moins 3 caractères est obligatoire pour chaque section avant soumission.");
+      setFeedbackMessage("Ajoutez au moins une mission avant la soumission finale.");
       return;
     }
 
+    const hasSectionWithoutComment = missionEvaluations.some(
+      (mission) =>
+        getMissionSections(getMissionCriteriaGroups(mission.criteria || [])).some(
+          (section) => String(section.comment || "").trim().length < 3
+        )
+    );
+
+    if (hasSectionWithoutComment) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Un commentaire d'au moins 3 caractères est obligatoire pour chaque section avant la soumission finale.");
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
-      const savedResponse = await persistSections(sections);
+      const savedResponse = await persistMissionEvaluations(missionEvaluations);
       if (!savedResponse) return;
 
       const submittedResponse = await submitMyAssistantEvaluation({
         managerRecipients,
         missionEvaluations,
       });
-      setSections(submittedResponse.evaluation.sections);
-      setPageIndexes(createInitialPageIndexes(submittedResponse.evaluation.sections));
       setFeedbackTone("success");
-      setFeedbackMessage(submittedResponse.message || "Auto-évaluation soumise aux managers.");
+      setFeedbackMessage(submittedResponse.message || "Évaluations par mission soumises aux managers.");
       onEvaluationChange?.(submittedResponse);
       onSubmitted?.(submittedResponse);
     } catch (error) {
       setFeedbackTone("error");
       setFeedbackMessage(error.message || "Soumission impossible.");
-
-      const firstMissingSection = error?.details?.missingAnswers?.[0]?.sectionId;
-      const firstMissingPageTitle = error?.details?.missingAnswers?.[0]?.pageTitle;
-
-      if (firstMissingSection) {
-        setStep("cycle");
-        setSectionId(Number(firstMissingSection));
-        const nextSection = sections.find((section) => Number(section.id) === Number(firstMissingSection));
-        const missingPageIndex = (nextSection?.pages || []).findIndex((page) => page.title === firstMissingPageTitle);
-        if (missingPageIndex >= 0) {
-          setPageIndexes((current) => ({ ...current, [firstMissingSection]: missingPageIndex }));
-        }
-      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (!Section || !Page) {
-    return (
-      <div className="rounded-md bg-white p-4 text-sm font-semibold text-slate-500 shadow-sm">
-        Chargement de l'auto-évaluation...
-      </div>
-    );
-  }
-
-  const isLastStep =
-    sections.findIndex((section) => Number(section.id) === Number(SectionId)) === sections.length - 1 &&
-    PageIndex === (Section.pages?.length || 1) - 1;
   const isLastMissionStep =
     MissionSectionIndex === missionSections.length - 1 &&
     MissionPageIndex === (MissionSection?.groups?.length || 1) - 1;
@@ -719,42 +624,20 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   return (
     <div className="space-y-3">
       <div className="text-[10px] text-slate-500">
-        {evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"} - Auto-évaluation en deux étapes - Sauvegarde progressive activée
+        {evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"} - Auto-évaluation par mission - Sauvegarde progressive activée
       </div>
 
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <button
-          type="button"
-          onClick={() => setStep("missions")}
-          className={`rounded-lg p-4 text-left transition ${
-            step === "missions" ? "bg-[#003B63] text-white" : "bg-white text-[#0F3A63] shadow-sm"
-          }`}
-        >
-          <p className="text-xs font-bold uppercase opacity-80">Étape 1</p>
-          <h2 className="mt-1 text-lg font-black">Évaluation par mission</h2>
-          <p className="mt-2 text-xs font-semibold opacity-80">Optionnelle - missions ajoutées par le collaborateur - {missionProgress}%</p>
-        </button>
-        <button
-          type="button"
-          onClick={() => setStep("cycle")}
-          className={`rounded-lg p-4 text-left transition ${
-            step === "cycle" ? "bg-[#003B63] text-white" : "bg-white text-[#0F3A63] shadow-sm"
-          }`}
-        >
-          <p className="text-xs font-bold uppercase opacity-80">Étape 2</p>
-          <h2 className="mt-1 text-lg font-black">Évaluation globale du cycle</h2>
-          <p className="mt-2 text-xs font-semibold opacity-80">
-            {evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"} - {globalProgress}%
-          </p>
-        </button>
-      </section>
+      {feedbackMessage ? (
+        <div className={`rounded-md px-4 py-3 text-sm font-semibold ${feedbackTone === "error" ? "bg-[#FDEBEC] text-[#B93840]" : "bg-[#DCECCB] text-[#184D2E]"}`}>
+          {feedbackMessage}
+        </div>
+      ) : null}
 
-      {step === "missions" ? (
-        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.95fr_1.25fr]">
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.95fr_1.25fr]">
           <article className="rounded-md bg-white p-4 shadow-sm">
             <h3 className="text-lg font-bold text-[#0F3A63]">Mes missions de l'année</h3>
             <p className="mt-1 text-xs font-semibold text-slate-500">
-              Le collaborateur peut renseigner ici les missions qu'il a réellement effectuées, sans que cela bloque l'évaluation globale.
+              L'assistant s'évalue désormais uniquement par mission. Le score final sera la moyenne de toutes les missions notées.
             </p>
 
             <div className="mt-4 rounded-lg bg-[#F8FAFC] p-3">
@@ -765,10 +648,23 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                 placeholder="Nom ou type de mission"
                 className="mt-3 h-10 w-full rounded-md bg-white px-3 text-sm font-semibold text-slate-600 outline-none placeholder:text-slate-400"
               />
+              <div className="mt-2 flex items-center justify-between gap-3 text-[11px] font-semibold text-slate-500">
+                <span>Date de début</span>
+              </div>
               <input
-                value={missionPeriod}
-                onChange={(event) => setMissionPeriod(event.target.value)}
-                placeholder="Période de la mission"
+                type="date"
+                value={missionStartDate}
+                onChange={(event) => setMissionStartDate(event.target.value)}
+                className="mt-2 h-10 w-full rounded-md bg-white px-3 text-sm font-semibold text-slate-600 outline-none"
+              />
+              <div className="mt-2 flex items-center justify-between gap-3 text-[11px] font-semibold text-slate-500">
+                <span>Date de fin</span>
+              </div>
+              <input
+                type="date"
+                value={missionEndDate}
+                min={missionStartDate || undefined}
+                onChange={(event) => setMissionEndDate(event.target.value)}
                 className="mt-2 h-10 w-full rounded-md bg-white px-3 text-sm font-semibold text-slate-600 outline-none placeholder:text-slate-400"
               />
               <select
@@ -793,7 +689,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                 onClick={addMission}
                 className="mt-3 rounded-md bg-[#76B82A] px-4 py-2 text-xs font-bold text-white"
               >
-                Ajoutéer la mission
+                Ajouter la mission
               </button>
             </div>
 
@@ -983,12 +879,12 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                 ) : null}
 
                 <div className="mt-4">
-                  <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire sur la mission</p>
+                  <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire de section obligatoire</p>
                   <textarea
                     rows={4}
-                    value={Mission.comment}
-                    onChange={(event) => updateMissionComment(event.target.value)}
-                    placeholder="Decrire les faits marquants, difficultes, resultats obtenus..."
+                    value={MissionSection?.comment || ""}
+                    onChange={(event) => updateMissionSectionComment(event.target.value)}
+                    placeholder="Décrire les faits marquants de cette section..."
                     className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
                   />
                 </div>
@@ -1025,10 +921,10 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                         </button>
                         <button
                           type="button"
-                          onClick={() => setStep("cycle")}
+                          onClick={() => persistMissionEvaluations(missionEvaluations)}
                           className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
                         >
-                          Continuer vers l'évaluation globale
+                          Enregistrer la mission
                           <ChevronRight size={14} />
                         </button>
                       </div>
@@ -1042,218 +938,115 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
               </div>
             )}
           </article>
-        </section>
-      ) : (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-3 text-[12px]">
-            <p className="font-semibold text-[#0F3A63]">
-              Dernière sauvegarde : {evaluationData?.evaluation?.last_saved_at ? "enregistrée" : "non disponible"}
-            </p>
-            <div className="flex items-center gap-4">
-              <span className="font-semibold text-[#0F3A63]">
-                Section {sections.findIndex((section) => Number(section.id) === Number(SectionId)) + 1} / {sections.length}
-              </span>
-              <span className="font-semibold text-slate-500">
-                Titre {PageIndex + 1} / {Section.pages?.length || 1}
-              </span>
-              <button type="button" onClick={() => persistSections(sections)} className="font-semibold text-[#76B82A] hover:underline">
-                {isSaving ? "Sauvegarde..." : "Sauvegarder maintenant"}
-              </button>
-            </div>
-          </div>
-
-          <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {sections.map((section) => {
-              const progress = getCycleSectionProgress(section);
-              const done = section.status === "Complete";
-
-              return (
-                <button
-                  key={section.id}
-                  type="button"
-                  onClick={() => {
-                    setSectionId(Number(section.id));
-                    setSaved(false);
-                    setFeedbackMessage("");
-                  }}
-                  className={`rounded-md border px-3 py-3 text-left text-white transition focus:outline-none ${
-                    Number(SectionId) === Number(section.id)
-                      ? "border-[#76B82A] bg-[#003B63] shadow-[0_0_0_1px_#76B82A]"
-                      : "border-transparent bg-[#003B63] hover:bg-[#0B4C7A]"
-                  }`}
-                >
-                  <div className="mb-2 flex items-center justify-between">
-                    <h2 className="text-[13px] font-bold">{section.title}</h2>
-                    {done ? <Check size={14} className="text-white" /> : null}
-                  </div>
-                  <p className="text-[12px] font-semibold">{section.pages?.length || 0} titre(s)</p>
-                  <div className="mt-3 h-1.5 rounded-full bg-slate-200">
-                    <div className={`h-1.5 rounded-full ${done ? "bg-[#7BC443]" : "bg-[#D6DCE2]"}`} style={{ width: `${progress}%` }} />
-                  </div>
-                  <p className="mt-1.5 text-[10px] font-semibold text-slate-200">
-                    {done ? "Complète" : progress ? `En cours - ${progress}%` : "À faire"}
-                  </p>
-                </button>
-              );
-            })}
-          </section>
-
-          <section className="rounded-md bg-white p-4 shadow-sm">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-[12px] font-semibold text-slate-500">Pagination dans la section</p>
-                <h3 className="text-[18px] font-bold text-[#0F3A63]">{Section.title}</h3>
-              </div>
-              <span className="text-[12px] font-semibold text-[#0F3A63]">
-                Titre {PageIndex + 1} / {Section.pages?.length || 1}
-              </span>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {(Section.pages || []).map((page, index) => {
-                const is = index === PageIndex;
-                const progress = getPageProgress(page);
-                const sourceBadgeLabel = getSourceBadgeLabel(page);
-
-                return (
-                  <button
-                    key={page.page_id}
-                    type="button"
-                    onClick={() =>
-                      setPageIndexes((current) => ({
-                        ...current,
-                        [Section.id]: index,
-                      }))
-                    }
-                    className={`rounded-md border px-3 py-2 text-left transition ${
-                      is
-                        ? "border-[#76B82A] bg-[#F3FAEA] text-[#0F3A63]"
-                        : "border-[#D9E3EE] bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
-                  >
-                    <p className="text-[11px] font-bold">Titre {index + 1}</p>
-                    <p className="mt-1 text-[12px] font-semibold">{page.title}</p>
-                    {shouldShowSourceLabel && sourceBadgeLabel && page.source_sheet !== "TRONC COMMUN" ? (
-                      <span className="mt-2 inline-flex rounded-full bg-[#EEF3F8] px-2 py-0.5 text-[10px] font-semibold text-[#0F3A63]">
-                        {sourceBadgeLabel}
-                      </span>
-                    ) : null}
-                    <p className="mt-1 text-[10px] font-semibold text-[#76B82A]">{progress}%</p>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.35fr_1fr]">
+ 
+          <div className="space-y-4">
             <article className="rounded-md bg-white p-4 shadow-sm">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-[28px] font-bold leading-none text-[#0F3A63]">{Section.title}</h3>
-                  <p className="mt-2 text-[18px] font-semibold text-[#0F3A63]">{Page.title}</p>
-                  {shouldShowSourceLabel && PageSourceBadgeLabel && Page.source_sheet !== "TRONC COMMUN" ? (
-                    <span className="mt-2 inline-flex rounded-full bg-[#EEF3F8] px-2.5 py-1 text-[11px] font-semibold text-[#0F3A63]">
-                      {PageSourceBadgeLabel}
-                    </span>
-                  ) : null}
-                  <p className="mt-2 text-[12px] font-semibold text-slate-500">Score moyen : {averageScore} / 5</p>
+                  <h3 className="text-[22px] font-bold text-[#0F3A63]">Synthèse de l'évaluation</h3>
+                  <p className="mt-1 text-[12px] font-semibold text-slate-500">
+                    Score final = somme des scores de mission divisée par le nombre de missions notées.
+                  </p>
                 </div>
-                <span className="text-[16px] font-bold text-[#32B3E0]">{Section.status}</span>
+                <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">
+                  Score final {finalMissionScore} / 5
+                </span>
               </div>
 
-              <div className="space-y-3.5">
-                {(Page.themes || []).map((theme) => (
-                  <CycleScoreRow key={theme.theme_id} theme={theme} onSelect={(score) => updateScore(theme.theme_id, score)} />
-                ))}
-              </div>
-
-              <div className="mt-4">
-                <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire de section</p>
-                <textarea
-                  rows={4}
-                  value={Section.comment || ""}
-                  onChange={(event) => updateComment(event.target.value)}
-                  placeholder="Synthèse globale de la section, points forts, contexte..."
-                  className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
-                />
-              </div>
-
-              {savedComments[Section.id] ? (
-                <div className="mt-3 rounded-sm bg-[#DCECCB] px-3 py-2">
-                  <p className="text-[10px] font-bold text-[#5A8A3A]">Commentaire sauvegardé</p>
-                  <p className="mt-1 text-[11px] font-semibold text-[#0F3A63]">{savedComments[Section.id]}</p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <p className="font-semibold text-[#0F3A63]">Progression globale des missions</p>
+                  <span className="font-bold text-[#76B82A]">{missionProgress}%</span>
                 </div>
-              ) : null}
+                <div className="h-2 rounded-full bg-slate-200">
+                  <div className="h-2 rounded-full bg-[#76B82A]" style={{ width: `${missionProgress}%` }} />
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
+                    <p className="text-[11px] font-semibold text-slate-500">Missions</p>
+                    <p className="mt-1 text-lg font-black text-[#0F3A63]">{missionEvaluations.length}</p>
+                  </div>
+                  <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
+                    <p className="text-[11px] font-semibold text-slate-500">Missions soumises</p>
+                    <p className="mt-1 text-lg font-black text-[#0F3A63]">{submittedMissionsCount}</p>
+                  </div>
+                  <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
+                    <p className="text-[11px] font-semibold text-slate-500">Statut</p>
+                    <p className="mt-1 text-sm font-black text-[#0F3A63]">{evaluationData?.evaluation?.status || "En cours"}</p>
+                  </div>
+                </div>
+              </div>
 
-              <div className="mt-3 rounded-sm bg-[#DCECCB] px-3 py-2 text-[10px] font-semibold text-[#5A8A3A]">
-                Les questions obligatoires sans reponse bloqueront la soumission aux managers concernés.
+              <div className="mt-4 rounded-sm bg-[#DCECCB] px-3 py-2 text-[10px] font-semibold text-[#5A8A3A]">
+                La soumission finale est possible quand chaque mission a été soumise à son destinataire.
               </div>
 
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => goToStep(-1)}
-                  disabled={Number(SectionId) === Number(sections[0]?.id) && PageIndex === 0}
-                  className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <ChevronLeft size={14} />
-                  Précédent
-                </button>
-
                 <div className="flex flex-wrap items-center gap-3">
-                  {!isLastStep ? (
-                    <button
-                      type="button"
-                      onClick={handleSaveAndContinue}
-                      disabled={isSaving || isSubmitting}
-                      className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
-                    >
-                      Sauvegarder et continuer
-                      <ChevronRight size={14} />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleSubmit}
-                      disabled={
-                        isSaving ||
-                        isSubmitting ||
-                        evaluationData?.evaluation?.status === "Soumis aux Managers" ||
-                        evaluationData?.evaluation?.status === "Soumis à la RH"
-                      }
-                      className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
-                    >
-                      {isSubmitting ? "Soumission..." : "Soumettre aux managers"}
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => persistMissionEvaluations(missionEvaluations)}
+                    disabled={isSaving || isSubmitting}
+                    className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600 disabled:opacity-70"
+                  >
+                    {isSaving ? "Sauvegarde..." : "Enregistrer"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={
+                      isSaving ||
+                      isSubmitting ||
+                      evaluationData?.evaluation?.status === "Soumis aux Managers" ||
+                      evaluationData?.evaluation?.status === "Soumis à la RH"
+                    }
+                    className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                  >
+                    {isSubmitting ? "Soumission..." : "Finaliser l'évaluation"}
+                  </button>
                 </div>
               </div>
-
-              {feedbackMessage ? (
-                <p className={`mt-2 text-right text-[11px] font-semibold ${feedbackTone === "error" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>
-                  {feedbackMessage}
-                </p>
-              ) : saved ? (
-                <p className="mt-2 text-right text-[11px] font-semibold text-[#76B82A]">Sauvegarde réussie.</p>
-              ) : null}
             </article>
 
             <div className="space-y-4">
+              <article className="rounded-md bg-white p-4 shadow-sm">
+                <h3 className="mb-3 text-[22px] font-bold text-[#0F3A63]">Missions prêtes</h3>
+                <div className="space-y-3">
+                  {missionEvaluations.length ? (
+                    missionEvaluations.map((mission) => (
+                      <div key={mission.id} className="flex items-center justify-between text-[12px]">
+                        <div>
+                          <p className="font-semibold text-[#0F3A63]">{mission.title}</p>
+                          <p className="text-[11px] text-slate-500">{mission.period}</p>
+                        </div>
+                        <span className="font-bold text-[#76B82A]">
+                          {mission.status === "Soumise" ? "Soumise" : `${getMissionProgress(mission)}%`}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-slate-500">
+                      Aucune mission ajoutée pour le moment.
+                    </p>
+                  )}
+                </div>
+              </article>
 
               <article className="rounded-md bg-white p-4 shadow-sm">
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-[22px] font-bold text-[#0F3A63]">Progression globale</h3>
-                  <span className="text-[13px] font-bold text-[#76B82A]">{globalProgress}%</span>
-                </div>
-                <p className="mb-4 text-[12px] font-semibold text-[#76B82A]">{completedSections} section(s) complétée(s)</p>
-
-                <div className="space-y-3">
-                  {sections.map((section) => (
-                    <div key={section.id} className="flex items-center justify-between text-[12px]">
-                      <p className="font-semibold text-[#0F3A63]">{section.title}</p>
-                      <span className="font-bold text-[#76B82A]">{getCycleSectionProgress(section)}%</span>
-                    </div>
-                  ))}
+                <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">Destinataires</h3>
+                <div className="space-y-2">
+                  {managerRecipients.length ? (
+                    managerRecipients.map((recipient) => (
+                      <div key={`${recipient.department}-${recipient.manager}`} className="rounded-md bg-[#F8FAFC] px-3 py-3">
+                        <p className="text-[12px] font-bold text-[#0F3A63]">{recipient.manager}</p>
+                        <p className="mt-1 text-[11px] text-slate-500">{recipient.department}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-slate-500">
+                      Les destinataires apparaîtront ici dès qu'une mission sera ajoutée.
+                    </p>
+                  )}
                 </div>
               </article>
 
@@ -1271,9 +1064,8 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                 </div>
               </article>
             </div>
-          </section>
-        </>
-      )}
+          </div>
+      </section>
     </div>
   );
 }

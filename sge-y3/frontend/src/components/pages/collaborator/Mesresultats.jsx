@@ -18,7 +18,7 @@ function buildMissionScores(missionEvaluations = []) {
       title: mission.title,
       period: mission.period,
       department: mission.department,
-      managers: mission.managers || [],
+      recipients: (mission.recipients || []).map((recipient) => recipient.name).filter(Boolean),
       score,
       percent: Math.round(((score || 0) / 5) * 100),
     };
@@ -27,8 +27,12 @@ function buildMissionScores(missionEvaluations = []) {
 
 function getManagerRecipients(missionEvaluations = []) {
   const recipients = missionEvaluations.flatMap((mission) =>
-    (mission.managers || []).map((manager) => ({ manager, department: mission.department }))
+    (mission.recipients || []).map((recipient) => ({
+      manager: recipient.name,
+      department: recipient.department || mission.department,
+    }))
   );
+
   return recipients.filter(
     (recipient, index, list) =>
       recipient.manager && list.findIndex((item) => item.manager === recipient.manager && item.department === recipient.department) === index
@@ -36,21 +40,11 @@ function getManagerRecipients(missionEvaluations = []) {
 }
 
 function buildLiveResults(evaluationData, resultsData) {
-  const sections = evaluationData?.evaluation?.sections || [];
-  if (!sections.length) return null;
+  const missionEvaluations = evaluationData?.mission_evaluations || [];
+  if (!missionEvaluations.length) return null;
 
-  const sectionScores = sections.map((section) => {
-    const score = getAverageScore(section.criteria);
-    return {
-      sectionId: section.id,
-      title: section.title,
-      label: section.subtitle,
-      score,
-      percent: Math.round(((score || 0) / 5) * 100),
-    };
-  });
-
-  const validScores = sectionScores.map((section) => section.score).filter((score) => typeof score === "number");
+  const missionScores = buildMissionScores(missionEvaluations);
+  const validScores = missionScores.map((mission) => mission.score).filter((score) => typeof score === "number");
   const scoreFinal = validScores.length
     ? Number((validScores.reduce((total, score) => total + score, 0) / validScores.length).toFixed(1))
     : 0;
@@ -58,7 +52,7 @@ function buildLiveResults(evaluationData, resultsData) {
   return {
     cycle_label: evaluationData?.evaluation?.cycle_label || resultsData?.cycle_label,
     status: evaluationData?.evaluation?.status || resultsData?.status,
-    sectionScores,
+    missionScores,
     managerComments: resultsData?.managerComments || [],
     kpis: {
       ...(resultsData?.kpis || {}),
@@ -90,21 +84,18 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
   const liveResults = buildLiveResults(evaluationData, resultsData);
   const displayResults = liveResults || resultsData;
   const scoreFinal = displayResults?.kpis?.scoreFinal;
-  const moyenneEquipe = displayResults?.kpis?.moyenneEquipe;
-  const assistantsEvalues = displayResults?.kpis?.assistantsEvalues || 0;
   const comparaisonEquipeLabel = displayResults?.kpis?.comparaisonEquipeLabel || "0.0";
-  const comparaisonEquipeSubtitle = displayResults?.kpis?.comparaisonEquipeSubtitle || "Égal à la moyenne";
-  const sectionScores = displayResults?.sectionScores || [];
+  const comparaisonEquipeSubtitle = displayResults?.kpis?.comparaisonEquipeSubtitle || "Egal a la moyenne";
+  const missionScores = displayResults?.missionScores || buildMissionScores(missionEvaluations);
   const managerComments = displayResults?.managerComments || [];
   const evaluationStatus = displayResults?.status || "En cours";
-  const missionScores = buildMissionScores(missionEvaluations);
   const managerRecipients = getManagerRecipients(missionEvaluations);
 
   const topCards = [
     {
       title: "Score final",
       value: `${formatScore(scoreFinal)}/5`,
-      subtitle: "Calculé automatiquement",
+      subtitle: "Moyenne de toutes les missions notées",
     },
     {
       title: "Statut évaluation",
@@ -128,14 +119,8 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
   return (
     <div className="space-y-4">
       <p className="text-[12px] font-semibold text-slate-500">
-        {displayResults?.cycle_label || "Cycle 2025-2026"} - Résultats actualisés selon l'auto-évaluation par mission et par cycle
+        {displayResults?.cycle_label || "Cycle 2025-2026"} - Résultats actualisés selon les évaluations par mission
       </p>
-
-      {/* <div className="rounded-sm bg-[#BFE2B9] px-4 py-3 text-[12px] font-semibold text-[#114F35]">
-        {resultsData?.status === "Soumis a RH"
-          ? "Évaluation transmise à la RH / Capital Humain. Résultats issus de l'auto-évaluation."
-          : "Résultats provisoires issus de l'auto-évaluation en cours."}
-      </div> */}
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
         {topCards.map((card) => (
@@ -150,7 +135,7 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1.05fr]">
         <div className="space-y-4">
           <article className="rounded-md bg-white p-4 shadow-sm">
-            <h3 className="mb-4 text-[14px] font-bold text-[#0F3A63]">Évaluation par mission</h3>
+            <h3 className="mb-4 text-[14px] font-bold text-[#0F3A63]">Evaluation par mission</h3>
             <div className="space-y-4">
               {missionScores.length ? (
                 missionScores.map((mission) => (
@@ -159,7 +144,7 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
                       <div>
                         <p>{mission.title}</p>
                         <p className="text-[11px] font-medium text-slate-500">
-                          {mission.period} - {mission.department} - {mission.managers.join(", ")}
+                          {mission.period} - {mission.department} - {mission.recipients.join(", ")}
                         </p>
                       </div>
                       <span>{typeof mission.score === "number" ? mission.score.toFixed(1) : "--"}</span>
@@ -178,14 +163,14 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
           </article>
 
           <article className="rounded-md bg-white p-4 shadow-sm">
-            <h3 className="mb-4 text-[14px] font-bold text-[#0F3A63]">Évaluation globale du cycle</h3>
+            <h3 className="mb-4 text-[14px] font-bold text-[#0F3A63]">Synthèse finale</h3>
             <div className="space-y-4">
-              {sectionScores.map((item) => (
-                <div key={item.sectionId || item.label}>
+              {missionScores.map((item) => (
+                <div key={item.id}>
                   <div className="mb-1 flex items-center justify-between gap-3 text-[13px] font-semibold text-[#0F3A63]">
                     <div>
-                      <p>{item.title || `Section ${item.sectionId}`}</p>
-                      <p className="text-[11px] font-medium text-slate-500">{item.label}</p>
+                      <p>{item.title}</p>
+                      <p className="text-[11px] font-medium text-slate-500">{item.period} - {item.department}</p>
                     </div>
                     <span>{typeof item.score === "number" ? item.score.toFixed(1) : "--"}</span>
                   </div>
@@ -196,7 +181,7 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
               ))}
               <div>
                 <div className="mb-1 flex items-center justify-between text-[13px] font-bold text-[#0F3A63]">
-                  <p>Score final</p>
+                  <p>Score final moyen</p>
                   <span className="text-[#76B82A]">{formatScore(scoreFinal)} / 5</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-300">
@@ -225,7 +210,7 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
               ) : (
                 <div className="rounded-md bg-slate-100 p-4">
                   <p className="text-[12px] text-slate-600">
-                    Les commentaires du ou des managers apparaîtront ici lorsqu&apos;ils seront disponibles après le circuit de validation.
+                    Les commentaires du ou des managers apparaitront ici lorsqu'ils seront disponibles après le circuit de validation.
                   </p>
                 </div>
               )}
@@ -238,12 +223,12 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-[24px] font-bold leading-tight text-[#0F3A63]">Suivi managers</h3>
               <span className="rounded-md bg-[#DCECCB] px-2 py-0.5 text-[11px] font-bold text-[#76B82A]">
-                {evaluationStatus === "Soumis aux Managers" ? "Transmise" : "En préparation"}
+                {evaluationStatus === "Soumis aux Managers" ? "Transmise" : "En preparation"}
               </span>
             </div>
 
             <div className="rounded-md bg-slate-100 p-3">
-              <p className="text-[18px] font-bold text-[#0F3A63]">Auto-évaluation soumise ?ux managers</p>
+              <p className="text-[18px] font-bold text-[#0F3A63]">Evaluations par mission soumises aux managers</p>
               <p className="mt-1 text-[12px] font-semibold text-[#76B82A]">
                 Chaque manager reçoit les missions de son département.
               </p>
@@ -265,26 +250,6 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
             </div>
           </article>
 
-          {/* <article className="rounded-md bg-white p-4 shadow-sm">
-            <h3 className="mb-4 text-[20px] font-bold text-[#0F3A63]">Évolution sur 2 cycles</h3>
-            <div className="space-y-3 text-[13px] font-semibold">
-              <div className="flex items-center justify-between text-[#0F3A63]">
-                <p>Cycle 2025-2026</p>
-                <p>3.2 / 5 - Maintien</p>
-              </div>
-              <div className="flex items-center justify-between text-[#76B82A]">
-                <p>Cycle 2025-2026</p>
-                <p>{formatScore(scoreFinal)} / 5 - Maintien</p>
-              </div>
-            </div>
-            <p className="mt-3 text-[13px] font-bold text-[#76B82A]">
-              Moyenne équipe : {formatScore(moyenneEquipe)} / 5
-            </p>
-            <p className="mt-1 text-[12px] font-semibold text-[#0F3A63]">
-              Comparaison basée sur les scores de {assistantsEvalues} autre(s) Assistant(s).
-            </p>
-          </article> */}
-
           <button
             onClick={() => {
               setReportDownloaded(true);
@@ -295,7 +260,7 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
             Télécharger mon rapport PDF
           </button>
           {reportDownloaded ? (
-            <p className="text-center text-[11px] font-semibold text-[#76B82A]">Rapport lance pour impression.</p>
+            <p className="text-center text-[11px] font-semibold text-[#76B82A]">Rapport lancé pour impression.</p>
           ) : null}
         </div>
       </section>
