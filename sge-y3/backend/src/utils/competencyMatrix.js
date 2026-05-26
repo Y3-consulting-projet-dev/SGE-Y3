@@ -1,11 +1,21 @@
 const matrixData = require('../data/competencyMatrix.generated.json');
-const { normalizeDepartment, normalizeText } = require('./userMapping');
+const { normalizeDepartment, normalizeEmail, normalizeText } = require('./userMapping');
 const { readQuestionnaireConfig } = require('./questionnaireConfig');
 
 const SECTION_ORDER = ['SAVOIR FAIRE', 'SAVOIR ETRE'];
+const SUPPORT_ROLE_BY_EMAIL = {
+  'fleur.nguessan@ycubeac.com': 'Office Manager',
+  'aziz.ouattara@ycubeac.com': 'PMO',
+  'porthela.kakou@ycubeac.com': 'Responsable IT',
+  'adele.creppy@ycubeac.com': 'Comptable Interne Senior',
+};
 
 function getGradeColumnKey(grade = '') {
   const normalizedGrade = normalizeText(grade);
+
+  if (['Office Manager', 'PMO', 'Comptable Interne Senior', 'Comptabilite interne senior', 'Responsable IT'].includes(normalizedGrade)) {
+    return normalizedGrade;
+  }
 
   if (normalizedGrade === 'Assistant') {
     return 'Assistant';
@@ -53,10 +63,18 @@ function getSheetNamesForDepartment(department = '') {
     return ['TRONC COMMUN', 'CAPITAL HUMAIN'];
   }
 
+  if (normalized === 'SERVICE SUPPORT' || normalized === 'SUPPORT') {
+    return ['SERVICE SUPPORT'];
+  }
+
   return ['TRONC COMMUN'];
 }
 
 function getStatementForGrade(statements = {}, gradeColumnKey) {
+  if (statements[gradeColumnKey]) {
+    return statements[gradeColumnKey];
+  }
+
   if (gradeColumnKey === 'Associé') {
     return statements['Associé'] || statements['Associ?'] || '';
   }
@@ -71,6 +89,10 @@ function getSourceLabel(sheetName) {
 
   if (sheetName === 'EXPERTISE COMPTABLE') {
     return 'Expertise comptable';
+  }
+
+  if (sheetName === 'SERVICE SUPPORT') {
+    return 'Service support';
   }
 
   return sheetName;
@@ -197,8 +219,9 @@ function applyCustomQuestionnaire(sectionsMap, orderedSectionKeys, sheetNames, g
 }
 
 function buildEvaluationTemplateForUser(user = {}) {
-  const gradeColumnKey = getGradeColumnKey(user.grade);
-  const sheetNames = getSheetNamesForDepartment(user.department);
+  const supportRoleKey = SUPPORT_ROLE_BY_EMAIL[normalizeEmail(user.email || '')];
+  const gradeColumnKey = supportRoleKey || getGradeColumnKey(user.grade);
+  const sheetNames = supportRoleKey ? ['SERVICE SUPPORT'] : getSheetNamesForDepartment(user.department);
   const orderedSectionKeys = [...SECTION_ORDER];
 
   const sectionsMap = new Map(
