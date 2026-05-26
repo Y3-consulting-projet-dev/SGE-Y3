@@ -28,7 +28,7 @@ const menuGroups = [
     title: "Evaluation",
     items: [
       { key: "self-evaluation", label: "Mon auto-évaluation", icon: ClipboardList },
-      { key: "results", label: "Mes resultats", icon: LineChart },
+      { key: "results", label: "Mes résultats", icon: LineChart },
     ],
   },
   {
@@ -80,6 +80,7 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
 
   function handleEvaluationUpdate(nextEvaluationData) {
     setEvaluationData(nextEvaluationData);
+    setMissionEvaluations(nextEvaluationData?.mission_evaluations || []);
     refreshAssistantResults();
   }
 
@@ -107,6 +108,7 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
 
         if (!cancelled) {
           setEvaluationData(evaluationResponse);
+          setMissionEvaluations(evaluationResponse?.mission_evaluations || []);
           setResultsData(resultsResponse);
         }
       } catch (error) {

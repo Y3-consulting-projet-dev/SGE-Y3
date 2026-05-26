@@ -71,6 +71,7 @@ function getMissionGroups(criteria = []) {
       pageTitle: criterion.pageTitle,
       sourceSheet: criterion.sourceSheet,
       sourceLabel: criterion.sourceLabel,
+      pageComment: criterion.pageComment || "",
       criteria: [criterion],
     });
   }
@@ -86,12 +87,16 @@ function getMissionSections(groups = []) {
 
     if (existingSection) {
       existingSection.groups.push(group);
+      if (!existingSection.comment) {
+        existingSection.comment = group.criteria?.find((criterion) => String(criterion.sectionComment || "").trim())?.sectionComment || "";
+      }
       continue;
     }
 
     sections.push({
       id: group.sectionTitle,
       title: group.sectionTitle,
+      comment: group.criteria?.find((criterion) => String(criterion.sectionComment || "").trim())?.sectionComment || "",
       groups: [group],
     });
   }
@@ -115,8 +120,32 @@ function getMissionSectionAverage(section) {
   return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
 }
 
+function getRhRecipientRoleLabel(recipient) {
+  const normalizedDepartment = String(recipient?.department || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+
+  return normalizedDepartment === "CAPITAL HUMAIN" ? "Assistante RH" : recipient?.department || "RH";
+}
+
 function hasRequiredSubmissionComment(sections = []) {
   return sections.length > 0 && sections.every((section) => String(section.comment || "").trim().length >= 3);
+}
+
+function hasRequiredMissionSectionComments(sections = []) {
+  return sections.length > 0 && sections.every((section) => String(section.comment || "").trim().length >= 3);
+}
+
+function getMissionMissingLowScorePageComments(sections = []) {
+  return sections.flatMap((section) =>
+    (section.groups || [])
+      .filter((group) => {
+        const hasLowScore = (group.criteria || []).some((criterion) => typeof criterion.score === "number" && criterion.score < 3);
+        return hasLowScore && String(group.pageComment || "").trim().length < 3;
+      })
+      .map((group) => ({ sectionTitle: section.title, pageTitle: group.pageTitle }))
+  );
 }
 
 function MissionScoreRow({ criterion, onSelect }) {
@@ -197,6 +226,39 @@ function formatSubmittedAt(value) {
   return new Date(value).toLocaleDateString("fr-FR");
 }
 
+function formatDateDisplay(value) {
+  if (!value) return "";
+
+  if (/^\d{2}-\d{2}-\d{4}$/.test(value)) {
+    return value;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-");
+    return `${day}-${month}-${year}`;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString("fr-FR").replace(/\//g, "-");
+}
+
+function formatMissionPeriod(period, startDate = "", endDate = "") {
+  if (startDate && endDate) {
+    return `Du ${formatDateDisplay(startDate)} au ${formatDateDisplay(endDate)}`;
+  }
+
+  const rangeMatch = String(period || "").match(/(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}).*?(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4})/);
+  if (rangeMatch) {
+    return `Du ${formatDateDisplay(rangeMatch[1])} au ${formatDateDisplay(rangeMatch[2])}`;
+  }
+
+  return period || "PÃ©riode non renseignÃ©e";
+}
+
 function Evaluermonequipe({ member }) {
   const [reviewData, setReviewData] = useState(null);
   const [sections, setSections] = useState([]);
@@ -208,7 +270,8 @@ function Evaluermonequipe({ member }) {
   const [missionPageIndexes, setMissionPageIndexes] = useState({});
   const [missionReviews, setMissionReviews] = useState([]);
   const [missionTitle, setMissionTitle] = useState("");
-  const [missionPeriod, setMissionPeriod] = useState("");
+  const [missionStartDate, setMissionStartDate] = useState("");
+  const [missionEndDate, setMissionEndDate] = useState("");
   const [savedComments, setSavedComments] = useState({});
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackTone, setFeedbackTone] = useState("success");
@@ -238,9 +301,10 @@ function Evaluermonequipe({ member }) {
         setSections(response.review.sections || []);
         setMissionReviews(response.mission_reviews || []);
         setMissionTitle("");
-        setMissionPeriod("");
+        setMissionStartDate("");
+        setMissionEndDate("");
         setActiveSectionId(Number(response.review.activeSectionId || response.review.sections?.[0]?.id || 1));
-        setActiveMissionId((current) => current || response.submitted_missions?.[0]?.id || "");
+        setActiveMissionId((current) => current || response.submitted_missions?.[0]?.id || response.mission_reviews?.[0]?.id || "");
         setMissionSectionIds({});
         setMissionPageIndexes({});
         setPageIndexes(createInitialPageIndexes(response.review.sections || []));
@@ -288,8 +352,19 @@ function Evaluermonequipe({ member }) {
     (missionReview) =>
       missionReview.origin === "manager-assigned" && !submittedMissions.some((mission) => mission.id === missionReview.id)
   );
-  const activeMission = submittedMissions.find((mission) => mission.id === activeMissionId) || submittedMissions[0] || null;
+  const activeSubmittedMission = submittedMissions.find((mission) => mission.id === activeMissionId) || null;
   const activeMissionReview = missionReviews.find((mission) => mission.id === activeMissionId) || null;
+  const activeMission =
+    activeSubmittedMission ||
+    (activeMissionReview
+      ? {
+          id: activeMissionReview.id,
+          title: activeMissionReview.title,
+          period: activeMissionReview.period,
+          department: activeMissionReview.department,
+          submissions: [],
+        }
+      : submittedMissions[0] || null);
   const activeMissionGroups = useMemo(() => getMissionGroups(activeMissionReview?.criteria || []), [activeMissionReview]);
   const missionSections = useMemo(() => getMissionSections(activeMissionGroups), [activeMissionGroups]);
   const activeMissionSectionId = missionSectionIds[activeMissionId] || missionSections[0]?.id || "";
@@ -302,22 +377,31 @@ function Evaluermonequipe({ member }) {
   );
   const activeMissionGroup = activeMissionSection?.groups?.[activeMissionPageIndex] || activeMissionSection?.groups?.[0] || null;
   const activeMissionAverage = useMemo(() => getMissionReviewAverage(activeMissionReview), [activeMissionReview]);
+  const hasLowScoreOnActiveMissionPage = (activeMissionGroup?.criteria || []).some(
+    (criterion) => typeof criterion.score === "number" && criterion.score < 3
+  );
+  const hasRequiredMissionPageJustification =
+    !hasLowScoreOnActiveMissionPage || String(activeMissionGroup?.pageComment || "").trim().length >= 3;
   const hasLowScoreOnActivePage = (activePage?.themes || []).some(
     (theme) => typeof theme.score === "number" && theme.score < 3
   );
-  const hasRequiredJustification = !hasLowScoreOnActivePage || Boolean((activeSection?.comment || "").trim());
+  const hasRequiredJustification = !hasLowScoreOnActivePage || String(activePage?.comment || "").trim().length >= 3;
 
   useEffect(() => {
     if (!activeMissionReview?.id || !missionSections.length) return;
 
-    setMissionSectionIds((current) => ({
-      ...current,
-      [activeMissionReview.id]: current[activeMissionReview.id] || missionSections[0].id,
-    }));
-    setMissionPageIndexes((current) => ({
-      ...current,
-      [activeMissionReview.id]: current[activeMissionReview.id] || 0,
-    }));
+    const timeoutId = setTimeout(() => {
+      setMissionSectionIds((current) => ({
+        ...current,
+        [activeMissionReview.id]: current[activeMissionReview.id] || missionSections[0].id,
+      }));
+      setMissionPageIndexes((current) => ({
+        ...current,
+        [activeMissionReview.id]: current[activeMissionReview.id] || 0,
+      }));
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [activeMissionReview?.id, missionSections]);
 
   function syncSections(updater) {
@@ -371,7 +455,27 @@ function Evaluermonequipe({ member }) {
     );
   }
 
-  async function persistSections(nextSections = sections, successMessage = "Evaluation manager enregistrée.") {
+  function updatePageComment(comment) {
+    syncSections((currentSections) =>
+      currentSections.map((section) => {
+        if (Number(section.id) !== Number(activeSectionId)) return section;
+
+        return {
+          ...section,
+          pages: (section.pages || []).map((page, pageIndex) =>
+            pageIndex !== activePageIndex
+              ? page
+              : {
+                  ...page,
+                  comment,
+                }
+          ),
+        };
+      })
+    );
+  }
+
+  async function persistSections(nextSections = sections, successMessage = "Évaluation manager enregistrée.") {
     if (!member?.id) return null;
 
     try {
@@ -435,7 +539,41 @@ function Evaluermonequipe({ member }) {
     setFeedbackMessage("");
   }
 
-  async function persistMissionReviews(nextMissionReviews = missionReviews, successMessage = "Evaluation manager par mission enregistrée.") {
+  function updateMissionSectionComment(comment) {
+    setMissionReviews((currentMissionReviews) =>
+      currentMissionReviews.map((missionReview) =>
+        missionReview.id !== activeMissionId
+          ? missionReview
+          : {
+              ...missionReview,
+              criteria: (missionReview.criteria || []).map((criterion) =>
+                criterion.sectionTitle === activeMissionSection?.title ? { ...criterion, sectionComment: comment } : criterion
+              ),
+            }
+      )
+    );
+    setFeedbackMessage("");
+  }
+
+  function updateMissionPageComment(comment) {
+    setMissionReviews((currentMissionReviews) =>
+      currentMissionReviews.map((missionReview) =>
+        missionReview.id !== activeMissionId
+          ? missionReview
+          : {
+              ...missionReview,
+              criteria: (missionReview.criteria || []).map((criterion) =>
+                criterion.sectionTitle === activeMissionGroup?.sectionTitle && criterion.pageTitle === activeMissionGroup?.pageTitle
+                  ? { ...criterion, pageComment: comment }
+                  : criterion
+              ),
+            }
+      )
+    );
+    setFeedbackMessage("");
+  }
+
+  async function persistMissionReviews(nextMissionReviews = missionReviews, successMessage = "Évaluation manager par mission enregistrée.") {
     if (!member?.id) return null;
 
     try {
@@ -471,19 +609,45 @@ function Evaluermonequipe({ member }) {
       return;
     }
 
+    if (!missionStartDate || !missionEndDate) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Renseignez la date de dÃ©but et la date de fin de la mission.");
+      return;
+    }
+
+    if (missionEndDate < missionStartDate) {
+      setFeedbackTone("error");
+      setFeedbackMessage("La date de fin doit Ãªtre postÃ©rieure ou Ã©gale Ã  la date de dÃ©but.");
+      return;
+    }
+
     try {
       setIsSaving(true);
       setFeedbackMessage("");
       const response = await createManagerMemberMission(member.id, {
         title,
-        period: missionPeriod.trim(),
+        period: formatMissionPeriod("", missionStartDate, missionEndDate),
       });
 
       setReviewData(response);
       setSections(response.review.sections || []);
       setMissionReviews(response.mission_reviews || []);
+      const addedMission = response.mission_reviews?.[response.mission_reviews.length - 1] || null;
+      if (addedMission?.id) {
+        setActiveMissionId(addedMission.id);
+        const addedMissionSections = getMissionSections(getMissionGroups(addedMission.criteria || []));
+        setMissionSectionIds((current) => ({
+          ...current,
+          [addedMission.id]: addedMissionSections[0]?.id || "",
+        }));
+        setMissionPageIndexes((current) => ({
+          ...current,
+          [addedMission.id]: 0,
+        }));
+      }
       setMissionTitle("");
-      setMissionPeriod("");
+      setMissionStartDate("");
+      setMissionEndDate("");
       setFeedbackTone("success");
       setFeedbackMessage(response.message || "Mission ajoutée pour ce membre.");
     } catch (error) {
@@ -507,7 +671,19 @@ function Evaluermonequipe({ member }) {
       return;
     }
 
-    const savedMissionReview = await persistMissionReviews(missionReviews, "Evaluation manager par mission prête pour soumission.");
+    if (!hasRequiredMissionSectionComments(missionSections)) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Un commentaire d'au moins 3 caractères est obligatoire pour chaque section de la mission.");
+      return;
+    }
+
+    if (getMissionMissingLowScorePageComments(missionSections).length) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Une justification est requise pour chaque titre contenant une note inférieure à 3.");
+      return;
+    }
+
+    const savedMissionReview = await persistMissionReviews(missionReviews, "Évaluation manager par mission prête pour soumission.");
 
     if (!savedMissionReview) {
       return;
@@ -554,6 +730,16 @@ function Evaluermonequipe({ member }) {
     }));
   }
 
+  function handleMissionNextStep() {
+    if (!hasRequiredMissionPageJustification) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Une justification est requise pour toute note inférieure à 3 sur ce titre.");
+      return;
+    }
+
+    goToMissionStep(1);
+  }
+
   function goToStep(direction) {
     if (!activeSection) return;
 
@@ -584,7 +770,7 @@ function Evaluermonequipe({ member }) {
       return;
     }
 
-    await persistSections(sections, "Evaluation manager enregistrée.");
+    await persistSections(sections, "Évaluation manager enregistrée.");
     goToStep(1);
   }
 
@@ -601,7 +787,7 @@ function Evaluermonequipe({ member }) {
       return;
     }
 
-    const savedReview = await persistSections(sections, "Evaluation manager prête pour soumission.");
+    const savedReview = await persistSections(sections, "Évaluation manager prête pour soumission.");
 
     if (!savedReview) {
       return;
@@ -614,7 +800,7 @@ function Evaluermonequipe({ member }) {
       setSections(response.review.sections || []);
       setMissionReviews(response.mission_reviews || []);
       setFeedbackTone("success");
-      setFeedbackMessage(response.message || "Evaluation soumise à la RH.");
+      setFeedbackMessage(response.message || "Évaluation soumise à la RH.");
     } catch (error) {
       setFeedbackTone("error");
       setFeedbackMessage(error.message || "Soumission impossible.");
@@ -669,7 +855,7 @@ function Evaluermonequipe({ member }) {
           <div className="mb-3 inline-flex rounded-full bg-[#0B4C7A] px-3 py-1 text-[11px] font-bold uppercase text-white">
             Parcours 1
           </div>
-          <h2 className="text-lg font-black text-[#0F3A63]">Evaluations par mission</h2>
+          <h2 className="text-lg font-black text-[#0F3A63]">Évaluations par mission</h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">
             {submittedMissions.length} mission(s) soumise(s)
           </p>
@@ -680,7 +866,7 @@ function Evaluermonequipe({ member }) {
         <button
           type="button"
           onClick={() => setActiveView("global")}
-          className={`rounded-xl border px-5 py-4 text-left shadow-sm transition ${
+          className={`hidden rounded-xl border px-5 py-4 text-left shadow-sm transition ${
             activeView === "global"
               ? "border-[#B7D39E] bg-[#FBFEF7]"
               : "border-[#D9E3EE] bg-white hover:bg-[#FCFEF8]"
@@ -689,7 +875,7 @@ function Evaluermonequipe({ member }) {
           <div className="mb-3 inline-flex rounded-full bg-[#DCECCB] px-3 py-1 text-[11px] font-bold uppercase text-[#4E8B1B]">
             Parcours 2
           </div>
-          <h2 className="text-lg font-black text-[#0F3A63]">Evaluation globale du cycle</h2>
+          <h2 className="text-lg font-black text-[#0F3A63]">Évaluation globale du cycle</h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">
             {reviewData.review.cycle_label || "Cycle 2025-2026"} - {globalProgress}%
           </p>
@@ -717,10 +903,10 @@ function Evaluermonequipe({ member }) {
                 <div className="mb-3">
                   <p className="text-sm font-bold text-[#0B4C7A]">Nouvelle mission pour ce membre</p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
-                    Renseignez le titre et la période. Le membre la recevra dans son auto-évaluation par mission.
+                    Renseignez le titre, la date de début et la date de fin. Le membre la recevra dans son auto-évaluation par mission.
                   </p>
                 </div>
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-3">
                   <input
                     value={missionTitle}
                     onChange={(event) => setMissionTitle(event.target.value)}
@@ -728,10 +914,17 @@ function Evaluermonequipe({ member }) {
                     className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
                   />
                   <input
-                    value={missionPeriod}
-                    onChange={(event) => setMissionPeriod(event.target.value)}
-                    placeholder="Période"
-                    className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
+                    type="date"
+                    value={missionStartDate}
+                    onChange={(event) => setMissionStartDate(event.target.value)}
+                    className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none"
+                  />
+                  <input
+                    type="date"
+                    value={missionEndDate}
+                    min={missionStartDate || undefined}
+                    onChange={(event) => setMissionEndDate(event.target.value)}
+                    className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none"
                   />
                 </div>
                 <button
@@ -759,11 +952,11 @@ function Evaluermonequipe({ member }) {
                   </div>
                   <div className="space-y-3">
                     {pendingAssignedMissions.map((mission) => (
-                      <div key={mission.id} className="rounded-md border border-slate-100 bg-[#F8FAFC] p-3">
+                      <button key={mission.id} type="button" onClick={() => setActiveMissionId(mission.id)} className="w-full rounded-md border border-slate-100 bg-[#F8FAFC] p-3 text-left transition hover:bg-white">
                         <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
-                        <p className="mt-1 text-xs font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">{formatMissionPeriod(mission.period)}</p>
                         <p className="mt-1 text-xs font-bold text-[#0F3A63]">{mission.status || "A démarrer"}</p>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -805,7 +998,7 @@ function Evaluermonequipe({ member }) {
                         }`}
                       >
                         <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
-                        <p className="mt-1 text-xs font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">{formatMissionPeriod(mission.period)}</p>
                         <p className="mt-1 text-xs font-bold text-[#0F3A63]">{mission.department}</p>
                         <p className="mt-2 text-xs font-bold text-[#76B82A]">
                           {getMissionReviewProgress(missionReviews.find((item) => item.id === mission.id))}%
@@ -825,11 +1018,11 @@ function Evaluermonequipe({ member }) {
                   <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-4">
                     <div>
                       <div className="mb-2 inline-flex rounded-full bg-[#E7F1F8] px-3 py-1 text-[11px] font-bold uppercase text-[#0B4C7A]">
-                        Evaluation par mission
+                        Évaluation par mission
                       </div>
                       <h4 className="text-xl font-black text-[#0F3A63]">{activeMission.title}</h4>
                       <p className="mt-1 text-sm font-semibold text-slate-500">
-                        {activeMission.period || "Période non renseignée"} - {activeMission.department}
+                        {formatMissionPeriod(activeMission.period)} - {activeMission.department}
                       </p>
                     </div>
                   </div>
@@ -847,7 +1040,33 @@ function Evaluermonequipe({ member }) {
                             <p className="text-xs text-slate-500">{formatSubmittedAt(submission.submittedAt)}</p>
                           </div>
                         </div>
-                        {submission.comment ? <p className="mt-3 text-sm text-slate-600">{submission.comment}</p> : null}
+                        {submission.comment ? (
+                          <div className="mt-3 rounded-md bg-white px-3 py-3">
+                            <p className="text-xs font-bold uppercase text-slate-500">Commentaire général</p>
+                            <p className="mt-1 text-sm text-slate-600">{submission.comment}</p>
+                          </div>
+                        ) : null}
+                        {(submission.sectionComments || []).length ? (
+                          <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+                            {(submission.sectionComments || []).map((section) => (
+                              <div key={`${submission.evaluatorName}-${section.sectionId}`} className="rounded-md bg-white p-3">
+                                <p className="text-xs font-bold text-[#0F3A63]">{section.title}</p>
+                                <p className="mt-1 text-sm font-semibold text-slate-600">{section.comment}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                        {(submission.titleJustifications || []).length ? (
+                          <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+                            {(submission.titleJustifications || []).map((item) => (
+                              <div key={`${submission.evaluatorName}-${item.pageId}`} className="rounded-md bg-white p-3">
+                                <p className="text-xs font-bold text-[#0F3A63]">{item.sectionTitle}</p>
+                                <p className="mt-1 text-xs font-semibold text-slate-500">{item.pageTitle}</p>
+                                <p className="mt-1 text-sm font-semibold text-slate-600">{item.comment}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -856,7 +1075,7 @@ function Evaluermonequipe({ member }) {
                     <div className="mt-4 space-y-4 border-t border-slate-100 pt-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                          <p className="text-sm font-bold text-[#4E8B1B]">Evaluation manager sur la mission</p>
+                          <p className="text-sm font-bold text-[#4E8B1B]">Évaluation manager sur la mission</p>
                           <p className="mt-1 text-xs font-semibold text-slate-500">
                             Moyenne : {activeMissionAverage} / 5 - Progression : {getMissionReviewProgress(activeMissionReview)}%
                           </p>
@@ -985,6 +1204,32 @@ function Evaluermonequipe({ member }) {
                                 onSelect={(score) => updateMissionCriterionScore(criterion.id, score)}
                               />
                             ))}
+                            {hasLowScoreOnActiveMissionPage ? (
+                              <div className="rounded-md border border-[#F0C7C7] bg-[#FFF7F7] p-3">
+                                <label className="text-[12px] font-bold text-[#A4252F]">
+                                  Justification de l'écart pour ce titre <span className="text-[11px] text-slate-500">(minimum 3 caractères)</span>
+                                </label>
+                                <textarea
+                                  value={activeMissionGroup.pageComment || ""}
+                                  onChange={(event) => updateMissionPageComment(event.target.value)}
+                                  rows={3}
+                                  placeholder="Expliquez la note inférieure à 3 pour ce titre..."
+                                  className="mt-2 w-full resize-none rounded-md bg-white px-3 py-2 text-[12px] text-[#0F3A63] outline-none ring-1 ring-[#F0C7C7] focus:ring-[#A4252F]"
+                                />
+                              </div>
+                            ) : null}
+                            <div className="rounded-md bg-[#F8FAFC] p-3">
+                              <label className="text-[12px] font-bold text-[#0F3A63]">
+                                Commentaire global de la section <span className="text-[11px] text-slate-500">(minimum 3 caractères)</span>
+                              </label>
+                              <textarea
+                                value={activeMissionSection?.comment || ""}
+                                onChange={(event) => updateMissionSectionComment(event.target.value)}
+                                rows={3}
+                                placeholder="Synthèse globale de la section pour cette mission..."
+                                className="mt-2 w-full resize-none rounded-md bg-white px-3 py-2 text-[12px] text-[#0F3A63] outline-none ring-1 ring-[#D9E3EE] focus:ring-[#76B82A]"
+                              />
+                            </div>
                           </div>
                         </div>
                       ) : null}
@@ -1002,7 +1247,7 @@ function Evaluermonequipe({ member }) {
 
                         <button
                           type="button"
-                          onClick={() => goToMissionStep(1)}
+                          onClick={handleMissionNextStep}
                           disabled={
                             activeMissionSectionIndex === missionSections.length - 1 &&
                             activeMissionPageIndex === (activeMissionSection?.groups?.length || 1) - 1
@@ -1058,7 +1303,7 @@ function Evaluermonequipe({ member }) {
             <article className="space-y-4">
               <div className="rounded-md border border-[#D9E3EE] bg-white p-4 shadow-sm">
                 <div className="mb-3 flex items-center justify-between gap-3">
-                  <p className="text-sm font-bold text-[#76B82A]">Evaluation globale reçue</p>
+                  <p className="text-sm font-bold text-[#76B82A]">Évaluation globale reçue</p>
                   <span className="rounded-full bg-[#EEF3F8] px-3 py-1 text-xs font-bold text-[#0F3A63]">
                     {selfEvaluation.overallAverage ?? "--"} / 5
                   </span>
@@ -1078,6 +1323,17 @@ function Evaluermonequipe({ member }) {
                       <div key={section.sectionId} className="rounded-md bg-[#F8FAFC] p-3">
                         <p className="text-xs font-bold text-[#0F3A63]">{section.title}</p>
                         <p className="mt-1 text-sm font-semibold text-slate-600">{section.comment}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                {(selfEvaluation.titleJustifications || []).length ? (
+                  <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
+                    {(selfEvaluation.titleJustifications || []).map((item) => (
+                      <div key={`${item.sectionId}-${item.pageId}`} className="rounded-md bg-[#F8FAFC] p-3">
+                        <p className="text-xs font-bold text-[#0F3A63]">{item.sectionTitle}</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">{item.pageTitle}</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-600">{item.comment}</p>
                       </div>
                     ))}
                   </div>
@@ -1114,6 +1370,17 @@ function Evaluermonequipe({ member }) {
                               <div key={`${item.evaluatorName}-${section.sectionId}`} className="rounded-md bg-white p-3">
                                 <p className="text-xs font-bold text-[#0F3A63]">{section.title}</p>
                                 <p className="mt-1 text-sm font-semibold text-slate-600">{section.comment}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                        {(item.titleJustifications || []).length ? (
+                          <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+                            {item.titleJustifications.map((title) => (
+                              <div key={`${item.evaluatorName}-${title.pageId}`} className="rounded-md bg-white p-3">
+                                <p className="text-xs font-bold text-[#0F3A63]">{title.sectionTitle}</p>
+                                <p className="mt-1 text-xs font-semibold text-slate-500">{title.pageTitle}</p>
+                                <p className="mt-1 text-sm font-semibold text-slate-600">{title.comment}</p>
                               </div>
                             ))}
                           </div>
@@ -1171,7 +1438,7 @@ function Evaluermonequipe({ member }) {
                 <div className="mt-3 space-y-2">
                   {rhRecipients.map((recipient) => (
                     <p key={recipient.id} className="text-sm font-semibold text-[#0F3A63]">
-                      {recipient.name} ({recipient.department})
+                      {recipient.name} ({getRhRecipientRoleLabel(recipient)})
                     </p>
                   ))}
                 </div>
@@ -1183,7 +1450,7 @@ function Evaluermonequipe({ member }) {
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="mb-2 inline-flex rounded-full bg-[#EFF7E4] px-3 py-1 text-[11px] font-bold uppercase text-[#4E8B1B]">
-                  Evaluation globale du cycle
+                  Évaluation globale du cycle
                 </div>
                 <h4 className="text-2xl font-black text-[#0F3A63]">{activeSection.title}</h4>
                 <p className="mt-1 text-sm font-semibold text-slate-500">Score moyen du titre : {activePageAverage} / 5</p>
@@ -1262,9 +1529,22 @@ function Evaluermonequipe({ member }) {
               </div>
             ) : null}
 
+            {hasLowScoreOnActivePage ? (
+              <div className="mt-4">
+                <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Justification du titre</p>
+                <textarea
+                  rows={3}
+                  value={activePage?.comment || ""}
+                  onChange={(event) => updatePageComment(event.target.value)}
+                  placeholder="Expliquez la raison des notes inférieures à 3 pour ce titre..."
+                  className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
+                />
+              </div>
+            ) : null}
+
             <div className="mt-4">
               <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">
-                {hasLowScoreOnActivePage ? "Justification de la section" : "Commentaire de section"}
+                Commentaire de section
               </p>
               <textarea
                 rows={4}
@@ -1344,3 +1624,5 @@ function Evaluermonequipe({ member }) {
 }
 
 export default Evaluermonequipe;
+
+

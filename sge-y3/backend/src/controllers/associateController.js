@@ -3,7 +3,14 @@ const EvaluationInstance = require('../models/EvaluationInstance');
 const CommitteeDecision = require('../models/CommitteeDecision');
 const AssociateManagerReview = require('../models/AssociateManagerReview');
 const { buildEvaluationTemplateForUser } = require('../utils/competencyMatrix');
-const { getAverageFromScores, getEvaluationSummary, getOverallAverageScore, normalizeSections } = require('../utils/evaluationHelpers');
+const {
+  getAverageFromScores,
+  getEvaluationSummary,
+  getOverallAverageScore,
+  normalizeSections,
+  validateSectionCommentsForSubmit,
+  validateSectionsForSubmit,
+} = require('../utils/evaluationHelpers');
 const {
   buildNonRhDepartmentClause,
   CURRENT_CYCLE_LABEL,
@@ -25,6 +32,34 @@ function getInitials(name = '') {
 
 function roundScore(score) {
   return typeof score === 'number' ? Number(score.toFixed(1)) : null;
+}
+
+function normalizeText(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toUpperCase();
+}
+
+function isRhDepartment(user) {
+  return normalizeText(user?.department) === 'RH';
+}
+
+function isCapitalHumainDepartment(user) {
+  return normalizeText(user?.department) === 'CAPITAL HUMAIN';
+}
+
+function isAssociateManagerEvaluationTarget(user) {
+  if (!user || isCapitalHumainDepartment(user)) {
+    return false;
+  }
+
+  return ['10B', '10C'].includes(String(user.code_categorie || '').trim()) || isRhDepartment(user);
+}
+
+function getAssociateManagerSelfTemplateType(user) {
+  return isRhDepartment(user) ? 'rh-self-evaluation' : 'manager-self-evaluation';
 }
 
 function toPersistenceSections(sections = []) {
@@ -76,6 +111,178 @@ function cloneSectionsForManager(manager) {
     })),
     criteria: (section.criteria || []).map((criterion) => ({ ...criterion })),
   }));
+}
+
+async function resolveOtherAssociates(currentUserId) {
+  return User.find({
+    is_active: true,
+    _id: { $ne: currentUserId },
+    $or: [{ code_categorie: '11' }, { grade: 'Associé' }, { grade: 'Associe' }],
+  })
+    .sort({ last_name: 1, first_name: 1 })
+    .select('_id name first_name last_name grade department code_categorie');
+}
+
+function cloneSectionsForAssociate(user) {
+  return buildEvaluationTemplateForUser({
+    grade: user?.grade || 'Associe',
+    department: user?.department || '',
+  }).map((section) => ({
+    ...section,
+    pages: (section.pages || []).map((page) => ({
+      ...page,
+      themes: (page.themes || []).map((theme) => ({ ...theme })),
+    })),
+    criteria: (section.criteria || []).map((criterion) => ({ ...criterion })),
+  }));
+}
+
+function getAssociatePeerReviewSections(instance, submitter) {
+  const savedSections = normalizeSections(instance.peer_review_sections || []);
+
+  if (savedSections.length) {
+    return savedSections;
+  }
+
+  return cloneSectionsForAssociate(submitter);
+}
+
+async function getOrCreateAssociateSelfEvaluation(user) {
+  let instance = await EvaluationInstance.findOne({
+    cycle_label: CURRENT_CYCLE_LABEL,
+    evalue_id: user._id,
+    template_type: 'associate-self-evaluation',
+  });
+
+  const templateSections = cloneSectionsForAssociate(user);
+
+  if (!instance) {
+    instance = await EvaluationInstance.create({
+      cycle_label: CURRENT_CYCLE_LABEL,
+      evalue_id: user._id,
+      status: 'En cours',
+      template_type: 'associate-self-evaluation',
+      submitted_to_role: 'associate',
+      sections: toPersistenceSections(templateSections),
+      last_saved_at: new Date(),
+    });
+  } else {
+    const currentSections = normalizeSections(instance.sections || []);
+    if (!currentSections.length) {
+      instance.sections = toPersistenceSections(templateSections);
+      instance.last_saved_at = new Date();
+      await instance.save();
+    }
+  }
+
+  return instance;
+}
+
+function buildAssociateSelfEvaluationPayload(instance, user, recipients = []) {
+  const sections = normalizeSections(instance.sections || []);
+  const peerReviewSections = normalizeSections(instance.peer_review_sections || []);
+  const activeSection = sections.find((section) => section.status !== 'Complete') || sections[0] || null;
+
+  return {
+    evaluation: {
+      id: instance._id.toString(),
+      cycle_label: instance.cycle_label,
+      status: instance.status,
+      submitted_at: instance.submitted_at,
+      last_saved_at: instance.last_saved_at,
+      sections,
+      activeSectionId: activeSection?.id || 1,
+      recipient: recipients[0]
+        ? {
+            id: recipients[0]._id.toString(),
+            name: recipients[0].name,
+            grade: recipients[0].grade,
+            department: recipients[0].department,
+          }
+        : null,
+      peerComment: instance.peer_review_comment || peerReviewSections.length
+        ? {
+            comment: instance.peer_review_comment,
+            authorName: instance.peer_review_comment_by_name || '',
+            savedAt: instance.peer_review_comment_saved_at || null,
+            sections: peerReviewSections,
+            summary: {
+              ...getEvaluationSummary(peerReviewSections),
+              overallAverage: getOverallAverageScore(peerReviewSections),
+            },
+          }
+        : null,
+    },
+    summary: {
+      ...getEvaluationSummary(sections),
+      overallAverage: getOverallAverageScore(sections),
+    },
+    associate: {
+      id: user._id.toString(),
+      name: user.name,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      grade: user.grade,
+      department: user.department,
+    },
+  };
+}
+
+function buildAssociateIncomingListItem(instance, submitter) {
+  const sections = normalizeSections(instance.sections || []);
+  const peerReviewSections = normalizeSections(instance.peer_review_sections || []);
+  return {
+    id: instance._id.toString(),
+    submitterId: submitter?._id?.toString?.() || '',
+    name: submitter?.name || 'Associe',
+    grade: submitter?.grade || 'Associe',
+    department: submitter?.department || '',
+    submittedAt: instance.submitted_at || null,
+    status: instance.status || 'En attente',
+    overallAverage: getOverallAverageScore(sections),
+    commentSaved: Boolean(String(instance.peer_review_comment || '').trim() || peerReviewSections.length),
+    peerReviewAverage: getOverallAverageScore(peerReviewSections),
+  };
+}
+
+function buildAssociateIncomingEvaluationPayload(instance, submitter) {
+  const sections = normalizeSections(instance.sections || []);
+  const peerReviewSections = getAssociatePeerReviewSections(instance, submitter);
+  const activeSection = sections[0] || null;
+
+  return {
+    evaluation: {
+      id: instance._id.toString(),
+      cycle_label: instance.cycle_label,
+      status: instance.status,
+      submitted_at: instance.submitted_at,
+      sections,
+      activeSectionId: activeSection?.id || 1,
+    },
+    summary: {
+      ...getEvaluationSummary(sections),
+      overallAverage: getOverallAverageScore(sections),
+    },
+    submitter: {
+      id: submitter?._id?.toString?.() || '',
+      name: submitter?.name || 'Associe',
+      first_name: submitter?.first_name || '',
+      last_name: submitter?.last_name || '',
+      grade: submitter?.grade || 'Associe',
+      department: submitter?.department || '',
+    },
+    peerReview: {
+      comment: instance.peer_review_comment || '',
+      authorName: instance.peer_review_comment_by_name || '',
+      savedAt: instance.peer_review_comment_saved_at || null,
+      sections: peerReviewSections,
+      activeSectionId: peerReviewSections[0]?.id || 1,
+      summary: {
+        ...getEvaluationSummary(peerReviewSections),
+        overallAverage: getOverallAverageScore(peerReviewSections),
+      },
+    },
+  };
 }
 
 function getMissionAverage(criteria = []) {
@@ -340,6 +547,10 @@ function buildManagerAutoEvaluationRows(instances = [], userById = new Map()) {
   return instances
     .map((instance) => {
       const manager = userById.get(String(instance.evalue_id || ''));
+      if (!manager) {
+        return null;
+      }
+
       const score = roundScore(getOverallAverageScore(normalizeSections(instance.sections || [])));
 
       return {
@@ -352,7 +563,7 @@ function buildManagerAutoEvaluationRows(instances = [], userById = new Map()) {
         submittedAt: instance.submitted_at || null,
       };
     })
-    .filter((item) => item.score !== null)
+    .filter((item) => item && item.score !== null)
     .sort((left, right) => {
       const leftDate = left.submittedAt ? new Date(left.submittedAt).getTime() : 0;
       const rightDate = right.submittedAt ? new Date(right.submittedAt).getTime() : 0;
@@ -379,21 +590,26 @@ async function getAssociateOverview(_request, response) {
       CommitteeDecision.findOne({ scope: 'associate-final', cycle_label: CURRENT_CYCLE_LABEL }).sort({ submitted_at: -1 }),
       EvaluationInstance.find({
         cycle_label: CURRENT_CYCLE_LABEL,
-        template_type: 'manager-self-evaluation',
+        template_type: { $in: ['manager-self-evaluation', 'rh-self-evaluation'] },
         status: { $in: ['Soumis a RH', 'Valide RH', 'Cloture'] },
         submitted_at: { $ne: null },
       }).select('evalue_id submitted_at sections'),
       User.find({
         is_active: true,
-        code_categorie: { $in: ['9B', '10B', '10C'] },
-        ...buildNonRhDepartmentClause(),
-      }).select('_id name first_name last_name grade department'),
+        $or: [
+          { code_categorie: { $in: ['10B', '10C'] } },
+          { department: /^RH$/i },
+        ],
+        $nor: [{ department: /^CAPITAL HUMAIN$/i }],
+      }).select('_id name first_name last_name grade department code_categorie'),
     ]);
 
   const combinedRows = [...reviewRows, ...assistantRhRows];
   const receivedCount = combinedRows.filter((item) => RH_RELEVANT_STATUSES.includes(item.status)).length;
   const totalPopulation = evaluatedPopulation.length;
-  const readySyntheses = combinedRows.filter((row) => row.status === 'Valide RH' || row.status === 'Cloture');
+  const readySyntheses = combinedRows.filter(
+    (row) => row.status === 'Valide RH' || row.status === 'Transmis a l associe' || row.status === 'Cloture'
+  );
   const readySyntheseIds = new Set(readySyntheses.map((row) => String(row.memberId || '')).filter(Boolean));
   const latestDecisionMap = buildDecisionMap(latestDecision);
   const pendingDecisionRows = readySyntheses.filter((row) => !latestDecisionMap.has(String(row.memberId || '')));
@@ -500,21 +716,201 @@ async function getAssociateOverview(_request, response) {
 }
 
 module.exports = {
-  async getAssociateManagerEvaluations(request, response) {
-    const managerSelfEvaluations = await EvaluationInstance.find({
-      cycle_label: CURRENT_CYCLE_LABEL,
-      template_type: 'manager-self-evaluation',
-      status: { $in: ['Soumis a RH', 'Valide RH', 'Cloture'] },
-      submitted_at: { $ne: null },
-    }).select('_id evalue_id status submitted_at sections mission_evaluations');
+  async getAssociateSelfEvaluation(request, response) {
+    const [instance, recipients] = await Promise.all([
+      getOrCreateAssociateSelfEvaluation(request.user),
+      resolveOtherAssociates(request.user._id),
+    ]);
 
-    const selfEvaluationByManagerId = new Map(managerSelfEvaluations.map((instance) => [String(instance.evalue_id), instance]));
+    return response.json(buildAssociateSelfEvaluationPayload(instance, request.user, recipients));
+  },
+  async saveAssociateSelfEvaluation(request, response) {
+    const [instance, recipients] = await Promise.all([
+      getOrCreateAssociateSelfEvaluation(request.user),
+      resolveOtherAssociates(request.user._id),
+    ]);
+
+    const rawSections = Array.isArray(request.body?.sections) ? request.body.sections : [];
+    if (rawSections.length) {
+      instance.sections = toPersistenceSections(normalizeSections(rawSections));
+    }
+
+    instance.status = instance.status === 'Soumis aux Associes' ? instance.status : 'En cours';
+    instance.last_saved_at = new Date();
+    await instance.save();
+
+    return response.json({
+      message: "Auto-évaluation associé enregistrée.",
+      ...buildAssociateSelfEvaluationPayload(instance, request.user, recipients),
+    });
+  },
+  async submitAssociateSelfEvaluation(request, response) {
+    const [instance, recipients] = await Promise.all([
+      getOrCreateAssociateSelfEvaluation(request.user),
+      resolveOtherAssociates(request.user._id),
+    ]);
+
+    if (!recipients.length) {
+      return response.status(400).json({
+        message: "Aucun autre associé destinataire n'est disponible pour le moment.",
+      });
+    }
+
+    const sections = normalizeSections(instance.sections || []);
+    const missingAnswers = validateSectionsForSubmit(sections);
+    if (missingAnswers.length) {
+      return response.status(400).json({
+        message: "Toutes les questions doivent être renseignées avant la soumission.",
+        missingAnswers,
+      });
+    }
+
+    const missingComments = validateSectionCommentsForSubmit(sections, 3);
+    if (missingComments.length) {
+      return response.status(400).json({
+        message: "Un commentaire d'au moins 3 caractères est obligatoire pour chaque section.",
+        missingComments,
+      });
+    }
+
+    const recipient = recipients[0];
+    instance.submitted_to_role = 'associate';
+    instance.submitted_to_user_ids = [recipient._id];
+    instance.submitted_to_names = [recipient.name];
+    instance.status = 'Soumis aux Associes';
+    instance.submitted_at = new Date();
+    instance.last_saved_at = new Date();
+    await instance.save();
+
+    return response.json({
+      message: `Auto-évaluation associé soumise à ${recipient.name}.`,
+      ...buildAssociateSelfEvaluationPayload(instance, request.user, recipients),
+    });
+  },
+  async getReceivedAssociateEvaluations(request, response) {
+    const instances = await EvaluationInstance.find({
+      cycle_label: CURRENT_CYCLE_LABEL,
+      template_type: 'associate-self-evaluation',
+      evalue_id: { $ne: request.user._id },
+      submitted_to_user_ids: request.user._id,
+    }).select(
+      '_id evalue_id status submitted_at sections peer_review_comment peer_review_sections peer_review_comment_by_name peer_review_comment_saved_at'
+    );
+
+    const submitterIds = instances.map((instance) => instance.evalue_id).filter(Boolean);
+    const submitters = submitterIds.length
+      ? await User.find({ _id: { $in: submitterIds } }).select('_id name first_name last_name grade department')
+      : [];
+    const submitterById = new Map(submitters.map((user) => [String(user._id), user]));
+
+    return response.json({
+      cycle_label: CURRENT_CYCLE_LABEL,
+      items: instances
+        .map((instance) => buildAssociateIncomingListItem(instance, submitterById.get(String(instance.evalue_id))))
+        .sort((left, right) => {
+          const leftDate = left.submittedAt ? new Date(left.submittedAt).getTime() : 0;
+          const rightDate = right.submittedAt ? new Date(right.submittedAt).getTime() : 0;
+          return rightDate - leftDate;
+        }),
+    });
+  },
+  async getReceivedAssociateEvaluation(request, response) {
+    const instance = await EvaluationInstance.findOne({
+      _id: request.params.evaluationId,
+      cycle_label: CURRENT_CYCLE_LABEL,
+      template_type: 'associate-self-evaluation',
+      evalue_id: { $ne: request.user._id },
+      submitted_to_user_ids: request.user._id,
+    }).select(
+      '_id evalue_id status submitted_at sections peer_review_comment peer_review_sections peer_review_comment_by_name peer_review_comment_saved_at'
+    );
+
+    if (!instance) {
+      return response.status(404).json({ message: "Évaluation associé introuvable." });
+    }
+
+    const submitter = await User.findById(instance.evalue_id).select('_id name first_name last_name grade department');
+
+    return response.json(buildAssociateIncomingEvaluationPayload(instance, submitter));
+  },
+  async saveReceivedAssociateEvaluationComment(request, response) {
+    const instance = await EvaluationInstance.findOne({
+      _id: request.params.evaluationId,
+      cycle_label: CURRENT_CYCLE_LABEL,
+      template_type: 'associate-self-evaluation',
+      evalue_id: { $ne: request.user._id },
+      submitted_to_user_ids: request.user._id,
+    }).select(
+      '_id evalue_id status submitted_at sections peer_review_comment peer_review_sections peer_review_comment_by_name peer_review_comment_saved_at'
+    );
+
+    if (!instance) {
+      return response.status(404).json({ message: "Évaluation associé introuvable." });
+    }
+
+    const rawSections = Array.isArray(request.body?.sections) ? request.body.sections : [];
+    const peerReviewSections = normalizeSections(rawSections);
+    if (!peerReviewSections.length) {
+      return response.status(400).json({
+        message: "La matrice d'évaluation de l'associé est requise.",
+      });
+    }
+
+    const missingAnswers = validateSectionsForSubmit(peerReviewSections);
+    if (missingAnswers.length) {
+      return response.status(400).json({
+        message: "Toutes les questions doivent être renseignées avant l'enregistrement.",
+        missingAnswers,
+      });
+    }
+
+    const missingComments = validateSectionCommentsForSubmit(peerReviewSections, 3);
+    if (missingComments.length) {
+      return response.status(400).json({
+        message: "Un commentaire d'au moins 3 caractères est obligatoire pour chaque section.",
+        missingComments,
+      });
+    }
+
+    instance.peer_review_sections = toPersistenceSections(peerReviewSections);
+    instance.peer_review_comment = String(request.body?.comment || '').trim();
+    instance.peer_review_comment_by_user_id = request.user._id;
+    instance.peer_review_comment_by_name =
+      [request.user?.first_name, request.user?.last_name].filter(Boolean).join(' ').trim() || request.user?.name || '';
+    instance.peer_review_comment_saved_at = new Date();
+    await instance.save();
+
+    const submitter = await User.findById(instance.evalue_id).select('_id name first_name last_name grade department');
+
+    return response.json({
+      message: "Évaluation associé enregistrée.",
+      ...buildAssociateIncomingEvaluationPayload(instance, submitter),
+    });
+  },
+  async getAssociateManagerEvaluations(request, response) {
     const managers = await User.find({
       is_active: true,
-      code_categorie: { $in: ['9B', '10B', '10C'] },
-      ...buildNonRhDepartmentClause(),
-    }).select('_id name grade department');
+      $or: [
+        { code_categorie: { $in: ['10B', '10C'] } },
+        { department: /^RH$/i },
+      ],
+      $nor: [{ department: /^CAPITAL HUMAIN$/i }],
+    }).select('_id name grade department code_categorie');
+    const managersById = new Map(managers.map((manager) => [String(manager._id), manager]));
     const managerIds = managers.map((manager) => manager._id);
+    const managerSelfEvaluations = await EvaluationInstance.find({
+      cycle_label: CURRENT_CYCLE_LABEL,
+      evalue_id: { $in: managerIds },
+      template_type: { $in: ['manager-self-evaluation', 'rh-self-evaluation'] },
+      status: { $in: ['Soumis a RH', 'Valide RH', 'Cloture'] },
+      submitted_at: { $ne: null },
+    }).select('_id evalue_id template_type status submitted_at sections mission_evaluations');
+
+    const selfEvaluationByManagerId = new Map(
+      managerSelfEvaluations
+        .filter((instance) => instance.template_type === getAssociateManagerSelfTemplateType(managersById.get(String(instance.evalue_id))))
+        .map((instance) => [String(instance.evalue_id), instance])
+    );
     const associateReviews = managerIds.length
       ? await AssociateManagerReview.find({
           cycle_label: CURRENT_CYCLE_LABEL,
@@ -539,16 +935,16 @@ module.exports = {
     });
   },
   async getAssociateManagerEvaluation(request, response) {
-    const manager = await User.findById(request.params.managerId).select('_id name grade department');
+    const manager = await User.findById(request.params.managerId).select('_id name grade department code_categorie');
 
-    if (!manager) {
+    if (!manager || !isAssociateManagerEvaluationTarget(manager)) {
       return response.status(404).json({ message: 'Manager introuvable.' });
     }
 
     const selfEvaluation = await EvaluationInstance.findOne({
       cycle_label: CURRENT_CYCLE_LABEL,
       evalue_id: manager._id,
-      template_type: 'manager-self-evaluation',
+      template_type: getAssociateManagerSelfTemplateType(manager),
       status: { $in: ['Soumis a RH', 'Valide RH', 'Cloture'] },
       submitted_at: { $ne: null },
     }).select('status submitted_at sections mission_evaluations');
@@ -558,16 +954,16 @@ module.exports = {
     return response.json(buildAssociateManagerPayload(manager, selfEvaluation, associateReview));
   },
   async saveAssociateManagerEvaluation(request, response) {
-    const manager = await User.findById(request.params.managerId).select('_id name grade department');
+    const manager = await User.findById(request.params.managerId).select('_id name grade department code_categorie');
 
-    if (!manager) {
+    if (!manager || !isAssociateManagerEvaluationTarget(manager)) {
       return response.status(404).json({ message: 'Manager introuvable.' });
     }
 
     const selfEvaluation = await EvaluationInstance.findOne({
       cycle_label: CURRENT_CYCLE_LABEL,
       evalue_id: manager._id,
-      template_type: 'manager-self-evaluation',
+      template_type: getAssociateManagerSelfTemplateType(manager),
       status: { $in: ['Soumis a RH', 'Valide RH', 'Cloture'] },
       submitted_at: { $ne: null },
     }).select('status submitted_at sections mission_evaluations');
@@ -583,7 +979,7 @@ module.exports = {
     if (rawMissionReviews.length) {
       const incomingMissionMap = new Map(normalizeMissionReviews(rawMissionReviews).map((mission) => [mission.mission_id, mission]));
       const availableMissionIds = new Set(
-        (selfEvaluation.mission_evaluations || []).filter((mission) => mission.status === 'Soumise').map((mission) => String(mission.mission_id))
+        (selfEvaluation?.mission_evaluations || []).filter((mission) => mission.status === 'Soumise').map((mission) => String(mission.mission_id))
       );
       associateReview.mission_reviews = normalizeMissionReviews(associateReview.mission_reviews || []).map((mission) =>
         availableMissionIds.has(mission.mission_id) && incomingMissionMap.has(mission.mission_id)
@@ -597,7 +993,7 @@ module.exports = {
     await associateReview.save();
 
     return response.json({
-      message: "Evaluation de l'associe enregistree.",
+      message: "Évaluation de l'associé enregistrée.",
       ...buildAssociateManagerPayload(manager, selfEvaluation, associateReview),
     });
   },
@@ -609,7 +1005,7 @@ module.exports = {
     ]);
 
     const items = [...rows, ...assistantRhRows]
-      .filter((row) => row.status === 'Valide RH' || row.status === 'Cloture')
+      .filter((row) => row.status === 'Valide RH' || row.status === 'Transmis a l associe' || row.status === 'Cloture')
       .map((row) => ({
         ...row,
         initials: getInitials(row.name),

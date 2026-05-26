@@ -6,7 +6,7 @@ const supportSubmissions = [
     name: "Fleur Nguessan",
     role: "Support administratif",
     email: "fleur.nguessan@ycubeac.com",
-    status: "Soumis aux associes",
+    status: "Soumis aux Associes",
     average: 4.0,
     answers: [
       ["Qualite de service", "4/5"],
@@ -20,7 +20,7 @@ const supportSubmissions = [
     name: "Porthela Kakou",
     role: "Support",
     email: "porthela.kakou@ycubeac.com",
-    status: "Soumis aux associes",
+    status: "Soumis aux Associes",
     average: 3.6,
     answers: [
       ["Qualite de service", "4/5"],
@@ -34,7 +34,7 @@ const supportSubmissions = [
     name: "Aziz Ouattara",
     role: "Support",
     email: "aziz.ouattara@ycubeac.com",
-    status: "Soumis aux associes",
+    status: "Soumis aux Associes",
     average: 3.8,
     answers: [
       ["Qualite de service", "4/5"],
@@ -48,7 +48,7 @@ const supportSubmissions = [
     name: "Adele Creppy",
     role: "Support",
     email: "adele.creppy@ycubeac.com",
-    status: "Soumis aux associes",
+    status: "Soumis aux Associes",
     average: 4.2,
     answers: [
       ["Qualite de service", "4/5"],
@@ -69,16 +69,16 @@ function AutoevaluationSupport() {
   );
 
   const saveAnnotation = () => {
-    setStatus("Annotation support enregistree.");
+    setStatus("Annotation support enregistrée.");
   };
 
   return (
     <section className="space-y-5">
       <header className="rounded-xl bg-white p-5 shadow-sm">
-        <p className="text-xs font-bold uppercase text-slate-400">Departement support</p>
-        <h1 className="mt-1 text-2xl font-black text-[#0F3A63]">Auto-evaluations support recues</h1>
+        <p className="text-xs font-bold uppercase text-slate-400">Département support</p>
+        <h1 className="mt-1 text-2xl font-black text-[#0F3A63]">Auto-évaluations support reçues</h1>
         <p className="mt-1 text-sm font-semibold text-slate-500">
-          Les membres du support soumettent directement aux associes. Les associes consultent ici avant le classement en comite.
+          Les membres du support soumettent directement aux associés. Les associés consultent ici avant le classement en comité.
         </p>
       </header>
 
@@ -139,7 +139,7 @@ function AutoevaluationSupport() {
               setAnnotation(event.target.value);
               setStatus("");
             }}
-            placeholder="Annotation associe sur cette auto-evaluation support..."
+            placeholder="Annotation associée sur cette auto-évaluation support..."
             className="mt-5 min-h-[120px] w-full resize-none rounded-lg border border-slate-200 px-3 py-3 text-sm text-[#0F3A63] outline-none"
           />
 

@@ -106,6 +106,18 @@ function hasRequiredSubmissionComment(sections = []) {
   return sections.length > 0 && sections.every((section) => String(section.comment || "").trim().length >= 3);
 }
 
+function normalizeDepartmentLabel(value = "") {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+function getRhRecipientRoleLabel(recipient) {
+  const normalizedDepartment = normalizeDepartmentLabel(recipient?.department);
+  return normalizedDepartment === "CAPITAL HUMAIN" ? "Assistante RH" : recipient?.department || recipient?.grade || "RH";
+}
+
 function createInitialPageIndexes(sections = []) {
   return Object.fromEntries(
     sections.map((section) => {
@@ -272,6 +284,9 @@ function MonautoevaluationRH({ assistantMode = false }) {
   );
   const averageScore = useMemo(() => getPageAverage(activePage), [activePage]);
   const associateRecipients = evaluationData?.submitted_to || [];
+  const visibleAssociateRecipients = assistantMode
+    ? associateRecipients.filter((recipient) => normalizeDepartmentLabel(recipient?.department) !== "CAPITAL HUMAIN")
+    : associateRecipients;
   const missionProgress = missionEvaluations.length
     ? Math.round(missionEvaluations.reduce((total, mission) => total + getMissionProgress(mission), 0) / missionEvaluations.length)
     : 0;
@@ -760,13 +775,13 @@ function MonautoevaluationRH({ assistantMode = false }) {
               </p>
             </div>
           </div>
-          {associateRecipients.map((recipient, index) => (
+          {visibleAssociateRecipients.map((recipient, index) => (
             <div key={recipient.id} className="flex items-start gap-3">
               <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-200 text-slate-600">
                 {index + 2}
               </span>
               <p>
-                {workflow.recipientRoleLabel} destinataire - {recipient.name} ({recipient.department || recipient.grade})
+                {workflow.recipientRoleLabel} destinataire - {recipient.name} ({getRhRecipientRoleLabel(recipient)})
               </p>
             </div>
           ))}

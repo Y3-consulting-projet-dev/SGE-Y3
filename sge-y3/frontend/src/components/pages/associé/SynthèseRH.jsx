@@ -22,6 +22,70 @@ function formatDate(value) {
   return date.toLocaleDateString("fr-FR");
 }
 
+function EvaluationTrail({ items }) {
+  return (
+    <section className="rounded-lg bg-[#F8FAFC] p-4">
+      <h3 className="text-sm font-extrabold uppercase tracking-wide text-slate-500">Détail complet de l'évaluation</h3>
+      {items.length ? (
+        <div className="mt-3 space-y-3">
+          {items.map((item, index) => (
+            <div key={`${item.source}-${item.evaluatorName}-${index}`} className="rounded-lg bg-white px-4 py-3">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-extrabold text-[#0F3A63]">
+                    {item.source} - {item.evaluatorName}
+                  </p>
+                  <p className="text-xs font-semibold text-slate-500">{item.evaluatorGrade}</p>
+                </div>
+                <div className="text-right">
+                  <p className={`text-lg font-black ${getScoreTone(item.overallScore)}`}>{formatScore(item.overallScore)}</p>
+                  <p className="text-xs font-semibold text-slate-500">{formatDate(item.submittedAt)}</p>
+                </div>
+              </div>
+
+              {(item.sectionScores || []).length ? (
+                <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                  {item.sectionScores.map((section) => (
+                    <div key={`${item.source}-${section.sectionId}`} className="flex items-center justify-between text-sm font-semibold text-[#0F3A63]">
+                      <span>{section.title}</span>
+                      <span className={getScoreTone(section.score)}>{formatScore(section.score)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {(item.sectionComments || []).length ? (
+                <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                  {item.sectionComments.map((section) => (
+                    <div key={`${item.source}-comment-${section.sectionId}`} className="rounded-lg bg-[#F8FAFC] p-3">
+                      <p className="text-xs font-bold text-[#0F3A63]">{section.title}</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">{section.comment}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {(item.titleJustifications || []).length ? (
+                <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                  {item.titleJustifications.map((title) => (
+                    <div key={`${item.source}-gap-${title.pageId}`} className="rounded-lg bg-[#FFF7ED] p-3">
+                      <p className="text-xs font-bold text-[#0F3A63]">{title.sectionTitle}</p>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">{title.pageTitle}</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">{title.comment}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm font-semibold text-slate-500">Aucun détail d'évaluation disponible pour cette synthèse.</p>
+      )}
+    </section>
+  );
+}
+
 function ScoreBreakdown({ title, details }) {
   return (
     <section className="rounded-lg bg-[#F8FAFC] p-4">
@@ -43,6 +107,27 @@ function ScoreBreakdown({ title, details }) {
                   <p className="text-xs font-semibold text-slate-500">{formatDate(detail.submittedAt)}</p>
                 </div>
               </div>
+              {(detail.sectionComments || []).length ? (
+                <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                  {detail.sectionComments.map((section) => (
+                    <div key={`${detail.source}-${detail.missionTitle}-comment-${section.sectionId}`} className="rounded-lg bg-[#F8FAFC] p-3">
+                      <p className="text-xs font-bold text-[#0F3A63]">{section.title}</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">{section.comment}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {(detail.titleJustifications || []).length ? (
+                <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                  {detail.titleJustifications.map((title) => (
+                    <div key={`${detail.source}-${detail.missionTitle}-gap-${title.pageId}`} className="rounded-lg bg-[#FFF7ED] p-3">
+                      <p className="text-xs font-bold text-[#0F3A63]">{title.sectionTitle}</p>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">{title.pageTitle}</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">{title.comment}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
@@ -240,6 +325,10 @@ function SyntheseRH() {
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
             <ScoreBreakdown title="Détail des scores mission(s)" details={selectedRow.missionScoreDetails || []} />
             <ScoreBreakdown title="Détail des scores globaux" details={selectedRow.globalScoreDetails || []} />
+          </div>
+
+          <div className="mt-5">
+            <EvaluationTrail items={selectedRow.evaluationTrail || []} />
           </div>
         </section>
       ) : null}

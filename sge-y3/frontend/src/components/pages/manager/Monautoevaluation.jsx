@@ -46,6 +46,39 @@ function getMissionAverage(criteria = []) {
   return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
 }
 
+function formatDateDisplay(value) {
+  if (!value) return "";
+
+  if (/^\d{2}-\d{2}-\d{4}$/.test(value)) {
+    return value;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-");
+    return `${day}-${month}-${year}`;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString("fr-FR").replace(/\//g, "-");
+}
+
+function formatMissionPeriod(period, startDate = "", endDate = "") {
+  if (startDate && endDate) {
+    return `Du ${formatDateDisplay(startDate)} au ${formatDateDisplay(endDate)}`;
+  }
+
+  const rangeMatch = String(period || "").match(/(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}).*?(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4})/);
+  if (rangeMatch) {
+    return `Du ${formatDateDisplay(rangeMatch[1])} au ${formatDateDisplay(rangeMatch[2])}`;
+  }
+
+  return period || "Période non renseignée";
+}
+
 function createInitialPageIndexes(sections = []) {
   return Object.fromEntries(
     sections.map((section) => {
@@ -124,6 +157,24 @@ function getMissionSectionProgress(section) {
   return Math.round((answered / criteria.length) * 100);
 }
 
+function getRhRecipientRoleLabel(recipient) {
+  const normalizedDepartment = String(recipient?.department || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+
+  return normalizedDepartment === "CAPITAL HUMAIN" ? "Assistante RH" : recipient?.department || "RH";
+}
+
+function isRhValidationRecipient(recipient) {
+  const normalizedDepartment = String(recipient?.department || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+
+  return normalizedDepartment === "RH";
+}
+
 function hasRequiredSubmissionComment(sections = []) {
   return sections.length > 0 && sections.every((section) => String(section.comment || "").trim().length >= 3);
 }
@@ -176,14 +227,15 @@ function SectionBadge({ progress }) {
 
 function Monautoevaluation() {
   const [evaluationData, setEvaluationData] = useState(null);
-  const [activeView, setActiveView] = useState("cycle");
+  const [activeView, setActiveView] = useState("missions");
   const [sections, setSections] = useState([]);
   const [missionEvaluations, setMissionEvaluations] = useState([]);
   const [activeMissionId, setActiveMissionId] = useState("");
   const [missionSectionIds, setMissionSectionIds] = useState({});
   const [missionPageIndexes, setMissionPageIndexes] = useState({});
   const [missionTitle, setMissionTitle] = useState("");
-  const [missionPeriod, setMissionPeriod] = useState("");
+  const [missionStartDate, setMissionStartDate] = useState("");
+  const [missionEndDate, setMissionEndDate] = useState("");
   const [activeSectionId, setActiveSectionId] = useState(1);
   const [pageIndexes, setPageIndexes] = useState({});
   const [savedComments, setSavedComments] = useState({});
@@ -247,6 +299,7 @@ function Monautoevaluation() {
   );
   const averageScore = useMemo(() => getPageAverage(activePage), [activePage]);
   const rhRecipients = evaluationData?.submitted_to || [];
+  const rhValidationRecipients = rhRecipients.filter(isRhValidationRecipient);
 
   const missionProgress = missionEvaluations.length
     ? Math.round(missionEvaluations.reduce((total, mission) => total + getMissionProgress(mission), 0) / missionEvaluations.length)
@@ -268,14 +321,17 @@ function Monautoevaluation() {
   useEffect(() => {
     if (!activeMission?.id || !missionSections.length) return;
 
-    setMissionSectionIds((current) => ({
-      ...current,
-      [activeMission.id]: current[activeMission.id] || missionSections[0].id,
-    }));
-    setMissionPageIndexes((current) => ({
-      ...current,
-      [activeMission.id]: current[activeMission.id] || 0,
-    }));
+    const timeoutId = setTimeout(() => {
+      setMissionSectionIds((current) => ({
+        ...current,
+        [activeMission.id]: current[activeMission.id] || missionSections[0].id,
+      }));
+      setMissionPageIndexes((current) => ({
+        ...current,
+        [activeMission.id]: current[activeMission.id] || 0,
+      }));
+    }, 0);
+    return () => clearTimeout(timeoutId);
   }, [activeMission?.id, missionSections]);
 
   function syncSections(updater) {
@@ -407,12 +463,24 @@ function Monautoevaluation() {
       return;
     }
 
+    if (!missionStartDate || !missionEndDate) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Renseignez la date de début et la date de fin de la mission.");
+      return;
+    }
+
+    if (missionEndDate < missionStartDate) {
+      setFeedbackTone("error");
+      setFeedbackMessage("La date de fin doit être postérieure ou égale à la date de début.");
+      return;
+    }
+
     try {
       setIsSaving(true);
       setFeedbackMessage("");
       const response = await createManagerMissionEvaluation({
         title,
-        period: missionPeriod.trim(),
+        period: formatMissionPeriod("", missionStartDate, missionEndDate),
       });
 
       setEvaluationData(response);
@@ -423,7 +491,8 @@ function Monautoevaluation() {
         setActiveMissionId(addedMission.id);
       }
       setMissionTitle("");
-      setMissionPeriod("");
+      setMissionStartDate("");
+      setMissionEndDate("");
       setFeedbackTone("success");
       setFeedbackMessage(response.message || "Mission manager ajoutée.");
     } catch (error) {
@@ -598,7 +667,7 @@ function Monautoevaluation() {
         <button
           type="button"
           onClick={() => setActiveView("cycle")}
-          className={`rounded-md p-4 text-left transition ${
+          className={`hidden rounded-md p-4 text-left transition ${
             activeView === "cycle" ? "bg-[#003B63] text-white" : "bg-white text-[#0F3A63] shadow-sm"
           }`}
         >
@@ -711,13 +780,13 @@ function Monautoevaluation() {
                       <p className="text-[11px] text-slate-400">Après complétion de toutes les sections de la matrice</p>
                     </div>
                   </div>
-                  {rhRecipients.map((recipient, index) => (
+                  {rhValidationRecipients.map((recipient, index) => (
                     <div key={recipient.id} className="flex items-start gap-3">
                       <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-200 text-slate-600">
                         {index + 2}
                       </span>
                       <p>
-                        Validation RH - {recipient.name} ({recipient.department})
+                        Validation RH - {recipient.name} ({getRhRecipientRoleLabel(recipient)})
                       </p>
                     </div>
                   ))}
@@ -832,7 +901,7 @@ function Monautoevaluation() {
                     className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <ChevronLeft size={14} />
-                    Precedent
+                    Précédent
                   </button>
 
                   <div className="flex flex-wrap items-center gap-3">
@@ -896,20 +965,27 @@ function Monautoevaluation() {
             <article className="rounded-md bg-white p-4 shadow-sm">
               <p className="text-xs font-bold uppercase text-slate-500">Nouvelle mission manager</p>
               <p className="mt-1 text-xs font-semibold text-slate-500">
-                Saisissez le titre et la période. La mission sera évaluée puis soumise à la RH et aux associés.
+                Saisissez le nom de la mission, sa date de début et sa date de fin. Elle sera ensuite soumise à la RH et aux associés.
               </p>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
                 <input
                   value={missionTitle}
                   onChange={(event) => setMissionTitle(event.target.value)}
-                  placeholder="Titre de la mission"
+                  placeholder="Nom de la mission"
                   className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
                 />
                 <input
-                  value={missionPeriod}
-                  onChange={(event) => setMissionPeriod(event.target.value)}
-                  placeholder="Période"
-                  className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
+                  type="date"
+                  value={missionStartDate}
+                  onChange={(event) => setMissionStartDate(event.target.value)}
+                  className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none"
+                />
+                <input
+                  type="date"
+                  value={missionEndDate}
+                  min={missionStartDate || undefined}
+                  onChange={(event) => setMissionEndDate(event.target.value)}
+                  className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none"
                 />
               </div>
               <button
@@ -940,7 +1016,7 @@ function Monautoevaluation() {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
-                          <p className="mt-1 text-xs font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">{formatMissionPeriod(mission.period)}</p>
                         </div>
                         <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#4E8B1B]">{mission.status}</span>
                       </div>
@@ -961,7 +1037,7 @@ function Monautoevaluation() {
               <article className="rounded-md bg-white p-4 shadow-sm">
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-semibold text-slate-400">{activeMission.period || "Période non renseignée"}</p>
+                    <p className="text-xs font-semibold text-slate-400">{formatMissionPeriod(activeMission.period)}</p>
                     <h2 className="mt-1 text-xl font-black text-[#0F3A63]">{activeMission.title}</h2>
                     <p className="mt-1 text-xs font-semibold text-slate-500">Score moyen mission : {activeMissionAverage} / 5</p>
                   </div>
@@ -1070,7 +1146,7 @@ function Monautoevaluation() {
                     className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <ChevronLeft size={14} />
-                    Precedent
+                    Précédent
                   </button>
 
                   <div className="flex flex-wrap items-center gap-3">

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Bell,
   CircleHelp,
-  FileChartColumnIncreasing,
   FileStack,
   LayoutDashboard,
   LogOut,
@@ -11,8 +10,8 @@ import {
 } from "lucide-react";
 import SyntheseRH from "@/components/pages/associé/SynthèseRH";
 import Autoevamanager from "@/components/pages/associé/autoevamanager";
+import AutoevaluationAssocie from "@/components/pages/associé/AutoevaluationAssocie";
 import AutoevaluationSupport from "@/components/pages/associé/AutoevaluationSupport";
-import Histoireanalytique from "@/components/pages/associé/Histoireanalytique";
 import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import logoY3 from "@/assets/logo-y3.png";
@@ -26,7 +25,7 @@ const sideMenu = [
     items: [{ key: "vue-cabinet", label: "Vue cabinet", icon: LayoutDashboard }],
   },
   {
-    title: "Evaluations",
+    title: "Évaluations",
     items: [
       { key: "syntheses-rh", label: "Synthèses validées RH", icon: FileStack },
       { key: "committee", label: "Comité d'évaluation", icon: UsersRound },
@@ -36,13 +35,10 @@ const sideMenu = [
     title: "Managers",
     items: [
       { key: "autoeval-managers", label: "Auto-évaluation Managers", icon: UsersRound },
+      { key: "autoeval-associes", label: "Auto-évaluation Associés", icon: UsersRound },
       { key: "autoeval-support", label: "Auto-évaluation Support", icon: UsersRound },
     ],
   },
-  // {
-  //   title: "Reporting",
-  //   items: [{ key: "history", label: "Historique & analytics", icon: FileChartColumnIncreasing }],
-  // },
   {
     title: "Compte",
     items: [{ key: "profile", label: "Profil", icon: Settings2 }],
@@ -72,8 +68,8 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
     if (activeSection === "syntheses-rh") return "Synthèses validées RH";
     if (activeSection === "committee") return "Comité d'évaluation";
     if (activeSection === "autoeval-managers") return "Auto-évaluation Managers";
+    if (activeSection === "autoeval-associes") return "Auto-évaluation Associés";
     if (activeSection === "autoeval-support") return "Auto-évaluation Support";
-    // if (activeSection === "history") return "Historique & analytics";
     if (activeSection === "profile") return "Mon profil";
     return "Vue cabinet";
   }, [activeSection]);
@@ -99,7 +95,10 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
         setOverview({
           ...defaultOverview,
           ...data,
-          stats: Array.isArray(data?.stats) && data.stats.length ? data.stats.filter((card) => card.title !== "Décisions en attente") : defaultOverview.stats,
+          stats:
+            Array.isArray(data?.stats) && data.stats.length
+              ? data.stats.filter((card) => card.title !== "Décisions en attente")
+              : defaultOverview.stats,
           department_scores: Array.isArray(data?.department_scores) ? data.department_scores : [],
         });
       } catch (error) {
@@ -247,6 +246,7 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
               rateEnabled
               showCommitteeMembers={false}
               initialDecisionScope="rh-final"
+              editableDecisionScope="associate-final"
               submitLabel="Envoyer les taux d'augmentation à la RH"
               submittedLabel="Taux d'augmentation envoyés à la RH"
               successMessage="Les classements et les taux d'augmentation ont été transmis à la RH."
@@ -255,10 +255,10 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
             />
           ) : activeSection === "autoeval-managers" ? (
             <Autoevamanager />
+          ) : activeSection === "autoeval-associes" ? (
+            <AutoevaluationAssocie />
           ) : activeSection === "autoeval-support" ? (
             <AutoevaluationSupport />
-          // ) : activeSection === "history" ? (
-          //   <Histoireanalytique />
           ) : activeSection === "profile" ? (
             <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />
           ) : (

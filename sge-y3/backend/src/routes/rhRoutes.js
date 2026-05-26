@@ -23,6 +23,7 @@ const {
   selectRhDepartmentEvaluation,
   submitMyAssistantRhSelfEvaluation,
   submitAssistantRhEvaluation,
+  submitRhSyntheses,
   submitMyRhSelfMissionEvaluation,
   submitMyRhSelfEvaluation,
   validateRhSelection,
@@ -57,5 +58,6 @@ router.post('/department-evaluations/:reviewId/select', requireAuth, requireRh, 
 router.get('/validations', requireAuth, requireRh, getRhValidations);
 router.post('/validations/confirm', requireAuth, requireRh, validateRhSelection);
 router.get('/syntheses', requireAuth, requireRh, getRhSyntheses);
+router.post('/syntheses/submit', requireAuth, requireRh, submitRhSyntheses);
 
 module.exports = router;

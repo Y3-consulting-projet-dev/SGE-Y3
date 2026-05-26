@@ -7,16 +7,21 @@ const reminders = [
 ];
 
 function formatProgressSubtitle(evaluation) {
-  const completed = evaluation?.summary?.completedSections || 0;
-  const total = evaluation?.summary?.totalSections || 4;
+  const completed = evaluation?.summary?.completedMissions || 0;
+  const total = evaluation?.summary?.totalMissions || 0;
   const progress = evaluation?.summary?.globalProgress || 0;
 
-  return `Section ${Math.min(completed + 1, total)} / ${total} - ${progress}%`;
+  if (!total) {
+    return `0 mission - ${progress}%`;
+  }
+
+  return `${completed} / ${total} mission(s) - ${progress}%`;
 }
 
-function getSectionStepTitle(section) {
-  const status = section.status === "Complete" ? "complétée" : section.status === "En cours" ? "en cours" : "à faire";
-  return `${section.title} ${status}`;
+function getMissionStepTitle(mission) {
+  const progress = mission?.progress ?? 0;
+  const status = mission?.status === "Soumise" ? "soumise" : progress === 100 ? "complète" : progress > 0 ? "en cours" : "à faire";
+  return `${mission.title} ${status}`;
 }
 
 function getEvaluationStatusLabel(status) {
@@ -38,23 +43,30 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
   ];
 
   const progressSteps =
-    evaluation?.evaluation?.sections?.map((section) => ({
-      id: section.id,
-      title: getSectionStepTitle(section),
-      subtitle: section.subtitle,
-      done: section.status === "Complete",
+    evaluation?.mission_evaluations?.map((mission) => ({
+      id: mission.id,
+      title: getMissionStepTitle({
+        ...mission,
+        progress: mission?.criteria?.length
+          ? Math.round(
+              (mission.criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length / mission.criteria.length) * 100
+            )
+          : 0,
+      }),
+      subtitle: `${mission.period || "Période non renseignée"} - ${mission.department || "Département non renseigné"}`,
+      done: mission.status === "Soumise",
     })) || [];
 
   const globalProgress = evaluation?.summary?.globalProgress || 0;
-  const completedSections = evaluation?.summary?.completedSections || 0;
+  const completedMissions = evaluation?.summary?.completedMissions || 0;
 
   return (
     <div className="space-y-4">
       <div className="rounded-sm bg-[#BFE2B9] px-3 py-2 text-[11px] font-semibold text-[#114F35]">
         {evaluation?.evaluation?.status === "Soumis aux Managers"
-          ? "Auto-évaluation soumise aux managers concernés. En attente de retour."
+          ? "Auto-évaluation soumise ?ux managers concernés. En attente de retour."
           : evaluation?.evaluation?.status === "Soumis au Manager"
-          ? "Auto-évaluation soumise au(x) manager(s). En attente de traitement."
+          ? "Auto-évaluation soumise ?u(x) manager(s). En attente de traitement."
           : evaluation?.evaluation?.status === "Soumis à la RH"
           ? "Auto-évaluation soumise à la RH. En attente de traitement."
           : "Auto-évaluation en cours -  à soumettre avant le 18/04/2026. Sauvegarde automatique activée"}
@@ -127,8 +139,8 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
                       : "En attente de ma soumission",
                 },
                 { id: 2, title: "Mes managers évaluent", subtitle: "Selon les départements concernés" },
-                { id: 3, title: "Validation RH / Capital Humain", subtitle: "Validation métier" },
-                { id: 4, title: "Decision de l'Associé", subtitle: "Résultat communiqué ensuite" },
+                { id: 3, title: "Validation RH", subtitle: "Suivi administratif RH" },
+                { id: 4, title: "Décision de l'Associé", subtitle: "Résultat communiqué ensuite" },
               ].map((step) => (
                 <div key={step.id} className="flex items-start gap-2">
                   <span className="mt-1 inline-flex h-4.5 w-4.5 items-center justify-center rounded-full bg-slate-100 text-[9px] font-bold text-slate-500">
@@ -154,7 +166,7 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
               ))}
             </div>
             <p className="mt-4 text-[11px] font-semibold text-[#0F3A63]">
-              {completedSections} section(s) completée(s) sur {evaluation?.summary?.totalSections || 4}.
+              {completedMissions} mission(s) complétée(s) sur {evaluation?.summary?.totalMissions || 0}.
             </p>
           </article>
         </div>
