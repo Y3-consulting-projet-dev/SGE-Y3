@@ -134,33 +134,6 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1.05fr]">
         <div className="space-y-4">
-          <article className="rounded-md bg-white p-4 shadow-sm">
-            <h3 className="mb-4 text-[14px] font-bold text-[#0F3A63]">Evaluation par mission</h3>
-            <div className="space-y-4">
-              {missionScores.length ? (
-                missionScores.map((mission) => (
-                  <div key={mission.id}>
-                    <div className="mb-1 flex items-center justify-between gap-3 text-[13px] font-semibold text-[#0F3A63]">
-                      <div>
-                        <p>{mission.title}</p>
-                        <p className="text-[11px] font-medium text-slate-500">
-                          {mission.period} - {mission.department} - {mission.recipients.join(", ")}
-                        </p>
-                      </div>
-                      <span>{typeof mission.score === "number" ? mission.score.toFixed(1) : "--"}</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-slate-300">
-                      <div className="h-1.5 rounded-full bg-[#76B82A]" style={{ width: `${mission.percent || 0}%` }} />
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-slate-500">
-                  Aucune mission ajoutée pour le moment.
-                </p>
-              )}
-            </div>
-          </article>
 
           <article className="rounded-md bg-white p-4 shadow-sm">
             <h3 className="mb-4 text-[14px] font-bold text-[#0F3A63]">Synthèse finale</h3>

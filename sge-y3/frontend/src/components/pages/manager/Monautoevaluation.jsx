@@ -46,6 +46,39 @@ function getMissionAverage(criteria = []) {
   return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
 }
 
+function formatDateDisplay(value) {
+  if (!value) return "";
+
+  if (/^\d{2}-\d{2}-\d{4}$/.test(value)) {
+    return value;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-");
+    return `${day}-${month}-${year}`;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString("fr-FR").replace(/\//g, "-");
+}
+
+function formatMissionPeriod(period, startDate = "", endDate = "") {
+  if (startDate && endDate) {
+    return `Du ${formatDateDisplay(startDate)} au ${formatDateDisplay(endDate)}`;
+  }
+
+  const rangeMatch = String(period || "").match(/(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}).*?(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4})/);
+  if (rangeMatch) {
+    return `Du ${formatDateDisplay(rangeMatch[1])} au ${formatDateDisplay(rangeMatch[2])}`;
+  }
+
+  return period || "Période non renseignée";
+}
+
 function createInitialPageIndexes(sections = []) {
   return Object.fromEntries(
     sections.map((section) => {
@@ -194,14 +227,15 @@ function SectionBadge({ progress }) {
 
 function Monautoevaluation() {
   const [evaluationData, setEvaluationData] = useState(null);
-  const [activeView, setActiveView] = useState("cycle");
+  const [activeView, setActiveView] = useState("missions");
   const [sections, setSections] = useState([]);
   const [missionEvaluations, setMissionEvaluations] = useState([]);
   const [activeMissionId, setActiveMissionId] = useState("");
   const [missionSectionIds, setMissionSectionIds] = useState({});
   const [missionPageIndexes, setMissionPageIndexes] = useState({});
   const [missionTitle, setMissionTitle] = useState("");
-  const [missionPeriod, setMissionPeriod] = useState("");
+  const [missionStartDate, setMissionStartDate] = useState("");
+  const [missionEndDate, setMissionEndDate] = useState("");
   const [activeSectionId, setActiveSectionId] = useState(1);
   const [pageIndexes, setPageIndexes] = useState({});
   const [savedComments, setSavedComments] = useState({});
@@ -287,14 +321,17 @@ function Monautoevaluation() {
   useEffect(() => {
     if (!activeMission?.id || !missionSections.length) return;
 
-    setMissionSectionIds((current) => ({
-      ...current,
-      [activeMission.id]: current[activeMission.id] || missionSections[0].id,
-    }));
-    setMissionPageIndexes((current) => ({
-      ...current,
-      [activeMission.id]: current[activeMission.id] || 0,
-    }));
+    const timeoutId = setTimeout(() => {
+      setMissionSectionIds((current) => ({
+        ...current,
+        [activeMission.id]: current[activeMission.id] || missionSections[0].id,
+      }));
+      setMissionPageIndexes((current) => ({
+        ...current,
+        [activeMission.id]: current[activeMission.id] || 0,
+      }));
+    }, 0);
+    return () => clearTimeout(timeoutId);
   }, [activeMission?.id, missionSections]);
 
   function syncSections(updater) {
@@ -426,12 +463,24 @@ function Monautoevaluation() {
       return;
     }
 
+    if (!missionStartDate || !missionEndDate) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Renseignez la date de début et la date de fin de la mission.");
+      return;
+    }
+
+    if (missionEndDate < missionStartDate) {
+      setFeedbackTone("error");
+      setFeedbackMessage("La date de fin doit être postérieure ou égale à la date de début.");
+      return;
+    }
+
     try {
       setIsSaving(true);
       setFeedbackMessage("");
       const response = await createManagerMissionEvaluation({
         title,
-        period: missionPeriod.trim(),
+        period: formatMissionPeriod("", missionStartDate, missionEndDate),
       });
 
       setEvaluationData(response);
@@ -442,7 +491,8 @@ function Monautoevaluation() {
         setActiveMissionId(addedMission.id);
       }
       setMissionTitle("");
-      setMissionPeriod("");
+      setMissionStartDate("");
+      setMissionEndDate("");
       setFeedbackTone("success");
       setFeedbackMessage(response.message || "Mission manager ajoutée.");
     } catch (error) {
@@ -617,7 +667,7 @@ function Monautoevaluation() {
         <button
           type="button"
           onClick={() => setActiveView("cycle")}
-          className={`rounded-md p-4 text-left transition ${
+          className={`hidden rounded-md p-4 text-left transition ${
             activeView === "cycle" ? "bg-[#003B63] text-white" : "bg-white text-[#0F3A63] shadow-sm"
           }`}
         >
@@ -915,20 +965,27 @@ function Monautoevaluation() {
             <article className="rounded-md bg-white p-4 shadow-sm">
               <p className="text-xs font-bold uppercase text-slate-500">Nouvelle mission manager</p>
               <p className="mt-1 text-xs font-semibold text-slate-500">
-                Saisissez le titre et la période. La mission sera évaluée puis soumise à la RH et aux associés.
+                Saisissez le nom de la mission, sa date de début et sa date de fin. Elle sera ensuite soumise à la RH et aux associés.
               </p>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
                 <input
                   value={missionTitle}
                   onChange={(event) => setMissionTitle(event.target.value)}
-                  placeholder="Titre de la mission"
+                  placeholder="Nom de la mission"
                   className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
                 />
                 <input
-                  value={missionPeriod}
-                  onChange={(event) => setMissionPeriod(event.target.value)}
-                  placeholder="Période"
-                  className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
+                  type="date"
+                  value={missionStartDate}
+                  onChange={(event) => setMissionStartDate(event.target.value)}
+                  className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none"
+                />
+                <input
+                  type="date"
+                  value={missionEndDate}
+                  min={missionStartDate || undefined}
+                  onChange={(event) => setMissionEndDate(event.target.value)}
+                  className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none"
                 />
               </div>
               <button
@@ -959,7 +1016,7 @@ function Monautoevaluation() {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
-                          <p className="mt-1 text-xs font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">{formatMissionPeriod(mission.period)}</p>
                         </div>
                         <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#4E8B1B]">{mission.status}</span>
                       </div>
@@ -980,7 +1037,7 @@ function Monautoevaluation() {
               <article className="rounded-md bg-white p-4 shadow-sm">
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-semibold text-slate-400">{activeMission.period || "Période non renseignée"}</p>
+                    <p className="text-xs font-semibold text-slate-400">{formatMissionPeriod(activeMission.period)}</p>
                     <h2 className="mt-1 text-xl font-black text-[#0F3A63]">{activeMission.title}</h2>
                     <p className="mt-1 text-xs font-semibold text-slate-500">Score moyen mission : {activeMissionAverage} / 5</p>
                   </div>

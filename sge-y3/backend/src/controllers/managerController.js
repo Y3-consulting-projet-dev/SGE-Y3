@@ -722,16 +722,14 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
     globalScores: [],
     missions: [],
   };
-
-  if (member.code_categorie !== '8C') {
-    return payload;
-  }
-
-  const seniorReviews = await SeniorAssistantReview.find({
-    cycle_label: CURRENT_CYCLE_LABEL,
-    assistant_id: member._id,
-    submitted_to_user_ids: managerUser._id,
-  }).select('senior_id sections mission_reviews submitted_at status');
+  const seniorReviews =
+    member.code_categorie === '8C'
+      ? await SeniorAssistantReview.find({
+          cycle_label: CURRENT_CYCLE_LABEL,
+          assistant_id: member._id,
+          submitted_to_user_ids: managerUser._id,
+        }).select('senior_id sections mission_reviews submitted_at status')
+      : [];
 
   const seniorIds = seniorReviews.map((review) => review.senior_id).filter(Boolean);
   const seniorUsers = seniorIds.length
@@ -783,6 +781,8 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
         finalScore: getMissionAverage(missionReview.criteria || []),
         submittedAt: missionReview.submitted_at || null,
         comment: missionReview.comment || '',
+        sectionComments: getMissionSectionComments(missionReview),
+        titleJustifications: getMissionTitleJustifications(missionReview),
       });
 
       missionsMap.set(missionReview.mission_id, existingMission);
@@ -813,6 +813,8 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
       finalScore: getMissionAverage(mission.criteria || []),
       submittedAt: mission.submitted_at || null,
       comment: mission.comment || '',
+      sectionComments: getMissionSectionComments(mission),
+      titleJustifications: getMissionTitleJustifications(mission),
     });
 
     missionsMap.set(mission.mission_id, existingMission);
@@ -1613,22 +1615,39 @@ async function saveMyManagerEvaluation(request, response) {
   const missionEvaluations = Array.isArray(request.body?.missionEvaluations)
     ? normalizeManagerMissionEvaluations(request.body.missionEvaluations)
     : null;
+  const isMissionOnlyEvaluation = Array.isArray(missionEvaluations) && missionEvaluations.length > 0;
 
-  if (!rawSections?.length) {
+  if (!rawSections?.length && !isMissionOnlyEvaluation) {
     return response.status(400).json({
-      message: "Les sections de l'auto-evaluation manager sont requises.",
+      message: "Les sections ou les evaluations par mission de l'auto-evaluation manager sont requises.",
     });
   }
 
-  const sections = normalizeSections(rawSections);
+  const sections = rawSections?.length ? normalizeSections(rawSections) : [];
 
-  for (const section of sections) {
-    for (const criterion of section.criteria) {
-      if (criterion.score !== null && criterion.score !== undefined) {
-        if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
-          return response.status(400).json({
-            message: `La note du critere "${criterion.label}" doit etre comprise entre 1 et 5.`,
-          });
+  if (rawSections?.length) {
+    for (const section of sections) {
+      for (const criterion of section.criteria) {
+        if (criterion.score !== null && criterion.score !== undefined) {
+          if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
+            return response.status(400).json({
+              message: `La note du critere "${criterion.label}" doit etre comprise entre 1 et 5.`,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  if (missionEvaluations) {
+    for (const mission of missionEvaluations) {
+      for (const criterion of mission.criteria || []) {
+        if (criterion.score !== null && criterion.score !== undefined) {
+          if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
+            return response.status(400).json({
+              message: `La note du critere "${criterion.label}" doit etre comprise entre 1 et 5.`,
+            });
+          }
         }
       }
     }
@@ -1641,11 +1660,20 @@ async function saveMyManagerEvaluation(request, response) {
   ]);
   const summary = getEvaluationSummary(sections);
 
-  instance.sections = toPersistenceSections(sections);
+  if (rawSections?.length) {
+    instance.sections = toPersistenceSections(sections);
+  }
   if (missionEvaluations) {
     instance.mission_evaluations = missionEvaluations;
   }
-  instance.status = summary.globalProgress === 0 ? 'Brouillon' : 'En cours';
+  instance.status =
+    isMissionOnlyEvaluation
+      ? missionEvaluations.every((mission) => (mission.criteria || []).every((criterion) => criterion.score !== null && criterion.score !== undefined))
+        ? 'En cours'
+        : 'Brouillon'
+      : summary.globalProgress === 0
+      ? 'Brouillon'
+      : 'En cours';
   instance.last_saved_at = new Date();
   await instance.save();
 
@@ -1662,6 +1690,36 @@ async function submitMyManagerEvaluation(request, response) {
     resolveManagerTeamMembers(request.user),
   ]);
   const sections = normalizeSections(instance.sections || []);
+  const missionEvaluations = normalizeManagerMissionEvaluations(instance.mission_evaluations || []);
+  const hasMissionEvaluations = missionEvaluations.length > 0;
+
+  if (hasMissionEvaluations) {
+    const pendingMissions = missionEvaluations.filter((mission) => mission.status !== 'Soumise');
+
+    if (pendingMissions.length) {
+      return response.status(400).json({
+        message: 'Chaque mission doit etre soumise a la RH et aux associes avant la soumission finale.',
+        pendingMissions: pendingMissions.map((mission) => ({
+          missionId: mission.mission_id,
+          title: mission.title,
+        })),
+      });
+    }
+
+    instance.status = 'Soumis a RH';
+    instance.submitted_to_role = 'rh';
+    instance.submitted_to_user_ids = rhRecipients.map((recipient) => recipient._id);
+    instance.submitted_to_names = rhRecipients.map((recipient) => recipient.name);
+    instance.submitted_at = new Date();
+    instance.last_saved_at = new Date();
+    await instance.save();
+
+    return response.json({
+      message: 'Evaluations par mission manager transmises a la RH / Capital Humain et aux associes.',
+      ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers),
+    });
+  }
+
   const missingAnswers = validateSectionsForSubmit(sections);
 
   if (missingAnswers.length) {

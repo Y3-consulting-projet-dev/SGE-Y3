@@ -399,8 +399,9 @@ function createMissionReviewFromAssistantMission(mission, seniorUser) {
       source_sheet: criterion.source_sheet,
       source_label: criterion.source_label,
       theme_code: criterion.theme_code,
-      section_comment: criterion.section_comment || '',
-      page_comment: criterion.page_comment || '',
+      // The senior writes their own review comments; do not seed assistant comments here.
+      section_comment: '',
+      page_comment: '',
       label: criterion.label,
       statement: criterion.statement,
       score: null,
@@ -505,7 +506,14 @@ async function syncMissionReviews(review, assistant, seniorUser) {
       submitted_at: existingMissionReview.submitted_at || null,
       criteria: seed.criteria.map((criterion) => {
         const existingCriterion = (existingMissionReview.criteria || []).find((item) => item.criterion_id === criterion.criterion_id);
-        return existingCriterion ? { ...criterion, score: existingCriterion.score ?? null } : criterion;
+        return existingCriterion
+          ? {
+              ...criterion,
+              score: existingCriterion.score ?? null,
+              section_comment: existingCriterion.section_comment || '',
+              page_comment: existingCriterion.page_comment || '',
+            }
+          : criterion;
       }),
     };
   });
@@ -768,6 +776,113 @@ function getMissionReviewAverage(criteria = []) {
   return Number((scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1));
 }
 
+function formatMissionReviewSectionDetails(missionReview) {
+  return getMissionReviewSections(missionReview).map((section) => {
+    const sectionCriteria = section.pages.flatMap((page) => page.criteria || []);
+
+    return {
+      title: section.title || 'Section',
+      comment: String(section.comment || '').trim(),
+      averageScore: getMissionReviewAverage(sectionCriteria),
+      answeredCriteriaCount: sectionCriteria.filter(
+        (criterion) => criterion.score !== null && criterion.score !== undefined
+      ).length,
+      criteriaCount: sectionCriteria.length,
+      pages: section.pages.map((page) => ({
+        title: page.title || 'Titre',
+        comment: String(page.comment || '').trim(),
+        averageScore: getMissionReviewAverage(page.criteria || []),
+        answeredCriteriaCount: (page.criteria || []).filter(
+          (criterion) => criterion.score !== null && criterion.score !== undefined
+        ).length,
+        criteriaCount: (page.criteria || []).length,
+        criteria: (page.criteria || []).map((criterion) => ({
+          id: String(criterion.criterion_id || criterion.id || '').trim(),
+          label: String(criterion.label || '').trim(),
+          statement: String(criterion.statement || '').trim(),
+          score: criterion.score ?? null,
+        })),
+      })),
+    };
+  });
+}
+
+function getAssistantMissionEvaluationSections(mission = {}) {
+  const sectionMap = new Map();
+
+  (mission.criteria || []).forEach((criterion) => {
+    const sectionTitle = String(criterion.section_title || criterion.sectionTitle || '').trim();
+    const pageTitle = String(criterion.page_title || criterion.pageTitle || '').trim();
+    const sectionKey = sectionTitle || 'Section';
+    const pageKey = `${sectionKey}::${pageTitle || 'Titre'}`;
+
+    if (!sectionMap.has(sectionKey)) {
+      sectionMap.set(sectionKey, {
+        title: sectionTitle,
+        comment: String(criterion.section_comment || criterion.sectionComment || '').trim(),
+        pages: new Map(),
+      });
+    }
+
+    const section = sectionMap.get(sectionKey);
+    const sectionComment = String(criterion.section_comment || criterion.sectionComment || '').trim();
+    if (!section.comment && sectionComment) {
+      section.comment = sectionComment;
+    }
+
+    if (!section.pages.has(pageKey)) {
+      section.pages.set(pageKey, {
+        title: pageTitle,
+        comment: String(criterion.page_comment || criterion.pageComment || '').trim(),
+        criteria: [],
+      });
+    }
+
+    const page = section.pages.get(pageKey);
+    const pageComment = String(criterion.page_comment || criterion.pageComment || '').trim();
+    if (!page.comment && pageComment) {
+      page.comment = pageComment;
+    }
+    page.criteria.push(criterion);
+  });
+
+  return Array.from(sectionMap.values()).map((section) => ({
+    ...section,
+    pages: Array.from(section.pages.values()),
+  }));
+}
+
+function formatAssistantMissionSectionDetails(mission = {}) {
+  return getAssistantMissionEvaluationSections(mission).map((section) => {
+    const sectionCriteria = section.pages.flatMap((page) => page.criteria || []);
+
+    return {
+      title: section.title || 'Section',
+      comment: String(section.comment || '').trim(),
+      averageScore: getMissionReviewAverageScore(sectionCriteria),
+      answeredCriteriaCount: sectionCriteria.filter(
+        (criterion) => criterion.score !== null && criterion.score !== undefined
+      ).length,
+      criteriaCount: sectionCriteria.length,
+      pages: section.pages.map((page) => ({
+        title: page.title || 'Titre',
+        comment: String(page.comment || '').trim(),
+        averageScore: getMissionReviewAverageScore(page.criteria || []),
+        answeredCriteriaCount: (page.criteria || []).filter(
+          (criterion) => criterion.score !== null && criterion.score !== undefined
+        ).length,
+        criteriaCount: (page.criteria || []).length,
+        criteria: (page.criteria || []).map((criterion) => ({
+          id: String(criterion.criterion_id || criterion.id || '').trim(),
+          label: String(criterion.label || '').trim(),
+          statement: String(criterion.statement || '').trim(),
+          score: criterion.score ?? null,
+        })),
+      })),
+    };
+  });
+}
+
 async function listMyTransmittedSummaries(request, response) {
   const assistantDepartments = getAssistantDepartmentsForSupervisor(request.user.department);
   const assistants = await User.find({
@@ -778,27 +893,37 @@ async function listMyTransmittedSummaries(request, response) {
     .sort({ last_name: 1, first_name: 1 })
     .select('_id name grade department');
 
-  const reviews = assistants.length
-    ? await SeniorAssistantReview.find({
+  const evaluationInstances = assistants.length
+    ? await EvaluationInstance.find({
         cycle_label: CURRENT_CYCLE_LABEL,
-        senior_id: request.user._id,
-        assistant_id: { $in: assistants.map((assistant) => assistant._id) },
-      }).select('assistant_id status submitted_at sections mission_reviews submitted_to_names')
+        template_type: 'assistant-self-evaluation',
+        evalue_id: { $in: assistants.map((assistant) => assistant._id) },
+      }).select('evalue_id mission_evaluations')
     : [];
 
   const assistantById = new Map(assistants.map((assistant) => [String(assistant._id), assistant]));
 
-  const rows = reviews
-    .map((review) => {
-      const assistant = assistantById.get(String(review.assistant_id));
-      const transmittedMissions = (review.mission_reviews || []).filter((mission) => mission.status === 'Transmise');
-      const hasGlobalSubmission = review.status === 'Transmis au Manager' && normalizeSections(review.sections || []).length > 0;
+  const rows = evaluationInstances
+    .map((instance) => {
+      const assistant = assistantById.get(String(instance.evalue_id));
+      const submittedMissions = (instance.mission_evaluations || []).filter((mission) => {
+        if (mission.status !== 'Soumise') {
+          return false;
+        }
 
-      if (!assistant || (!transmittedMissions.length && !hasGlobalSubmission)) {
+        return isMissionRecipientForUser(
+          {
+            user_id: mission.primary_recipient_user_id,
+            name: mission.primary_recipient_name,
+            department: mission.primary_recipient_department,
+          },
+          request.user
+        ) || (mission.recipients || []).some((recipient) => isMissionRecipientForUser(recipient, request.user));
+      });
+
+      if (!assistant || !submittedMissions.length) {
         return null;
       }
-
-      const normalizedSections = normalizeSections(review.sections || []);
 
       return {
         assistant: {
@@ -807,31 +932,22 @@ async function listMyTransmittedSummaries(request, response) {
           grade: assistant.grade,
           department: assistant.department,
         },
-        globalEvaluation: {
-          status: review.status || 'Brouillon',
-          submittedAt: review.submitted_at || null,
-          averageScore: getOverallAverageScore(normalizedSections),
-          sectionComments: normalizedSections
-            .filter((section) => String(section.comment || '').trim())
-            .map((section) => ({
-              sectionId: section.id,
-              sectionTitle: section.title,
-              comment: String(section.comment || '').trim(),
-            })),
-        },
-        missions: transmittedMissions.map((mission) => ({
+        missions: submittedMissions.map((mission) => ({
           id: mission.mission_id,
           title: mission.title,
           period: mission.period,
           department: mission.department,
           status: mission.status,
           submittedAt: mission.submitted_at || null,
-          managerNames: review.submitted_to_names || [],
-          averageScore: getMissionReviewAverage(mission.criteria || []),
+          recipientName: mission.primary_recipient_name || '',
+          recipientGrade: mission.primary_recipient_grade || '',
+          recipientDepartment: mission.primary_recipient_department || '',
+          averageScore: getMissionReviewAverageScore(mission.criteria || []),
           answeredCriteriaCount: (mission.criteria || []).filter(
             (criterion) => criterion.score !== null && criterion.score !== undefined
           ).length,
           criteriaCount: (mission.criteria || []).length,
+          sections: formatAssistantMissionSectionDetails(mission),
         })),
       };
     })

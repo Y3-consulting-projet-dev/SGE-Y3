@@ -226,6 +226,39 @@ function formatSubmittedAt(value) {
   return new Date(value).toLocaleDateString("fr-FR");
 }
 
+function formatDateDisplay(value) {
+  if (!value) return "";
+
+  if (/^\d{2}-\d{2}-\d{4}$/.test(value)) {
+    return value;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-");
+    return `${day}-${month}-${year}`;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString("fr-FR").replace(/\//g, "-");
+}
+
+function formatMissionPeriod(period, startDate = "", endDate = "") {
+  if (startDate && endDate) {
+    return `Du ${formatDateDisplay(startDate)} au ${formatDateDisplay(endDate)}`;
+  }
+
+  const rangeMatch = String(period || "").match(/(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}).*?(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4})/);
+  if (rangeMatch) {
+    return `Du ${formatDateDisplay(rangeMatch[1])} au ${formatDateDisplay(rangeMatch[2])}`;
+  }
+
+  return period || "PÃ©riode non renseignÃ©e";
+}
+
 function Evaluermonequipe({ member }) {
   const [reviewData, setReviewData] = useState(null);
   const [sections, setSections] = useState([]);
@@ -237,7 +270,8 @@ function Evaluermonequipe({ member }) {
   const [missionPageIndexes, setMissionPageIndexes] = useState({});
   const [missionReviews, setMissionReviews] = useState([]);
   const [missionTitle, setMissionTitle] = useState("");
-  const [missionPeriod, setMissionPeriod] = useState("");
+  const [missionStartDate, setMissionStartDate] = useState("");
+  const [missionEndDate, setMissionEndDate] = useState("");
   const [savedComments, setSavedComments] = useState({});
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackTone, setFeedbackTone] = useState("success");
@@ -267,9 +301,10 @@ function Evaluermonequipe({ member }) {
         setSections(response.review.sections || []);
         setMissionReviews(response.mission_reviews || []);
         setMissionTitle("");
-        setMissionPeriod("");
+        setMissionStartDate("");
+        setMissionEndDate("");
         setActiveSectionId(Number(response.review.activeSectionId || response.review.sections?.[0]?.id || 1));
-        setActiveMissionId((current) => current || response.submitted_missions?.[0]?.id || "");
+        setActiveMissionId((current) => current || response.submitted_missions?.[0]?.id || response.mission_reviews?.[0]?.id || "");
         setMissionSectionIds({});
         setMissionPageIndexes({});
         setPageIndexes(createInitialPageIndexes(response.review.sections || []));
@@ -355,14 +390,18 @@ function Evaluermonequipe({ member }) {
   useEffect(() => {
     if (!activeMissionReview?.id || !missionSections.length) return;
 
-    setMissionSectionIds((current) => ({
-      ...current,
-      [activeMissionReview.id]: current[activeMissionReview.id] || missionSections[0].id,
-    }));
-    setMissionPageIndexes((current) => ({
-      ...current,
-      [activeMissionReview.id]: current[activeMissionReview.id] || 0,
-    }));
+    const timeoutId = setTimeout(() => {
+      setMissionSectionIds((current) => ({
+        ...current,
+        [activeMissionReview.id]: current[activeMissionReview.id] || missionSections[0].id,
+      }));
+      setMissionPageIndexes((current) => ({
+        ...current,
+        [activeMissionReview.id]: current[activeMissionReview.id] || 0,
+      }));
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [activeMissionReview?.id, missionSections]);
 
   function syncSections(updater) {
@@ -570,12 +609,24 @@ function Evaluermonequipe({ member }) {
       return;
     }
 
+    if (!missionStartDate || !missionEndDate) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Renseignez la date de dÃ©but et la date de fin de la mission.");
+      return;
+    }
+
+    if (missionEndDate < missionStartDate) {
+      setFeedbackTone("error");
+      setFeedbackMessage("La date de fin doit Ãªtre postÃ©rieure ou Ã©gale Ã  la date de dÃ©but.");
+      return;
+    }
+
     try {
       setIsSaving(true);
       setFeedbackMessage("");
       const response = await createManagerMemberMission(member.id, {
         title,
-        period: missionPeriod.trim(),
+        period: formatMissionPeriod("", missionStartDate, missionEndDate),
       });
 
       setReviewData(response);
@@ -595,7 +646,8 @@ function Evaluermonequipe({ member }) {
         }));
       }
       setMissionTitle("");
-      setMissionPeriod("");
+      setMissionStartDate("");
+      setMissionEndDate("");
       setFeedbackTone("success");
       setFeedbackMessage(response.message || "Mission ajoutée pour ce membre.");
     } catch (error) {
@@ -814,7 +866,7 @@ function Evaluermonequipe({ member }) {
         <button
           type="button"
           onClick={() => setActiveView("global")}
-          className={`rounded-xl border px-5 py-4 text-left shadow-sm transition ${
+          className={`hidden rounded-xl border px-5 py-4 text-left shadow-sm transition ${
             activeView === "global"
               ? "border-[#B7D39E] bg-[#FBFEF7]"
               : "border-[#D9E3EE] bg-white hover:bg-[#FCFEF8]"
@@ -851,10 +903,10 @@ function Evaluermonequipe({ member }) {
                 <div className="mb-3">
                   <p className="text-sm font-bold text-[#0B4C7A]">Nouvelle mission pour ce membre</p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
-                    Renseignez le titre et la période. Le membre la recevra dans son auto-évaluation par mission.
+                    Renseignez le titre, la date de début et la date de fin. Le membre la recevra dans son auto-évaluation par mission.
                   </p>
                 </div>
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-3">
                   <input
                     value={missionTitle}
                     onChange={(event) => setMissionTitle(event.target.value)}
@@ -862,10 +914,17 @@ function Evaluermonequipe({ member }) {
                     className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
                   />
                   <input
-                    value={missionPeriod}
-                    onChange={(event) => setMissionPeriod(event.target.value)}
-                    placeholder="Période"
-                    className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
+                    type="date"
+                    value={missionStartDate}
+                    onChange={(event) => setMissionStartDate(event.target.value)}
+                    className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none"
+                  />
+                  <input
+                    type="date"
+                    value={missionEndDate}
+                    min={missionStartDate || undefined}
+                    onChange={(event) => setMissionEndDate(event.target.value)}
+                    className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none"
                   />
                 </div>
                 <button
@@ -895,7 +954,7 @@ function Evaluermonequipe({ member }) {
                     {pendingAssignedMissions.map((mission) => (
                       <button key={mission.id} type="button" onClick={() => setActiveMissionId(mission.id)} className="w-full rounded-md border border-slate-100 bg-[#F8FAFC] p-3 text-left transition hover:bg-white">
                         <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
-                        <p className="mt-1 text-xs font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">{formatMissionPeriod(mission.period)}</p>
                         <p className="mt-1 text-xs font-bold text-[#0F3A63]">{mission.status || "A démarrer"}</p>
                       </button>
                     ))}
@@ -939,7 +998,7 @@ function Evaluermonequipe({ member }) {
                         }`}
                       >
                         <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
-                        <p className="mt-1 text-xs font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">{formatMissionPeriod(mission.period)}</p>
                         <p className="mt-1 text-xs font-bold text-[#0F3A63]">{mission.department}</p>
                         <p className="mt-2 text-xs font-bold text-[#76B82A]">
                           {getMissionReviewProgress(missionReviews.find((item) => item.id === mission.id))}%
@@ -963,7 +1022,7 @@ function Evaluermonequipe({ member }) {
                       </div>
                       <h4 className="text-xl font-black text-[#0F3A63]">{activeMission.title}</h4>
                       <p className="mt-1 text-sm font-semibold text-slate-500">
-                        {activeMission.period || "Période non renseignée"} - {activeMission.department}
+                        {formatMissionPeriod(activeMission.period)} - {activeMission.department}
                       </p>
                     </div>
                   </div>
@@ -981,7 +1040,33 @@ function Evaluermonequipe({ member }) {
                             <p className="text-xs text-slate-500">{formatSubmittedAt(submission.submittedAt)}</p>
                           </div>
                         </div>
-                        {submission.comment ? <p className="mt-3 text-sm text-slate-600">{submission.comment}</p> : null}
+                        {submission.comment ? (
+                          <div className="mt-3 rounded-md bg-white px-3 py-3">
+                            <p className="text-xs font-bold uppercase text-slate-500">Commentaire général</p>
+                            <p className="mt-1 text-sm text-slate-600">{submission.comment}</p>
+                          </div>
+                        ) : null}
+                        {(submission.sectionComments || []).length ? (
+                          <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+                            {(submission.sectionComments || []).map((section) => (
+                              <div key={`${submission.evaluatorName}-${section.sectionId}`} className="rounded-md bg-white p-3">
+                                <p className="text-xs font-bold text-[#0F3A63]">{section.title}</p>
+                                <p className="mt-1 text-sm font-semibold text-slate-600">{section.comment}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                        {(submission.titleJustifications || []).length ? (
+                          <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+                            {(submission.titleJustifications || []).map((item) => (
+                              <div key={`${submission.evaluatorName}-${item.pageId}`} className="rounded-md bg-white p-3">
+                                <p className="text-xs font-bold text-[#0F3A63]">{item.sectionTitle}</p>
+                                <p className="mt-1 text-xs font-semibold text-slate-500">{item.pageTitle}</p>
+                                <p className="mt-1 text-sm font-semibold text-slate-600">{item.comment}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -1539,3 +1624,5 @@ function Evaluermonequipe({ member }) {
 }
 
 export default Evaluermonequipe;
+
+
