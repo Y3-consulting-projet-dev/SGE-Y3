@@ -6,8 +6,9 @@ const {
   getAverageScore,
   getEvaluationSummary,
   getOverallAverageScore,
+  getPageJustifications,
   normalizeSections,
-  validateFinalCommentForSubmit,
+  validateLowScorePageComments,
   validateSectionCommentsForSubmit,
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
@@ -155,6 +156,8 @@ function buildAssistantMissionCriteria(sections = []) {
         source_sheet: page.source_sheet || '',
         source_label: page.source_label || '',
         theme_code: theme.code,
+        section_comment: '',
+        page_comment: '',
         label: theme.label,
         statement: theme.statement || '',
         score: null,
@@ -207,6 +210,8 @@ function normalizeMissionReviews(missionReviews = []) {
           source_sheet: String(criterion.sourceSheet || criterion.source_sheet || '').trim(),
           source_label: String(criterion.sourceLabel || criterion.source_label || '').trim(),
           theme_code: String(criterion.themeCode || criterion.theme_code || '').trim(),
+          section_comment: String(criterion.sectionComment || criterion.section_comment || '').trim(),
+          page_comment: String(criterion.pageComment || criterion.page_comment || '').trim(),
           label: String(criterion.label || '').trim(),
           statement: String(criterion.statement || '').trim(),
           score: criterion.score ?? null,
@@ -239,12 +244,131 @@ function formatMissionReviews(missionReviews = []) {
       sourceSheet: criterion.source_sheet,
       sourceLabel: criterion.source_label,
       themeCode: criterion.theme_code,
+      sectionComment: criterion.section_comment || '',
+      pageComment: criterion.page_comment || '',
       label: criterion.label,
       statement: criterion.statement,
       score: criterion.score,
     })),
     submittedAt: mission.submitted_at,
   }));
+}
+
+function getMissionReviewSections(missionReview) {
+  const sectionMap = new Map();
+
+  (missionReview?.criteria || []).forEach((criterion) => {
+    const sectionTitle = String(criterion.section_title || criterion.sectionTitle || '').trim();
+    const pageTitle = String(criterion.page_title || criterion.pageTitle || '').trim();
+    const sectionKey = sectionTitle || 'Section';
+    const pageKey = `${sectionKey}::${pageTitle || 'Titre'}`;
+
+    if (!sectionMap.has(sectionKey)) {
+      sectionMap.set(sectionKey, {
+        title: sectionTitle,
+        comment: String(criterion.section_comment || criterion.sectionComment || '').trim(),
+        pages: new Map(),
+      });
+    }
+
+    const section = sectionMap.get(sectionKey);
+    const sectionComment = String(criterion.section_comment || criterion.sectionComment || '').trim();
+    if (!section.comment && sectionComment) {
+      section.comment = sectionComment;
+    }
+
+    if (!section.pages.has(pageKey)) {
+      section.pages.set(pageKey, {
+        title: pageTitle,
+        comment: String(criterion.page_comment || criterion.pageComment || '').trim(),
+        criteria: [],
+      });
+    }
+
+    const page = section.pages.get(pageKey);
+    const pageComment = String(criterion.page_comment || criterion.pageComment || '').trim();
+    if (!page.comment && pageComment) {
+      page.comment = pageComment;
+    }
+    page.criteria.push(criterion);
+  });
+
+  return Array.from(sectionMap.values()).map((section) => ({
+    ...section,
+    pages: Array.from(section.pages.values()),
+  }));
+}
+
+function validateMissionSectionCommentsForSubmit(missionReview, minimumLength = 3) {
+  const normalizedMinimumLength = Math.max(Number(minimumLength) || 0, 1);
+
+  return getMissionReviewSections(missionReview)
+    .filter((section) => String(section.comment || '').trim().length < normalizedMinimumLength)
+    .map((section) => ({
+      sectionTitle: section.title,
+    }));
+}
+
+function validateMissionLowScorePageComments(missionReview, minimumLength = 3) {
+  const normalizedMinimumLength = Math.max(Number(minimumLength) || 0, 1);
+  const missingPageComments = [];
+
+  getMissionReviewSections(missionReview).forEach((section) => {
+    section.pages.forEach((page) => {
+      const hasLowScore = page.criteria.some((criterion) => typeof criterion.score === 'number' && criterion.score < 3);
+
+      if (hasLowScore && String(page.comment || '').trim().length < normalizedMinimumLength) {
+        missingPageComments.push({
+          sectionTitle: section.title,
+          pageTitle: page.title,
+        });
+      }
+    });
+  });
+
+  return missingPageComments;
+}
+
+function getMissionReviewProgress(missionReview) {
+  const criteria = missionReview?.criteria || [];
+  const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
+
+  if (!criteria.length) {
+    return 0;
+  }
+
+  return Math.round((answered / criteria.length) * 100);
+}
+
+function getMissionReviewAverageScore(criteria = []) {
+  const scoredCriteria = criteria
+    .map((criterion) => criterion.score)
+    .filter((score) => typeof score === 'number');
+
+  if (!scoredCriteria.length) {
+    return null;
+  }
+
+  return Number((scoredCriteria.reduce((total, score) => total + score, 0) / scoredCriteria.length).toFixed(1));
+}
+
+function getMissionReviewSummary(missionReviews = []) {
+  const completedMissions = missionReviews.filter((mission) => getMissionReviewProgress(mission) === 100).length;
+  const globalProgress = missionReviews.length
+    ? Math.round(missionReviews.reduce((total, mission) => total + getMissionReviewProgress(mission), 0) / missionReviews.length)
+    : 0;
+  const missionScores = missionReviews
+    .map((mission) => getMissionReviewAverageScore(mission.criteria || []))
+    .filter((score) => typeof score === 'number');
+
+  return {
+    completedMissions,
+    totalMissions: missionReviews.length,
+    globalProgress,
+    finalScore: missionScores.length
+      ? Number((missionScores.reduce((total, score) => total + score, 0) / missionScores.length).toFixed(1))
+      : null,
+  };
 }
 
 function createMissionReviewFromAssistantMission(mission, seniorUser) {
@@ -275,6 +399,9 @@ function createMissionReviewFromAssistantMission(mission, seniorUser) {
       source_sheet: criterion.source_sheet,
       source_label: criterion.source_label,
       theme_code: criterion.theme_code,
+      // The senior writes their own review comments; do not seed assistant comments here.
+      section_comment: '',
+      page_comment: '',
       label: criterion.label,
       statement: criterion.statement,
       score: null,
@@ -379,7 +506,14 @@ async function syncMissionReviews(review, assistant, seniorUser) {
       submitted_at: existingMissionReview.submitted_at || null,
       criteria: seed.criteria.map((criterion) => {
         const existingCriterion = (existingMissionReview.criteria || []).find((item) => item.criterion_id === criterion.criterion_id);
-        return existingCriterion ? { ...criterion, score: existingCriterion.score ?? null } : criterion;
+        return existingCriterion
+          ? {
+              ...criterion,
+              score: existingCriterion.score ?? null,
+              section_comment: existingCriterion.section_comment || '',
+              page_comment: existingCriterion.page_comment || '',
+            }
+          : criterion;
       }),
     };
   });
@@ -551,6 +685,8 @@ function buildReviewPayload(review, seniorUser, assistant, managers = []) {
 
 function buildAssistantSelfEvaluationPayload(instance) {
   const selfSections = normalizeSections(instance?.sections || []);
+  const missionEvaluations = formatMissionReviews(instance?.mission_evaluations || []);
+  const missionSummary = getMissionReviewSummary(instance?.mission_evaluations || []);
 
   return {
     status: instance?.status || 'En attente',
@@ -569,6 +705,9 @@ function buildAssistantSelfEvaluationPayload(instance) {
         title: section.title,
         comment: String(section.comment || '').trim(),
       })),
+    titleJustifications: getPageJustifications(selfSections),
+    missionEvaluations,
+    missionSummary,
   };
 }
 
@@ -637,6 +776,113 @@ function getMissionReviewAverage(criteria = []) {
   return Number((scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1));
 }
 
+function formatMissionReviewSectionDetails(missionReview) {
+  return getMissionReviewSections(missionReview).map((section) => {
+    const sectionCriteria = section.pages.flatMap((page) => page.criteria || []);
+
+    return {
+      title: section.title || 'Section',
+      comment: String(section.comment || '').trim(),
+      averageScore: getMissionReviewAverage(sectionCriteria),
+      answeredCriteriaCount: sectionCriteria.filter(
+        (criterion) => criterion.score !== null && criterion.score !== undefined
+      ).length,
+      criteriaCount: sectionCriteria.length,
+      pages: section.pages.map((page) => ({
+        title: page.title || 'Titre',
+        comment: String(page.comment || '').trim(),
+        averageScore: getMissionReviewAverage(page.criteria || []),
+        answeredCriteriaCount: (page.criteria || []).filter(
+          (criterion) => criterion.score !== null && criterion.score !== undefined
+        ).length,
+        criteriaCount: (page.criteria || []).length,
+        criteria: (page.criteria || []).map((criterion) => ({
+          id: String(criterion.criterion_id || criterion.id || '').trim(),
+          label: String(criterion.label || '').trim(),
+          statement: String(criterion.statement || '').trim(),
+          score: criterion.score ?? null,
+        })),
+      })),
+    };
+  });
+}
+
+function getAssistantMissionEvaluationSections(mission = {}) {
+  const sectionMap = new Map();
+
+  (mission.criteria || []).forEach((criterion) => {
+    const sectionTitle = String(criterion.section_title || criterion.sectionTitle || '').trim();
+    const pageTitle = String(criterion.page_title || criterion.pageTitle || '').trim();
+    const sectionKey = sectionTitle || 'Section';
+    const pageKey = `${sectionKey}::${pageTitle || 'Titre'}`;
+
+    if (!sectionMap.has(sectionKey)) {
+      sectionMap.set(sectionKey, {
+        title: sectionTitle,
+        comment: String(criterion.section_comment || criterion.sectionComment || '').trim(),
+        pages: new Map(),
+      });
+    }
+
+    const section = sectionMap.get(sectionKey);
+    const sectionComment = String(criterion.section_comment || criterion.sectionComment || '').trim();
+    if (!section.comment && sectionComment) {
+      section.comment = sectionComment;
+    }
+
+    if (!section.pages.has(pageKey)) {
+      section.pages.set(pageKey, {
+        title: pageTitle,
+        comment: String(criterion.page_comment || criterion.pageComment || '').trim(),
+        criteria: [],
+      });
+    }
+
+    const page = section.pages.get(pageKey);
+    const pageComment = String(criterion.page_comment || criterion.pageComment || '').trim();
+    if (!page.comment && pageComment) {
+      page.comment = pageComment;
+    }
+    page.criteria.push(criterion);
+  });
+
+  return Array.from(sectionMap.values()).map((section) => ({
+    ...section,
+    pages: Array.from(section.pages.values()),
+  }));
+}
+
+function formatAssistantMissionSectionDetails(mission = {}) {
+  return getAssistantMissionEvaluationSections(mission).map((section) => {
+    const sectionCriteria = section.pages.flatMap((page) => page.criteria || []);
+
+    return {
+      title: section.title || 'Section',
+      comment: String(section.comment || '').trim(),
+      averageScore: getMissionReviewAverageScore(sectionCriteria),
+      answeredCriteriaCount: sectionCriteria.filter(
+        (criterion) => criterion.score !== null && criterion.score !== undefined
+      ).length,
+      criteriaCount: sectionCriteria.length,
+      pages: section.pages.map((page) => ({
+        title: page.title || 'Titre',
+        comment: String(page.comment || '').trim(),
+        averageScore: getMissionReviewAverageScore(page.criteria || []),
+        answeredCriteriaCount: (page.criteria || []).filter(
+          (criterion) => criterion.score !== null && criterion.score !== undefined
+        ).length,
+        criteriaCount: (page.criteria || []).length,
+        criteria: (page.criteria || []).map((criterion) => ({
+          id: String(criterion.criterion_id || criterion.id || '').trim(),
+          label: String(criterion.label || '').trim(),
+          statement: String(criterion.statement || '').trim(),
+          score: criterion.score ?? null,
+        })),
+      })),
+    };
+  });
+}
+
 async function listMyTransmittedSummaries(request, response) {
   const assistantDepartments = getAssistantDepartmentsForSupervisor(request.user.department);
   const assistants = await User.find({
@@ -647,27 +893,37 @@ async function listMyTransmittedSummaries(request, response) {
     .sort({ last_name: 1, first_name: 1 })
     .select('_id name grade department');
 
-  const reviews = assistants.length
-    ? await SeniorAssistantReview.find({
+  const evaluationInstances = assistants.length
+    ? await EvaluationInstance.find({
         cycle_label: CURRENT_CYCLE_LABEL,
-        senior_id: request.user._id,
-        assistant_id: { $in: assistants.map((assistant) => assistant._id) },
-      }).select('assistant_id status submitted_at sections mission_reviews submitted_to_names')
+        template_type: 'assistant-self-evaluation',
+        evalue_id: { $in: assistants.map((assistant) => assistant._id) },
+      }).select('evalue_id mission_evaluations')
     : [];
 
   const assistantById = new Map(assistants.map((assistant) => [String(assistant._id), assistant]));
 
-  const rows = reviews
-    .map((review) => {
-      const assistant = assistantById.get(String(review.assistant_id));
-      const transmittedMissions = (review.mission_reviews || []).filter((mission) => mission.status === 'Transmise');
-      const hasGlobalSubmission = review.status === 'Transmis au Manager' && normalizeSections(review.sections || []).length > 0;
+  const rows = evaluationInstances
+    .map((instance) => {
+      const assistant = assistantById.get(String(instance.evalue_id));
+      const submittedMissions = (instance.mission_evaluations || []).filter((mission) => {
+        if (mission.status !== 'Soumise') {
+          return false;
+        }
 
-      if (!assistant || (!transmittedMissions.length && !hasGlobalSubmission)) {
+        return isMissionRecipientForUser(
+          {
+            user_id: mission.primary_recipient_user_id,
+            name: mission.primary_recipient_name,
+            department: mission.primary_recipient_department,
+          },
+          request.user
+        ) || (mission.recipients || []).some((recipient) => isMissionRecipientForUser(recipient, request.user));
+      });
+
+      if (!assistant || !submittedMissions.length) {
         return null;
       }
-
-      const normalizedSections = normalizeSections(review.sections || []);
 
       return {
         assistant: {
@@ -676,31 +932,22 @@ async function listMyTransmittedSummaries(request, response) {
           grade: assistant.grade,
           department: assistant.department,
         },
-        globalEvaluation: {
-          status: review.status || 'Brouillon',
-          submittedAt: review.submitted_at || null,
-          averageScore: getOverallAverageScore(normalizedSections),
-          sectionComments: normalizedSections
-            .filter((section) => String(section.comment || '').trim())
-            .map((section) => ({
-              sectionId: section.id,
-              sectionTitle: section.title,
-              comment: String(section.comment || '').trim(),
-            })),
-        },
-        missions: transmittedMissions.map((mission) => ({
+        missions: submittedMissions.map((mission) => ({
           id: mission.mission_id,
           title: mission.title,
           period: mission.period,
           department: mission.department,
           status: mission.status,
           submittedAt: mission.submitted_at || null,
-          managerNames: review.submitted_to_names || [],
-          averageScore: getMissionReviewAverage(mission.criteria || []),
+          recipientName: mission.primary_recipient_name || '',
+          recipientGrade: mission.primary_recipient_grade || '',
+          recipientDepartment: mission.primary_recipient_department || '',
+          averageScore: getMissionReviewAverageScore(mission.criteria || []),
           answeredCriteriaCount: (mission.criteria || []).filter(
             (criterion) => criterion.score !== null && criterion.score !== undefined
           ).length,
           criteriaCount: (mission.criteria || []).length,
+          sections: formatAssistantMissionSectionDetails(mission),
         })),
       };
     })
@@ -905,12 +1152,6 @@ async function saveMyAssistantEvaluation(request, response) {
   const rawSections = Array.isArray(request.body?.sections) ? request.body.sections : null;
   const rawMissionReviews = Array.isArray(request.body?.missionReviews) ? request.body.missionReviews : null;
 
-  if (!rawSections?.length) {
-    return response.status(400).json({
-      message: "Les sections de l'evaluation sont requises.",
-    });
-  }
-
   const assistant = await getAssistantForSenior(request.user, request.params.assistantId);
 
   if (!assistant) {
@@ -919,9 +1160,25 @@ async function saveMyAssistantEvaluation(request, response) {
     });
   }
 
-  const sections = normalizeSections(rawSections);
+  const sections = rawSections ? normalizeSections(rawSections) : null;
+  const missionReviews = rawMissionReviews ? normalizeMissionReviews(rawMissionReviews) : null;
 
-  for (const section of sections) {
+  if (!sections?.length && !missionReviews?.length) {
+    return response.status(400).json({
+      message: "Les évaluations par mission sont requises.",
+    });
+  }
+
+  const missingPageComments = sections ? validateLowScorePageComments(sections, 3) : [];
+
+  if (missingPageComments.length) {
+    return response.status(400).json({
+      message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+      missingPageComments,
+    });
+  }
+
+  for (const section of sections || []) {
     for (const criterion of section.criteria) {
       if (criterion.score !== null && criterion.score !== undefined) {
         if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
@@ -933,23 +1190,38 @@ async function saveMyAssistantEvaluation(request, response) {
     }
   }
 
+  for (const missionReview of missionReviews || []) {
+    for (const criterion of missionReview.criteria || []) {
+      if (criterion.score !== null && criterion.score !== undefined) {
+        if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
+          return response.status(400).json({
+            message: `La note du critere "${criterion.label}" doit etre comprise entre 1 et 5.`,
+          });
+        }
+      }
+    }
+  }
+
   const review = await getOrCreateSeniorAssistantReview(request.user, assistant);
-  const summary = getEvaluationSummary(sections);
   const [managers, selfEvaluationInstance] = await Promise.all([
     resolveManagersForSeniorReview(request.user, assistant),
     getOrCreateAssistantEvaluationInstance(assistant),
   ]);
 
-  review.sections = toPersistenceSections(sections);
-  if (rawMissionReviews) {
-    review.mission_reviews = normalizeMissionReviews(rawMissionReviews);
+  if (sections) {
+    review.sections = toPersistenceSections(sections);
   }
-  review.status = summary.globalProgress === 0 ? 'Brouillon' : 'En cours';
+  if (missionReviews) {
+    review.mission_reviews = missionReviews;
+  }
+
+  const missionSummary = getMissionReviewSummary(review.mission_reviews || []);
+  review.status = missionSummary.globalProgress === 0 ? 'Brouillon' : 'En cours';
   review.last_saved_at = new Date();
   await review.save();
 
   return response.json({
-    message: 'Evaluation enregistree.',
+    message: 'Évaluation par mission enregistrée.',
     ...{
       ...buildReviewPayload(review, request.user, assistant, managers),
       self_evaluation: buildAssistantSelfEvaluationPayload(selfEvaluationInstance),
@@ -1054,6 +1326,7 @@ async function submitMyAssistantMissionReview(request, response) {
     resolveManagersForSeniorReview(request.user, assistant),
     getOrCreateAssistantEvaluationInstance(assistant),
   ]);
+  const selectedManager = resolveSelectedManager(managers, request.body?.selectedManagerRecipient);
   const missionReview = (review.mission_reviews || []).find((mission) => mission.mission_id === missionId);
 
   if (!missionReview) {
@@ -1072,15 +1345,40 @@ async function submitMyAssistantMissionReview(request, response) {
     });
   }
 
+  const missingSectionComments = validateMissionSectionCommentsForSubmit(missionReview, 3);
+
+  if (missingSectionComments.length) {
+    return response.status(400).json({
+      message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant transmission.',
+      missingSectionComments,
+    });
+  }
+
+  const missingPageComments = validateMissionLowScorePageComments(missionReview, 3);
+
+  if (missingPageComments.length) {
+    return response.status(400).json({
+      message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+      missingPageComments,
+    });
+  }
+
   missionReview.status = 'Transmise';
+  if (selectedManager) {
+    missionReview.recipient_name = selectedManager.name;
+    missionReview.recipient_grade = selectedManager.grade;
+    missionReview.recipient_department = selectedManager.department;
+  }
   missionReview.submitted_at = new Date();
-  review.submitted_to_user_ids = managers.map((manager) => manager._id);
-  review.submitted_to_names = managers.map((manager) => manager.name);
+  review.submitted_to_user_ids = selectedManager ? [selectedManager._id] : managers.map((manager) => manager._id);
+  review.submitted_to_names = selectedManager ? [selectedManager.name] : managers.map((manager) => manager.name);
   review.last_saved_at = new Date();
   await review.save();
 
   return response.json({
-    message: managers.length
+    message: selectedManager
+      ? `Mission transmise a ${selectedManager.name}.`
+      : managers.length
       ? `Mission transmise a ${managers.map((manager) => manager.name).join(', ')}.`
       : 'Mission transmise au(x) manager(s).',
     ...{
@@ -1104,21 +1402,31 @@ async function submitMyAssistantEvaluation(request, response) {
     resolveManagersForSeniorReview(request.user, assistant),
     getOrCreateAssistantEvaluationInstance(assistant),
   ]);
-  const sections = normalizeSections(review.sections);
   const selectedManager = resolveSelectedManager(managers, request.body?.selectedManagerRecipient);
-  const validationSections = selectedManager
-    ? filterSectionsForManagerDepartment(sections, selectedManager.department)
-    : sections;
-  const missingAnswers = validateSectionsForSubmit(validationSections);
+  const missionReviews = normalizeMissionReviews(review.mission_reviews || []);
 
-  if (missingAnswers.length) {
+  if (!missionReviews.length) {
     return response.status(400).json({
-      message: 'Toutes les questions obligatoires doivent etre renseignees avant transmission.',
-      missingAnswers,
+      message: 'Ajoutez au moins une mission avant la soumission finale.',
     });
   }
 
-  const missingSectionComments = validateSectionCommentsForSubmit(sections, 3);
+  const pendingMissions = missionReviews.filter((mission) => mission.status !== 'Transmise');
+
+  if (pendingMissions.length) {
+    return response.status(400).json({
+      message: 'Chaque mission doit etre transmise avant la soumission finale.',
+      pendingMissionIds: pendingMissions.map((mission) => mission.mission_id),
+    });
+  }
+
+  const missingSectionComments = missionReviews.flatMap((missionReview) =>
+    validateMissionSectionCommentsForSubmit(missionReview, 3).map((item) => ({
+      missionId: missionReview.mission_id,
+      missionTitle: missionReview.title,
+      ...item,
+    }))
+  );
 
   if (missingSectionComments.length) {
     return response.status(400).json({
@@ -1127,7 +1435,22 @@ async function submitMyAssistantEvaluation(request, response) {
     });
   }
 
-  review.sections = toPersistenceSections(sections);
+  const missingPageComments = missionReviews.flatMap((missionReview) =>
+    validateMissionLowScorePageComments(missionReview, 3).map((item) => ({
+      missionId: missionReview.mission_id,
+      missionTitle: missionReview.title,
+      ...item,
+    }))
+  );
+
+  if (missingPageComments.length) {
+    return response.status(400).json({
+      message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+      missingPageComments,
+    });
+  }
+
+  review.mission_reviews = missionReviews;
   review.status = 'Transmis au Manager';
   review.submitted_to_user_ids = selectedManager ? [selectedManager._id] : managers.map((manager) => manager._id);
   review.submitted_to_names = selectedManager ? [selectedManager.name] : managers.map((manager) => manager.name);
@@ -1137,10 +1460,10 @@ async function submitMyAssistantEvaluation(request, response) {
 
   return response.json({
     message: selectedManager
-      ? `Evaluation transmise a ${selectedManager.name}.`
+      ? `Évaluations par mission transmises à ${selectedManager.name}.`
       : managers.length
-      ? `Evaluation transmise a ${managers.map((manager) => manager.name).join(', ')}.`
-      : 'Evaluation transmise au(x) manager(s).',
+      ? `Évaluations par mission transmises à ${managers.map((manager) => manager.name).join(', ')}.`
+      : 'Évaluations par mission transmises au(x) manager(s).',
     ...{
       ...buildReviewPayload(review, request.user, assistant, managers),
       self_evaluation: buildAssistantSelfEvaluationPayload(selfEvaluationInstance),

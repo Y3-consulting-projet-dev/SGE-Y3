@@ -8,17 +8,36 @@ function StatCard({ label, value, subtitle, accentClass = "text-white", onClick 
   );
 }
 
-function Vueensemble({ onOpen, overviewData, isLoading, errorMessage }) {
+function Vueensemble({ onOpen, onOpenReview, overviewData, isLoading, errorMessage }) {
   const summary = overviewData?.summary || {};
   const assistantRows = overviewData?.assistants || [];
   const priorityActions = [
     summary.missionsAEvaluerCount > 0
-      ? { title: "Finaliser les avis Senior", subtitle: `${summary.missionsAEvaluerCount} mission(s) encore à évaluer`, target: "reviews" }
+      ? {
+          title: "Finaliser les avis Senior",
+          subtitle: `${summary.missionsAEvaluerCount} mission(s) encore à évaluer`,
+          target: "reviews",
+        }
+      : null,
+    summary.synthesesTransmisesCount > 0
+      ? {
+          title: "Consulter les synthèses transmises",
+          subtitle: `${summary.synthesesTransmisesCount} synthèse(s) déjà transmise(s)`,
+          target: "results",
+        }
       : null,
     summary.missionsCommunesCount > 0
-      ? { title: "Consulter les missions communes", subtitle: `${summary.missionsCommunesCount} mission(s) soumise(s) par vos assistants`, target: "goals" }
+      ? {
+          title: "Consulter les missions communes",
+          subtitle: `${summary.missionsCommunesCount} mission(s) soumise(s) par vos assistants`,
+          target: "goals",
+        }
       : null,
-    { title: "Mettre à jour mon auto-évaluation", subtitle: "Poursuivre la saisie de votre cycle Senior", target: "self-evaluation" },
+    {
+      title: "Mettre à jour mon auto-évaluation",
+      subtitle: "Poursuivre la saisie de votre cycle Senior",
+      target: "self-evaluation",
+    },
   ].filter(Boolean);
 
   return (
@@ -28,7 +47,9 @@ function Vueensemble({ onOpen, overviewData, isLoading, errorMessage }) {
       </div>
 
       {errorMessage ? (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">{errorMessage}</div>
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+          {errorMessage}
+        </div>
       ) : null}
 
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -72,13 +93,13 @@ function Vueensemble({ onOpen, overviewData, isLoading, errorMessage }) {
               {assistantRows.map((assistant) => (
                 <button
                   key={assistant.assistantId}
-                  onClick={() => onOpen("assistants")}
+                  onClick={() => onOpenReview?.(assistant.assistantId)}
                   className="grid w-full grid-cols-1 gap-3 rounded-lg bg-slate-50 p-4 text-left md:grid-cols-[1fr_auto]"
                 >
                   <div>
                     <p className="font-bold text-[#0F3A63]">{assistant.name}</p>
                     <p className="text-xs font-semibold text-slate-500">
-                      {assistant.department || "Departement non renseigné"} - {assistant.sharedMissionsCount} mission(s) commune(s)
+                      {assistant.department || "Département non renseigné"} - {assistant.sharedMissionsCount} mission(s) commune(s)
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs font-bold">

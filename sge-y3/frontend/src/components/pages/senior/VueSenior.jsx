@@ -85,8 +85,14 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
 
   useEffect(() => {
     if (activeSection === "overview" || activeSection === "goals" || activeSection === "reviews" || activeSection === "results") {
-      refreshSeniorData();
+      const timeoutId = setTimeout(() => {
+        void refreshSeniorData();
+      }, 0);
+
+      return () => clearTimeout(timeoutId);
     }
+
+    return undefined;
   }, [activeSection]);
 
   const pageTitle = useMemo(() => {
@@ -98,6 +104,13 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
     if (activeSection === "profile") return "MON PROFIL";
     return "TABLEAU DE BORD SENIOR";
   }, [activeSection]);
+
+  function openAssistantReview(assistantId) {
+    if (assistantId) {
+      setSelectedAssistantId(assistantId);
+    }
+    setActiveSection("reviews");
+  }
 
   return (
     <div className="min-h-screen bg-[#EEF2F6] text-[#0E2B4F]">
@@ -164,7 +177,13 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
           </header>
 
           {activeSection === "overview" ? (
-            <Vueensemble onOpen={setActiveSection} overviewData={overviewData} isLoading={isLoadingAssistants} errorMessage={assistantsError} />
+            <Vueensemble
+              onOpen={setActiveSection}
+              onOpenReview={openAssistantReview}
+              overviewData={overviewData}
+              isLoading={isLoadingAssistants}
+              errorMessage={assistantsError}
+            />
           ) : activeSection === "assistants" ? (
             <Mesassistants
               assistants={assistants}
@@ -192,7 +211,13 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
           ) : activeSection === "profile" ? (
             <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />
           ) : (
-            <Vueensemble onOpen={setActiveSection} overviewData={overviewData} isLoading={isLoadingAssistants} errorMessage={assistantsError} />
+            <Vueensemble
+              onOpen={setActiveSection}
+              onOpenReview={openAssistantReview}
+              overviewData={overviewData}
+              isLoading={isLoadingAssistants}
+              errorMessage={assistantsError}
+            />
           )}
         </main>
       </div>

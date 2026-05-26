@@ -49,6 +49,7 @@ function ComiteEvaluation({
   showSubmit = true,
   showCommitteeMembers = true,
   initialDecisionScope = null,
+  editableDecisionScope = null,
   submitLabel = "Transmettre aux associés",
   submittedLabel = "Transmis aux associés",
   successMessage = "Classement transmis.",
@@ -108,23 +109,33 @@ function ComiteEvaluation({
       tertiaryParticipantScope ? loadScope(tertiaryParticipantScope, { unclassified: tertiaryUnclassified }) : Promise.resolve([]),
       getCommitteeParticipants("committee").catch(() => ({ participants: [] })),
       initialDecisionScope ? getLatestCommitteeDecision(initialDecisionScope).catch(() => ({ decision: null })) : Promise.resolve({ decision: null }),
+      editableDecisionScope ? getLatestCommitteeDecision(editableDecisionScope).catch(() => ({ decision: null })) : Promise.resolve({ decision: null }),
     ])
-      .then(([primaryParticipants, secondaryParticipants, tertiaryParticipants, committeeData, latestDecisionData]) => {
+      .then(([primaryParticipants, secondaryParticipants, tertiaryParticipants, committeeData, latestInitialDecisionData, latestEditableDecisionData]) => {
         if (ignore) return;
 
-        const primaryDecisionLevelById = new Map(
-          initialDecisionScope
-            ? committeeLevels.flatMap((level) =>
-                Array.isArray(latestDecisionData?.decision?.decisions?.[level.key])
-                  ? latestDecisionData.decision.decisions[level.key].map((participant) => [participant.id, { level: level.key, increaseRate: participant.increaseRate || "" }])
-                  : []
-              )
-            : []
-        );
+        const decisionSources = [latestInitialDecisionData?.decision, latestEditableDecisionData?.decision].filter(Boolean);
+        const decisionLevelById = new Map();
+
+        decisionSources.forEach((decision) => {
+          committeeLevels.forEach((level) => {
+            const participants = Array.isArray(decision?.decisions?.[level.key]) ? decision.decisions[level.key] : [];
+            participants.forEach((participant) => {
+              if (!participant?.id) {
+                return;
+              }
+
+              decisionLevelById.set(participant.id, {
+                level: level.key,
+                increaseRate: participant.increaseRate || "",
+              });
+            });
+          });
+        });
 
         const primaryParticipantsWithDecision = primaryParticipants.length
           ? primaryParticipants.map((participant) => {
-              const savedDecision = primaryDecisionLevelById.get(participant.id);
+              const savedDecision = decisionLevelById.get(participant.id);
 
               if (!savedDecision) {
                 return participant;
@@ -137,25 +148,52 @@ function ComiteEvaluation({
                 lockedClassification: Boolean(lockPrimaryClassification),
               };
             })
-          : initialDecisionScope
+          : decisionSources.length
             ? committeeLevels.flatMap((level) =>
-                Array.isArray(latestDecisionData?.decision?.decisions?.[level.key])
-                  ? latestDecisionData.decision.decisions[level.key].map((participant) => ({
-                      ...participant,
-                      increaseRate: participant.increaseRate || "",
-                      level: level.key,
-                      lockedClassification: Boolean(lockPrimaryClassification),
-                    }))
-                  : []
+                decisionSources.flatMap((decision) =>
+                  Array.isArray(decision?.decisions?.[level.key])
+                    ? decision.decisions[level.key].map((participant) => ({
+                        ...participant,
+                        increaseRate: participant.increaseRate || "",
+                        level: level.key,
+                        lockedClassification: Boolean(lockPrimaryClassification),
+                      }))
+                    : []
+                )
               )
             : [];
 
+        const applySavedDecision = (participants, options = {}) =>
+          participants.map((participant) => {
+            const savedDecision = decisionLevelById.get(participant.id);
+
+            if (!savedDecision) {
+              return participant;
+            }
+
+            return {
+              ...participant,
+              level: savedDecision.level,
+              increaseRate: savedDecision.increaseRate,
+              lockedClassification: Boolean(options.lockedClassification),
+            };
+          });
+
+        const secondaryParticipantsWithDecision = applySavedDecision(secondaryParticipants);
+        const tertiaryParticipantsWithDecision = applySavedDecision(tertiaryParticipants);
+
         const participantMap = new Map();
-        [...primaryParticipantsWithDecision, ...secondaryParticipants, ...tertiaryParticipants].forEach((participant) => {
-          if (!participant?.id || participantMap.has(participant.id)) {
+        [...primaryParticipantsWithDecision, ...secondaryParticipantsWithDecision, ...tertiaryParticipantsWithDecision].forEach((participant) => {
+          if (!participant?.id) {
             return;
           }
-          participantMap.set(participant.id, participant);
+
+          const existingParticipant = participantMap.get(participant.id);
+          participantMap.set(participant.id, {
+            ...existingParticipant,
+            ...participant,
+            lockedClassification: Boolean(existingParticipant?.lockedClassification || participant.lockedClassification),
+          });
         });
         const loadedParticipants = Array.from(participantMap.values());
         if (Array.isArray(committeeData?.participants) && committeeData.participants.length) {
@@ -189,6 +227,7 @@ function ComiteEvaluation({
     tertiaryParticipantScope,
     tertiaryUnclassified,
     initialDecisionScope,
+    editableDecisionScope,
   ]);
 
   const groupedPeople = useMemo(

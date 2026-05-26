@@ -7,7 +7,7 @@ import { getDisplayName } from "@/lib/userPresentation";
 
 const supportMenu = [
   { key: "overview", label: "Vue support", icon: LayoutDashboard },
-  { key: "self-evaluation", label: "Mon auto-evaluation", icon: ClipboardList },
+  { key: "self-evaluation", label: "Mon auto-évaluation", icon: ClipboardList },
   { key: "profile", label: "Profil", icon: Settings2 },
 ];
 
@@ -17,7 +17,7 @@ function VueSupport({ onLogout, onUserUpdate, user }) {
   const profileKey = [user?.id, user?.email, user?.first_name, user?.last_name, user?.grade, user?.department].join("|");
 
   const pageTitle = useMemo(() => {
-    if (activeSection === "self-evaluation") return "MON AUTO-EVALUATION SUPPORT";
+    if (activeSection === "self-evaluation") return "MON AUTO-ÉVALUATION SUPPORT";
     if (activeSection === "profile") return "MON PROFIL";
     return "DEPARTEMENT SUPPORT";
   }, [activeSection]);
@@ -34,8 +34,8 @@ function VueSupport({ onLogout, onUserUpdate, user }) {
     return (
       <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {[
-          ["Auto-evaluation", "A soumettre directement aux associes"],
-          ["Decision", "Evaluation et classement realises par les associes"],
+          ["Auto-évaluation", "À soumettre directement aux associés"],
+          ["Décision", "Évaluation et classement réalisés par les associés"],
           ["Retour RH", "Les taux d'augmentation sont transmis a la RH"],
         ].map(([title, subtitle]) => (
           <article key={title} className="rounded-xl bg-white p-5 shadow-sm">
@@ -85,7 +85,7 @@ function VueSupport({ onLogout, onUserUpdate, user }) {
           <header className="mb-6">
             <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
             <p className="mt-1 text-sm font-semibold text-slate-500">
-              {displayName} - Cycle 2025-2026 - Departement support
+              {displayName} - Cycle 2025-2026 - Département support
             </p>
           </header>
           {renderContent()}

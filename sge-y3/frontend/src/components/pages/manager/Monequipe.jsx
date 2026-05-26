@@ -74,9 +74,9 @@ function Monequipe({ searchTerm, onSearchChange, onEvaluate, relanceMessage, mem
           <thead>
             <tr className="bg-[#003B63] text-left text-white">
               <th className="px-4 py-4 font-semibold">Collaborateur</th>
-              <th className="px-4 py-4 font-semibold">Role</th>
-              <th className="px-4 py-4 font-semibold">Statut evaluation</th>
-              <th className="px-4 py-4 font-semibold">Score auto-evaluation</th>
+              <th className="px-4 py-4 font-semibold">Rôle</th>
+              <th className="px-4 py-4 font-semibold">Statut évaluation</th>
+              <th className="px-4 py-4 font-semibold">Score auto-évaluation</th>
               <th className="px-4 py-4 font-semibold">Action</th>
             </tr>
           </thead>

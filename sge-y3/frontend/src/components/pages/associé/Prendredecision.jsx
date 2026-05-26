@@ -5,7 +5,7 @@ const scoreItems = [
   { label: "Leadership & management", score: "4.1", width: "76%" },
   { label: "Pilotage & performance", score: "3.8", width: "71%" },
   { label: "Compétences techniques", score: "3.9", width: "69%" },
-  { label: "Savoir-etre & relation client", score: "3.6", width: "63%" },
+  { label: "Savoir-?tre & relation client", score: "3.6", width: "63%" },
 ];
 
 const selfEvalRows = [
@@ -160,7 +160,7 @@ function Prendredecision({ candidate }) {
               </div>
 
               <div>
-                <p className="mb-1 text-sm font-bold text-[#1E2B3A]">Commentaire Associe</p>
+                <p className="mb-1 text-sm font-bold text-[#1E2B3A]">Commentaire Associ?</p>
                 <textarea
                   value={comment}
                   onChange={(event) => setComment(event.target.value)}
@@ -183,7 +183,7 @@ function Prendredecision({ candidate }) {
           <section className="rounded-sm border-l-4 border-[#78B843] bg-[#DCECD7] px-3 py-2 text-sm font-bold text-[#1F4B2D]">
             La cloture est irreversible.
             <br />
-            Le collaborateur sera notifie automatiquement.
+            Le collaborateur sera notifié automatiquement.
           </section>
 
           <section className="rounded-lg bg-white p-4">
