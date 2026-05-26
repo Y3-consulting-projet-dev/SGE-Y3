@@ -1802,5 +1802,634 @@
         }
       ]
     }
+  ],
+  "SERVICE SUPPORT": [
+    {
+      "key": "SAVOIR FAIRE",
+      "title": "SAVOIR FAIRE",
+      "pages": [
+        {
+          "title": "Gestion des services généraux",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Gestion des locaux et équipements",
+              "statements": {
+                "Office Manager": "Supervise l'entretien, l'aménagement et la sécurité des locaux du cabinet. Gère les relations avec les prestataires de services (nettoyage, maintenance, gardiennage, fournitures de bureau). Assure le suivi des contrats et veille à la qualité des prestations.",
+                "Manager": "Supervise l'entretien, l'aménagement et la sécurité des locaux du cabinet. Gère les relations avec les prestataires de services (nettoyage, maintenance, gardiennage, fournitures de bureau). Assure le suivi des contrats et veille à la qualité des prestations."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Gestion des achats et fournitures",
+              "statements": {
+                "Office Manager": "Assure la gestion des achats courants du cabinet (fournitures, consommables, équipements). Sélectionne les fournisseurs, négocie les conditions tarifaires et suit les commandes dans le respect des budgets alloués.",
+                "Manager": "Assure la gestion des achats courants du cabinet (fournitures, consommables, équipements). Sélectionne les fournisseurs, négocie les conditions tarifaires et suit les commandes dans le respect des budgets alloués."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Gestion des archives et de la documentation interne",
+              "statements": {
+                "Office Manager": "Organise et supervise le classement, l'archivage physique et numérique des documents administratifs du cabinet. Veille à la bonne application des procédures de gestion documentaire.",
+                "Manager": "Organise et supervise le classement, l'archivage physique et numérique des documents administratifs du cabinet. Veille à la bonne application des procédures de gestion documentaire."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Support administratif & Organisation",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Gestion des agendas et déplacements",
+              "statements": {
+                "Office Manager": "Organise les agendas des associés et de la direction, coordonne les réunions, séminaires et déplacements professionnels (réservations, visas, notes de frais). Anticipe les contraintes logistiques et propose des solutions adaptées.",
+                "Manager": "Organise les agendas des associés et de la direction, coordonne les réunions, séminaires et déplacements professionnels (réservations, visas, notes de frais). Anticipe les contraintes logistiques et propose des solutions adaptées."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Accueil et gestion des visiteurs",
+              "statements": {
+                "Office Manager": "Supervise l'accueil physique et téléphonique du cabinet. Assure une image professionnelle et soignée du cabinet auprès des visiteurs, clients et partenaires.",
+                "Manager": "Supervise l'accueil physique et téléphonique du cabinet. Assure une image professionnelle et soignée du cabinet auprès des visiteurs, clients et partenaires."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Gestion du courrier et des communications internes",
+              "statements": {
+                "Office Manager": "Supervise la réception, le traitement et l'expédition du courrier et des colis. Assure la diffusion de l'information interne et contribue à la fluidité des échanges au sein du cabinet.",
+                "Manager": "Supervise la réception, le traitement et l'expédition du courrier et des colis. Assure la diffusion de l'information interne et contribue à la fluidité des échanges au sein du cabinet."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Support RH & Vie du cabinet",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Onboarding et logistique RH",
+              "statements": {
+                "Office Manager": "Coordonne l'intégration logistique des nouveaux collaborateurs (poste de travail, accès, matériel, badges). Assure le suivi des congés, des absences et des présences en lien avec la direction.",
+                "Manager": "Coordonne l'intégration logistique des nouveaux collaborateurs (poste de travail, accès, matériel, badges). Assure le suivi des congés, des absences et des présences en lien avec la direction."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Organisation d'événements internes",
+              "statements": {
+                "Office Manager": "Organise les événements de la vie du cabinet (séminaires, team building, réunions d'équipe, célébrations). Gère la logistique de bout en bout dans le respect du budget.",
+                "Manager": "Organise les événements de la vie du cabinet (séminaires, team building, réunions d'équipe, célébrations). Gère la logistique de bout en bout dans le respect du budget."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Veille réglementaire administrative",
+              "statements": {
+                "Office Manager": "Assure une veille sur les obligations administratives et réglementaires applicables au cabinet (affichages obligatoires, registres, déclarations administratives courantes) et en informe la direction.",
+                "Manager": "Assure une veille sur les obligations administratives et réglementaires applicables au cabinet (affichages obligatoires, registres, déclarations administratives courantes) et en informe la direction."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SAVOIR ETRE",
+      "title": "SAVOIR ETRE",
+      "pages": [
+        {
+          "title": "Organisation & Polyvalence",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Gestion des priorités et multitâche",
+              "statements": {
+                "Office Manager": "Sait gérer simultanément de nombreuses tâches de nature diverse avec efficacité et sang-froid. Hiérarchise les urgences et organise son travail de manière autonome pour garantir le bon fonctionnement quotidien du cabinet.",
+                "Manager": "Sait gérer simultanément de nombreuses tâches de nature diverse avec efficacité et sang-froid. Hiérarchise les urgences et organise son travail de manière autonome pour garantir le bon fonctionnement quotidien du cabinet."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Sens de l'anticipation",
+              "statements": {
+                "Office Manager": "Anticipe les besoins du cabinet et des collaborateurs avant qu'ils ne soient exprimés. Identifie les dysfonctionnements potentiels et met en place les solutions préventives nécessaires.",
+                "Manager": "Anticipe les besoins du cabinet et des collaborateurs avant qu'ils ne soient exprimés. Identifie les dysfonctionnements potentiels et met en place les solutions préventives nécessaires."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Communication & Sens du service",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Aisance relationnelle",
+              "statements": {
+                "Office Manager": "Entretient des relations positives et professionnelles avec l'ensemble des collaborateurs, des prestataires et des visiteurs. Fait preuve de diplomatie et de discrétion dans ses interactions quotidiennes.",
+                "Manager": "Entretient des relations positives et professionnelles avec l'ensemble des collaborateurs, des prestataires et des visiteurs. Fait preuve de diplomatie et de discrétion dans ses interactions quotidiennes."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Orientation service",
+              "statements": {
+                "Office Manager": "Adopte une posture résolument orientée service envers les collaborateurs et la direction. Est reconnu(e) comme un(e) interlocuteur(trice) disponible, fiable et bienveillant(e).",
+                "Manager": "Adopte une posture résolument orientée service envers les collaborateurs et la direction. Est reconnu(e) comme un(e) interlocuteur(trice) disponible, fiable et bienveillant(e)."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Confidentialité & Professionnalisme",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Discrétion et confidentialité",
+              "statements": {
+                "Office Manager": "Fait preuve d'une discrétion irréprochable dans l'exercice de ses fonctions, notamment concernant les informations sensibles relatives au cabinet, aux collaborateurs et aux clients.",
+                "Manager": "Fait preuve d'une discrétion irréprochable dans l'exercice de ses fonctions, notamment concernant les informations sensibles relatives au cabinet, aux collaborateurs et aux clients."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SAVOIR FAIRE",
+      "title": "SAVOIR FAIRE",
+      "pages": [
+        {
+          "title": "Pilotage de portefeuille",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Gestion du portefeuille de projets",
+              "statements": {
+                "PMO": "Maintient et met à jour le portefeuille de projets du cabinet. Assure la priorisation des projets en fonction des objectifs stratégiques, des ressources disponibles et des contraintes budgétaires. Produit des reportings réguliers à destination de la direction.",
+                "Manager": "Maintient et met à jour le portefeuille de projets du cabinet. Assure la priorisation des projets en fonction des objectifs stratégiques, des ressources disponibles et des contraintes budgétaires. Produit des reportings réguliers à destination de la direction."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Suivi des échéances et des livrables",
+              "statements": {
+                "PMO": "Suit l'avancement de l'ensemble des projets en cours, identifie les risques de dérapage (délais, coûts, périmètre) et alerte les parties prenantes concernées avec des propositions de plan de remédiation.",
+                "Manager": "Suit l'avancement de l'ensemble des projets en cours, identifie les risques de dérapage (délais, coûts, périmètre) et alerte les parties prenantes concernées avec des propositions de plan de remédiation."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Gestion budgétaire des projets",
+              "statements": {
+                "PMO": "Participe à l'élaboration des budgets projets, assure le suivi des dépenses et des écarts. Produit des analyses de coûts et formule des recommandations pour optimiser les ressources.",
+                "Manager": "Participe à l'élaboration des budgets projets, assure le suivi des dépenses et des écarts. Produit des analyses de coûts et formule des recommandations pour optimiser les ressources."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Méthodes & Standards",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Définition et déploiement des méthodologies",
+              "statements": {
+                "PMO": "Définit, documente et déploie les méthodologies et standards de gestion de projet du cabinet (référentiels, templates, outils de suivi). Assure la cohérence des pratiques de gestion de projet entre les différentes équipes.",
+                "Manager": "Définit, documente et déploie les méthodologies et standards de gestion de projet du cabinet (référentiels, templates, outils de suivi). Assure la cohérence des pratiques de gestion de projet entre les différentes équipes."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Gestion des risques projets",
+              "statements": {
+                "PMO": "Identifie, qualifie et suit les risques projets. Anime les comités de risques et s'assure de la mise en œuvre des plans de mitigation. Contribue à la capitalisation des leçons apprises à l'issue des projets.",
+                "Manager": "Identifie, qualifie et suit les risques projets. Anime les comités de risques et s'assure de la mise en œuvre des plans de mitigation. Contribue à la capitalisation des leçons apprises à l'issue des projets."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Gouvernance et reporting",
+              "statements": {
+                "PMO": "Prépare et anime les comités de pilotage (COPIL), les revues de portefeuille et les instances de gouvernance projets. Produit des tableaux de bord synthétiques et des rapports d'avancement à destination des associés et de la direction.",
+                "Manager": "Prépare et anime les comités de pilotage (COPIL), les revues de portefeuille et les instances de gouvernance projets. Produit des tableaux de bord synthétiques et des rapports d'avancement à destination des associés et de la direction."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Coordination & Support",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Accompagnement des chefs de projet",
+              "statements": {
+                "PMO": "Apporte un support méthodologique aux chefs de projet et aux équipes dans la planification, le suivi et la clôture de leurs projets. Forme et sensibilise les collaborateurs aux bonnes pratiques de gestion de projet.",
+                "Manager": "Apporte un support méthodologique aux chefs de projet et aux équipes dans la planification, le suivi et la clôture de leurs projets. Forme et sensibilise les collaborateurs aux bonnes pratiques de gestion de projet."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Coordination inter-équipes",
+              "statements": {
+                "PMO": "Facilite la coordination entre les différentes équipes impliquées dans les projets transversaux. Identifie et gère les interdépendances entre projets. Contribue à la résolution des blocages et des conflits de ressources.",
+                "Manager": "Facilite la coordination entre les différentes équipes impliquées dans les projets transversaux. Identifie et gère les interdépendances entre projets. Contribue à la résolution des blocages et des conflits de ressources."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Gestion documentaire projets",
+              "statements": {
+                "PMO": "Assure la centralisation, la mise à jour et l'archivage de la documentation projets (plans de projet, comptes-rendus, décisions, livrables). Veille à l'accessibilité et à la complétude de la base documentaire.",
+                "Manager": "Assure la centralisation, la mise à jour et l'archivage de la documentation projets (plans de projet, comptes-rendus, décisions, livrables). Veille à l'accessibilité et à la complétude de la base documentaire."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SAVOIR ETRE",
+      "title": "SAVOIR ETRE",
+      "pages": [
+        {
+          "title": "Organisation & Rigueur",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Gestion des priorités",
+              "statements": {
+                "PMO": "Sait gérer simultanément plusieurs projets et arbitrer les priorités en fonction des enjeux stratégiques. Fait preuve d'une grande rigueur dans le suivi des échéances et la production des livrables.",
+                "Manager": "Sait gérer simultanément plusieurs projets et arbitrer les priorités en fonction des enjeux stratégiques. Fait preuve d'une grande rigueur dans le suivi des échéances et la production des livrables."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Sens de l'anticipation",
+              "statements": {
+                "PMO": "Anticipe les risques et les blocages potentiels avant qu'ils ne surviennent. Propose des solutions concrètes et opérationnelles pour maintenir les projets sur la bonne trajectoire.",
+                "Manager": "Anticipe les risques et les blocages potentiels avant qu'ils ne surviennent. Propose des solutions concrètes et opérationnelles pour maintenir les projets sur la bonne trajectoire."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Communication & Influence",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Communication structurée",
+              "statements": {
+                "PMO": "Communique de manière claire, synthétique et adaptée à son audience (direction, chefs de projet, équipes opérationnelles). Sait formuler des messages percutants et des recommandations actionnables.",
+                "Manager": "Communique de manière claire, synthétique et adaptée à son audience (direction, chefs de projet, équipes opérationnelles). Sait formuler des messages percutants et des recommandations actionnables."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Animation et facilitation",
+              "statements": {
+                "PMO": "Anime efficacement les réunions et ateliers de travail. Crée un environnement propice à la collaboration et à la prise de décision collective. Sait gérer les tensions et les désaccords de manière constructive.",
+                "Manager": "Anime efficacement les réunions et ateliers de travail. Crée un environnement propice à la collaboration et à la prise de décision collective. Sait gérer les tensions et les désaccords de manière constructive."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Adaptabilité & Amélioration continue",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Amélioration continue des pratiques PMO",
+              "statements": {
+                "PMO": "Identifie les axes d'amélioration des processus et outils PMO du cabinet. Propose et met en œuvre des initiatives d'amélioration continue pour renforcer l'efficacité du dispositif de pilotage de projets.",
+                "Manager": "Identifie les axes d'amélioration des processus et outils PMO du cabinet. Propose et met en œuvre des initiatives d'amélioration continue pour renforcer l'efficacité du dispositif de pilotage de projets."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SAVOIR FAIRE",
+      "title": "SAVOIR FAIRE",
+      "pages": [
+        {
+          "title": "Infrastructure & Systèmes",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Gestion de l'infrastructure",
+              "statements": {
+                "Responsable IT": "Assure la disponibilité, la performance et la sécurité de l'ensemble de l'infrastructure informatique du cabinet (serveurs, réseaux, postes de travail, téléphonie). Définit et met en œuvre le plan de continuité informatique (PCA/PRA).",
+                "Manager": "Assure la disponibilité, la performance et la sécurité de l'ensemble de l'infrastructure informatique du cabinet (serveurs, réseaux, postes de travail, téléphonie). Définit et met en œuvre le plan de continuité informatique (PCA/PRA)."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Administration des systèmes et réseaux",
+              "statements": {
+                "Responsable IT": "Administre les systèmes d'exploitation, les serveurs, les équipements réseaux et les solutions de stockage. Gère les accès, les droits utilisateurs et les annuaires (Active Directory, etc.).",
+                "Manager": "Administre les systèmes d'exploitation, les serveurs, les équipements réseaux et les solutions de stockage. Gère les accès, les droits utilisateurs et les annuaires (Active Directory, etc.)."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Gestion des sauvegardes et de la sécurité",
+              "statements": {
+                "Responsable IT": "Définit et supervise les politiques de sauvegarde et de restauration des données. Pilote la cybersécurité : pare-feux, antivirus, gestion des vulnérabilités, sensibilisation des utilisateurs.",
+                "Manager": "Définit et supervise les politiques de sauvegarde et de restauration des données. Pilote la cybersécurité : pare-feux, antivirus, gestion des vulnérabilités, sensibilisation des utilisateurs."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Applications & Outils",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Gestion du parc applicatif",
+              "statements": {
+                "Responsable IT": "Supervise le déploiement, la maintenance et les mises à jour des logiciels métiers (logiciel d'audit, ERP, outils collaboratifs). Gère les licences et assure la conformité logicielle.",
+                "Manager": "Supervise le déploiement, la maintenance et les mises à jour des logiciels métiers (logiciel d'audit, ERP, outils collaboratifs). Gère les licences et assure la conformité logicielle."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Support aux utilisateurs",
+              "statements": {
+                "Responsable IT": "Organise et assure le support de niveau 1 et 2 pour l'ensemble des collaborateurs. Gère les tickets d'incident, les escalades et le suivi de la résolution dans les délais convenus.",
+                "Manager": "Organise et assure le support de niveau 1 et 2 pour l'ensemble des collaborateurs. Gère les tickets d'incident, les escalades et le suivi de la résolution dans les délais convenus."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Gestion des prestataires et contrats IT",
+              "statements": {
+                "Responsable IT": "Sélectionne, évalue et pilote les prestataires informatiques (hébergeurs, éditeurs, intégrateurs). Négocie les contrats de maintenance et de service (SLA).",
+                "Manager": "Sélectionne, évalue et pilote les prestataires informatiques (hébergeurs, éditeurs, intégrateurs). Négocie les contrats de maintenance et de service (SLA)."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Projets & Innovation",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Pilotage de projets IT",
+              "statements": {
+                "Responsable IT": "Conduit les projets de transformation numérique du cabinet (migration, déploiement de nouveaux outils, digitalisation des processus). Rédige les spécifications techniques et assure le suivi budgétaire des projets IT.",
+                "Manager": "Conduit les projets de transformation numérique du cabinet (migration, déploiement de nouveaux outils, digitalisation des processus). Rédige les spécifications techniques et assure le suivi budgétaire des projets IT."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Veille technologique",
+              "statements": {
+                "Responsable IT": "Assure une veille active sur les évolutions technologiques pertinentes pour le cabinet (cloud, cybersécurité, IA, automatisation). Formule des recommandations d'investissement ou d'adoption.",
+                "Manager": "Assure une veille active sur les évolutions technologiques pertinentes pour le cabinet (cloud, cybersécurité, IA, automatisation). Formule des recommandations d'investissement ou d'adoption."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Data et conformité réglementaire",
+              "statements": {
+                "Responsable IT": "Garantit la conformité des pratiques IT avec la réglementation en vigueur (RGPD, charte informatique interne). Pilote la gouvernance des données et la politique de confidentialité.",
+                "Manager": "Garantit la conformité des pratiques IT avec la réglementation en vigueur (RGPD, charte informatique interne). Pilote la gouvernance des données et la politique de confidentialité."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SAVOIR ETRE",
+      "title": "SAVOIR ETRE",
+      "pages": [
+        {
+          "title": "Organisation & Rigueur",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Gestion des priorités et réactivité",
+              "statements": {
+                "Responsable IT": "Sait hiérarchiser les incidents et demandes en fonction de leur criticité. Fait preuve d'une grande réactivité en situation d'urgence tout en maintenant une communication claire avec les utilisateurs affectés.",
+                "Manager": "Sait hiérarchiser les incidents et demandes en fonction de leur criticité. Fait preuve d'une grande réactivité en situation d'urgence tout en maintenant une communication claire avec les utilisateurs affectés."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Fiabilité et sens du service",
+              "statements": {
+                "Responsable IT": "Est reconnu comme un interlocuteur de confiance par l'ensemble des collaborateurs. Respecte ses engagements de délais et de qualité. Adopte une posture orientée service interne.",
+                "Manager": "Est reconnu comme un interlocuteur de confiance par l'ensemble des collaborateurs. Respecte ses engagements de délais et de qualité. Adopte une posture orientée service interne."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Communication & Pédagogie",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Vulgarisation technique",
+              "statements": {
+                "Responsable IT": "Sait traduire des problématiques techniques complexes en termes compréhensibles pour des interlocuteurs non-techniques (direction, associés, collaborateurs). Forme et sensibilise les utilisateurs aux bonnes pratiques numériques.",
+                "Manager": "Sait traduire des problématiques techniques complexes en termes compréhensibles pour des interlocuteurs non-techniques (direction, associés, collaborateurs). Forme et sensibilise les utilisateurs aux bonnes pratiques numériques."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Adaptabilité & Initiatives",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Proactivité et amélioration continue",
+              "statements": {
+                "Responsable IT": "Identifie de manière proactive les axes d'amélioration de l'environnement IT du cabinet et propose des solutions concrètes. S'adapte rapidement aux évolutions technologiques et aux nouveaux besoins du cabinet.",
+                "Manager": "Identifie de manière proactive les axes d'amélioration de l'environnement IT du cabinet et propose des solutions concrètes. S'adapte rapidement aux évolutions technologiques et aux nouveaux besoins du cabinet."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SAVOIR FAIRE",
+      "title": "SAVOIR FAIRE",
+      "pages": [
+        {
+          "title": "Comptabilité générale & Reporting",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Tenue et supervision de la comptabilité",
+              "statements": {
+                "Comptable Interne Senior": "Supervise la saisie et la révision de l'ensemble des opérations comptables du cabinet (achats, ventes, trésorerie, opérations diverses). Garantit la fiabilité et l'exhaustivité des enregistrements dans le respect des normes comptables applicables (SYSCOHADA révisé).",
+                "Comptabilite interne senior": "Supervise la saisie et la révision de l'ensemble des opérations comptables du cabinet (achats, ventes, trésorerie, opérations diverses). Garantit la fiabilité et l'exhaustivité des enregistrements dans le respect des normes comptables applicables (SYSCOHADA révisé).",
+                "Manager": "Supervise la saisie et la révision de l'ensemble des opérations comptables du cabinet (achats, ventes, trésorerie, opérations diverses). Garantit la fiabilité et l'exhaustivité des enregistrements dans le respect des normes comptables applicables (SYSCOHADA révisé)."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Arrêtés périodiques et clôtures",
+              "statements": {
+                "Comptable Interne Senior": "Prépare et supervise les arrêtés mensuels et les clôtures annuelles des comptes. Réalise les travaux de révision comptable, les rapprochements bancaires, la justification des comptes de bilan et le lettrage des comptes.",
+                "Comptabilite interne senior": "Prépare et supervise les arrêtés mensuels et les clôtures annuelles des comptes. Réalise les travaux de révision comptable, les rapprochements bancaires, la justification des comptes de bilan et le lettrage des comptes.",
+                "Manager": "Prépare et supervise les arrêtés mensuels et les clôtures annuelles des comptes. Réalise les travaux de révision comptable, les rapprochements bancaires, la justification des comptes de bilan et le lettrage des comptes."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Reporting financier interne",
+              "statements": {
+                "Comptable Interne Senior": "Élabore les reportings financiers périodiques à destination de la direction (tableaux de bord financiers, suivi du chiffre d'affaires, analyse des charges). Formule des commentaires et des analyses pertinentes sur les écarts constatés.",
+                "Comptabilite interne senior": "Élabore les reportings financiers périodiques à destination de la direction (tableaux de bord financiers, suivi du chiffre d'affaires, analyse des charges). Formule des commentaires et des analyses pertinentes sur les écarts constatés.",
+                "Manager": "Élabore les reportings financiers périodiques à destination de la direction (tableaux de bord financiers, suivi du chiffre d'affaires, analyse des charges). Formule des commentaires et des analyses pertinentes sur les écarts constatés."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Fiscalité & Obligations légales",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Gestion de la fiscalité courante",
+              "statements": {
+                "Comptable Interne Senior": "Assure la préparation et le dépôt dans les délais des déclarations fiscales périodiques (TVA, IS/BIC, IRVM, patente, etc.) dans le respect de la réglementation ivoirienne en vigueur. Gère les relations avec l'administration fiscale.",
+                "Comptabilite interne senior": "Assure la préparation et le dépôt dans les délais des déclarations fiscales périodiques (TVA, IS/BIC, IRVM, patente, etc.) dans le respect de la réglementation ivoirienne en vigueur. Gère les relations avec l'administration fiscale.",
+                "Manager": "Assure la préparation et le dépôt dans les délais des déclarations fiscales périodiques (TVA, IS/BIC, IRVM, patente, etc.) dans le respect de la réglementation ivoirienne en vigueur. Gère les relations avec l'administration fiscale."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Contrôle de la conformité légale",
+              "statements": {
+                "Comptable Interne Senior": "Veille au respect des obligations légales et réglementaires du cabinet en matière comptable et fiscale. Assure une veille fiscale et réglementaire active et en informe la direction.",
+                "Comptabilite interne senior": "Veille au respect des obligations légales et réglementaires du cabinet en matière comptable et fiscale. Assure une veille fiscale et réglementaire active et en informe la direction.",
+                "Manager": "Veille au respect des obligations légales et réglementaires du cabinet en matière comptable et fiscale. Assure une veille fiscale et réglementaire active et en informe la direction."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Trésorerie & Contrôle de gestion",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Gestion de la trésorerie",
+              "statements": {
+                "Comptable Interne Senior": "Supervise les flux de trésorerie, élabore les prévisions de trésorerie et assure le suivi des positions bancaires. Gère les règlements fournisseurs et le recouvrement des créances clients du cabinet.",
+                "Comptabilite interne senior": "Supervise les flux de trésorerie, élabore les prévisions de trésorerie et assure le suivi des positions bancaires. Gère les règlements fournisseurs et le recouvrement des créances clients du cabinet.",
+                "Manager": "Supervise les flux de trésorerie, élabore les prévisions de trésorerie et assure le suivi des positions bancaires. Gère les règlements fournisseurs et le recouvrement des créances clients du cabinet."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Facturation et suivi des honoraires",
+              "statements": {
+                "Comptable Interne Senior": "Supervise le processus de facturation des honoraires clients. Assure le suivi du recouvrement et participe à la mise en œuvre des relances en coordination avec les équipes opérationnelles.",
+                "Comptabilite interne senior": "Supervise le processus de facturation des honoraires clients. Assure le suivi du recouvrement et participe à la mise en œuvre des relances en coordination avec les équipes opérationnelles.",
+                "Manager": "Supervise le processus de facturation des honoraires clients. Assure le suivi du recouvrement et participe à la mise en œuvre des relances en coordination avec les équipes opérationnelles."
+              }
+            },
+            {
+              "code": "C",
+              "label": "Contrôle budgétaire",
+              "statements": {
+                "Comptable Interne Senior": "Participe à l'élaboration du budget annuel du cabinet. Assure le suivi des réalisations par rapport au budget, analyse les écarts et en rend compte à la direction avec des recommandations correctives.",
+                "Comptabilite interne senior": "Participe à l'élaboration du budget annuel du cabinet. Assure le suivi des réalisations par rapport au budget, analyse les écarts et en rend compte à la direction avec des recommandations correctives.",
+                "Manager": "Participe à l'élaboration du budget annuel du cabinet. Assure le suivi des réalisations par rapport au budget, analyse les écarts et en rend compte à la direction avec des recommandations correctives."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Paie & Administration RH financière",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Gestion de la paie",
+              "statements": {
+                "Comptable Interne Senior": "Supervise l'établissement et le contrôle de la paie de l'ensemble des collaborateurs dans le respect de la législation sociale ivoirienne (Code du Travail, conventions collectives). Assure le dépôt des déclarations sociales (CNPS, impôt sur salaires).",
+                "Comptabilite interne senior": "Supervise l'établissement et le contrôle de la paie de l'ensemble des collaborateurs dans le respect de la législation sociale ivoirienne (Code du Travail, conventions collectives). Assure le dépôt des déclarations sociales (CNPS, impôt sur salaires).",
+                "Manager": "Supervise l'établissement et le contrôle de la paie de l'ensemble des collaborateurs dans le respect de la législation sociale ivoirienne (Code du Travail, conventions collectives). Assure le dépôt des déclarations sociales (CNPS, impôt sur salaires)."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Suivi des charges de personnel",
+              "statements": {
+                "Comptable Interne Senior": "Assure le suivi analytique des charges de personnel et contribue à l'élaboration des prévisions de masse salariale.",
+                "Comptabilite interne senior": "Assure le suivi analytique des charges de personnel et contribue à l'élaboration des prévisions de masse salariale.",
+                "Manager": "Assure le suivi analytique des charges de personnel et contribue à l'élaboration des prévisions de masse salariale."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "SAVOIR ETRE",
+      "title": "SAVOIR ETRE",
+      "pages": [
+        {
+          "title": "Rigueur & Fiabilité",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Précision et sens du détail",
+              "statements": {
+                "Comptable Interne Senior": "Fait preuve d'une grande rigueur et d'un souci constant de l'exactitude dans le traitement des données financières. Détecte les anomalies et incohérences et met en place les corrections nécessaires.",
+                "Comptabilite interne senior": "Fait preuve d'une grande rigueur et d'un souci constant de l'exactitude dans le traitement des données financières. Détecte les anomalies et incohérences et met en place les corrections nécessaires.",
+                "Manager": "Fait preuve d'une grande rigueur et d'un souci constant de l'exactitude dans le traitement des données financières. Détecte les anomalies et incohérences et met en place les corrections nécessaires."
+              }
+            },
+            {
+              "code": "B",
+              "label": "Respect des délais et des engagements",
+              "statements": {
+                "Comptable Interne Senior": "Organise son travail pour respecter l'ensemble des échéances comptables, fiscales et sociales. Anticipe les pics d'activité et prend les dispositions nécessaires pour honorer ses engagements.",
+                "Comptabilite interne senior": "Organise son travail pour respecter l'ensemble des échéances comptables, fiscales et sociales. Anticipe les pics d'activité et prend les dispositions nécessaires pour honorer ses engagements.",
+                "Manager": "Organise son travail pour respecter l'ensemble des échéances comptables, fiscales et sociales. Anticipe les pics d'activité et prend les dispositions nécessaires pour honorer ses engagements."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Confidentialité & Éthique",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Sens de la confidentialité",
+              "statements": {
+                "Comptable Interne Senior": "Fait preuve d'une discrétion absolue dans le traitement des informations financières et salariales du cabinet. Respecte strictement les règles de confidentialité et d'accès aux données sensibles.",
+                "Comptabilite interne senior": "Fait preuve d'une discrétion absolue dans le traitement des informations financières et salariales du cabinet. Respecte strictement les règles de confidentialité et d'accès aux données sensibles.",
+                "Manager": "Fait preuve d'une discrétion absolue dans le traitement des informations financières et salariales du cabinet. Respecte strictement les règles de confidentialité et d'accès aux données sensibles."
+              }
+            }
+          ]
+        },
+        {
+          "title": "Communication & Collaboration",
+          "themes": [
+            {
+              "code": "A",
+              "label": "Travail en équipe et pédagogie",
+              "statements": {
+                "Comptable Interne Senior": "Travaille en étroite collaboration avec les équipes opérationnelles et la direction pour faciliter la gestion financière du cabinet. Sait expliquer les enjeux financiers et comptables à des interlocuteurs non-spécialistes.",
+                "Comptabilite interne senior": "Travaille en étroite collaboration avec les équipes opérationnelles et la direction pour faciliter la gestion financière du cabinet. Sait expliquer les enjeux financiers et comptables à des interlocuteurs non-spécialistes.",
+                "Manager": "Travaille en étroite collaboration avec les équipes opérationnelles et la direction pour faciliter la gestion financière du cabinet. Sait expliquer les enjeux financiers et comptables à des interlocuteurs non-spécialistes."
+              }
+            }
+          ]
+        }
+      ]
+    }
   ]
 }
