@@ -20,6 +20,12 @@ function getRecipientOptionValue(recipient) {
   return `${recipient.department}::${recipient.id}`;
 }
 
+function getRecipientLabel(recipient) {
+  if (!recipient?.name) return "";
+  if (!recipient?.grade) return recipient.name;
+  return `${recipient.name} (${recipient.grade})`;
+}
+
 function formatDisplayDate(value) {
   if (!value) return "";
 
@@ -189,9 +195,12 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
   const [missionTitle, setMissionTitle] = useState("");
   const [missionStartDate, setMissionStartDate] = useState("");
   const [missionEndDate, setMissionEndDate] = useState("");
+  const [selectedMissionManagerValue, setSelectedMissionManagerValue] = useState("");
+  const [selectedMissionManagerValues, setSelectedMissionManagerValues] = useState([]);
   const [selectedManagerValue, setSelectedManagerValue] = useState("");
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackTone, setFeedbackTone] = useState("success");
+  const [feedbackAnchor, setFeedbackAnchor] = useState("");
   const [isLoadingReview, setIsLoadingReview] = useState(false);
   const [reviewError, setReviewError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -219,6 +228,8 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
         setMissionReviews(response.mission_reviews || []);
         setActiveMissionId(response.mission_reviews?.[0]?.id || "");
         setFeedbackMessage("");
+        setSelectedMissionManagerValue("");
+        setSelectedMissionManagerValues([]);
       } catch (error) {
         if (!cancelled) {
           setReviewError(error.message || "Chargement de l'évaluation impossible.");
@@ -238,7 +249,14 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
   }, [selectedAssistantId]);
 
   const selectedAssistant = assistants.find((assistant) => assistant.id === selectedAssistantId) || assistants[0] || null;
-  const managerRecipients = reviewData?.submitted_to || [];
+  const managerRecipients = useMemo(() => reviewData?.submitted_to || [], [reviewData?.submitted_to]);
+  const selectedMissionManagers = useMemo(
+    () =>
+      managerRecipients.filter((manager) =>
+        selectedMissionManagerValues.includes(getRecipientOptionValue(manager))
+      ),
+    [managerRecipients, selectedMissionManagerValues]
+  );
   const effectiveManagerValue =
     selectedManagerValue && managerRecipients.some((manager) => getRecipientOptionValue(manager) === selectedManagerValue)
       ? selectedManagerValue
@@ -277,6 +295,29 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
     setMissionReviews(response.mission_reviews || []);
   }
 
+  function showFeedback(anchor, tone, message) {
+    setFeedbackAnchor(anchor);
+    setFeedbackTone(tone);
+    setFeedbackMessage(message);
+  }
+
+  function addSelectedMissionManager() {
+    if (!selectedMissionManagerValue) return;
+
+    setSelectedMissionManagerValues((current) =>
+      current.includes(selectedMissionManagerValue) ? current : [...current, selectedMissionManagerValue]
+    );
+    setSelectedMissionManagerValue("");
+    setFeedbackMessage("");
+    setFeedbackAnchor("");
+  }
+
+  function removeSelectedMissionManager(value) {
+    setSelectedMissionManagerValues((current) => current.filter((item) => item !== value));
+    setFeedbackMessage("");
+    setFeedbackAnchor("");
+  }
+
   function getSelectedManagerPayload() {
     return selectedManager
       ? {
@@ -287,7 +328,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
       : null;
   }
 
-  async function persistReview(nextMissionReviews = missionReviews) {
+  async function persistReview(nextMissionReviews = missionReviews, feedbackAnchorName = "mission-actions") {
     if (!selectedAssistantId) return null;
 
     setIsSaving(true);
@@ -297,12 +338,10 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
         missionReviews: nextMissionReviews,
       });
       normalizeLoadedResponse(response);
-      setFeedbackTone("success");
-      setFeedbackMessage(response.message || "Évaluation par mission enregistrée.");
+      showFeedback(feedbackAnchorName, "success", response.message || "?valuation par mission enregistr?e.");
       return response;
     } catch (error) {
-      setFeedbackTone("error");
-      setFeedbackMessage(error.message || "Sauvegarde impossible.");
+      showFeedback(feedbackAnchorName, "error", error.message || "Sauvegarde impossible.");
       return null;
     } finally {
       setIsSaving(false);
@@ -323,6 +362,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
       )
     );
     setFeedbackMessage("");
+    setFeedbackAnchor("");
   }
 
   function updateMissionSectionComment(comment) {
@@ -339,6 +379,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
       )
     );
     setFeedbackMessage("");
+    setFeedbackAnchor("");
   }
 
   function updateMissionPageComment(comment) {
@@ -357,6 +398,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
       )
     );
     setFeedbackMessage("");
+    setFeedbackAnchor("");
   }
 
   function goToMissionStep(direction) {
@@ -383,14 +425,12 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
 
     const title = missionTitle.trim();
     if (!title) {
-      setFeedbackTone("error");
-      setFeedbackMessage("Renseignez le nom de la mission à partager avec l'assistant.");
+      showFeedback("mission-form", "error", "Renseignez le nom de la mission ? partager avec l'assistant.");
       return;
     }
 
     if (missionStartDate && missionEndDate && missionEndDate < missionStartDate) {
-      setFeedbackTone("error");
-      setFeedbackMessage("La date de fin doit être postérieure ou égale à la date de début.");
+      showFeedback("mission-form", "error", "La date de fin doit ?tre post?rieure ou ?gale ? la date de d?but.");
       return;
     }
 
@@ -400,6 +440,11 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
       const response = await addSeniorAssistantMission(selectedAssistantId, {
         title,
         period: formatMissionPeriodLabel(missionStartDate, missionEndDate),
+        selectedManagerRecipients: selectedMissionManagers.map((manager) => ({
+          id: manager.id,
+          name: manager.name,
+          department: manager.department,
+        })),
       });
       normalizeLoadedResponse(response);
       const addedMission = response.mission_reviews?.[response.mission_reviews.length - 1] || null;
@@ -413,11 +458,11 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
       setMissionTitle("");
       setMissionStartDate("");
       setMissionEndDate("");
-      setFeedbackTone("success");
-      setFeedbackMessage(response.message || "Mission ajoutée pour l'assistant.");
+      setSelectedMissionManagerValue("");
+      setSelectedMissionManagerValues([]);
+      showFeedback("mission-form", "success", response.message || "Mission ajout?e pour l'assistant.");
     } catch (error) {
-      setFeedbackTone("error");
-      setFeedbackMessage(error.message || "Ajout de mission impossible.");
+      showFeedback("mission-form", "error", error.message || "Ajout de mission impossible.");
     } finally {
       setIsSaving(false);
     }
@@ -425,12 +470,11 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
 
   async function handleSaveMissionAndContinue() {
     if (hasLowScoreOnActiveMissionPage && String(activeMissionGroup?.pageComment || "").trim().length < 3) {
-      setFeedbackTone("error");
-      setFeedbackMessage("Une justification est requise pour toute note inférieure à 3 sur ce titre.");
+      showFeedback("mission-actions", "error", "Une justification est requise pour toute note inf?rieure ? 3 sur ce titre.");
       return;
     }
 
-    const response = await persistReview(missionReviews);
+    const response = await persistReview(missionReviews, "mission-actions");
     if (response) goToMissionStep(1);
   }
 
@@ -442,38 +486,33 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
     );
 
     if (hasIncompleteCriterion) {
-      setFeedbackTone("error");
-      setFeedbackMessage("Toutes les questions de la mission doivent être renseignées avant transmission.");
+      showFeedback("mission-actions", "error", "Toutes les questions de la mission doivent ?tre renseign?es avant transmission.");
       return;
     }
 
     if (!hasRequiredMissionSectionComments(missionSections)) {
-      setFeedbackTone("error");
-      setFeedbackMessage("Un commentaire d'au moins 3 caractères est obligatoire pour chaque section de la mission.");
+      showFeedback("mission-actions", "error", "Un commentaire d?au moins 3 caract?res est obligatoire pour chaque section de la mission.");
       return;
     }
 
     if (getMissionMissingLowScorePageComments(missionSections).length) {
-      setFeedbackTone("error");
-      setFeedbackMessage("Une justification est requise pour chaque titre contenant une note inférieure à 3.");
+      showFeedback("mission-actions", "error", "Une justification est requise pour chaque titre contenant une note inf?rieure ? 3.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const savedResponse = await persistReview(missionReviews);
+      const savedResponse = await persistReview(missionReviews, "mission-actions");
       if (!savedResponse) return;
 
       const response = await submitSeniorAssistantMissionEvaluation(selectedAssistantId, activeMission.id, {
         selectedManagerRecipient: getSelectedManagerPayload(),
       });
       normalizeLoadedResponse(response);
-      setFeedbackTone("success");
-      setFeedbackMessage(response.message || "Mission transmise au manager.");
+      showFeedback("mission-actions", "success", response.message || "Mission transmise au manager.");
     } catch (error) {
-      setFeedbackTone("error");
-      setFeedbackMessage(error.message || "Transmission impossible.");
+      showFeedback("mission-actions", "error", error.message || "Transmission impossible.");
     } finally {
       setIsSubmitting(false);
     }
@@ -483,32 +522,28 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
     if (!selectedAssistantId) return;
 
     if (!missionReviews.length) {
-      setFeedbackTone("error");
-      setFeedbackMessage("Ajoutez au moins une mission avant la soumission finale.");
+      showFeedback("finalize", "error", "Ajoutez au moins une mission avant la soumission finale.");
       return;
     }
 
     if (missionReviews.some((mission) => mission.status !== "Transmise")) {
-      setFeedbackTone("error");
-      setFeedbackMessage("Chaque mission doit être transmise avant la soumission finale.");
+      showFeedback("finalize", "error", "Chaque mission doit ?tre transmise avant la soumission finale.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const savedResponse = await persistReview(missionReviews);
+      const savedResponse = await persistReview(missionReviews, "finalize");
       if (!savedResponse) return;
 
       const response = await submitSeniorAssistantEvaluation(selectedAssistantId, {
         selectedManagerRecipient: getSelectedManagerPayload(),
       });
       normalizeLoadedResponse(response);
-      setFeedbackTone("success");
-      setFeedbackMessage(response.message || "Évaluations par mission transmises au manager.");
+      showFeedback("finalize", "success", response.message || "?valuations par mission transmises au manager.");
     } catch (error) {
-      setFeedbackTone("error");
-      setFeedbackMessage(error.message || "Soumission finale impossible.");
+      showFeedback("finalize", "error", error.message || "Soumission finale impossible.");
     } finally {
       setIsSubmitting(false);
     }
@@ -593,7 +628,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                 />
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-[12px] font-bold text-[#0F3A63]">Date de début</label>
+                    <label className="mb-1 block text-[12px] font-bold text-[#0F3A63]">Date de d?but</label>
                     <input
                       type="date"
                       value={missionStartDate}
@@ -612,6 +647,70 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                     />
                   </div>
                 </div>
+                <div className="rounded-md bg-white p-3">
+                  <p className="text-[12px] font-bold text-[#0F3A63]">Managers sélectionnés</p>
+                  {selectedMissionManagers.length ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {selectedMissionManagers.map((manager) => {
+                        const value = getRecipientOptionValue(manager);
+                        return (
+                          <span
+                            key={value}
+                            className="inline-flex max-w-full items-center gap-2 rounded-full bg-[#EEF6E8] px-3 py-1.5 text-[11px] font-semibold text-[#0F3A63]"
+                          >
+                            <span className="truncate">
+                              {manager.department} - {getRecipientLabel(manager)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeSelectedMissionManager(value)}
+                              className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-[13px] font-bold text-[#0F3A63]"
+                              aria-label={`Retirer ${getRecipientLabel(manager)}`}
+                            >
+                              x
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-[11px] font-semibold text-slate-500">Aucun manager sélectionné pour le moment.</p>
+                  )}
+                  {managerRecipients.length ? (
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                      <select
+                        value={selectedMissionManagerValue}
+                        onChange={(event) => {
+                          setSelectedMissionManagerValue(event.target.value);
+                          setFeedbackMessage("");
+                        setFeedbackAnchor("");
+                        }}
+                        className="h-10 flex-1 rounded-md border border-slate-200 bg-white px-3 text-[12px] font-semibold text-[#0F3A63] outline-none"
+                      >
+                        <option value="">Sélectionner un manager</option>
+                        {managerRecipients.map((manager) => {
+                          const value = getRecipientOptionValue(manager);
+                          const isAlreadySelected = selectedMissionManagerValues.includes(value);
+
+                          return (
+                            <option key={value} value={value} disabled={isAlreadySelected}>
+                              {manager.department} - {getRecipientLabel(manager)}
+                              {isAlreadySelected ? " - d?j? s?lectionn?" : ""}
+                            </option>
+                          );
+                        })}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={addSelectedMissionManager}
+                        disabled={!selectedMissionManagerValue}
+                        className="h-10 rounded-md bg-[#0B4C7A] px-4 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Ajouter
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
                 <button
                   type="button"
                   onClick={handleAddMission}
@@ -620,6 +719,11 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                 >
                   {isSaving ? "Ajout…" : "Ajouter la mission"}
                 </button>
+                {feedbackAnchor === "mission-form" && feedbackMessage ? (
+                  <p className={`mt-2 text-[11px] font-semibold ${feedbackTone === "error" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>
+                    {feedbackMessage}
+                  </p>
+                ) : null}
               </div>
             </div>
 
@@ -927,6 +1031,11 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                   </div>
                 )}
               </div>
+              {feedbackAnchor === "mission-actions" && feedbackMessage ? (
+                <p className={`mt-2 text-right text-[11px] font-semibold ${feedbackTone === "error" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>
+                  {feedbackMessage}
+                </p>
+              ) : null}
             </>
           ) : (
             <div className="rounded-md bg-[#EEF2F6] p-5 text-sm font-semibold text-slate-500">
@@ -950,11 +1059,16 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
             >
               {isSubmitting ? "Soumission…" : "Finaliser l'évaluation"}
             </button>
+            {feedbackAnchor === "finalize" && feedbackMessage ? (
+              <p className={`mt-2 text-[11px] font-semibold ${feedbackTone === "error" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>
+                {feedbackMessage}
+              </p>
+            ) : null}
           </div>
         </article>
       </section>
 
-      {feedbackMessage ? (
+      {!feedbackAnchor && feedbackMessage ? (
         <p className={`text-right text-[11px] font-semibold ${feedbackTone === "error" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>
           {feedbackMessage}
         </p>

@@ -74,6 +74,8 @@ const missionRecipientSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     grade: { type: String, default: '', trim: true },
     department: { type: String, default: '', trim: true },
+    can_evaluate: { type: Boolean, default: true },
+    receives_copy: { type: Boolean, default: false },
   },
   { _id: false }
 );

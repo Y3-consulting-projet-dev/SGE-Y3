@@ -259,6 +259,7 @@ function MonautoevaluationSenior({ user }) {
   const [missionStartDate, setMissionStartDate] = useState("");
   const [missionEndDate, setMissionEndDate] = useState("");
   const [selectedRecipientValue, setSelectedRecipientValue] = useState("");
+  const [selectedRecipientValues, setSelectedRecipientValues] = useState([]);
   const [addMissionFeedback, setAddMissionFeedback] = useState(null);
   const [missionFeedback, setMissionFeedback] = useState(null);
   const [finalFeedback, setFinalFeedback] = useState(null);
@@ -311,14 +312,9 @@ function MonautoevaluationSenior({ user }) {
       department: item.department,
     }))
   );
-  const initialRecipientValue = recipientOptions[0] ? getRecipientOptionValue(recipientOptions[0]) : "";
-  const effectiveRecipientValue =
-    selectedRecipientValue && recipientOptions.some((recipient) => getRecipientOptionValue(recipient) === selectedRecipientValue)
-      ? selectedRecipientValue
-      : initialRecipientValue;
-  const selectedRecipient = useMemo(
-    () => recipientOptions.find((recipient) => getRecipientOptionValue(recipient) === effectiveRecipientValue) || null,
-    [effectiveRecipientValue, recipientOptions]
+  const selectedRecipients = useMemo(
+    () => recipientOptions.filter((recipient) => selectedRecipientValues.includes(getRecipientOptionValue(recipient))),
+    [recipientOptions, selectedRecipientValues]
   );
 
   const effectiveMissionId =
@@ -359,6 +355,21 @@ function MonautoevaluationSenior({ user }) {
     if (scope === "addMission") setAddMissionFeedback(payload);
     if (scope === "mission") setMissionFeedback(payload);
     if (scope === "final") setFinalFeedback(payload);
+  }
+
+  function addSelectedRecipient() {
+    if (!selectedRecipientValue) return;
+
+    setSelectedRecipientValues((current) =>
+      current.includes(selectedRecipientValue) ? current : [...current, selectedRecipientValue]
+    );
+    setSelectedRecipientValue("");
+    clearScopedFeedback("addMission");
+  }
+
+  function removeSelectedRecipient(value) {
+    setSelectedRecipientValues((current) => current.filter((item) => item !== value));
+    clearScopedFeedback("addMission");
   }
 
   async function persistMissionEvaluations(
@@ -439,13 +450,13 @@ function MonautoevaluationSenior({ user }) {
       return;
     }
 
-    if (!selectedRecipient) {
-      setScopedFeedback("addMission", "error", "Sélectionnez un manager destinataire pour cette mission.");
+    if (!selectedRecipients.length) {
+      setScopedFeedback("addMission", "error", "S?lectionnez au moins un manager pour cette mission.");
       return;
     }
 
     if (missionStartDate && missionEndDate && missionEndDate < missionStartDate) {
-      setScopedFeedback("addMission", "error", "La date de fin doit être postérieure ou égale à la date de début.");
+      setScopedFeedback("addMission", "error", "La date de fin doit ?tre post?rieure ou ?gale ? la date de d?but.");
       return;
     }
 
@@ -453,20 +464,19 @@ function MonautoevaluationSenior({ user }) {
 
     missionCreationCounterRef.current += 1;
 
+    const primaryRecipient = selectedRecipients[0];
     const nextMission = {
       id: `senior-mission-${missionCreationCounterRef.current}-${missionEvaluations.length + 1}`,
       title,
       period: formatMissionPeriodLabel(missionStartDate, missionEndDate),
-      department: selectedRecipient.department,
-      recipients: [
-        {
-          id: selectedRecipient.id,
-          name: selectedRecipient.name,
-          grade: selectedRecipient.grade,
-          department: selectedRecipient.department,
-        },
-      ],
-      criteria: buildMissionCriteriaFromSections(sections, selectedRecipient.department),
+      department: primaryRecipient.department,
+      recipients: selectedRecipients.map((recipient) => ({
+        id: recipient.id,
+        name: recipient.name,
+        grade: recipient.grade,
+        department: recipient.department,
+      })),
+      criteria: buildMissionCriteriaFromSections(sections, primaryRecipient.department),
       status: "Brouillon",
     };
 
@@ -484,14 +494,15 @@ function MonautoevaluationSenior({ user }) {
     setMissionTitle("");
     setMissionStartDate("");
     setMissionEndDate("");
-    setSelectedRecipientValue(initialRecipientValue);
+    setSelectedRecipientValue("");
+    setSelectedRecipientValues([]);
 
     const savedResponse = await persistMissionEvaluations(nextMissionEvaluations, {
       scope: "addMission",
     });
     if (!savedResponse) return;
 
-    setScopedFeedback("addMission", "success", "Mission ajoutée et enregistrée.");
+    setScopedFeedback("addMission", "success", "Mission ajout?e et enregistr?e.");
   }
 
   function updateMissionScore(criterionId, score) {
@@ -700,20 +711,69 @@ function MonautoevaluationSenior({ user }) {
                 }}
                 className="w-full rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-[#0F3A63] outline-none"
               />
-              <select
-                value={effectiveRecipientValue}
-                onChange={(event) => {
-                  setSelectedRecipientValue(event.target.value);
-                  clearScopedFeedback("addMission");
-                }}
-                className="w-full rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-[#0F3A63] outline-none"
-              >
-                {recipientOptions.map((recipient) => (
-                  <option key={getRecipientOptionValue(recipient)} value={getRecipientOptionValue(recipient)}>
-                    {recipient.department} - Destinataire : {getRecipientLabel(recipient)}
-                  </option>
-                ))}
-              </select>
+              <div className="rounded-md bg-white p-3">
+                <p className="text-[12px] font-bold text-[#0F3A63]">Managers s?lectionn?s</p>
+                {selectedRecipients.length ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {selectedRecipients.map((recipient) => {
+                      const value = getRecipientOptionValue(recipient);
+                      return (
+                        <span
+                          key={value}
+                          className="inline-flex max-w-full items-center gap-2 rounded-full bg-[#EEF6E8] px-3 py-1.5 text-[11px] font-semibold text-[#0F3A63]"
+                        >
+                          <span className="truncate">
+                            {recipient.department} - {getRecipientLabel(recipient)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeSelectedRecipient(value)}
+                            className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-[13px] font-bold text-[#0F3A63]"
+                            aria-label={`Retirer ${getRecipientLabel(recipient)}`}
+                          >
+                            x
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-[11px] font-semibold text-slate-500">Aucun manager s?lectionn? pour le moment.</p>
+                )}
+                {recipientOptions.length ? (
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <select
+                      value={selectedRecipientValue}
+                      onChange={(event) => {
+                        setSelectedRecipientValue(event.target.value);
+                        clearScopedFeedback("addMission");
+                      }}
+                      className="h-10 flex-1 rounded-md border border-slate-200 bg-white px-3 text-[12px] font-semibold text-[#0F3A63] outline-none"
+                    >
+                      <option value="">S?lectionner un manager</option>
+                      {recipientOptions.map((recipient) => {
+                        const value = getRecipientOptionValue(recipient);
+                        const isAlreadySelected = selectedRecipientValues.includes(value);
+
+                        return (
+                          <option key={value} value={value} disabled={isAlreadySelected}>
+                            {recipient.department} - {getRecipientLabel(recipient)}
+                            {isAlreadySelected ? " - d?j? s?lectionn?" : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={addSelectedRecipient}
+                      disabled={!selectedRecipientValue}
+                      className="h-10 rounded-md bg-[#0B4C7A] px-4 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Ajouter
+                    </button>
+                  </div>
+                ) : null}
+              </div>
               <button
                 type="button"
                 onClick={handleAddMission}

@@ -24,6 +24,49 @@ function getRecipientOptionValue(recipient) {
   return `${recipient.department}::${recipient.id}`;
 }
 
+function isManagerOrSeniorManagerRecipient(recipient) {
+  const category = String(recipient?.code_categorie || "").trim().toUpperCase();
+  return category === "10B" || category === "10C";
+}
+
+function getMissionEvaluatingRecipients(mission) {
+  return (mission?.recipients || []).filter((recipient) => recipient?.canEvaluate !== false && recipient?.can_evaluate !== false);
+}
+
+function getMissionInformationalRecipients(mission) {
+  return (mission?.recipients || []).filter((recipient) => recipient?.canEvaluate === false || recipient?.can_evaluate === false);
+}
+
+function getDepartmentAwareInformationalRecipients(allInformationalRecipients = [], selectedRecipients = []) {
+  const selectedDepartments = Array.from(
+    new Set(selectedRecipients.map((recipient) => normalizeDepartment(recipient?.department || "")).filter(Boolean))
+  );
+
+  if (!selectedDepartments.length) {
+    return allInformationalRecipients;
+  }
+
+  return allInformationalRecipients.filter((recipient) =>
+    selectedDepartments.includes(normalizeDepartment(recipient?.department || ""))
+  );
+}
+
+function getMissionDepartmentFromSelectedRecipients(selectedRecipients = [], fallbackDepartment = "") {
+  const selectedDepartments = Array.from(
+    new Set(selectedRecipients.map((recipient) => normalizeDepartment(recipient?.department || "")).filter(Boolean))
+  );
+
+  if (selectedDepartments.includes("AUDIT") && selectedDepartments.includes("EXPERTISE COMPTABLE")) {
+    return "AUDIT & EXPERTISE COMPTABLE";
+  }
+
+  if (selectedDepartments.length === 1) {
+    return selectedDepartments[0];
+  }
+
+  return fallbackDepartment || "";
+}
+
 function getSourceBadgeLabel(page) {
   if (page?.source_label) return page.source_label;
   if (page?.source_sheet === "AUDIT") return "Audit";
@@ -112,7 +155,7 @@ function getMissionAssignmentLabel(mission) {
 }
 
 function getMissionEvaluationDepartment(mission) {
-  return mission?.primaryRecipientDepartment || mission?.department || mission?.recipients?.[0]?.department || "";
+  return mission?.department || mission?.primaryRecipientDepartment || mission?.recipients?.[0]?.department || "";
 }
 
 function getMissionPrimaryRecipient(mission) {
@@ -124,22 +167,29 @@ function getMissionPrimaryRecipient(mission) {
     return mission.primaryRecipientName;
   }
 
-  return mission?.recipients?.[0]?.name || "";
+  return getMissionEvaluatingRecipients(mission)[0]?.name || mission?.recipients?.[0]?.name || "";
+}
+
+function getMissionEvaluatorsLabel(mission) {
+  const evaluators = getMissionEvaluatingRecipients(mission);
+
+  if (!evaluators.length) return "";
+  return evaluators.map((recipient) => recipient.name).filter(Boolean).join(", ");
 }
 
 function getMissionValidationLabel(mission) {
   const department = getMissionEvaluationDepartment(mission);
-  const primaryRecipient = getMissionPrimaryRecipient(mission);
+  const primaryRecipient = getMissionEvaluatorsLabel(mission) || getMissionPrimaryRecipient(mission);
 
   if (mission?.createdByRole === "senior") {
     return primaryRecipient ? `${department} - Destinataire : ${primaryRecipient}` : department;
   }
 
   if (!department) {
-    return primaryRecipient ? `Destinataire : ${primaryRecipient}` : "Circuit de validation du département";
+    return primaryRecipient ? `Évaluateur(s) : ${primaryRecipient}` : "Circuit de validation du département";
   }
 
-  return primaryRecipient ? `${department} - Destinataire : ${primaryRecipient}` : `${department} - Circuit de validation du département`;
+  return primaryRecipient ? `${department} - Évaluateur(s) : ${primaryRecipient}` : `${department} - Circuit de validation du département`;
 }
 
 function isSameMissionId(left, right) {
@@ -304,7 +354,14 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
       department: item.department,
     }))
   );
-  const initialRecipientValue = recipientOptions[0] ? getRecipientOptionValue(recipientOptions[0]) : "";
+  const evaluatorRecipientOptions = useMemo(
+    () => recipientOptions.filter((recipient) => !isManagerOrSeniorManagerRecipient(recipient)),
+    [recipientOptions]
+  );
+  const informationalRecipientOptions = useMemo(
+    () => recipientOptions.filter((recipient) => isManagerOrSeniorManagerRecipient(recipient)),
+    [recipientOptions]
+  );
   const sections = useMemo(() => evaluationData?.evaluation?.sections || [], [evaluationData?.evaluation?.sections]);
   const [missionEvaluations, setMissionEvaluations] = useState(() => sanitizeMissionEvaluations(evaluationData?.mission_evaluations || []));
   const [missionId, setMissionId] = useState(null);
@@ -313,7 +370,8 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   const [missionTitle, setMissionTitle] = useState("");
   const [missionStartDate, setMissionStartDate] = useState("");
   const [missionEndDate, setMissionEndDate] = useState("");
-  const [selectedRecipientValue, setSelectedRecipientValue] = useState(initialRecipientValue);
+  const [selectedRecipientValue, setSelectedRecipientValue] = useState("");
+  const [selectedRecipientValues, setSelectedRecipientValues] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addMissionFeedback, setAddMissionFeedback] = useState(null);
@@ -350,31 +408,49 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     Math.max((missionSection?.groups?.length || 1) - 1, 0)
   );
   const missionGroup = missionSection?.groups?.[missionPageIndex] || missionSection?.groups?.[0] || null;
-  const effectiveRecipientValue =
-    selectedRecipientValue && recipientOptions.some((recipient) => getRecipientOptionValue(recipient) === selectedRecipientValue)
-      ? selectedRecipientValue
-      : initialRecipientValue;
-  const selectedRecipient = useMemo(
-    () => recipientOptions.find((recipient) => getRecipientOptionValue(recipient) === effectiveRecipientValue) || null,
-    [effectiveRecipientValue, recipientOptions]
+  const selectedEvaluatorRecipients = useMemo(
+    () => evaluatorRecipientOptions.filter((recipient) => selectedRecipientValues.includes(getRecipientOptionValue(recipient))),
+    [evaluatorRecipientOptions, selectedRecipientValues]
   );
-  const managerRecipients = useMemo(() => {
+  const selectedInformationalRecipients = useMemo(
+    () => getDepartmentAwareInformationalRecipients(informationalRecipientOptions, selectedEvaluatorRecipients),
+    [informationalRecipientOptions, selectedEvaluatorRecipients]
+  );
+  const selectedRecipientsSummary = useMemo(() => {
     const recipients = missionEvaluations.flatMap((item) =>
-      (item.recipients || []).map((manager) => ({
-        department: item.department,
-        manager: manager.name,
-        grade: manager.grade,
+      getMissionEvaluatingRecipients(item).map((recipient) => ({
+        department: recipient.department || item.department,
+        name: recipient.name,
+        grade: recipient.grade,
       }))
     );
 
     return recipients.filter(
       (recipient, index, list) =>
-        recipient.manager &&
+        recipient.name &&
         list.findIndex(
-          (item) => item.manager === recipient.manager && item.department === recipient.department && item.grade === recipient.grade
+          (item) =>
+            item.name === recipient.name &&
+            item.department === recipient.department &&
+            item.grade === recipient.grade
         ) === index
     );
   }, [missionEvaluations]);
+
+  function addSelectedRecipient() {
+    if (!selectedRecipientValue) return;
+
+    setSelectedRecipientValues((current) =>
+      current.includes(selectedRecipientValue) ? current : [...current, selectedRecipientValue]
+    );
+    setSelectedRecipientValue("");
+    clearScopedFeedback("addMission");
+  }
+
+  function removeSelectedRecipient(value) {
+    setSelectedRecipientValues((current) => current.filter((item) => item !== value));
+    clearScopedFeedback("addMission");
+  }
 
   useEffect(() => {
     onMissionEvaluationsChange?.(missionEvaluations);
@@ -476,8 +552,8 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
       return;
     }
 
-    if (!selectedRecipient) {
-      setScopedFeedback("addMission", "error", "Sélectionnez un destinataire pour cette mission.");
+    if (!selectedEvaluatorRecipients.length) {
+      setScopedFeedback("addMission", "error", "S\u00E9lectionnez au moins un \u00E9valuateur pour cette mission.");
       return;
     }
 
@@ -488,14 +564,28 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
 
     clearScopedFeedback("addMission");
 
-    const autoRecipients = [
-      {
-        id: selectedRecipient.id,
-        name: selectedRecipient.name,
-        grade: selectedRecipient.grade,
-        department: selectedRecipient.department,
-      },
-    ];
+    const primaryRecipient = selectedEvaluatorRecipients[0];
+    const missionDepartment = getMissionDepartmentFromSelectedRecipients(
+      selectedEvaluatorRecipients,
+      evaluationData?.assignee?.department || ""
+    );
+    const evaluatorRecipients = selectedEvaluatorRecipients.map((recipient) => ({
+      id: recipient.id,
+      name: recipient.name,
+      grade: recipient.grade,
+      department: recipient.department,
+      canEvaluate: true,
+      receivesCopy: false,
+    }));
+    const informationalRecipients = selectedInformationalRecipients.map((recipient) => ({
+      id: recipient.id,
+      name: recipient.name,
+      grade: recipient.grade,
+      department: recipient.department,
+      canEvaluate: false,
+      receivesCopy: true,
+    }));
+    const autoRecipients = [...evaluatorRecipients, ...informationalRecipients];
 
     missionCreationCounterRef.current += 1;
 
@@ -503,14 +593,14 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
       id: `mission-${missionCreationCounterRef.current}-${missionEvaluations.length + 1}`,
       title,
       period: formatMissionPeriodLabel(missionStartDate, missionEndDate),
-      department: selectedRecipient.department || evaluationData?.assignee?.department || "",
+      department: missionDepartment,
       createdByRole: "self",
-      primaryRecipientUserId: selectedRecipient.id,
-      primaryRecipientName: selectedRecipient.name,
-      primaryRecipientGrade: selectedRecipient.grade,
-      primaryRecipientDepartment: selectedRecipient.department,
+      primaryRecipientUserId: primaryRecipient.id,
+      primaryRecipientName: primaryRecipient.name,
+      primaryRecipientGrade: primaryRecipient.grade,
+      primaryRecipientDepartment: primaryRecipient.department,
       recipients: autoRecipients,
-      criteria: buildMissionCriteriaFromSections(sections, selectedRecipient.department || evaluationData?.assignee?.department || ""),
+      criteria: buildMissionCriteriaFromSections(sections, missionDepartment),
       comment: "",
     };
 
@@ -532,7 +622,8 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     setMissionTitle("");
     setMissionStartDate("");
     setMissionEndDate("");
-    setSelectedRecipientValue(initialRecipientValue);
+    setSelectedRecipientValue("");
+    setSelectedRecipientValues([]);
 
     const savedResponse = await persistMissionEvaluations(nextMissionEvaluations, {
       scope: "addMission",
@@ -672,7 +763,10 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
       if (!savedResponse) return;
 
       const submittedResponse = await submitMyAssistantEvaluation({
-        managerRecipients,
+        managerRecipients: selectedRecipientsSummary.map((recipient) => ({
+          department: recipient.department,
+          manager: recipient.name,
+        })),
         missionEvaluations,
       });
       setScopedFeedback("final", "success", submittedResponse.message || "Évaluations par mission soumises aux managers.");
@@ -706,7 +800,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
         {evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"} - Auto-évaluation par mission - Sauvegarde progressive activée
       </div>
 
-      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.95fr_1.25fr]">
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <article className="rounded-md bg-white p-4 shadow-sm">
           <h3 className="text-lg font-bold text-[#0F3A63]">Mes missions de l'année</h3>
           <p className="mt-1 text-xs font-semibold text-slate-500">
@@ -745,22 +839,79 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
               }}
               className="mt-2 h-10 w-full rounded-md bg-white px-3 text-sm font-semibold text-slate-600 outline-none"
             />
-            <select
-              value={effectiveRecipientValue}
-              onChange={(event) => {
-                setSelectedRecipientValue(event.target.value);
-                clearScopedFeedback("addMission");
-              }}
-              className="mt-2 h-10 w-full rounded-md bg-white px-3 text-sm font-semibold text-[#0F3A63] outline-none"
-            >
-              {recipientOptions.map((recipient) => (
-                <option key={getRecipientOptionValue(recipient)} value={getRecipientOptionValue(recipient)}>
-                  {recipient.department} - Responsable principal : {getRecipientLabel(recipient)}
-                </option>
-              ))}
-            </select>
+            <div className="mt-2 rounded-md bg-white p-3">
+              <p className="text-[12px] font-bold text-[#0F3A63]">{"\u00C9valuateurs de la mission"}</p>
+              {selectedEvaluatorRecipients.length ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {selectedEvaluatorRecipients.map((recipient) => {
+                    const value = getRecipientOptionValue(recipient);
+
+                    return (
+                      <span
+                        key={value}
+                        className="inline-flex max-w-full items-center gap-2 rounded-full bg-[#EEF6E8] px-3 py-1.5 text-[11px] font-semibold text-[#0F3A63]"
+                      >
+                        <span className="truncate">
+                          {recipient.department} - {getRecipientLabel(recipient)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeSelectedRecipient(value)}
+                          className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-[13px] font-bold text-[#0F3A63]"
+                          aria-label={`Retirer ${getRecipientLabel(recipient)}`}
+                        >
+                          x
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="mt-3 rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-slate-500">
+                  {"Aucun \u00E9valuateur s\u00E9lectionn\u00E9 pour le moment."}
+                </p>
+              )}
+
+              {evaluatorRecipientOptions.length ? (
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <select
+                    value={selectedRecipientValue}
+                    onChange={(event) => {
+                      setSelectedRecipientValue(event.target.value);
+                      clearScopedFeedback("addMission");
+                    }}
+                    className="h-10 w-full rounded-md border border-[#D9E3EE] bg-white px-3 text-sm font-semibold text-[#0F3A63] outline-none"
+                  >
+                    <option value="">Sélectionner un supérieur</option>
+                    {evaluatorRecipientOptions.map((recipient) => {
+                      const value = getRecipientOptionValue(recipient);
+                      const isAlreadySelected = selectedRecipientValues.includes(value);
+
+                      return (
+                        <option key={value} value={value} disabled={isAlreadySelected}>
+                          {recipient.department} - {getRecipientLabel(recipient)}
+                          {isAlreadySelected ? " - déjà sélectionné" : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={addSelectedRecipient}
+                    disabled={!selectedRecipientValue}
+                    className="h-10 rounded-md bg-[#0B4C7A] px-4 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Ajouter
+                  </button>
+                </div>
+              ) : (
+                <p className="mt-3 rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-slate-500">
+                  {"Aucun \u00E9valuateur s\u00E9lectionnable n'est disponible pour le moment."}
+                </p>
+              )}
+            </div>
             <p className="mt-2 text-[11px] font-semibold text-slate-500">
-              Le destinataire choisi recevra seul cette évaluation par mission.
+              {"S\u00E9lectionnez un ou plusieurs \u00E9valuateurs parmi vos sup\u00E9rieurs. Le manager ou senior manager recevra aussi la mission \u00E0 titre informatif, sans pouvoir l'\u00E9valuer."}
             </p>
             <button
               type="button"
@@ -832,12 +983,15 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                   <h3 className="text-2xl font-black leading-tight text-[#0F3A63]">{mission.title}</h3>
                   <p className="mt-1 text-sm font-semibold text-slate-500">{mission.period}</p>
                   <p className="mt-1 text-sm font-bold text-[#0F4A72]">Validation : {getMissionValidationLabel(mission)}</p>
+                  {getMissionInformationalRecipients(mission).length ? (
+                    <p className="mt-1 text-xs font-semibold text-slate-500">
+                      Information : {getMissionInformationalRecipients(mission).map((recipient) => recipient.name).filter(Boolean).join(", ")}
+                    </p>
+                  ) : null}
                   {mission.createdByRole === "senior" ? (
                     <p className="mt-2 text-xs font-semibold text-[#4E8B1B]">Notification : {getMissionAssignmentLabel(mission)}.</p>
                   ) : (
-                    <p className="mt-2 text-xs font-semibold text-slate-500">
-                      Cette mission sera transmise automatiquement au circuit de validation du département.
-                    </p>
+                    <p className="mt-2 text-xs font-semibold text-slate-500">{"Cette mission sera transmise aux \u00E9valuateurs s\u00E9lectionn\u00E9s, ainsi qu'au manager ou senior manager \u00E0 titre informatif."}</p>
                   )}
                 </div>
                 <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">Moyenne {missionAverage} / 5</span>
@@ -1125,18 +1279,18 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
             </article>
 
             <article className="rounded-md bg-white p-4 shadow-sm">
-              <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">Destinataires</h3>
+              <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">{"\u00C9valuateurs s\u00E9lectionn\u00E9s"}</h3>
               <div className="space-y-2">
-                {managerRecipients.length ? (
-                  managerRecipients.map((recipient) => (
-                    <div key={`${recipient.department}-${recipient.manager}`} className="rounded-md bg-[#F8FAFC] px-3 py-3">
-                      <p className="text-[12px] font-bold text-[#0F3A63]">{recipient.manager}</p>
+                {selectedRecipientsSummary.length ? (
+                  selectedRecipientsSummary.map((recipient) => (
+                    <div key={`${recipient.department}-${recipient.name}`} className="rounded-md bg-[#F8FAFC] px-3 py-3">
+                      <p className="text-[12px] font-bold text-[#0F3A63]">{recipient.name}</p>
                       <p className="mt-1 text-[11px] text-slate-500">{recipient.department}</p>
                     </div>
                   ))
                 ) : (
                   <p className="rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-slate-500">
-                    Les destinataires apparaîtront ici dès qu'une mission sera ajoutée.
+                    {"Les personnes s\u00E9lectionn\u00E9es appara\u00EEtront ici d\u00E8s qu'une mission sera ajout\u00E9e."}
                   </p>
                 )}
               </div>

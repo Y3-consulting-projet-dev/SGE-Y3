@@ -162,6 +162,8 @@ function normalizeManagerMissionEvaluations(missionEvaluations = []) {
             name: String(recipient.name || '').trim(),
             grade: String(recipient.grade || '').trim(),
             department: String(recipient.department || '').trim(),
+            can_evaluate: recipient.can_evaluate !== false,
+            receives_copy: recipient.receives_copy === true,
           }))
       : [],
     criteria: Array.isArray(mission.criteria)
@@ -206,6 +208,8 @@ function formatManagerMissionEvaluations(missionEvaluations = []) {
       name: recipient.name,
       grade: recipient.grade,
       department: recipient.department,
+      canEvaluate: recipient.can_evaluate !== false,
+      receivesCopy: recipient.receives_copy === true,
     })),
     criteria: (mission.criteria || []).map((criterion) => ({
       id: criterion.criterion_id,
@@ -523,6 +527,10 @@ function isRecipientUser(recipient, user) {
   return normalizeText(recipient.name || '') === normalizeText(user.name || '');
 }
 
+function isEvaluatingRecipientUser(recipient, user) {
+  return recipient?.can_evaluate !== false && isRecipientUser(recipient, user);
+}
+
 function normalizeMissionReviews(missionReviews = []) {
   return missionReviews.map((mission) => ({
     mission_id: String(mission.id || mission.mission_id || '').trim(),
@@ -681,7 +689,7 @@ async function syncManagerMissionReviews(review, managerUser, selfEvaluationInst
   const submittedMissions = (selfEvaluationInstance?.mission_evaluations || []).filter(
     (mission) =>
       mission.status === 'Soumise' &&
-      (mission.recipients || []).some((recipient) => isRecipientUser(recipient, managerUser))
+      (mission.recipients || []).some((recipient) => isEvaluatingRecipientUser(recipient, managerUser))
   );
   const submittedMissionIds = new Set(submittedMissions.map((mission) => String(mission.mission_id)));
 
