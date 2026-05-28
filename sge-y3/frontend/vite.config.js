@@ -8,7 +8,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: true,
+    host: "0.0.0.0",
+    strictPort: true,
+    port: 5173,
     watch: {
       usePolling: true,
       interval: 300,

@@ -1,4 +1,4 @@
-﻿import { CheckCircle2 } from "lucide-react";
+﻿import { CheckCircle2, CircleDashed } from "lucide-react";
 
 const reminders = [
   { label: "Soumettre l'auto-évaluation", date: "18-04-2026" },
@@ -94,7 +94,7 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
                     step.done ? "bg-[#DFF0D8] text-[#2F7D32]" : "bg-slate-100 text-slate-500"
                   }`}
                 >
-                  {step.done ? <CheckCircle2 size={12} /> : step.id}
+                  {step.done ? <CheckCircle2 size={12} /> : <CircleDashed size={12} />} 
                 </div>
                 <div>
                   <p className="text-[13px] font-bold text-[#0F3A63]">{step.title}</p>

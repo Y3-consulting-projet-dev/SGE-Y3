@@ -906,35 +906,44 @@ function Evaluermonequipe({ member }) {
                     Renseignez le titre, la date de début et la date de fin. Le membre la recevra dans son auto-évaluation par mission.
                   </p>
                 </div>
-                <div className="grid gap-3 md:grid-cols-3">
-                  <input
-                    value={missionTitle}
-                    onChange={(event) => setMissionTitle(event.target.value)}
-                    placeholder="Titre de la mission"
-                    className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
-                  />
-                  <input
-                    type="date"
-                    value={missionStartDate}
-                    onChange={(event) => setMissionStartDate(event.target.value)}
-                    className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none"
-                  />
-                  <input
-                    type="date"
-                    value={missionEndDate}
-                    min={missionStartDate || undefined}
-                    onChange={(event) => setMissionEndDate(event.target.value)}
-                    className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none"
-                  />
+                <div className="mt-3 space-y-3">
+                <input
+                  type="text"
+                  value={missionTitle}
+                  onChange={(event) => setMissionTitle(event.target.value)}
+                  placeholder="Nom ou type de mission"
+                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0F3A63] outline-none"
+                />
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-[12px] font-bold text-[#0F3A63]">Date de début</label>
+                    <input
+                      type="date"
+                      value={missionStartDate}
+                      onChange={(event) => setMissionStartDate(event.target.value)}
+                      className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0F3A63] outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[12px] font-bold text-[#0F3A63]">Date de fin</label>
+                    <input
+                      type="date"
+                      min={missionStartDate || undefined}
+                      value={missionEndDate}
+                      onChange={(event) => setMissionEndDate(event.target.value)}
+                      className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0F3A63] outline-none"
+                    />
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={handleAddMission}
                   disabled={isSaving || isSubmitting}
-                  className="mt-4 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                  className="inline-flex rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
                 >
-                  {isSaving ? "Ajout..." : "Ajouter la mission"}
+                  {isSaving ? "Ajout…" : "Ajouter la mission"}
                 </button>
+              </div>
               </div>
 
               {pendingAssignedMissions.length ? (
