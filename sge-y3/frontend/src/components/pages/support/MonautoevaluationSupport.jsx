@@ -43,6 +43,17 @@ function getSupportRoleKey(user) {
   return "Office Manager";
 }
 
+function getCommonGradeKey(user, supportRoleKey) {
+  const source = normalizeText(`${user?.grade || ""} ${user?.code_categorie || ""}`);
+
+  if (source.includes("SENIOR") || source.includes("9A")) return "Senior";
+  if (source.includes("ASSISTANT MANAGER") || source.includes("MANAGER") || source.includes("10")) return "Manager";
+  if (source.includes("ASSISTANT") || source.includes("8")) return "Assistant";
+  if (source.includes("ASSOCIE") || source.includes("ASSOCI") || source.includes("11")) return "Associ?";
+
+  return normalizeText(supportRoleKey).includes("COMPTABLE INTERNE SENIOR") ? "Senior" : "Manager";
+}
+
 function getStatementForRole(statements = {}, roleKey) {
   if (statements[roleKey]) return statements[roleKey];
 
@@ -53,10 +64,15 @@ function getStatementForRole(statements = {}, roleKey) {
 
 function buildSupportSections(user) {
   const roleKey = getSupportRoleKey(user);
+  const supportSheets = [
+    { name: "TRONC COMMUN", roleKey: getCommonGradeKey(user, roleKey) },
+    { name: "SERVICE SUPPORT", roleKey },
+  ];
   const groupedSections = new Map();
   const sectionOrder = [];
 
-  (matrixData["SERVICE SUPPORT"] || []).forEach((sourceSection, sourceSectionIndex) => {
+  supportSheets.forEach((sheet) => {
+    (matrixData[sheet.name] || []).forEach((sourceSection, sourceSectionIndex) => {
     const sectionKey = sourceSection.key || sourceSection.title || `section-${sourceSectionIndex}`;
 
     if (!groupedSections.has(sectionKey)) {
@@ -73,11 +89,11 @@ function buildSupportSections(user) {
     (sourceSection.pages || []).forEach((page, pageIndex) => {
       const themes = (page.themes || [])
         .map((theme, themeIndex) => {
-          const statement = getStatementForRole(theme.statements || {}, roleKey);
+          const statement = getStatementForRole(theme.statements || {}, sheet.roleKey);
           if (!statement) return null;
 
           return {
-            id: `${slugify(roleKey)}-${slugify(sectionKey)}-${slugify(page.title)}-${slugify(theme.code || themeIndex)}`,
+            id: `${slugify(sheet.name)}-${slugify(sheet.roleKey)}-${slugify(sectionKey)}-${slugify(page.title)}-${slugify(theme.code || themeIndex)}`,
             code: theme.code || String.fromCharCode(65 + themeIndex),
             label: theme.label,
             statement,
@@ -89,12 +105,14 @@ function buildSupportSections(user) {
       if (!themes.length) return;
 
       targetSection.pages.push({
-        id: `${slugify(roleKey)}-${slugify(sectionKey)}-${slugify(page.title || pageIndex)}`,
+        id: `${slugify(sheet.name)}-${slugify(sheet.roleKey)}-${slugify(sectionKey)}-${slugify(page.title || pageIndex)}`,
         title: page.title || `Titre ${pageIndex + 1}`,
+        sourceSheet: sheet.name,
         comment: "",
         themes,
       });
     });
+  });
   });
 
   return sectionOrder.map((sectionKey) => groupedSections.get(sectionKey)).filter((section) => section.pages.length);
