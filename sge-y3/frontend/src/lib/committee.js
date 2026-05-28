@@ -1,6 +1,6 @@
 import { loadSession } from "@/lib/auth";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { API_BASE_URL } from "./apiBase";
 
 function getCommitteeDecisionStorageKey(scope = "associate-final") {
   return `sge-committee-latest-decision:${scope}`;
@@ -33,7 +33,7 @@ function loadLocalDecision(scope = "associate-final") {
   try {
     const decision = JSON.parse(rawDecision);
     return decision?.scope === scope ? decision : null;
-  } catch (_error) {
+  } catch {
     window.localStorage.removeItem(storageKey);
     return null;
   }
@@ -123,7 +123,7 @@ export async function saveCommitteeDecision(payload) {
       ...data,
       decision,
     };
-  } catch (_error) {
+  } catch {
     return {
       message: "Decision sauvegardee localement pour la RH.",
       decision: localDecision,
@@ -157,7 +157,7 @@ export async function getLatestCommitteeDecision(scope = "associate-final") {
       ...data,
       decision: pickMostCompleteDecision(data.decision, localDecision),
     };
-  } catch (_error) {
+  } catch {
     return { decision: localDecision };
   }
 }

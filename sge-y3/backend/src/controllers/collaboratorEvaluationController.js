@@ -114,7 +114,100 @@ function buildMissionRecipients(recipients = []) {
     name: recipient.name,
     grade: recipient.grade,
     department: recipient.department,
+    can_evaluate: recipient.can_evaluate !== false,
+    receives_copy: recipient.receives_copy === true,
   }));
+}
+
+function isManagerOrSeniorManager(recipient = {}) {
+  const normalizedCategory = String(recipient.code_categorie || '').trim().toUpperCase();
+  return normalizedCategory === '10B' || normalizedCategory === '10C';
+}
+
+function resolveMissionRecipientMetadata(recipient = {}, resolvedMissionRecipients = []) {
+  const recipientUserId = String(recipient._id || recipient.user_id || recipient.id || '').trim();
+  const recipientName = normalizeText(recipient.name || '');
+  const recipientDepartment = normalizeText(recipient.department || '');
+
+  return (
+    resolvedMissionRecipients.find((candidate) => {
+      const candidateUserId = String(candidate._id || candidate.user_id || candidate.id || '').trim();
+      if (recipientUserId && candidateUserId && candidateUserId === recipientUserId) {
+        return true;
+      }
+
+      return (
+        recipientName &&
+        recipientDepartment &&
+        normalizeText(candidate.name || '') === recipientName &&
+        normalizeText(candidate.department || '') === recipientDepartment
+      );
+    }) || recipient
+  );
+}
+
+function getSelectedEvaluatorDepartments(selectedRecipients = []) {
+  return Array.from(
+    new Set(
+      selectedRecipients
+        .filter((recipient) => recipient && !isManagerOrSeniorManager(recipient))
+        .map((recipient) => normalizeText(recipient.department || ''))
+        .filter(Boolean)
+    )
+  );
+}
+
+function createAssistantMissionRecipients(selectedRecipients = [], resolvedMissionRecipients = []) {
+  const normalizedSelectedRecipients = selectedRecipients.map((recipient) =>
+    resolveMissionRecipientMetadata(recipient, resolvedMissionRecipients)
+  );
+  const selectedDepartments = getSelectedEvaluatorDepartments(normalizedSelectedRecipients);
+  const evaluators = normalizedSelectedRecipients
+    .filter((recipient) => recipient && !isManagerOrSeniorManager(recipient))
+    .map((recipient) => ({
+      user_id: recipient._id || recipient.user_id || recipient.id,
+      name: recipient.name,
+      grade: recipient.grade,
+      department: recipient.department,
+      can_evaluate: true,
+      receives_copy: false,
+    }));
+
+  const informedManagers = resolvedMissionRecipients
+    .filter((recipient) => {
+      if (!isManagerOrSeniorManager(recipient)) {
+        return false;
+      }
+
+      if (!selectedDepartments.length) {
+        return true;
+      }
+
+      return selectedDepartments.includes(normalizeText(recipient.department || ''));
+    })
+    .map((recipient) => ({
+      user_id: recipient._id || recipient.user_id || recipient.id,
+      name: recipient.name,
+      grade: recipient.grade,
+      department: recipient.department,
+      can_evaluate: false,
+      receives_copy: true,
+    }));
+
+  const seen = new Set();
+  const mergedRecipients = [];
+
+  [...evaluators, ...informedManagers].forEach((recipient) => {
+    const key = `${String(recipient.user_id || '')}::${recipient.department || ''}`;
+    if (!recipient.user_id || seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    mergedRecipients.push(recipient);
+  });
+
+  return mergedRecipients;
 }
 
 function mergeManagerRecipients(explicitRecipients = [], resolvedManagers = []) {
@@ -216,6 +309,8 @@ function normalizeMissionEvaluations(missionEvaluations = []) {
             name: String(recipient.name || '').trim(),
             grade: String(recipient.grade || '').trim(),
             department: String(recipient.department || '').trim(),
+            can_evaluate: recipient.can_evaluate !== false,
+            receives_copy: recipient.receives_copy === true,
           }))
       : [],
     criteria: Array.isArray(mission.criteria)
@@ -262,6 +357,8 @@ function formatMissionEvaluations(missionEvaluations = []) {
       name: recipient.name,
       grade: recipient.grade,
       department: recipient.department,
+      canEvaluate: recipient.can_evaluate !== false,
+      receivesCopy: recipient.receives_copy === true,
     })),
     criteria: (mission.criteria || []).map((criterion) => ({
       id: criterion.criterion_id,
@@ -519,6 +616,22 @@ async function buildEvaluationPayload(instance, user) {
   };
 }
 
+async function persistEvaluationInstance(instance, updates = {}) {
+  if (!instance?._id) {
+    return instance;
+  }
+
+  await EvaluationInstance.updateOne(
+    { _id: instance._id },
+    {
+      $set: updates,
+    }
+  );
+
+  Object.assign(instance, updates);
+  return instance;
+}
+
 function shouldResetToCurrentTemplate(instance, templateSections) {
   const currentSections = normalizeSections(instance.sections);
 
@@ -574,9 +687,10 @@ async function getOrCreateSelfEvaluation(user, templateType, cloneTemplate) {
       last_saved_at: new Date(),
     });
   } else if (shouldResetToCurrentTemplate(instance, templateSections)) {
-    instance.sections = toPersistenceSections(templateSections);
-    instance.last_saved_at = new Date();
-    await instance.save();
+    await persistEvaluationInstance(instance, {
+      sections: toPersistenceSections(templateSections),
+      last_saved_at: new Date(),
+    });
   }
 
   return instance;
@@ -653,46 +767,65 @@ async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
                 name: mission.assigned_by_name || 'Senior',
                 grade: mission.assigned_by_grade || 'Senior',
                 department: mission.department || request.user.department || '',
+                can_evaluate: true,
+                receives_copy: false,
               },
             ]
-          : Array.isArray(mission.recipients) && mission.recipients.length
-            ? mission.recipients
-            : [],
+          : createAssistantMissionRecipients(
+              (mission.recipients || []).filter((recipient) =>
+                availableRecipients.some(
+                  (candidate) =>
+                    String(candidate.user_id) === String(recipient.user_id) ||
+                    (candidate.name === recipient.name && candidate.department === recipient.department)
+                )
+              ),
+              resolvedMissionRecipients
+            ),
       primary_recipient_user_id:
         mission.created_by_role === 'senior'
           ? mission.assigned_by_user_id || null
-          : mission.primary_recipient_user_id || mission.recipients?.[0]?.user_id || null,
+          : mission.primary_recipient_user_id ||
+            createAssistantMissionRecipients(
+              mission.recipients || [],
+              resolvedMissionRecipients
+            ).find((recipient) => recipient.can_evaluate !== false)?.user_id ||
+            null,
       primary_recipient_name:
         mission.created_by_role === 'senior'
           ? mission.assigned_by_name || 'Senior'
-          : mission.primary_recipient_name || mission.recipients?.[0]?.name || '',
+          : mission.primary_recipient_name ||
+            createAssistantMissionRecipients(
+              mission.recipients || [],
+              resolvedMissionRecipients
+            ).find((recipient) => recipient.can_evaluate !== false)?.name ||
+            '',
       primary_recipient_grade:
         mission.created_by_role === 'senior'
           ? mission.assigned_by_grade || 'Senior'
-          : mission.primary_recipient_grade || mission.recipients?.[0]?.grade || '',
+          : mission.primary_recipient_grade ||
+            createAssistantMissionRecipients(
+              mission.recipients || [],
+              resolvedMissionRecipients
+            ).find((recipient) => recipient.can_evaluate !== false)?.grade ||
+            '',
       primary_recipient_department:
         mission.created_by_role === 'senior'
           ? mission.department || request.user.department || ''
-          : mission.primary_recipient_department || mission.recipients?.[0]?.department || '',
-      recipients: (mission.recipients || []).filter((recipient) =>
-        availableRecipients.some(
-          (candidate) =>
-            String(candidate.user_id) === String(recipient.user_id) ||
-            (candidate.name === recipient.name && candidate.department === recipient.department)
-        )
-      ),
+          : mission.primary_recipient_department ||
+            createAssistantMissionRecipients(
+              mission.recipients || [],
+              resolvedMissionRecipients
+            ).find((recipient) => recipient.can_evaluate !== false)?.department ||
+            '',
     }));
   }
 
-  if (rawSections?.length || !isMissionOnlySelfEvaluation) {
-    instance.sections = toPersistenceSections(sections);
-  }
-  if (missionEvaluations) {
-    instance.mission_evaluations = missionEvaluations;
-  }
-  instance.status = summary.globalProgress === 0 ? 'Brouillon' : 'En cours';
-  instance.last_saved_at = new Date();
-  await instance.save();
+  await persistEvaluationInstance(instance, {
+    ...(rawSections?.length || !isMissionOnlySelfEvaluation ? { sections: toPersistenceSections(sections) } : {}),
+    ...(missionEvaluations ? { mission_evaluations: missionEvaluations } : {}),
+    status: summary.globalProgress === 0 ? 'Brouillon' : 'En cours',
+    last_saved_at: new Date(),
+  });
 
   return response.json({
     message: 'Auto-evaluation enregistree.',
@@ -752,9 +885,10 @@ async function submitMySelfMissionEvaluation(request, response, getOrCreateEvalu
 
   mission.status = 'Soumise';
   mission.submitted_at = new Date();
-  instance.mission_evaluations = missionEvaluations;
-  instance.last_saved_at = new Date();
-  await instance.save();
+  await persistEvaluationInstance(instance, {
+    mission_evaluations: missionEvaluations,
+    last_saved_at: new Date(),
+  });
 
   return response.json({
     message: `Mission soumise a ${mission.recipients.map((recipient) => recipient.name).join(', ')}.`,
@@ -836,14 +970,15 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
     );
     const mergedMissionRecipients = mergeManagerRecipients(managerRecipients.length ? managerRecipients : missionRecipients, []);
 
-    instance.status = 'Soumis aux Managers';
-    instance.submitted_to_role = 'manager';
-    instance.submitted_to_managers = mergedMissionRecipients;
-    instance.submitted_to_user_ids = resolvedManagers.map((manager) => manager._id);
-    instance.submitted_to_names = mergedMissionRecipients.map((recipient) => recipient.manager);
-    instance.submitted_at = new Date();
-    instance.last_saved_at = new Date();
-    await instance.save();
+    await persistEvaluationInstance(instance, {
+      status: 'Soumis aux Managers',
+      submitted_to_role: 'manager',
+      submitted_to_managers: mergedMissionRecipients,
+      submitted_to_user_ids: resolvedManagers.map((manager) => manager._id),
+      submitted_to_names: mergedMissionRecipients.map((recipient) => recipient.manager),
+      submitted_at: new Date(),
+      last_saved_at: new Date(),
+    });
 
     return response.json({
       message: mergedMissionRecipients.length
@@ -871,17 +1006,18 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
     });
   }
 
-  instance.sections = toPersistenceSections(sections);
-  instance.status = 'Soumis aux Managers';
-  instance.submitted_to_role = 'manager';
-  instance.submitted_to_managers = mergedManagerRecipients;
-  instance.submitted_to_user_ids = resolvedManagers.map((manager) => manager._id);
-  instance.submitted_to_names = mergedManagerRecipients.length
-    ? mergedManagerRecipients.map((recipient) => recipient.manager)
-    : resolvedManagers.map((manager) => manager.name);
-  instance.submitted_at = new Date();
-  instance.last_saved_at = new Date();
-  await instance.save();
+  await persistEvaluationInstance(instance, {
+    sections: toPersistenceSections(sections),
+    status: 'Soumis aux Managers',
+    submitted_to_role: 'manager',
+    submitted_to_managers: mergedManagerRecipients,
+    submitted_to_user_ids: resolvedManagers.map((manager) => manager._id),
+    submitted_to_names: mergedManagerRecipients.length
+      ? mergedManagerRecipients.map((recipient) => recipient.manager)
+      : resolvedManagers.map((manager) => manager.name),
+    submitted_at: new Date(),
+    last_saved_at: new Date(),
+  });
 
   return response.json({
     message: mergedManagerRecipients.length
