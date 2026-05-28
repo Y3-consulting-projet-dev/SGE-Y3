@@ -83,6 +83,8 @@ const missionEvaluationSchema = new mongoose.Schema(
     mission_id: { type: String, required: true, trim: true },
     title: { type: String, required: true, trim: true },
     period: { type: String, default: '', trim: true },
+    start_date: { type: String, default: '', trim: true },
+    end_date: { type: String, default: '', trim: true },
     department: { type: String, default: '', trim: true },
     member_user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     member_name: { type: String, default: '', trim: true },

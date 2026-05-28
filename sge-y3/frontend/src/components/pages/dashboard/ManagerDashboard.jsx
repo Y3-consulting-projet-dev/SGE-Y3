@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, FileBarChart2, FolderKanban, LayoutDashboard, LogOut, Settings2, Users, X } from "lucide-react";
+import { BarChart3, CalendarDays, FileBarChart2, FolderKanban, LayoutDashboard, LogOut, Settings2, Users, X } from "lucide-react";
 import Monequipe from "@/components/pages/manager/Monequipe";
 import Evaluermonequipe from "@/components/pages/manager/Evaluermonequipe";
 import Objectifsequipe from "@/components/pages/manager/Objectifsequipe";
 import Monautoevaluation from "@/components/pages/manager/Monautoevaluation";
 import Rapportsequipe from "@/components/pages/manager/Rapportsequipe";
+import Calendrier from "@/components/pages/collaborator/Calendrier";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import logoY3 from "@/assets/logo-y3.png";
 import { getDisplayName, getInitials } from "@/lib/userPresentation";
-import { getManagerOverview } from "@/lib/managerOverview";
+import { getManagerOverview, getManagerSelfEvaluation } from "@/lib/managerOverview";
 
 const sidebarSections = [
   { group: "Tableau de bord", items: [{ key: "overview", label: "Vue d'ensemble", icon: LayoutDashboard }] },
@@ -19,7 +20,13 @@ const sidebarSections = [
       { key: "team-goals", label: "Objectifs d'équipe", icon: FolderKanban },
     ],
   },
-  { group: "Mon evaluation", items: [{ key: "self-evaluation", label: "Mon auto-évaluation", icon: BarChart3 }] },
+  {
+    group: "Mon evaluation",
+    items: [
+      { key: "self-evaluation", label: "Mon auto-évaluation", icon: BarChart3 },
+      { key: "calendar", label: "Calendrier", icon: CalendarDays },
+    ],
+  },
   { group: "Reporting", items: [{ key: "reports", label: "Rapports", icon: FileBarChart2 }] },
   { group: "Compte", items: [{ key: "profile", label: "Profil", icon: Settings2 }] },
 ];
@@ -38,6 +45,9 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
   const [overviewData, setOverviewData] = useState(null);
   const [overviewError, setOverviewError] = useState("");
   const [isLoadingOverview, setIsLoadingOverview] = useState(true);
+  const [selfEvaluationData, setSelfEvaluationData] = useState(null);
+  const [selfEvaluationError, setSelfEvaluationError] = useState("");
+  const [isLoadingSelfEvaluation, setIsLoadingSelfEvaluation] = useState(false);
 
   const displayName = getDisplayName(user);
   const initials = getInitials(user);
@@ -48,6 +58,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
     if (activeSection === "team") return "MON ÉQUIPE";
     if (activeSection === "team-goals") return "OBJECTIFS D'ÉQUIPE";
     if (activeSection === "self-evaluation") return "MON AUTO-ÉVALUATION";
+    if (activeSection === "calendar") return "CALENDRIER";
     if (activeSection === "reports") return "RAPPORTS";
     if (activeSection === "profile") return "MON PROFIL";
     return "WORKFLOW MANAGER";
@@ -82,6 +93,40 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (activeSection !== "calendar") {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    async function loadSelfEvaluation() {
+      try {
+        setIsLoadingSelfEvaluation(true);
+        setSelfEvaluationError("");
+        const response = await getManagerSelfEvaluation();
+
+        if (!cancelled) {
+          setSelfEvaluationData(response);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSelfEvaluationError(error.message || "Chargement du calendrier impossible.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingSelfEvaluation(false);
+        }
+      }
+    }
+
+    loadSelfEvaluation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSection]);
 
   const summary = overviewData?.summary || {};
   const members = overviewData?.members || [];
@@ -326,6 +371,20 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
             <Objectifsequipe createSignal={createGoalSignal} />
           ) : activeSection === "self-evaluation" ? (
             <Monautoevaluation />
+          ) : activeSection === "calendar" ? (
+            isLoadingSelfEvaluation ? (
+              <section className="rounded-lg bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement du calendrier...</section>
+            ) : selfEvaluationError ? (
+              <section className="rounded-lg bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">{selfEvaluationError}</section>
+            ) : (
+              <Calendrier
+                missionEvaluations={selfEvaluationData?.mission_evaluations || []}
+                title="Calendrier"
+                eyebrow="Missions manager évaluées"
+                emptyMessage="Aucune mission manager évaluée pour le moment."
+                exportFileName="resultats-mission-manager.xls"
+              />
+            )
           ) : activeSection === "reports" ? (
             <Rapportsequipe />
           ) : (

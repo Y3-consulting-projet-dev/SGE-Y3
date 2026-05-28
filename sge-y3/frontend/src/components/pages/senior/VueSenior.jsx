@@ -8,9 +8,11 @@ import Evaluerassistants from "@/components/pages/senior/Evaluerassistants";
 import MesresultatsSenior from "@/components/pages/senior/MesresultatsSenior";
 import MesobjectifsSenior from "@/components/pages/senior/MesobjectifsSenior";
 import MonautoevaluationSenior from "@/components/pages/senior/MonautoevaluationSenior";
+import Calendrier from "@/components/pages/collaborator/Calendrier";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import { getDisplayName, getInitials } from "@/lib/userPresentation";
 import { getSeniorAssistants, getSeniorCommonMissions, getSeniorOverview } from "@/lib/seniorAssistants";
+import { getMySeniorEvaluation } from "@/lib/seniorEvaluation";
 
 function VueSenior({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
@@ -20,6 +22,9 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
   const [selectedAssistantId, setSelectedAssistantId] = useState("");
   const [assistantsError, setAssistantsError] = useState("");
   const [isLoadingAssistants, setIsLoadingAssistants] = useState(true);
+  const [selfEvaluationData, setSelfEvaluationData] = useState(null);
+  const [selfEvaluationError, setSelfEvaluationError] = useState("");
+  const [isLoadingSelfEvaluation, setIsLoadingSelfEvaluation] = useState(false);
   const displayName = getDisplayName(user);
   const profileKey = [user?.id, user?.email, user?.first_name, user?.last_name, user?.grade, user?.department].join("|");
   const initials = getInitials(user);
@@ -84,6 +89,40 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
   }, []);
 
   useEffect(() => {
+    if (activeSection !== "calendar") {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    async function loadSelfEvaluation() {
+      try {
+        setIsLoadingSelfEvaluation(true);
+        setSelfEvaluationError("");
+        const response = await getMySeniorEvaluation();
+
+        if (!cancelled) {
+          setSelfEvaluationData(response);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSelfEvaluationError(error.message || "Chargement du calendrier impossible.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingSelfEvaluation(false);
+        }
+      }
+    }
+
+    loadSelfEvaluation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSection]);
+
+  useEffect(() => {
     if (activeSection === "overview" || activeSection === "goals" || activeSection === "reviews" || activeSection === "results") {
       const timeoutId = setTimeout(() => {
         void refreshSeniorData();
@@ -101,6 +140,7 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
     if (activeSection === "results") return "SYNTHESES TRANSMISES";
     if (activeSection === "goals") return "MISSIONS COMMUNES";
     if (activeSection === "self-evaluation") return "MON AUTO-EVALUATION";
+    if (activeSection === "calendar") return "CALENDRIER";
     if (activeSection === "profile") return "MON PROFIL";
     return "TABLEAU DE BORD SENIOR";
   }, [activeSection]);
@@ -208,6 +248,20 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
             <MesobjectifsSenior missions={commonMissions} isLoading={isLoadingAssistants} errorMessage={assistantsError} />
           ) : activeSection === "self-evaluation" ? (
             <MonautoevaluationSenior user={user} />
+          ) : activeSection === "calendar" ? (
+            isLoadingSelfEvaluation ? (
+              <section className="rounded-lg bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement du calendrier...</section>
+            ) : selfEvaluationError ? (
+              <section className="rounded-lg bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">{selfEvaluationError}</section>
+            ) : (
+              <Calendrier
+                missionEvaluations={selfEvaluationData?.mission_evaluations || []}
+                title="Calendrier"
+                eyebrow="Missions senior évaluées"
+                emptyMessage="Aucune mission senior évaluée pour le moment."
+                exportFileName="resultats-mission-senior.xls"
+              />
+            )
           ) : activeSection === "profile" ? (
             <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />
           ) : (

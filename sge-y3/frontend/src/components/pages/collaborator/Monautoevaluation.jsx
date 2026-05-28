@@ -503,6 +503,8 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
       id: `mission-${missionCreationCounterRef.current}-${missionEvaluations.length + 1}`,
       title,
       period: formatMissionPeriodLabel(missionStartDate, missionEndDate),
+      startDate: missionStartDate,
+      endDate: missionEndDate,
       department: selectedRecipient.department || evaluationData?.assignee?.department || "",
       createdByRole: "self",
       primaryRecipientUserId: selectedRecipient.id,
