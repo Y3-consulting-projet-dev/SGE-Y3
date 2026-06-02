@@ -1,121 +1,21 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
-import matrixData from "../../../../../backend/src/data/competencyMatrix.generated.json";
+import {
+  getSupportSelfEvaluation,
+  saveSupportSelfEvaluation,
+  submitSupportSelfEvaluation,
+} from "@/lib/supportEvaluation";
 
 const SUPPORT_ROLE_BY_EMAIL = {
   "fleur.nguessan@ycubeac.com": "Office Manager",
   "aziz.ouattara@ycubeac.com": "PMO",
   "porthela.kakou@ycubeac.com": "Responsable IT",
-  "adele.creppy@ycubeac.com": "Comptable Interne Senior",
+  "adele.creppy@ycubeac.com": "Comptable interne senior",
 };
-
-function normalizeText(value = "") {
-  return String(value)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toUpperCase();
-}
-
-function slugify(value = "") {
-  return String(value)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .toLowerCase();
-}
 
 function getSupportRoleKey(user) {
   const email = String(user?.email || "").trim().toLowerCase();
-  if (SUPPORT_ROLE_BY_EMAIL[email]) return SUPPORT_ROLE_BY_EMAIL[email];
-
-  const source = normalizeText(`${user?.grade || ""} ${user?.department || ""} ${user?.name || ""}`);
-
-  if (source.includes("PMO")) return "PMO";
-  if (source.includes("RESPONSABLE IT") || source.includes("IT")) return "Responsable IT";
-  if (source.includes("COMPTABLE INTERNE SENIOR") || source.includes("COMPTABILITE INTERNE SENIOR")) {
-    return "Comptable Interne Senior";
-  }
-  if (source.includes("OFFICE MANAGER")) return "Office Manager";
-
-  return "Office Manager";
-}
-
-function getCommonGradeKey(user, supportRoleKey) {
-  const source = normalizeText(`${user?.grade || ""} ${user?.code_categorie || ""}`);
-
-  if (source.includes("SENIOR") || source.includes("9A")) return "Senior";
-  if (source.includes("ASSISTANT MANAGER") || source.includes("MANAGER") || source.includes("10")) return "Manager";
-  if (source.includes("ASSISTANT") || source.includes("8")) return "Assistant";
-  if (source.includes("ASSOCIE") || source.includes("ASSOCI") || source.includes("11")) return "Associ?";
-
-  return normalizeText(supportRoleKey).includes("COMPTABLE INTERNE SENIOR") ? "Senior" : "Manager";
-}
-
-function getStatementForRole(statements = {}, roleKey) {
-  if (statements[roleKey]) return statements[roleKey];
-
-  const normalizedRole = normalizeText(roleKey);
-  const matchingKey = Object.keys(statements).find((key) => normalizeText(key) === normalizedRole);
-  return matchingKey ? statements[matchingKey] : "";
-}
-
-function buildSupportSections(user) {
-  const roleKey = getSupportRoleKey(user);
-  const supportSheets = [
-    { name: "TRONC COMMUN", roleKey: getCommonGradeKey(user, roleKey) },
-    { name: "SERVICE SUPPORT", roleKey },
-  ];
-  const groupedSections = new Map();
-  const sectionOrder = [];
-
-  supportSheets.forEach((sheet) => {
-    (matrixData[sheet.name] || []).forEach((sourceSection, sourceSectionIndex) => {
-    const sectionKey = sourceSection.key || sourceSection.title || `section-${sourceSectionIndex}`;
-
-    if (!groupedSections.has(sectionKey)) {
-      sectionOrder.push(sectionKey);
-      groupedSections.set(sectionKey, {
-        id: slugify(sectionKey),
-        title: sourceSection.title || sectionKey,
-        pages: [],
-      });
-    }
-
-    const targetSection = groupedSections.get(sectionKey);
-
-    (sourceSection.pages || []).forEach((page, pageIndex) => {
-      const themes = (page.themes || [])
-        .map((theme, themeIndex) => {
-          const statement = getStatementForRole(theme.statements || {}, sheet.roleKey);
-          if (!statement) return null;
-
-          return {
-            id: `${slugify(sheet.name)}-${slugify(sheet.roleKey)}-${slugify(sectionKey)}-${slugify(page.title)}-${slugify(theme.code || themeIndex)}`,
-            code: theme.code || String.fromCharCode(65 + themeIndex),
-            label: theme.label,
-            statement,
-            score: null,
-          };
-        })
-        .filter(Boolean);
-
-      if (!themes.length) return;
-
-      targetSection.pages.push({
-        id: `${slugify(sheet.name)}-${slugify(sheet.roleKey)}-${slugify(sectionKey)}-${slugify(page.title || pageIndex)}`,
-        title: page.title || `Titre ${pageIndex + 1}`,
-        sourceSheet: sheet.name,
-        comment: "",
-        themes,
-      });
-    });
-  });
-  });
-
-  return sectionOrder.map((sectionKey) => groupedSections.get(sectionKey)).filter((section) => section.pages.length);
+  return SUPPORT_ROLE_BY_EMAIL[email] || user?.grade || "Service support";
 }
 
 function getSectionProgress(section) {
@@ -141,6 +41,24 @@ function getAverageScore(sections = []) {
   return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
 }
 
+function getEvaluationGroupKey(section) {
+  const hasDomainPage = (section?.pages || []).some((page) => page.source_sheet && page.source_sheet !== "TRONC COMMUN");
+  return hasDomainPage ? "domain" : "common";
+}
+
+function getGroupStats(sections = []) {
+  const themes = sections.flatMap((section) => section.pages || []).flatMap((page) => page.themes || []);
+  const answered = themes.filter((theme) => Number.isFinite(theme.score)).length;
+  const progress = themes.length ? Math.round((answered / themes.length) * 100) : 0;
+
+  return {
+    answered,
+    total: themes.length,
+    progress,
+    average: getAverageScore(sections),
+  };
+}
+
 function ScoreButtons({ value, onChange }) {
   return (
     <div className="flex overflow-hidden rounded-md border border-slate-200">
@@ -162,25 +80,58 @@ function ScoreButtons({ value, onChange }) {
 
 function MonautoevaluationSupport({ user }) {
   const roleKey = getSupportRoleKey(user);
-  const [sections, setSections] = useState(() => buildSupportSections(user));
-  const [activeSectionId, setActiveSectionId] = useState(() => buildSupportSections(user)[0]?.id || "");
+  const [sections, setSections] = useState([]);
+  const [activeSectionId, setActiveSectionId] = useState("");
+  const [activeEvaluationGroup, setActiveEvaluationGroup] = useState("common");
   const [pageIndexes, setPageIndexes] = useState({});
   const [status, setStatus] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
-  const activeSection = sections.find((section) => section.id === activeSectionId) || sections[0];
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadEvaluation() {
+      try {
+        setIsLoading(true);
+        const response = await getSupportSelfEvaluation();
+        const nextSections = response?.evaluation?.sections || [];
+
+        if (cancelled) return;
+        setSections(nextSections);
+        const firstCommonSection = nextSections.find((section) => getEvaluationGroupKey(section) === "common");
+        setActiveSectionId(firstCommonSection?.id || nextSections[0]?.id || "");
+      } catch (error) {
+        if (!cancelled) setStatus(error.message || "Chargement impossible.");
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    loadEvaluation();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const commonSections = useMemo(() => sections.filter((section) => getEvaluationGroupKey(section) === "common"), [sections]);
+  const domainSections = useMemo(() => sections.filter((section) => getEvaluationGroupKey(section) === "domain"), [sections]);
+  const visibleSections = activeEvaluationGroup === "domain" ? domainSections : commonSections;
+  const activeSection = visibleSections.find((section) => section.id === activeSectionId) || visibleSections[0] || sections[0];
   const activePageIndex = pageIndexes[activeSection?.id] || 0;
   const activePage = activeSection?.pages?.[activePageIndex] || activeSection?.pages?.[0];
-  const totalQuestions = sections.flatMap((section) => section.pages).flatMap((page) => page.themes).length;
+  const totalQuestions = sections.flatMap((section) => section.pages || []).flatMap((page) => page.themes || []).length;
   const answeredQuestions = sections
-    .flatMap((section) => section.pages)
-    .flatMap((page) => page.themes)
+    .flatMap((section) => section.pages || [])
+    .flatMap((page) => page.themes || [])
     .filter((theme) => Number.isFinite(theme.score)).length;
   const progress = totalQuestions ? Math.round((answeredQuestions / totalQuestions) * 100) : 0;
   const average = useMemo(() => getAverageScore(sections), [sections]);
+  const commonStats = useMemo(() => getGroupStats(commonSections), [commonSections]);
+  const domainStats = useMemo(() => getGroupStats(domainSections), [domainSections]);
 
-  const activeSectionIndex = sections.findIndex((section) => section.id === activeSection?.id);
+  const activeSectionIndex = visibleSections.findIndex((section) => section.id === activeSection?.id);
   const isFirstPage = activeSectionIndex === 0 && activePageIndex === 0;
-  const isLastPage = activeSectionIndex === sections.length - 1 && activePageIndex === (activeSection?.pages?.length || 1) - 1;
+  const isLastPage = activeSectionIndex === visibleSections.length - 1 && activePageIndex === (activeSection?.pages?.length || 1) - 1;
 
   function setActivePageIndex(sectionId, index) {
     setPageIndexes((current) => ({ ...current, [sectionId]: index }));
@@ -198,7 +149,9 @@ function MonautoevaluationSupport({ user }) {
                   ? page
                   : {
                       ...page,
-                      themes: page.themes.map((theme) => (theme.id === themeId ? { ...theme, score } : theme)),
+                      themes: page.themes.map((theme) =>
+                        (theme.theme_id || theme.id) === themeId ? { ...theme, score } : theme
+                      ),
                     }
               ),
             }
@@ -228,20 +181,54 @@ function MonautoevaluationSupport({ user }) {
       return;
     }
 
-    const nextSection = sections[activeSectionIndex + direction];
+    const nextSection = visibleSections[activeSectionIndex + direction];
     if (!nextSection) return;
 
     setActiveSectionId(nextSection.id);
     setActivePageIndex(nextSection.id, direction > 0 ? 0 : nextSection.pages.length - 1);
   }
 
-  function submitToAssociates() {
+  function selectEvaluationGroup(groupKey) {
+    const nextSections = groupKey === "domain" ? domainSections : commonSections;
+    setActiveEvaluationGroup(groupKey);
+    setActiveSectionId(nextSections[0]?.id || "");
+    setStatus("");
+  }
+
+  async function saveDraft() {
+    try {
+      const response = await saveSupportSelfEvaluation({ sections });
+      const nextSections = response?.evaluation?.sections || sections;
+      setSections(nextSections);
+      setStatus(response.message || "Auto-évaluation support enregistrée.");
+    } catch (error) {
+      setStatus(error.message || "Enregistrement impossible.");
+    }
+  }
+
+  async function submitToAssociates() {
     if (answeredQuestions < totalQuestions) {
       setStatus("Toutes les questions doivent être renseignées avant la soumission.");
       return;
     }
 
-    setStatus("Auto-évaluation support soumise directement aux associés.");
+    try {
+      await saveSupportSelfEvaluation({ sections });
+      const response = await submitSupportSelfEvaluation();
+      const nextSections = response?.evaluation?.sections || sections;
+      setSections(nextSections);
+      setStatus(response.message || "Auto-évaluation support soumise directement aux associés.");
+    } catch (error) {
+      setStatus(error.message || "Soumission impossible.");
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">
+        Chargement de l'auto-évaluation support...
+      </section>
+    );
   }
 
   if (!sections.length || !activeSection || !activePage) {
@@ -271,15 +258,65 @@ function MonautoevaluationSupport({ user }) {
           </div>
           <div className="rounded-lg bg-[#0D496A] p-4 text-white">
             <p className="text-xs font-bold">Questions</p>
-            <p className="mt-2 text-2xl font-black text-[#86EFAC]">{answeredQuestions}/{totalQuestions}</p>
+            <p className="mt-2 text-2xl font-black text-[#86EFAC]">
+              {answeredQuestions}/{totalQuestions}
+            </p>
           </div>
         </div>
       </article>
 
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {[
+          {
+            key: "common",
+            title: "Évaluation du tronc commun",
+            subtitle: "Questions communes aux autres profils",
+            stats: commonStats,
+          },
+          {
+            key: "domain",
+            title: `Évaluation ${roleKey}`,
+            subtitle: "Questions propres au domaine",
+            stats: domainStats,
+          },
+        ].map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => selectEvaluationGroup(item.key)}
+            className={`rounded-xl border p-4 text-left shadow-sm transition ${
+              activeEvaluationGroup === item.key ? "border-[#76B82A] bg-[#EEF6E8]" : "border-white bg-white hover:border-[#D9E3EE]"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-black text-[#0F3A63]">{item.title}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">{item.subtitle}</p>
+              </div>
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-[#0F4A72]">
+                {item.stats.progress}%
+              </span>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-white p-3">
+                <p className="text-[11px] font-bold text-slate-500">Questions</p>
+                <p className="mt-1 text-lg font-black text-[#0F3A63]">
+                  {item.stats.answered}/{item.stats.total}
+                </p>
+              </div>
+              <div className="rounded-lg bg-white p-3">
+                <p className="text-[11px] font-bold text-slate-500">Moyenne</p>
+                <p className="mt-1 text-lg font-black text-[#76B82A]">{item.stats.average}/5</p>
+              </div>
+            </div>
+          </button>
+        ))}
+      </section>
+
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.8fr_1.6fr]">
         <aside className="space-y-3 rounded-xl bg-white p-4 shadow-sm">
           <p className="text-sm font-extrabold text-[#0F4A72]">Sections</p>
-          {sections.map((section) => {
+          {visibleSections.map((section) => {
             const isActive = activeSection.id === section.id;
             const sectionProgress = getSectionProgress(section);
 
@@ -322,7 +359,7 @@ function MonautoevaluationSupport({ user }) {
           <div className="mb-4 flex flex-wrap gap-2">
             {activeSection.pages.map((page, index) => (
               <button
-                key={page.id}
+                key={page.page_id || page.id}
                 type="button"
                 onClick={() => setActivePageIndex(activeSection.id, index)}
                 className={`rounded-md border px-3 py-2 text-left transition ${
@@ -340,14 +377,14 @@ function MonautoevaluationSupport({ user }) {
 
           <div className="space-y-4">
             {activePage.themes.map((theme) => (
-              <div key={theme.id} className="rounded-lg border border-slate-100 bg-[#F8FAFC] p-4">
+              <div key={theme.theme_id || theme.id} className="rounded-lg border border-slate-100 bg-[#F8FAFC] p-4">
                 <div className="mb-3">
                   <p className="text-sm font-bold text-[#0F3A63]">
                     {theme.code}. {theme.label}
                   </p>
                   <p className="mt-1 text-xs leading-5 text-slate-600">{theme.statement}</p>
                 </div>
-                <ScoreButtons value={theme.score} onChange={(score) => updateThemeScore(theme.id, score)} />
+                <ScoreButtons value={theme.score} onChange={(score) => updateThemeScore(theme.theme_id || theme.id, score)} />
               </div>
             ))}
           </div>
@@ -386,6 +423,9 @@ function MonautoevaluationSupport({ user }) {
         {status ? (
           <p className={`text-sm font-bold ${answeredQuestions < totalQuestions ? "text-[#B56B00]" : "text-[#4E8B1B]"}`}>{status}</p>
         ) : null}
+        <button onClick={saveDraft} className="rounded-full bg-white px-6 py-3 text-sm font-extrabold text-[#0F3A63] shadow-sm">
+          Enregistrer
+        </button>
         <button onClick={submitToAssociates} className="rounded-full bg-[#0F3A63] px-6 py-3 text-sm font-extrabold text-white">
           Soumettre aux associés
         </button>

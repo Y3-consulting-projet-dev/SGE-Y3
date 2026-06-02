@@ -307,6 +307,7 @@ async function getSelfEvaluationInstanceForMember(member) {
 
 function buildSelfEvaluationPayload(instance) {
   const sections = normalizeSections(instance?.sections || []);
+  const missionEvaluations = formatManagerMissionEvaluations(normalizeManagerMissionEvaluations(instance?.mission_evaluations || []));
 
   return {
     status: instance?.status || 'En attente',
@@ -326,6 +327,7 @@ function buildSelfEvaluationPayload(instance) {
         comment: String(section.comment || '').trim(),
       })),
     titleJustifications: getPageJustifications(sections),
+    missionEvaluations,
   };
 }
 

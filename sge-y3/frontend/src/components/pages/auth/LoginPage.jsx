@@ -1,6 +1,6 @@
 ﻿import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import heroImg from "@/assets/hero.png";
+import logo1Img from "@/assets/logo1.png";
 
 function LoginPage({ onLoginSuccess }) {
   const [showPassword, setShowPassword] = useState(false);
@@ -39,18 +39,18 @@ function LoginPage({ onLoginSuccess }) {
           <div className="pointer-events-none absolute -left-16 top-36 h-32 w-32 rotate-45 rounded-xl bg-white/10" />
 
           <div className="mx-auto flex h-full w-full max-w-[420px] flex-col justify-center">
-            <p className="mb-8 max-w-[330px] text-lg font-medium leading-7 tracking-wide text-white/95">
-              BIENVENUE SUR L'OUTIL DE SYSTEME DE GESTION DES EVALUATIONS
+            <p className="mb-8 max-w-[360px] text-lg font-medium leading-7 tracking-wide text-white/95">
+              Bienvenue sur le Système de Gestion des Évaluations
             </p>
 
             <img
-              src={heroImg}
-              alt="Illustration de connexion"
-              className="mb-10 w-[210px] object-contain"
+                  src={logo1Img}
+                  alt="Logo Y3"
+              className="mb-10 w-[280px] object-contain"
             />
 
-            <p className="max-w-[320px] text-2xl leading-8 text-white/95">
-              Un outil au service de la performance et de la reussite
+            <p className="max-w-[380px] text-2xl leading-8 text-white/95">
+              Accédez à votre espace pour réaliser, suivre et consulter vos évaluations en toute simplicité
             </p>
           </div>
         </section>

@@ -21,7 +21,7 @@ export const menuGroups = [
     title: "Mon évaluation",
     items: [
       { key: "self-evaluation", label: "Mon auto-évaluation", icon: BarChart3 },
-      { key: "calendar", label: "Calendrier", icon: CalendarDays },
+      { key: "calendar", label: "Mon calendrier", icon: CalendarDays },
     ],
   },
   {
