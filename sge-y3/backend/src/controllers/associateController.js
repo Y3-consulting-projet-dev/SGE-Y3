@@ -591,7 +591,7 @@ async function getAssociateOverview(_request, response) {
       EvaluationInstance.find({
         cycle_label: CURRENT_CYCLE_LABEL,
         template_type: { $in: ['manager-self-evaluation', 'rh-self-evaluation'] },
-        status: { $in: ['Soumis a RH', 'Valide RH', 'Cloture'] },
+        status: { $in: ['Soumis à RH', 'Validé RH', 'Clôture'] },
         submitted_at: { $ne: null },
       }).select('evalue_id submitted_at sections'),
       User.find({
@@ -608,7 +608,7 @@ async function getAssociateOverview(_request, response) {
   const receivedCount = combinedRows.filter((item) => RH_RELEVANT_STATUSES.includes(item.status)).length;
   const totalPopulation = evaluatedPopulation.length;
   const readySyntheses = combinedRows.filter(
-    (row) => row.status === 'Valide RH' || row.status === 'Transmis a l associe' || row.status === 'Cloture'
+    (row) => row.status === 'Validé RH' || row.status === `Transmis à l'associe` || row.status === 'Clôture'
   );
   const readySyntheseIds = new Set(readySyntheses.map((row) => String(row.memberId || '')).filter(Boolean));
   const latestDecisionMap = buildDecisionMap(latestDecision);
@@ -700,7 +700,7 @@ async function getAssociateOverview(_request, response) {
         subtitle: pendingDecisionRows.length ? 'Action requise' : 'Aucune en attente',
       },
       {
-        title: 'Auto-évals Managers',
+        title: 'Auto-évaluation Managers',
         value: String(managerAutoEvalRows.length),
         subtitle: managerAutoEvalRows.length ? 'À examiner' : 'Aucune disponible',
       },
@@ -735,7 +735,7 @@ module.exports = {
       instance.sections = toPersistenceSections(normalizeSections(rawSections));
     }
 
-    instance.status = instance.status === 'Soumis aux Associes' ? instance.status : 'En cours';
+    instance.status = instance.status === 'Soumis aux Associés' ? instance.status : 'En cours';
     instance.last_saved_at = new Date();
     await instance.save();
 
@@ -902,7 +902,7 @@ module.exports = {
       cycle_label: CURRENT_CYCLE_LABEL,
       evalue_id: { $in: managerIds },
       template_type: { $in: ['manager-self-evaluation', 'rh-self-evaluation'] },
-      status: { $in: ['Soumis a RH', 'Valide RH', 'Cloture'] },
+      status: { $in: ['Soumis à RH', 'Validé RH', 'Clôture'] },
       submitted_at: { $ne: null },
     }).select('_id evalue_id template_type status submitted_at sections mission_evaluations');
 
@@ -945,7 +945,7 @@ module.exports = {
       cycle_label: CURRENT_CYCLE_LABEL,
       evalue_id: manager._id,
       template_type: getAssociateManagerSelfTemplateType(manager),
-      status: { $in: ['Soumis a RH', 'Valide RH', 'Cloture'] },
+      status: { $in: ['Soumis à RH', 'Validé RH', 'Clôture'] },
       submitted_at: { $ne: null },
     }).select('status submitted_at sections mission_evaluations');
 
@@ -964,7 +964,7 @@ module.exports = {
       cycle_label: CURRENT_CYCLE_LABEL,
       evalue_id: manager._id,
       template_type: getAssociateManagerSelfTemplateType(manager),
-      status: { $in: ['Soumis a RH', 'Valide RH', 'Cloture'] },
+      status: { $in: ['Soumis à RH', 'Validé RH', 'Clôture'] },
       submitted_at: { $ne: null },
     }).select('status submitted_at sections mission_evaluations');
 
@@ -1005,7 +1005,7 @@ module.exports = {
     ]);
 
     const items = [...rows, ...assistantRhRows]
-      .filter((row) => row.status === 'Valide RH' || row.status === 'Transmis a l associe' || row.status === 'Cloture')
+      .filter((row) => row.status === 'Validé RH' || row.status === `Transmis à l'associe` || row.status === 'Clôture')
       .map((row) => ({
         ...row,
         initials: getInitials(row.name),

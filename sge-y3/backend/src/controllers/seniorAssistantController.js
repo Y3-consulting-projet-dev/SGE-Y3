@@ -1240,7 +1240,7 @@ async function saveMyAssistantEvaluation(request, response) {
 
   if (missingPageComments.length) {
     return response.status(400).json({
-      message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+      message: "Une justification par titre d'au moins 3 caractères est obligatoire pour toute note inférieure à 3.",
       missingPageComments,
     });
   }
@@ -1250,7 +1250,7 @@ async function saveMyAssistantEvaluation(request, response) {
       if (criterion.score !== null && criterion.score !== undefined) {
         if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
           return response.status(400).json({
-            message: `La note du critere "${criterion.label}" doit etre comprise entre 1 et 5.`,
+            message: `La note du critère "${criterion.label}" doit être comprise entre 1 et 5.`,
           });
         }
       }
@@ -1262,7 +1262,7 @@ async function saveMyAssistantEvaluation(request, response) {
       if (criterion.score !== null && criterion.score !== undefined) {
         if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
           return response.status(400).json({
-            message: `La note du critere "${criterion.label}" doit etre comprise entre 1 et 5.`,
+            message: `La note du critère "${criterion.label}" doit être comprise entre 1 et 5.`,
           });
         }
       }
@@ -1298,7 +1298,7 @@ async function saveMyAssistantEvaluation(request, response) {
 
 async function addMissionToAssistant(request, response) {
   const title = String(request.body?.title || '').trim();
-  const period = String(request.body?.period || '').trim() || 'Periode non renseignee';
+  const period = String(request.body?.period || '').trim() || 'Période non renseignée';
 
   if (!title) {
     return response.status(400).json({
@@ -1366,7 +1366,7 @@ async function addMissionToAssistant(request, response) {
 
   return response.json({
     message: selectedManagers.length
-      ? `Mission ajoutée pour ${assistant.name}. Les managers sélectionnés pourront l’évaluer.`
+      ? `Mission ajoutée pour ${assistant.name}. Les managers sélectionnés pourront l'évaluer.`
       : `Mission ajoutée pour ${assistant.name}. Les managers de son département la verront en lecture seule.`,
     ...{
       ...buildReviewPayload(review, request.user, assistant, managers),
@@ -1380,7 +1380,7 @@ async function submitMyAssistantMissionReview(request, response) {
 
   if (!missionId) {
     return response.status(400).json({
-      message: 'La mission a transmettre est requise.',
+      message: 'La mission à transmettre est requise.',
     });
   }
 
@@ -1402,7 +1402,7 @@ async function submitMyAssistantMissionReview(request, response) {
 
   if (!missionReview) {
     return response.status(404).json({
-      message: 'Mission introuvable dans cette evaluation.',
+      message: 'Mission introuvable dans cette évaluation.',
     });
   }
 
@@ -1412,7 +1412,7 @@ async function submitMyAssistantMissionReview(request, response) {
 
   if (hasIncompleteCriterion) {
     return response.status(400).json({
-      message: 'Toutes les questions de la mission doivent etre renseignees avant transmission.',
+      message: 'Toutes les questions de la mission doivent être renseignées avant transmission.',
     });
   }
 
@@ -1420,7 +1420,7 @@ async function submitMyAssistantMissionReview(request, response) {
 
   if (missingSectionComments.length) {
     return response.status(400).json({
-      message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant transmission.',
+      message: "Un commentaire de section d'au moins 3 caractères est obligatoire pour chaque section avant transmission.",
       missingSectionComments,
     });
   }
@@ -1429,7 +1429,7 @@ async function submitMyAssistantMissionReview(request, response) {
 
   if (missingPageComments.length) {
     return response.status(400).json({
-      message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+      message: "Une justification par titre d'au moins 3 caractères est obligatoire pour toute note inférieure à 3.",
       missingPageComments,
     });
   }
@@ -1448,9 +1448,9 @@ async function submitMyAssistantMissionReview(request, response) {
 
   return response.json({
     message: selectedManager
-      ? `Mission transmise a ${selectedManager.name}.`
+      ? `Mission transmise à ${selectedManager.name}.`
       : managers.length
-      ? `Mission transmise a ${managers.map((manager) => manager.name).join(', ')}.`
+      ? `Mission transmise à ${managers.map((manager) => manager.name).join(', ')}.`
       : 'Mission transmise au(x) manager(s).',
     ...{
       ...buildReviewPayload(review, request.user, assistant, managers),
@@ -1486,7 +1486,7 @@ async function submitMyAssistantEvaluation(request, response) {
 
   if (pendingMissions.length) {
     return response.status(400).json({
-      message: 'Chaque mission doit etre transmise avant la soumission finale.',
+      message: 'Chaque mission doit être transmise avant la soumission finale.',
       pendingMissionIds: pendingMissions.map((mission) => mission.mission_id),
     });
   }
@@ -1501,7 +1501,7 @@ async function submitMyAssistantEvaluation(request, response) {
 
   if (missingSectionComments.length) {
     return response.status(400).json({
-      message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
+      message: "Un commentaire de section d'au moins 3 caractères est obligatoire pour chaque section avant soumission.",
       missingSectionComments,
     });
   }
@@ -1516,7 +1516,7 @@ async function submitMyAssistantEvaluation(request, response) {
 
   if (missingPageComments.length) {
     return response.status(400).json({
-      message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+      message: "Une justification par titre d'au moins 3 caractères est obligatoire pour toute note inférieure à 3.",
       missingPageComments,
     });
   }

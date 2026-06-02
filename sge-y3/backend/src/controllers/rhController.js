@@ -5,6 +5,12 @@ const SeniorAssistantReview = require('../models/SeniorAssistantReview');
 const matrixData = require('../data/competencyMatrix.generated.json');
 const { buildEvaluationTemplateForUser } = require('../utils/competencyMatrix');
 const {
+  ALLOWED_GRADES,
+  getCategoryFromGrade,
+  normalizeDepartment: normalizeUserDepartment,
+  normalizeText: normalizeUserText,
+} = require('../utils/userMapping');
+const {
   getQuestionnaireSourceSheets,
   readQuestionnaireConfig,
   writeQuestionnaireConfig,
@@ -682,8 +688,7 @@ async function loadRhReviewDataset(rhUserIds) {
     }).select('_id name first_name last_name grade department code_categorie'),
     User.find({
       is_active: true,
-      code_categorie: { $in: ['8C', '9A', '9B', '10B', '10C'] },
-      ...buildNonRhDepartmentClause(),
+      code_categorie: { $in: ['8C', '9A', '9B', '10B', '10C', '11'] },
     }).select('_id name first_name last_name grade department code_categorie'),
     User.find({
       is_active: true,
@@ -2047,8 +2052,16 @@ async function getRhCalibration(request, response) {
   });
 }
 
-function getPopulationGroupKey(role = '') {
+function isRhDepartment(department = '') {
+  const normalized = normalizeText(department);
+  return normalized === 'RH' || normalized === 'CAPITAL HUMAIN';
+}
+
+function getPopulationGroupKey(role = '', department = '') {
+  if (isRhDepartment(department)) return 'RH / Capital Humain';
+
   const normalized = normalizeText(role);
+  if (normalized === 'ASSOCIE' || normalized === 'ASSOCIEE' || normalized.includes('ASSOCI')) return 'Associes';
   if (normalized === 'MANAGER' || normalized === 'SENIOR MANAGER') return 'Managers';
   if (normalized === 'SENIOR' || normalized === 'ASSISTANT MANAGER') return 'Seniors';
   return 'Assistants';
@@ -2057,16 +2070,21 @@ function getPopulationGroupKey(role = '') {
 async function getRhPopulation(request, response) {
   const rows = await loadRhReviewDataset(await resolveRhQueueUserIds());
   const groupsMap = new Map([
+    ['RH / Capital Humain', { group: 'RH / Capital Humain', members: [] }],
+    ['Associes', { group: 'Associes', members: [] }],
     ['Managers', { group: 'Managers', members: [] }],
     ['Seniors', { group: 'Seniors', members: [] }],
     ['Assistants', { group: 'Assistants', members: [] }],
   ]);
 
   rows.forEach((row) => {
-    const key = getPopulationGroupKey(row.role);
+    const key = getPopulationGroupKey(row.role, row.department);
     groupsMap.get(key).members.push({
       id: row.id,
+      memberId: row.memberId,
       name: row.name,
+      grade: row.role,
+      department: row.department,
       role: `${row.role} ${formatDepartmentLabel(row.department).toLowerCase()}`.trim(),
       status: row.displayStatus,
       score: row.finalScore,
@@ -2074,13 +2092,15 @@ async function getRhPopulation(request, response) {
   });
 
   const groups = Array.from(groupsMap.values()).map((group) => {
+    const tracksEvaluations = group.group !== 'Associes';
     const completed = group.members.filter((member) => typeof member.score === 'number').length;
     const total = group.members.length;
     return {
       group: group.group,
       total,
-      completed,
-      missing: Math.max(total - completed, 0),
+      completed: tracksEvaluations ? completed : null,
+      missing: tracksEvaluations ? Math.max(total - completed, 0) : null,
+      tracksEvaluations,
       members: group.members.sort((left, right) => left.name.localeCompare(right.name, 'fr', { sensitivity: 'base' })),
     };
   });
@@ -2088,6 +2108,57 @@ async function getRhPopulation(request, response) {
   return response.json({
     cycle_label: CURRENT_CYCLE_LABEL,
     groups,
+  });
+}
+
+function resolveAllowedGrade(rawGrade = '') {
+  const grade = normalizeUserText(rawGrade);
+
+  if (ALLOWED_GRADES.includes(grade)) {
+    return grade;
+  }
+
+  const normalizedGrade = normalizeText(grade);
+  if (normalizedGrade === 'ASSOCIE' || normalizedGrade.includes('ASSOCI')) {
+    return ALLOWED_GRADES.find((allowedGrade) => normalizeText(allowedGrade).includes('ASSOCI')) || null;
+  }
+
+  return null;
+}
+
+async function updateRhUserCareer(request, response) {
+  if (!isRhDepartment(request.user?.department)) {
+    return response.status(403).json({
+      message: 'Seule la RH / Capital Humain peut modifier le grade et le departement.',
+    });
+  }
+
+  const targetUser = await User.findById(request.params.memberId);
+
+  if (!targetUser || !targetUser.is_active) {
+    return response.status(404).json({
+      message: 'Utilisateur introuvable.',
+    });
+  }
+
+  const grade = resolveAllowedGrade(request.body?.grade);
+  const department = normalizeUserDepartment(request.body?.department);
+
+  if (!grade || !department) {
+    return response.status(400).json({
+      message: 'Grade et departement sont requis.',
+    });
+  }
+
+  targetUser.grade = grade;
+  targetUser.code_categorie = getCategoryFromGrade(grade);
+  targetUser.department = department;
+
+  await targetUser.save();
+
+  return response.json({
+    message: 'Grade et departement mis a jour.',
+    user: targetUser.toSafeObject(),
   });
 }
 
@@ -2326,5 +2397,6 @@ module.exports = {
   submitMyRhSelfMissionEvaluation,
   submitMyRhSelfEvaluation,
   submitRhSyntheses,
+  updateRhUserCareer,
   validateRhSelection,
 };

@@ -7,6 +7,7 @@ import {
   submitSeniorAssistantEvaluation,
   submitSeniorAssistantMissionEvaluation,
 } from "@/lib/seniorAssistants";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
 
 const gradingHelp = [
   { level: "1", text: "Insuffisant - objectif non atteint", color: "text-[#FF7A00]" },
@@ -730,13 +731,13 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
             <div className="mt-5 rounded-xl bg-[#F8FAFC] p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h3 className="text-[20px] font-bold text-[#0F3A63]">Synthèse des missions</h3>
-                <span className="rounded-full bg-white px-3 py-1 text-[12px] font-bold text-[#76B82A]">{missionProgress}%</span>
+                <span className={`rounded-full bg-white px-3 py-1 text-[12px] font-bold ${getProgressToneClass(missionProgress)}`}>{missionProgress}%</span>
               </div>
               <p className="text-sm font-semibold text-slate-500">
                 Score final = somme des scores de mission divisée par le nombre de missions notées.
               </p>
               <div className="mt-4 h-2 rounded-full bg-slate-200">
-                <div className="h-2 rounded-full bg-[#76B82A]" style={{ width: `${missionProgress}%` }} />
+                <div className={`h-2 rounded-full ${getProgressBarClass(missionProgress)}`} style={{ width: `${clampProgress(missionProgress)}%` }} />
               </div>
               <div className="mt-4 grid grid-cols-3 gap-3">
                 <div className="rounded-lg bg-white p-3">
@@ -844,7 +845,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                       </div>
                       <p className="text-xs font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
                       <p className="mt-1 text-xs font-semibold text-[#0F3A63]">Destinataire : {mission.recipientName || "Manager"}</p>
-                      <p className="mt-1 text-xs font-bold text-[#76B82A]">{progress}%</p>
+                      <p className={`mt-1 text-xs font-bold ${getProgressToneClass(progress)}`}>{progress}%</p>
                     </button>
                   );
                 })
@@ -943,7 +944,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                       >
                         <p className="text-[11px] font-bold">Titre {index + 1}</p>
                         <p className="mt-1 text-[12px] font-semibold">{group.pageTitle}</p>
-                        <p className="mt-1 text-[10px] font-semibold text-[#76B82A]">{progress}%</p>
+                        <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(progress)}`}>{progress}%</p>
                       </button>
                     );
                   })}

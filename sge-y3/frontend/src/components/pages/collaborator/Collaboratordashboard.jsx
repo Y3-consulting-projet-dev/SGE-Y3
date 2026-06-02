@@ -1,5 +1,7 @@
 ﻿import { CheckCircle2, CircleDashed } from "lucide-react";
 
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
+
 const reminders = [
   { label: "Soumettre l'auto-évaluation", date: "18-04-2026" },
   { label: "Entretien annuel Manager", date: "22-04-2026" },
@@ -58,18 +60,19 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
     })) || [];
 
   const globalProgress = evaluation?.summary?.globalProgress || 0;
+  const progressWidth = clampProgress(globalProgress);
   const completedMissions = evaluation?.summary?.completedMissions || 0;
 
   return (
     <div className="space-y-4">
       <div className="rounded-sm bg-[#BFE2B9] px-3 py-2 text-[11px] font-semibold text-[#114F35]">
         {evaluation?.evaluation?.status === "Soumis aux Managers"
-          ? "Auto-évaluation soumise ?ux managers concernés. En attente de retour."
+          ? "Auto-évaluation soumise aux managers concernés. En attente de retour."
           : evaluation?.evaluation?.status === "Soumis au Manager"
-          ? "Auto-évaluation soumise ?u(x) manager(s). En attente de traitement."
+          ? "Auto-évaluation soumise au(x) manager(s). En attente de traitement."
           : evaluation?.evaluation?.status === "Soumis à la RH"
           ? "Auto-évaluation soumise à la RH. En attente de traitement."
-          : "Auto-évaluation en cours -  à soumettre avant le 18/04/2026. Sauvegarde automatique activée"}
+          : "Auto-évaluation en cours - à soumettre avant le 18/04/2026. Sauvegarde automatique activée"}
       </div>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(3,minmax(0,240px))] md:justify-between md:gap-5">
@@ -84,6 +87,25 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.8fr_1fr]">
         <article className="rounded-lg bg-white p-5 xl:col-span-1">
+
+          <div className="mb-8">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-[22px] font-bold leading-tight text-[#0F3A63]">Progression globale</h3>
+              <span className={`text-[22px] font-bold ${getProgressToneClass(globalProgress)}`}>{globalProgress}%</span>
+            </div>
+            <div className="h-2.5 rounded-full bg-slate-200">
+              <div className={`h-2.5 rounded-full ${getProgressBarClass(globalProgress)}`} style={{ width: `${progressWidth}%` }} />
+            </div>
+          </div>
+
+          <button
+            onClick={onContinue}
+            disabled={isLoading}
+            className="mb-5 w-full rounded-md bg-[#003B63] py-3 text-[22px] font-semibold leading-none text-white hover:bg-[#0B4C7A] disabled:opacity-60"
+          >
+            Continuer l'évaluation
+          </button>
+
           <h2 className="mb-4 text-[24px] font-bold leading-tight text-[#0F3A63]">Où en suis-je ?</h2>
 
           <div className="space-y-3">
@@ -104,23 +126,6 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
             ))}
           </div>
 
-          <div className="mt-8">
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-[22px] font-bold leading-tight text-[#0F3A63]">Progression globale</h3>
-              <span className="text-[22px] font-bold text-[#F34D4D]">{globalProgress}%</span>
-            </div>
-            <div className="h-2.5 rounded-full bg-slate-200">
-              <div className="h-2.5 rounded-full bg-[#2FB6D9]" style={{ width: `${globalProgress}%` }} />
-            </div>
-          </div>
-
-          <button
-            onClick={onContinue}
-            disabled={isLoading}
-            className="mt-5 w-full rounded-md bg-[#003B63] py-3 text-[22px] font-semibold leading-none text-white hover:bg-[#0B4C7A] disabled:opacity-60"
-          >
-            Continuer l'évaluation
-          </button>
         </article>
 
         <div className="space-y-4">
@@ -143,12 +148,12 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
                 { id: 4, title: "Décision de l'Associé", subtitle: "Résultat communiqué ensuite" },
               ].map((step) => (
                 <div key={step.id} className="flex items-start gap-2">
-                  <span className="mt-1 inline-flex h-4.5 w-4.5 items-center justify-center rounded-full bg-slate-100 text-[9px] font-bold text-slate-500">
+                  <span className="mt-1 inline-flex h-4.5 w-4.5 items-center justify-center rounded-full bg-slate-100 text-[14px] font-bold text-slate-500">
                     {step.id}
                   </span>
                   <div>
-                    <p className="text-[12px] font-semibold text-[#0F3A63]">{step.title}</p>
-                    <p className="text-[10px] text-slate-500">{step.subtitle}</p>
+                    <p className="text-[16px] font-semibold text-[#0F3A63]">{step.title}</p>
+                    <p className="text-[14px] text-slate-500">{step.subtitle}</p>
                   </div>
                 </div>
               ))}

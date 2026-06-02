@@ -35,7 +35,7 @@ function getSupportCommonGradeKey(user = {}, supportRoleKey = '') {
 function getGradeColumnKey(grade = '') {
   const normalizedGrade = normalizeText(grade);
 
-  if (['Office Manager', 'PMO', 'Comptable Interne Senior', 'Comptabilite interne senior', 'Responsable IT'].includes(normalizedGrade)) {
+  if (['Office Manager', 'PMO', 'Comptable Interne Senior', 'Comptabilité interne senior', 'Responsable IT'].includes(normalizedGrade)) {
     return normalizedGrade;
   }
 

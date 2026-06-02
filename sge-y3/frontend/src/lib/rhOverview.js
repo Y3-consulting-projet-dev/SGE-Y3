@@ -132,6 +132,13 @@ export function getRhPopulation() {
   return request("/rh/population");
 }
 
+export function updateRhUserCareer(memberId, payload) {
+  return request(`/rh/population/${memberId}/career`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getRhReports() {
   return request("/rh/reports");
 }

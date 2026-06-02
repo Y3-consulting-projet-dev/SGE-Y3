@@ -7,6 +7,7 @@ import {
   submitManagerMissionEvaluation,
   submitManagerSelfEvaluation,
 } from "@/lib/managerOverview";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
 
 function getPageProgress(page) {
   const themes = page?.themes || [];
@@ -695,10 +696,10 @@ function Monautoevaluation() {
               <p className="text-xs font-semibold text-[#0F3A63]">
                 Progression - {completedSections} / {sections.length} sections
               </p>
-              <span className="text-xs font-semibold text-[#E53935]">{progress}%</span>
+              <span className={`text-xs font-semibold ${getProgressToneClass(progress)}`}>{progress}%</span>
             </div>
             <div className="h-2 rounded-full bg-slate-300">
-              <div className="h-2 rounded-full bg-[#2AA7D6]" style={{ width: `${progress}%` }} />
+              <div className={`h-2 rounded-full ${getProgressBarClass(progress)}`} style={{ width: `${clampProgress(progress)}%` }} />
             </div>
           </section>
 
@@ -846,7 +847,7 @@ function Monautoevaluation() {
                               {sourceBadgeLabel}
                             </span>
                           ) : null}
-                          <p className="mt-1 text-[10px] font-semibold text-[#79B742]">{pageProgress}%</p>
+                          <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(pageProgress)}`}>{pageProgress}%</p>
                         </button>
                       );
                     })}
@@ -957,7 +958,7 @@ function Monautoevaluation() {
                 </div>
                 <div className="rounded-lg bg-[#0D496A] p-4 text-white">
                   <p className="text-xs font-bold">Progression missions</p>
-                  <p className="mt-2 text-2xl font-black text-[#86EFAC]">{missionProgress}%</p>
+                  <p className={`mt-2 text-2xl font-black ${getProgressToneClass(missionProgress)}`}>{missionProgress}%</p>
                 </div>
               </div>
             </article>
@@ -1020,7 +1021,9 @@ function Monautoevaluation() {
                         </div>
                         <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#4E8B1B]">{mission.status}</span>
                       </div>
-                      <p className="mt-2 text-xs font-semibold text-[#0F3A63]">Progression : {currentMissionProgress}%</p>
+                      <p className={`mt-2 text-xs font-semibold ${getProgressToneClass(currentMissionProgress)}`}>
+                        Progression : {currentMissionProgress}%
+                      </p>
                     </button>
                   );
                 })
@@ -1056,29 +1059,35 @@ function Monautoevaluation() {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    {(activeMissionSection?.groups || []).map((group, index) => (
-                      <button
-                        key={group.key}
-                        type="button"
-                        onClick={() =>
-                          setMissionPageIndexes((current) => ({
-                            ...current,
-                            [activeMission.id]: index,
-                          }))
-                        }
-                        className={`rounded-md border px-3 py-2 text-left transition ${
-                          index === activeMissionPageIndex
-                            ? "border-[#79B742] bg-[#F3FAEA] text-[#0F3A63]"
-                            : "border-[#D9E3EE] bg-white text-slate-600 hover:bg-slate-50"
-                        }`}
-                      >
-                        <p className="text-[11px] font-bold">Titre {index + 1}</p>
-                        <p className="mt-1 text-[12px] font-semibold">{group.pageTitle}</p>
-                        <p className="mt-1 text-[10px] font-semibold text-[#79B742]">
-                          {Math.round(((group.criteria || []).filter((criterion) => criterion.score !== null && criterion.score !== undefined).length / ((group.criteria || []).length || 1)) * 100)}%
-                        </p>
-                      </button>
-                    ))}
+                    {(activeMissionSection?.groups || []).map((group, index) => {
+                      const groupProgress = Math.round(
+                        (((group.criteria || []).filter((criterion) => criterion.score !== null && criterion.score !== undefined).length) /
+                          ((group.criteria || []).length || 1)) *
+                          100
+                      );
+
+                      return (
+                        <button
+                          key={group.key}
+                          type="button"
+                          onClick={() =>
+                            setMissionPageIndexes((current) => ({
+                              ...current,
+                              [activeMission.id]: index,
+                            }))
+                          }
+                          className={`rounded-md border px-3 py-2 text-left transition ${
+                            index === activeMissionPageIndex
+                              ? "border-[#79B742] bg-[#F3FAEA] text-[#0F3A63]"
+                              : "border-[#D9E3EE] bg-white text-slate-600 hover:bg-slate-50"
+                          }`}
+                        >
+                          <p className="text-[11px] font-bold">Titre {index + 1}</p>
+                          <p className="mt-1 text-[12px] font-semibold">{group.pageTitle}</p>
+                          <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(groupProgress)}`}>{groupProgress}%</p>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1101,7 +1110,7 @@ function Monautoevaluation() {
                       >
                         <div className="flex items-center justify-between gap-3">
                           <p className="text-sm font-bold text-[#0F3A63]">{section.title}</p>
-                          <span className="text-xs font-semibold text-[#79B742]">{getMissionSectionProgress(section)}%</span>
+                          <span className={`text-xs font-semibold ${getProgressToneClass(getMissionSectionProgress(section))}`}>{getMissionSectionProgress(section)}%</span>
                         </div>
                       </button>
                     );

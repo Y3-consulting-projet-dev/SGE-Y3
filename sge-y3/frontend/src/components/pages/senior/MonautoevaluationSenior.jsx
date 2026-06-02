@@ -6,6 +6,7 @@ import {
   submitMySeniorEvaluation,
   submitMySeniorMissionEvaluation,
 } from "@/lib/seniorEvaluation";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
 import { getDisplayName } from "@/lib/userPresentation";
 
 const gradingHelp = [
@@ -813,10 +814,10 @@ function MonautoevaluationSenior({ user }) {
                     {mission.department} - {mission.recipients.map(getRecipientLabel).join(", ")}
                   </p>
                   <div className="mt-4 h-2 rounded-full bg-slate-200">
-                    <div className="h-2 rounded-full bg-[#76B82A]" style={{ width: `${getMissionProgress(mission)}%` }} />
+                    <div className={`h-2 rounded-full ${getProgressBarClass(getMissionProgress(mission))}`} style={{ width: `${clampProgress(getMissionProgress(mission))}%` }} />
                   </div>
                   <div className="mt-2 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-500">{getMissionProgress(mission)}%</span>
+                    <span className={`text-xs font-semibold ${getProgressToneClass(getMissionProgress(mission))}`}>{getMissionProgress(mission)}%</span>
                     <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#4E8B1B]">{mission.status || "Brouillon"}</span>
                   </div>
                 </button>
@@ -844,10 +845,10 @@ function MonautoevaluationSenior({ user }) {
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <p className="font-semibold text-[#0F3A63]">Progression globale des missions</p>
-                <span className="font-bold text-[#76B82A]">{missionProgress}%</span>
+                <span className={`font-bold ${getProgressToneClass(missionProgress)}`}>{missionProgress}%</span>
               </div>
               <div className="h-2 rounded-full bg-slate-200">
-                <div className="h-2 rounded-full bg-[#76B82A]" style={{ width: `${missionProgress}%` }} />
+                <div className={`h-2 rounded-full ${getProgressBarClass(missionProgress)}`} style={{ width: `${clampProgress(missionProgress)}%` }} />
               </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
@@ -950,7 +951,7 @@ function MonautoevaluationSenior({ user }) {
                           {getSourceBadgeLabel({ source_label: group.sourceLabel, source_sheet: group.sourceSheet })}
                         </span>
                       ) : null}
-                      <p className="mt-1 text-[10px] font-semibold text-[#76B82A]">{getMissionGroupProgress(group)}%</p>
+                      <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(getMissionGroupProgress(group))}`}>{getMissionGroupProgress(group)}%</p>
                     </button>
                   ))}
                 </div>

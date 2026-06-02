@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
 import matrixData from "../../../../../backend/src/data/competencyMatrix.generated.json";
 
 const SUPPORT_ROLE_BY_EMAIL = {
@@ -263,7 +264,7 @@ function MonautoevaluationSupport({ user }) {
         <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="rounded-lg bg-[#0D496A] p-4 text-white">
             <p className="text-xs font-bold">Progression</p>
-            <p className="mt-2 text-2xl font-black text-[#86EFAC]">{progress}%</p>
+            <p className={`mt-2 text-2xl font-black ${getProgressToneClass(progress)}`}>{progress}%</p>
           </div>
           <div className="rounded-lg bg-[#0D496A] p-4 text-white">
             <p className="text-xs font-bold">Score moyen</p>
@@ -301,7 +302,7 @@ function MonautoevaluationSupport({ user }) {
                 </div>
                 <p className="mt-1 text-xs font-semibold text-slate-500">{section.pages.length} titre(s)</p>
                 <div className="mt-2 h-1.5 rounded-full bg-slate-200">
-                  <div className="h-1.5 rounded-full bg-[#76B82A]" style={{ width: `${sectionProgress}%` }} />
+                  <div className={`h-1.5 rounded-full ${getProgressBarClass(sectionProgress)}`} style={{ width: `${clampProgress(sectionProgress)}%` }} />
                 </div>
               </button>
             );
@@ -333,7 +334,7 @@ function MonautoevaluationSupport({ user }) {
               >
                 <p className="text-[11px] font-bold">Titre {index + 1}</p>
                 <p className="mt-1 text-[12px] font-semibold">{page.title}</p>
-                <p className="mt-1 text-[10px] font-semibold text-[#76B82A]">{getPageProgress(page)}%</p>
+                <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(getPageProgress(page))}`}>{getPageProgress(page)}%</p>
               </button>
             ))}
           </div>
