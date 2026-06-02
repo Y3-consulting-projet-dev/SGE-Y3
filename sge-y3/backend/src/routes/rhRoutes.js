@@ -26,6 +26,7 @@ const {
   submitRhSyntheses,
   submitMyRhSelfMissionEvaluation,
   submitMyRhSelfEvaluation,
+  updateRhUserCareer,
   validateRhSelection,
 } = require('../controllers/rhController');
 const { requireAuth } = require('../middleware/authMiddleware');
@@ -52,6 +53,7 @@ router.get('/calibration', requireAuth, requireRh, getRhCalibration);
 router.get('/department-evaluations', requireAuth, requireRh, getRhDepartmentEvaluations);
 router.get('/department-evaluations/:reviewId', requireAuth, requireRh, getRhDepartmentEvaluationDetail);
 router.get('/population', requireAuth, requireRh, getRhPopulation);
+router.put('/population/:memberId/career', requireAuth, requireRh, updateRhUserCareer);
 router.get('/reports', requireAuth, requireRh, getRhReports);
 router.get('/reports/:reportId/download', requireAuth, requireRh, downloadRhReport);
 router.post('/department-evaluations/:reviewId/select', requireAuth, requireRh, selectRhDepartmentEvaluation);

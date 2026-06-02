@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   saveMyAssistantEvaluation,
   submitMyAssistantEvaluation,
   submitMyAssistantMissionEvaluation,
 } from "@/lib/collaboratorEvaluation";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
 
 const gradingHelp = [
   { level: "1", text: "Insuffisant - objectif non atteint", color: "text-[#FF7A00]" },
@@ -961,9 +962,9 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                     <p className="mt-1 text-xs font-semibold text-slate-500">{item.period}</p>
                     <p className="mt-1 text-xs font-bold text-[#0F4A72]">{getMissionValidationLabel(item)}</p>
                     <div className="mt-3 h-1.5 rounded-full bg-slate-200">
-                      <div className="h-1.5 rounded-full bg-[#76B82A]" style={{ width: `${progress}%` }} />
+                      <div className={`h-1.5 rounded-full ${getProgressBarClass(progress)}`} style={{ width: `${clampProgress(progress)}%` }} />
                     </div>
-                    <p className="mt-1 text-xs font-bold text-[#76B82A]">{progress}% complète</p>
+                    <p className={`mt-1 text-xs font-bold ${getProgressToneClass(progress)}`}>{progress}% complétée</p>
                   </button>
                 );
               })
@@ -1028,10 +1029,10 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                         </div>
                         <p className="text-[12px] font-semibold">{section.groups.length} titre(s)</p>
                         <div className="mt-3 h-1.5 rounded-full bg-slate-200">
-                          <div className={`h-1.5 rounded-full ${done ? "bg-[#7BC443]" : "bg-[#D6DCE2]"}`} style={{ width: `${progress}%` }} />
+                          <div className={`h-1.5 rounded-full ${getProgressBarClass(progress)}`} style={{ width: `${clampProgress(progress)}%` }} />
                         </div>
                         <p className="mt-1.5 text-[10px] font-semibold text-slate-200">
-                          {done ? "Complète" : progress ? `En cours - ${progress}%` : "À faire"}
+                          {done ? "Complétée" : progress ? `En cours - ${progress}%` : "À faire"}
                         </p>
                       </button>
                     );
@@ -1076,7 +1077,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                             {group.sourceLabel || getSourceBadgeLabel({ source_sheet: group.sourceSheet })}
                           </span>
                         ) : null}
-                        <p className="mt-1 text-[10px] font-semibold text-[#76B82A]">{progress}%</p>
+                        <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(progress)}`}>{progress}%</p>
                       </button>
                     );
                   })}
@@ -1195,10 +1196,10 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <p className="font-semibold text-[#0F3A63]">Progression globale des missions</p>
-                <span className="font-bold text-[#76B82A]">{missionProgress}%</span>
+                <span className={`font-bold ${getProgressToneClass(missionProgress)}`}>{missionProgress}%</span>
               </div>
               <div className="h-2 rounded-full bg-slate-200">
-                <div className="h-2 rounded-full bg-[#76B82A]" style={{ width: `${missionProgress}%` }} />
+                <div className={`h-2 rounded-full ${getProgressBarClass(missionProgress)}`} style={{ width: `${clampProgress(missionProgress)}%` }} />
               </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
@@ -1265,7 +1266,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                         <p className="font-semibold text-[#0F3A63]">{item.title}</p>
                         <p className="text-[11px] text-slate-500">{item.period}</p>
                       </div>
-                      <span className="font-bold text-[#76B82A]">
+                      <span className={`font-bold ${item.status === "Soumise" ? "text-green-600" : getProgressToneClass(getMissionProgress(item))}`}>
                         {item.status === "Soumise" ? "Soumise" : `${getMissionProgress(item)}%`}
                       </span>
                     </div>

@@ -4,7 +4,7 @@ export const gradeOptions = [
   "Assistant manager",
   "Manager",
   "Senior manager",
-  "Associe",
+  "Associé",
 ];
 
 export const departmentOptions = [
@@ -12,6 +12,7 @@ export const departmentOptions = [
   "AUDIT & EXPERTISE COMPTABLE",
   "CONSEIL FINANCIER",
   "EXPERTISE COMPTABLE",
+  "CAPITAL HUMAIN",
   "RH",
 ];
 

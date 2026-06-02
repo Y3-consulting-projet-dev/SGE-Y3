@@ -287,6 +287,8 @@ function normalizeMissionEvaluations(missionEvaluations = []) {
     mission_id: String(mission.id || mission.mission_id || '').trim(),
     title: String(mission.title || '').trim(),
     period: String(mission.period || '').trim(),
+    start_date: String(mission.startDate || mission.start_date || '').trim(),
+    end_date: String(mission.endDate || mission.end_date || '').trim(),
     department: String(mission.department || '').trim(),
     created_by_role: String(mission.created_by_role || mission.createdByRole || 'self').trim() || 'self',
     assigned_by_user_id: mission.assigned_by_user_id || mission.assignedByUserId || null,
@@ -337,6 +339,8 @@ function formatMissionEvaluations(missionEvaluations = []) {
     id: mission.mission_id,
     title: mission.title,
     period: mission.period,
+    startDate: mission.start_date || '',
+    endDate: mission.end_date || '',
     department: mission.department,
     createdByRole: mission.created_by_role || 'self',
     assignedByUserId: mission.assigned_by_user_id?.toString?.() || String(mission.assigned_by_user_id || ''),
@@ -380,7 +384,7 @@ function validateMissionEvaluations(missionEvaluations = []) {
     for (const criterion of mission.criteria || []) {
       if (criterion.score !== null && criterion.score !== undefined) {
         if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
-          return `La note du critere "${criterion.label}" doit etre comprise entre 1 et 5.`;
+          return `La note du critère "${criterion.label}" doit être comprise entre 1 et 5.`;
         }
       }
     }
@@ -521,7 +525,7 @@ function getAverageFromMissionEvaluations(missionEvaluations = []) {
 
 function formatSubmissionTarget(managers = []) {
   if (!managers.length) {
-    return 'Manager du departement';
+    return 'Manager du département';
   }
 
   return managers
@@ -716,7 +720,7 @@ async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
 
   if (!isMissionOnlySelfEvaluation && !rawSections?.length) {
     return response.status(400).json({
-      message: "Les sections de l'auto-evaluation sont requises.",
+      message: "Les sections de l'auto-évaluation sont requises.",
     });
   }
 
@@ -726,7 +730,7 @@ async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
         if (criterion.score !== null && criterion.score !== undefined) {
           if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
             return response.status(400).json({
-              message: `La note du critere "${criterion.label}" doit etre comprise entre 1 et 5.`,
+              message: `La note du critere "${criterion.label}" doit être comprise entre 1 et 5.`,
             });
           }
         }
@@ -824,7 +828,7 @@ async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
   });
 
   return response.json({
-    message: 'Auto-evaluation enregistree.',
+    message: 'Auto-évaluation enregistree.',
     ...(await buildEvaluationPayload(instance, request.user)),
   });
 }
@@ -866,7 +870,7 @@ async function submitMySelfMissionEvaluation(request, response, getOrCreateEvalu
 
   if (hasIncompleteCriterion) {
     return response.status(400).json({
-      message: 'Toutes les questions de la mission doivent etre renseignees avant soumission.',
+      message: 'Toutes les questions de la mission doivent être renseignées avant soumission.',
     });
   }
 
@@ -874,7 +878,7 @@ async function submitMySelfMissionEvaluation(request, response, getOrCreateEvalu
 
   if (missingSectionComments.length) {
     return response.status(400).json({
-      message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
+      message: `Un commentaire de section d'au moins 3 caractères est obligatoire pour chaque section avant soumission.`,
       missingSectionComments,
     });
   }
@@ -935,7 +939,7 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
 
     if (pendingMissions.length) {
       return response.status(400).json({
-        message: 'Chaque mission doit etre soumise avant la soumission finale.',
+        message: 'Chaque mission doit être soumise avant la soumission finale.',
         pendingMissions: pendingMissions.map((mission) => ({
           missionId: mission.mission_id,
           title: mission.title,
@@ -953,7 +957,7 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
 
     if (missionsWithMissingSectionComments.length) {
       return response.status(400).json({
-        message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission finale.',
+        message: `Un commentaire de section d'au moins 3 caractères est obligatoire pour chaque section avant soumission finale.`,
         missionsWithMissingSectionComments,
       });
     }
@@ -978,7 +982,7 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
 
     return response.json({
       message: mergedMissionRecipients.length
-        ? `Evaluations par mission soumises aux managers concernes (${mergedMissionRecipients.map((recipient) => recipient.manager).join(', ')}).`
+        ? `Evaluations par mission soumises aux managers concernés (${mergedMissionRecipients.map((recipient) => recipient.manager).join(', ')}).`
         : 'Evaluations par mission soumises.',
       ...(await buildEvaluationPayload(instance, request.user)),
     });
@@ -988,7 +992,7 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
 
   if (missingAnswers.length) {
     return response.status(400).json({
-      message: 'Toutes les questions obligatoires doivent etre renseignees avant soumission.',
+      message: 'Toutes les questions obligatoires doivent être renseignées avant soumission.',
       missingAnswers,
     });
   }
@@ -997,7 +1001,7 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
 
   if (missingSectionComments.length) {
     return response.status(400).json({
-      message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
+      message: `Un commentaire de section d'au moins 3 caractères est obligatoire pour chaque section avant soumission.`,
       missingSectionComments,
     });
   }
@@ -1017,8 +1021,8 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
 
   return response.json({
     message: mergedManagerRecipients.length
-      ? `Auto-evaluation soumise aux managers concernes (${mergedManagerRecipients.map((recipient) => recipient.manager).join(', ')}).`
-      : `Auto-evaluation soumise a ${formatSubmissionTarget(resolvedManagers)}.`,
+      ? `Auto-évaluation soumise aux managers concernes (${mergedManagerRecipients.map((recipient) => recipient.manager).join(', ')}).`
+      : `Auto-évaluation soumise a ${formatSubmissionTarget(resolvedManagers)}.`,
     ...(await buildEvaluationPayload(instance, request.user)),
   });
 }
@@ -1035,7 +1039,7 @@ async function getMyAssistantResults(request, response) {
   const managerReviews = await ManagerMemberReview.find({
     cycle_label: CURRENT_CYCLE_LABEL,
     member_id: request.user._id,
-    status: { $in: ['Valide RH', 'Transmis a l associe', 'Cloture'] },
+    status: { $in: ['Valide RH', `Transmis à l'associé`, 'Clôture'] },
   }).select('manager_id submitted_at sections mission_reviews status');
   const managerIds = managerReviews.map((review) => review.manager_id).filter(Boolean);
   const managerUsers = managerIds.length
@@ -1095,7 +1099,7 @@ async function getMyAssistantResults(request, response) {
       : 0;
 
   const comparisonSubtitle =
-    teamDelta > 0 ? 'Au-dessus de la moyenne' : teamDelta < 0 ? 'En-dessous de la moyenne' : 'Egal a la moyenne';
+    teamDelta > 0 ? 'Au-dessus de la moyenne' : teamDelta < 0 ? 'En-dessous de la moyenne' : 'Egal à la moyenne';
 
   return response.json({
     cycle_label: CURRENT_CYCLE_LABEL,
@@ -1107,6 +1111,8 @@ async function getMyAssistantResults(request, response) {
         missionId: mission.mission_id,
         title: mission.title,
         period: mission.period,
+        startDate: mission.start_date || '',
+        endDate: mission.end_date || '',
         department: mission.department,
         recipients: (mission.recipients || []).map((recipient) => recipient.name),
         score,

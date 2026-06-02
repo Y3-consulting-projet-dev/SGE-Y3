@@ -10,6 +10,7 @@ import {
   submitRhSelfMissionEvaluation,
   submitRhSelfEvaluation,
 } from "@/lib/rhOverview";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
 
 function getPageProgress(page) {
   const themes = page?.themes || [];
@@ -674,7 +675,7 @@ function MonautoevaluationRH({ assistantMode = false }) {
             <div className="mt-5 grid grid-cols-2 gap-3">
               <div className="rounded-lg bg-[#0D496A] p-4 text-white">
                 <p className="text-xs font-bold">Progression</p>
-                <p className="mt-2 text-2xl font-black text-[#86EFAC]">{progress}%</p>
+                <p className={`mt-2 text-2xl font-black ${getProgressToneClass(progress)}`}>{progress}%</p>
               </div>
               <div className="rounded-lg bg-[#0D496A] p-4 text-white">
                 <p className="text-xs font-bold">Score moyen</p>
@@ -690,10 +691,10 @@ function MonautoevaluationRH({ assistantMode = false }) {
               <p className="text-xs font-semibold text-[#0F3A63]">
                 Progression - {completedSections} / {sections.length} sections
               </p>
-              <span className="text-xs font-semibold text-[#E53935]">{progress}%</span>
+              <span className={`text-xs font-semibold ${getProgressToneClass(progress)}`}>{progress}%</span>
             </div>
             <div className="h-2 rounded-full bg-slate-300">
-              <div className="h-2 rounded-full bg-[#2AA7D6]" style={{ width: `${progress}%` }} />
+              <div className={`h-2 rounded-full ${getProgressBarClass(progress)}`} style={{ width: `${clampProgress(progress)}%` }} />
             </div>
           </section>
 
@@ -835,7 +836,7 @@ function MonautoevaluationRH({ assistantMode = false }) {
                     >
                       <p className="text-[11px] font-bold">Titre {index + 1}</p>
                       <p className="mt-1 text-[12px] font-semibold">{page.title}</p>
-                      <p className="mt-1 text-[10px] font-semibold text-[#79B742]">{pageProgress}%</p>
+                      <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(pageProgress)}`}>{pageProgress}%</p>
                     </button>
                   );
                 })}
@@ -945,7 +946,7 @@ function MonautoevaluationRH({ assistantMode = false }) {
                 </div>
                 <div className="rounded-lg bg-[#0D496A] p-4 text-white">
                   <p className="text-xs font-bold">Progression missions</p>
-                  <p className="mt-2 text-2xl font-black text-[#86EFAC]">{missionProgress}%</p>
+                  <p className={`mt-2 text-2xl font-black ${getProgressToneClass(missionProgress)}`}>{missionProgress}%</p>
                 </div>
               </div>
             </article>
@@ -1055,7 +1056,7 @@ function MonautoevaluationRH({ assistantMode = false }) {
                       >
                         <p className="text-[11px] font-bold">Titre {index + 1}</p>
                         <p className="mt-1 text-[12px] font-semibold">{group.pageTitle}</p>
-                        <p className="mt-1 text-[10px] font-semibold text-[#79B742]">{Math.round(((group.criteria || []).filter((criterion) => criterion.score !== null && criterion.score !== undefined).length / ((group.criteria || []).length || 1)) * 100)}%</p>
+                        <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(Math.round(((group.criteria || []).filter((criterion) => criterion.score !== null && criterion.score !== undefined).length / ((group.criteria || []).length || 1)) * 100))}`}>{Math.round(((group.criteria || []).filter((criterion) => criterion.score !== null && criterion.score !== undefined).length / ((group.criteria || []).length || 1)) * 100)}%</p>
                       </button>
                     ))}
                   </div>
@@ -1080,7 +1081,7 @@ function MonautoevaluationRH({ assistantMode = false }) {
                       >
                         <div className="flex items-center justify-between gap-3">
                           <p className="text-sm font-bold text-[#0F3A63]">{section.title}</p>
-                          <span className="text-xs font-semibold text-[#79B742]">{getMissionSectionProgress(section)}%</span>
+                          <span className={`text-xs font-semibold ${getProgressToneClass(getMissionSectionProgress(section))}`}>{getMissionSectionProgress(section)}%</span>
                         </div>
                       </button>
                     );

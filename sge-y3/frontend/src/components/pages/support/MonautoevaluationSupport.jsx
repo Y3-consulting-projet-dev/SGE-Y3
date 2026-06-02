@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
 import matrixData from "../../../../../backend/src/data/competencyMatrix.generated.json";
 
 const SUPPORT_ROLE_BY_EMAIL = {
@@ -43,6 +44,17 @@ function getSupportRoleKey(user) {
   return "Office Manager";
 }
 
+function getCommonGradeKey(user, supportRoleKey) {
+  const source = normalizeText(`${user?.grade || ""} ${user?.code_categorie || ""}`);
+
+  if (source.includes("SENIOR") || source.includes("9A")) return "Senior";
+  if (source.includes("ASSISTANT MANAGER") || source.includes("MANAGER") || source.includes("10")) return "Manager";
+  if (source.includes("ASSISTANT") || source.includes("8")) return "Assistant";
+  if (source.includes("ASSOCIE") || source.includes("ASSOCI") || source.includes("11")) return "Associ?";
+
+  return normalizeText(supportRoleKey).includes("COMPTABLE INTERNE SENIOR") ? "Senior" : "Manager";
+}
+
 function getStatementForRole(statements = {}, roleKey) {
   if (statements[roleKey]) return statements[roleKey];
 
@@ -53,10 +65,15 @@ function getStatementForRole(statements = {}, roleKey) {
 
 function buildSupportSections(user) {
   const roleKey = getSupportRoleKey(user);
+  const supportSheets = [
+    { name: "TRONC COMMUN", roleKey: getCommonGradeKey(user, roleKey) },
+    { name: "SERVICE SUPPORT", roleKey },
+  ];
   const groupedSections = new Map();
   const sectionOrder = [];
 
-  (matrixData["SERVICE SUPPORT"] || []).forEach((sourceSection, sourceSectionIndex) => {
+  supportSheets.forEach((sheet) => {
+    (matrixData[sheet.name] || []).forEach((sourceSection, sourceSectionIndex) => {
     const sectionKey = sourceSection.key || sourceSection.title || `section-${sourceSectionIndex}`;
 
     if (!groupedSections.has(sectionKey)) {
@@ -73,11 +90,11 @@ function buildSupportSections(user) {
     (sourceSection.pages || []).forEach((page, pageIndex) => {
       const themes = (page.themes || [])
         .map((theme, themeIndex) => {
-          const statement = getStatementForRole(theme.statements || {}, roleKey);
+          const statement = getStatementForRole(theme.statements || {}, sheet.roleKey);
           if (!statement) return null;
 
           return {
-            id: `${slugify(roleKey)}-${slugify(sectionKey)}-${slugify(page.title)}-${slugify(theme.code || themeIndex)}`,
+            id: `${slugify(sheet.name)}-${slugify(sheet.roleKey)}-${slugify(sectionKey)}-${slugify(page.title)}-${slugify(theme.code || themeIndex)}`,
             code: theme.code || String.fromCharCode(65 + themeIndex),
             label: theme.label,
             statement,
@@ -89,12 +106,14 @@ function buildSupportSections(user) {
       if (!themes.length) return;
 
       targetSection.pages.push({
-        id: `${slugify(roleKey)}-${slugify(sectionKey)}-${slugify(page.title || pageIndex)}`,
+        id: `${slugify(sheet.name)}-${slugify(sheet.roleKey)}-${slugify(sectionKey)}-${slugify(page.title || pageIndex)}`,
         title: page.title || `Titre ${pageIndex + 1}`,
+        sourceSheet: sheet.name,
         comment: "",
         themes,
       });
     });
+  });
   });
 
   return sectionOrder.map((sectionKey) => groupedSections.get(sectionKey)).filter((section) => section.pages.length);
@@ -245,7 +264,7 @@ function MonautoevaluationSupport({ user }) {
         <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="rounded-lg bg-[#0D496A] p-4 text-white">
             <p className="text-xs font-bold">Progression</p>
-            <p className="mt-2 text-2xl font-black text-[#86EFAC]">{progress}%</p>
+            <p className={`mt-2 text-2xl font-black ${getProgressToneClass(progress)}`}>{progress}%</p>
           </div>
           <div className="rounded-lg bg-[#0D496A] p-4 text-white">
             <p className="text-xs font-bold">Score moyen</p>
@@ -283,7 +302,7 @@ function MonautoevaluationSupport({ user }) {
                 </div>
                 <p className="mt-1 text-xs font-semibold text-slate-500">{section.pages.length} titre(s)</p>
                 <div className="mt-2 h-1.5 rounded-full bg-slate-200">
-                  <div className="h-1.5 rounded-full bg-[#76B82A]" style={{ width: `${sectionProgress}%` }} />
+                  <div className={`h-1.5 rounded-full ${getProgressBarClass(sectionProgress)}`} style={{ width: `${clampProgress(sectionProgress)}%` }} />
                 </div>
               </button>
             );
@@ -315,7 +334,7 @@ function MonautoevaluationSupport({ user }) {
               >
                 <p className="text-[11px] font-bold">Titre {index + 1}</p>
                 <p className="mt-1 text-[12px] font-semibold">{page.title}</p>
-                <p className="mt-1 text-[10px] font-semibold text-[#76B82A]">{getPageProgress(page)}%</p>
+                <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(getPageProgress(page))}`}>{getPageProgress(page)}%</p>
               </button>
             ))}
           </div>

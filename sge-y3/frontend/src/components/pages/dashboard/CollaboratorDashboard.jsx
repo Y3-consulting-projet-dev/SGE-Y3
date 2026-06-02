@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import {
+  CalendarDays,
   ChevronsLeft,
   ClipboardList,
   LayoutDashboard,
@@ -15,6 +16,7 @@ import MonTableauDeBord from "@/components/pages/collaborator/Collaboratordashbo
 import Monautoevaluation from "@/components/pages/collaborator/Monautoevaluation";
 import Mesresultats from "@/components/pages/collaborator/Mesresultats";
 import Mondeveloppement from "@/components/pages/collaborator/Mondeveloppement";
+import Calendrier from "@/components/pages/collaborator/Calendrier";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import { getDisplayName } from "@/lib/userPresentation";
 import { getMyAssistantEvaluation, getMyAssistantResults } from "@/lib/collaboratorEvaluation";
@@ -28,6 +30,7 @@ const menuGroups = [
     title: "Evaluation",
     items: [
       { key: "self-evaluation", label: "Mon auto-évaluation", icon: ClipboardList },
+      { key: "calendar", label: "Calendrier", icon: CalendarDays },
       { key: "results", label: "Mes résultats", icon: LineChart },
     ],
   },
@@ -134,6 +137,7 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
   const pageTitle = useMemo(() => {
     if (activeSection === "dashboard") return "TABLEAU DE BORD";
     if (activeSection === "self-evaluation") return "MON AUTO-ÉVALUATION";
+    if (activeSection === "calendar") return "CALENDRIER";
     if (activeSection === "results") return "MES RÉSULTATS";
     if (activeSection === "development") return "MON DÉVELOPPEMENT";
     if (activeSection === "profile") return "MON PROFIL";
@@ -194,6 +198,10 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
           errorMessage={resultsError}
         />
       );
+    }
+
+    if (activeSection === "calendar") {
+      return <Calendrier missionEvaluations={missionEvaluations} resultsData={resultsData} />;
     }
 
     if (activeSection === "development") {

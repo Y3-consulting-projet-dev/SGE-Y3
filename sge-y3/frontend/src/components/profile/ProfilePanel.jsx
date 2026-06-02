@@ -13,6 +13,15 @@ function createInfoForm(user) {
   };
 }
 
+function normalizeProfileValue(value = "") {
+  return String(value).replace(/\s+/g, " ").trim().toUpperCase();
+}
+
+function canEditGradeAndDepartment(user) {
+  const department = normalizeProfileValue(user?.department);
+  return department === "RH" || department === "CAPITAL HUMAIN";
+}
+
 function ProfilePanel({ user, onLogout, onUserUpdate }) {
   const [activeTab, setActiveTab] = useState("info");
   const [showPasswords, setShowPasswords] = useState({
@@ -33,6 +42,10 @@ function ProfilePanel({ user, onLogout, onUserUpdate }) {
 
   const summaryName = getDisplayName(user);
   const initials = getInitials(user);
+  const canEditCareerInfo = canEditGradeAndDepartment(user);
+  const careerSelectClass = canEditCareerInfo
+    ? "border-[#D6E1EF] bg-[#F8FBFF] text-[#071B49]"
+    : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500 opacity-80";
 
   const handleInfoChange = (field, value) => {
     setInfoForm((current) => ({ ...current, [field]: value }));
@@ -60,7 +73,14 @@ function ProfilePanel({ user, onLogout, onUserUpdate }) {
     try {
       setIsSavingInfo(true);
       setInfoStatus("");
-      const session = await updateProfile(infoForm);
+      const payload = canEditCareerInfo
+        ? infoForm
+        : {
+            first_name: infoForm.first_name,
+            last_name: infoForm.last_name,
+            email: infoForm.email,
+          };
+      const session = await updateProfile(payload);
       onUserUpdate?.(session);
       setInfoStatus(session.message || "Profil mis à jour.");
     } catch (error) {
@@ -184,7 +204,8 @@ function ProfilePanel({ user, onLogout, onUserUpdate }) {
                 <select
                   value={infoForm.grade}
                   onChange={(event) => handleInfoChange("grade", event.target.value)}
-                  className="h-12 w-full rounded-[20px] border border-[#D6E1EF] bg-[#F8FBFF] px-4 text-lg text-[#071B49] outline-none"
+                  disabled={!canEditCareerInfo}
+                  className={`h-12 w-full rounded-[20px] border px-4 text-lg outline-none ${careerSelectClass}`}
                 >
                   {gradeOptions.map((grade) => (
                     <option key={grade} value={grade}>
@@ -199,7 +220,8 @@ function ProfilePanel({ user, onLogout, onUserUpdate }) {
                 <select
                   value={infoForm.department}
                   onChange={(event) => handleInfoChange("department", event.target.value)}
-                  className="h-12 w-full rounded-[20px] border border-[#D6E1EF] bg-[#F8FBFF] px-4 text-lg text-[#071B49] outline-none"
+                  disabled={!canEditCareerInfo}
+                  className={`h-12 w-full rounded-[20px] border px-4 text-lg outline-none ${careerSelectClass}`}
                 >
                   <option value="">Selectionner</option>
                   {departmentOptions.map((department) => (

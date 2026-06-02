@@ -95,7 +95,7 @@ async function saveCommitteeDecision(request, response) {
 
   if (!decisions || typeof decisions !== 'object') {
     return response.status(400).json({
-      message: 'La decision du comite est requise.',
+      message: 'La décision du comité est requise.',
     });
   }
 
@@ -110,7 +110,7 @@ async function saveCommitteeDecision(request, response) {
   });
 
   return response.status(201).json({
-    message: 'Decision du comite envoyee a la RH.',
+    message: 'Décision du comité envoyée à la RH.',
     decision,
   });
 }

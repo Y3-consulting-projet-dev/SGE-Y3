@@ -8,6 +8,7 @@ import {
   submitManagerMemberMissionReview,
   submitManagerMemberEvaluation,
 } from "@/lib/managerOverview";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
 
 function getSourceBadgeLabel(page) {
   if (page?.source_label) return page.source_label;
@@ -256,7 +257,7 @@ function formatMissionPeriod(period, startDate = "", endDate = "") {
     return `Du ${formatDateDisplay(rangeMatch[1])} au ${formatDateDisplay(rangeMatch[2])}`;
   }
 
-  return period || "PÃ©riode non renseignÃ©e";
+  return period || "Période non renseignée";
 }
 
 function Evaluermonequipe({ member }) {
@@ -412,7 +413,7 @@ function Evaluermonequipe({ member }) {
         const progress = getSectionProgress(section);
         return {
           ...section,
-          status: progress === 0 ? "À faire" : progress === 100 ? "Complète" : "En cours",
+          status: progress === 0 ? "À faire" : progress === 100 ? "Complétée" : "En cours",
         };
       });
     });
@@ -611,13 +612,13 @@ function Evaluermonequipe({ member }) {
 
     if (!missionStartDate || !missionEndDate) {
       setFeedbackTone("error");
-      setFeedbackMessage("Renseignez la date de dÃ©but et la date de fin de la mission.");
+      setFeedbackMessage("Renseignez la date de début et la date de fin de la mission.");
       return;
     }
 
     if (missionEndDate < missionStartDate) {
       setFeedbackTone("error");
-      setFeedbackMessage("La date de fin doit Ãªtre postÃ©rieure ou Ã©gale Ã  la date de dÃ©but.");
+      setFeedbackMessage("La date de fin doit être postérieure ou égale à la date de début.");
       return;
     }
 
@@ -1009,7 +1010,7 @@ function Evaluermonequipe({ member }) {
                         <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
                         <p className="mt-1 text-xs font-semibold text-slate-500">{formatMissionPeriod(mission.period)}</p>
                         <p className="mt-1 text-xs font-bold text-[#0F3A63]">{mission.department}</p>
-                        <p className="mt-2 text-xs font-bold text-[#76B82A]">
+                        <p className={`mt-2 text-xs font-bold ${getProgressToneClass(getMissionReviewProgress(missionReviews.find((item) => item.id === mission.id)))}`}>
                           {getMissionReviewProgress(missionReviews.find((item) => item.id === mission.id))}%
                         </p>
                       </button>
@@ -1125,9 +1126,9 @@ function Evaluermonequipe({ member }) {
                               </div>
                               <p className="text-[12px] font-semibold">{section.groups?.length || 0} titre(s)</p>
                               <div className="mt-3 h-1.5 rounded-full bg-slate-200">
-                                <div className="h-1.5 rounded-full bg-[#7BC443]" style={{ width: `${progress}%` }} />
+                                <div className={`h-1.5 rounded-full ${getProgressBarClass(progress)}`} style={{ width: `${clampProgress(progress)}%` }} />
                               </div>
-                              <p className="mt-1.5 text-[10px] font-semibold text-slate-200">{progress}%</p>
+                              <p className={`mt-1.5 text-[10px] font-semibold ${getProgressToneClass(progress)}`}>{progress}%</p>
                             </button>
                           );
                         })}
@@ -1172,7 +1173,7 @@ function Evaluermonequipe({ member }) {
                                     {group.sourceLabel}
                                   </span>
                                 ) : null}
-                                <p className="mt-1 text-[10px] font-semibold text-[#76B82A]">{progress}%</p>
+                                <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(progress)}`}>{progress}%</p>
                               </button>
                             );
                           })}
@@ -1407,10 +1408,10 @@ function Evaluermonequipe({ member }) {
                   <div>
                     <p className="text-sm font-bold text-[#4E8B1B]">Sections globales</p>
                     <p className="text-xs font-semibold text-slate-500">
-                      {completedSections} / {sections.length} complète(s)
+                      {completedSections} / {sections.length} complétée(s)
                     </p>
                   </div>
-                  <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">{globalProgress}%</span>
+                  <span className={`rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold ${getProgressToneClass(globalProgress)}`}>{globalProgress}%</span>
                 </div>
 
                 <div className="space-y-3">
@@ -1433,9 +1434,9 @@ function Evaluermonequipe({ member }) {
                         </div>
                         <p className="mt-1 text-xs font-semibold text-slate-500">{section.pages?.length || 0} titre(s)</p>
                         <div className="mt-3 h-1.5 rounded-full bg-slate-200">
-                          <div className="h-1.5 rounded-full bg-[#76B82A]" style={{ width: `${progress}%` }} />
+                          <div className={`h-1.5 rounded-full ${getProgressBarClass(progress)}`} style={{ width: `${clampProgress(progress)}%` }} />
                         </div>
-                        <p className="mt-1 text-xs font-bold text-[#76B82A]">{progress}% complété</p>
+                        <p className={`mt-1 text-xs font-bold ${getProgressToneClass(progress)}`}>{progress}% complétée</p>
                       </button>
                     );
                   })}
@@ -1509,7 +1510,7 @@ function Evaluermonequipe({ member }) {
                           {sourceBadgeLabel}
                         </span>
                       ) : null}
-                      <p className="mt-1 text-[10px] font-semibold text-[#76B82A]">{progress}%</p>
+                      <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(progress)}`}>{progress}%</p>
                     </button>
                   );
                 })}
