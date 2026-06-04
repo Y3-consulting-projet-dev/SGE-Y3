@@ -25,18 +25,41 @@ function buildMissionScores(missionEvaluations = []) {
   });
 }
 
+function getRecipientMissions(recipient, missionEvaluations = []) {
+  return missionEvaluations
+    .filter((mission) =>
+      (mission.recipients || []).some(
+        (item) => item.name === recipient.manager && (item.department || mission.department) === recipient.department
+      )
+    )
+    .map((mission) => ({
+      id: mission.id,
+      title: mission.title,
+      period: mission.period,
+      department: mission.department,
+      score: getAverageScore(mission.criteria),
+    }));
+}
+
 function getManagerRecipients(missionEvaluations = []) {
   const recipients = missionEvaluations.flatMap((mission) =>
     (mission.recipients || []).map((recipient) => ({
       manager: recipient.name,
+      grade: recipient.grade,
       department: recipient.department || mission.department,
     }))
   );
 
-  return recipients.filter(
-    (recipient, index, list) =>
-      recipient.manager && list.findIndex((item) => item.manager === recipient.manager && item.department === recipient.department) === index
-  );
+  return recipients
+    .filter(
+      (recipient, index, list) =>
+        recipient.manager &&
+        list.findIndex((item) => item.manager === recipient.manager && item.department === recipient.department) === index
+    )
+    .map((recipient) => ({
+      ...recipient,
+      missions: getRecipientMissions(recipient, missionEvaluations),
+    }));
 }
 
 function buildLiveResults(evaluationData, resultsData) {
@@ -64,6 +87,7 @@ function buildLiveResults(evaluationData, resultsData) {
 
 function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, isLoading, errorMessage }) {
   const [reportDownloaded, setReportDownloaded] = useState(false);
+  const [selectedRecipient, setSelectedRecipient] = useState(null);
 
   if (isLoading) {
     return (
@@ -84,8 +108,9 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
   const liveResults = buildLiveResults(evaluationData, resultsData);
   const displayResults = liveResults || resultsData;
   const scoreFinal = displayResults?.kpis?.scoreFinal;
-  const comparaisonEquipeLabel = displayResults?.kpis?.comparaisonEquipeLabel || "0.0";
-  const comparaisonEquipeSubtitle = displayResults?.kpis?.comparaisonEquipeSubtitle || "Egal a la moyenne";
+  const moyenneDepartementLabel = displayResults?.kpis?.moyenneDepartementLabel || displayResults?.kpis?.comparaisonEquipeLabel || "0.0/5";
+  const moyenneDepartementSubtitle =
+    displayResults?.kpis?.moyenneDepartementSubtitle || displayResults?.kpis?.comparaisonEquipeSubtitle || "Moyenne du département";
   const missionScores = displayResults?.missionScores || buildMissionScores(missionEvaluations);
   const managerComments = displayResults?.managerComments || [];
   const evaluationStatus = displayResults?.status || "En cours";
@@ -103,9 +128,9 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
       subtitle: evaluationStatus === "Soumis aux Managers" ? "En attente de retour manager" : "Calcul provisoire",
     },
     {
-      title: "Comparaison équipe",
-      value: comparaisonEquipeLabel,
-      subtitle: comparaisonEquipeSubtitle,
+      title: "Moyenne du département",
+      value: moyenneDepartementLabel,
+      subtitle: moyenneDepartementSubtitle,
     },
   ];
 
@@ -132,11 +157,24 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
         ))}
       </section>
 
-      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1.05fr]">
-        <div className="space-y-4">
-
-          <article className="rounded-md bg-white p-4 shadow-sm">
-            <h3 className="mb-4 text-[14px] font-bold text-[#0F3A63]">Synthèse finale</h3>
+      <section className="space-y-4">
+        <div className="flex justify-between">
+          <article className="rounded-md w-[53%] bg-white p-4 shadow-sm">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-[18px] font-bold text-[#0F3A63]">Synthèse finale</h3>
+                <p className="mt-1 text-[12px] font-semibold text-slate-500">
+                  Missions évaluées, score final et destinataires associés au même endroit.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedRecipient({ manager: "__all__", department: "Tous", missions: missionScores })}
+                className="rounded-md bg-[#EAF5DF] px-4 py-2 text-[12px] font-bold text-[#4E8B1B] hover:bg-[#DCECCB]"
+              >
+                Voir les destinataires ({managerRecipients.length})
+              </button>
+            </div>
             <div className="space-y-4">
               {missionScores.map((item) => (
                 <div key={item.id}>
@@ -154,7 +192,7 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
               ))}
               <div>
                 <div className="mb-1 flex items-center justify-between text-[13px] font-bold text-[#0F3A63]">
-                  <p>Score final moyen</p>
+                  <p className="text-[20px]">Score final moyen</p>
                   <span className="text-[#76B82A]">{formatScore(scoreFinal)} / 5</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-300">
@@ -167,7 +205,7 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
             </div>
           </article>
 
-          <article className="rounded-md bg-white p-4 shadow-sm">
+          <article className="rounded-md w-[45%] bg-white p-4 shadow-sm">
             <h3 className="mb-3 text-[22px] font-bold leading-tight text-[#0F3A63]">Commentaire du Manager</h3>
             <div className="space-y-3">
               {managerComments.length ? (
@@ -183,45 +221,14 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
               ) : (
                 <div className="rounded-md bg-slate-100 p-4">
                   <p className="text-[12px] text-slate-600">
-                    Les commentaires du ou des managers apparaitront ici lorsqu'ils seront disponibles après le circuit de validation.
+                    Les commentaires du ou des managers apparaîtront ici lorsqu'ils seront disponibles après le circuit de validation.
                   </p>
                 </div>
               )}
             </div>
           </article>
+
         </div>
-
-        <div className="space-y-4">
-          <article className="rounded-md bg-white p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-[24px] font-bold leading-tight text-[#0F3A63]">Suivi managers</h3>
-              <span className="rounded-md bg-[#DCECCB] px-2 py-0.5 text-[11px] font-bold text-[#76B82A]">
-                {evaluationStatus === "Soumis aux Managers" ? "Transmise" : "En preparation"}
-              </span>
-            </div>
-
-            <div className="rounded-md bg-slate-100 p-3">
-              <p className="text-[18px] font-bold text-[#0F3A63]">Evaluations par mission soumises aux managers</p>
-              <p className="mt-1 text-[12px] font-semibold text-[#76B82A]">
-                Chaque manager reçoit les missions de son département.
-              </p>
-            </div>
-
-            <div className="mt-3 space-y-2">
-              {managerRecipients.length ? (
-                managerRecipients.map((recipient) => (
-                  <div key={`${recipient.department}-${recipient.manager}`} className="rounded-sm border-l-4 border-[#76B82A] bg-[#EAF5DF] px-3 py-2">
-                    <p className="text-[12px] font-bold text-[#0F3A63]">{recipient.manager}</p>
-                    <p className="mt-1 text-[10px] text-slate-500">{recipient.department}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="rounded-sm bg-slate-100 px-3 py-2 text-[12px] font-semibold text-slate-500">
-                  Aucun manager destinataire tant qu'aucune mission n'est ajoutée.
-                </p>
-              )}
-            </div>
-          </article>
 
           <button
             onClick={() => {
@@ -235,8 +242,71 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
           {reportDownloaded ? (
             <p className="text-center text-[11px] font-semibold text-[#76B82A]">Rapport lancé pour impression.</p>
           ) : null}
-        </div>
       </section>
+
+      {selectedRecipient ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 py-6">
+          <div className="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-bold uppercase text-[#76B82A]">Destinataires</p>
+                <h3 className="mt-1 text-[20px] font-black text-[#0F3A63]">
+                  Managers et associés destinataires
+                </h3>
+                <p className="mt-1 text-[12px] font-semibold text-slate-500">
+                  Chaque destinataire est rattaché aux missions qui lui ont été transmises.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedRecipient(null)}
+                className="rounded-full bg-slate-100 px-3 py-1 text-[13px] font-black text-[#0F3A63]"
+                aria-label="Fermer"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {managerRecipients.length ? (
+                managerRecipients.map((recipient) => (
+                  <article key={`${recipient.department}-${recipient.manager}`} className="rounded-lg border border-slate-200 bg-[#F8FAFC] p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[13px] font-black text-[#0F3A63]">{recipient.manager}</p>
+                        <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                          {[recipient.grade, recipient.department].filter(Boolean).join(" - ")}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-[#EAF5DF] px-3 py-1 text-[11px] font-bold text-[#4E8B1B]">
+                        {recipient.missions.length} mission(s)
+                      </span>
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                      {recipient.missions.map((mission) => (
+                        <div key={`${recipient.manager}-${mission.id}`} className="rounded-md bg-white px-3 py-2">
+                          <div className="flex items-center justify-between gap-3 text-[12px] font-bold text-[#0F3A63]">
+                            <span>{mission.title}</span>
+                            <span>{typeof mission.score === "number" ? `${formatScore(mission.score)}/5` : "--"}</span>
+                          </div>
+                          <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                            {mission.period} - {mission.department}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <p className="rounded-lg bg-slate-100 p-4 text-[12px] font-semibold text-slate-500">
+                  Aucun destinataire tant qu'aucune mission n'est ajoutée.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

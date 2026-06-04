@@ -917,10 +917,10 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
   const recipientIds = Array.isArray(rhUserIds) ? rhUserIds.filter(Boolean) : [rhUserIds].filter(Boolean);
   const instances = await EvaluationInstance.find({
     cycle_label: CURRENT_CYCLE_LABEL,
-    template_type: 'rh-assistant-self-evaluation',
+    template_type: { $in: ['rh-assistant-self-evaluation', 'assistant-self-evaluation', 'senior-self-evaluation'] },
     submitted_to_user_ids: { $in: recipientIds },
   }).select(
-    'evalue_id status submitted_at sections rh_validation_selected rh_validation_selected_at rh_validated_at'
+    'evalue_id template_type status submitted_at sections mission_evaluations peer_review_sections peer_review_comment peer_review_comment_by_name peer_review_comment_saved_at rh_validation_selected rh_validation_selected_at rh_validated_at'
   );
 
   const userIds = instances.map((instance) => instance.evalue_id).filter(Boolean);
@@ -943,7 +943,9 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
     const assistantUser = userById.get(String(instance.evalue_id));
     const review = reviewByMemberId.get(String(instance.evalue_id));
     const sections = normalizeSections(instance.sections || []);
-    const reviewSections = normalizeSections(review?.sections || []);
+    const reviewSections = normalizeSections(review?.sections || instance.peer_review_sections || []);
+    const reviewerName = review?.manager_id ? 'RH' : instance.peer_review_comment_by_name || 'Associé';
+    const reviewerGrade = review?.manager_id ? 'RH' : 'Associé';
     const selfScore = getOverallAverageScore(sections);
     const managerScore = getOverallAverageScore(reviewSections);
     const selfEvaluationBreakdown = buildSectionBreakdown(
@@ -955,10 +957,10 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
     );
     const managerEvaluationBreakdown = buildSectionBreakdown(
       reviewSections,
-      'Manager',
-      'RH',
-      'RH',
-      review?.submitted_at || null
+      reviewerGrade,
+      reviewerName,
+      reviewerGrade,
+      review?.submitted_at || instance.peer_review_comment_saved_at || null
     );
     const missionScoreDetails = [];
     const globalScoreDetails = [];
@@ -1026,12 +1028,18 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
     return {
       id: `assistant-rh:${instance._id.toString()}`,
       rawId: instance._id.toString(),
-      sourceType: 'assistant-rh-self-evaluation',
+      sourceType:
+        instance.template_type === 'rh-assistant-self-evaluation'
+          ? 'assistant-rh-self-evaluation'
+          : 'associate-direct-self-evaluation',
       memberId: assistantUser?._id?.toString?.() || '',
       name: assistantUser?.name || 'Assistante RH',
       role: assistantUser?.grade || 'Assistante RH',
       department: assistantUser?.department || 'CAPITAL HUMAIN',
-      managerName: 'Auto-evaluation Assistante RH',
+      managerName:
+        instance.template_type === 'rh-assistant-self-evaluation'
+          ? 'Auto-evaluation Assistante RH'
+          : `Évaluation directe ${reviewerGrade}`,
       selfScore,
       scoreGlobal,
       scoreGlobalCount,
@@ -1049,7 +1057,7 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
       displayStatus: getAssistantRhDisplayStatus({ status: effectiveStatus, rh_validation_selected: rhValidationSelected }),
       rhValidationSelected: Boolean(rhValidationSelected),
       sectionSummaries: getReviewSectionSummaries(reviewSections.length ? reviewSections : sections),
-      commentSummary: getReviewCommentSummary(reviewSections.length ? reviewSections : sections, 'RH'),
+      commentSummary: getReviewCommentSummary(reviewSections.length ? reviewSections : sections, reviewerGrade),
       gap: null,
       evaluationTrail: [selfEvaluationBreakdown, managerEvaluationBreakdown].filter(
         (item) => item.sectionScores.length || item.sectionComments.length || typeof item.overallScore === 'number'
@@ -1311,7 +1319,7 @@ async function validateRhSelection(request, response) {
   const assistantInstances = await EvaluationInstance.find({
     _id: { $in: assistantReviewIds },
     cycle_label: CURRENT_CYCLE_LABEL,
-    template_type: 'rh-assistant-self-evaluation',
+    template_type: { $in: ['rh-assistant-self-evaluation', 'assistant-self-evaluation', 'senior-self-evaluation'] },
     submitted_to_user_ids: { $in: rhUserIds },
   });
   const assistantReviewMemberIds = assistantInstances.map((instance) => instance.evalue_id).filter(Boolean);

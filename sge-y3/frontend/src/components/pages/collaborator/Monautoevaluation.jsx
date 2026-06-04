@@ -352,7 +352,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   const recipientOptions = departmentRecipients.flatMap((item) =>
     (item.users || []).map((recipient) => ({
       ...recipient,
-      department: item.department,
+      department: recipient.department || item.department,
     }))
   );
   const evaluatorRecipientOptions = useMemo(
@@ -631,7 +631,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     });
     if (!savedResponse) return;
 
-    setScopedFeedback("addMission", "success", "Mission ajoutée et enregistrée. Elle restera disponible même si vous quittez la page.");
+    setScopedFeedback("addMission", "success", "Mission ajoutée et enregistrée.");
   }
 
   function updateMissionScore(criterionId, score) {
