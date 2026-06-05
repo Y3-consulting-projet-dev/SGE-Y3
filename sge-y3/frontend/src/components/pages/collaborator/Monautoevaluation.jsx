@@ -29,6 +29,22 @@ function isManagerOrSeniorManagerRecipient(recipient) {
   return category === "10B" || category === "10C";
 }
 
+function isSeniorOrManagerFeedbackTarget(recipient) {
+  const category = String(recipient?.code_categorie || "").trim().toUpperCase();
+  const grade = normalizeDepartment(recipient?.grade || "");
+
+  return (
+    category === "9A" ||
+    category === "9B" ||
+    category === "10B" ||
+    category === "10C" ||
+    grade === "SENIOR" ||
+    grade === "ASSISTANT MANAGER" ||
+    grade === "MANAGER" ||
+    grade === "SENIOR MANAGER"
+  );
+}
+
 function getMissionEvaluatingRecipients(mission) {
   return (mission?.recipients || []).filter((recipient) => recipient?.canEvaluate !== false && recipient?.can_evaluate !== false);
 }
@@ -372,6 +388,8 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   const [missionEndDate, setMissionEndDate] = useState("");
   const [selectedRecipientValue, setSelectedRecipientValue] = useState("");
   const [selectedRecipientValues, setSelectedRecipientValues] = useState([]);
+  const [anonymousTargetValue, setAnonymousTargetValue] = useState("");
+  const [anonymousFeedback, setAnonymousFeedback] = useState(() => evaluationData?.anonymous_feedback || []);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addMissionFeedback, setAddMissionFeedback] = useState(null);
@@ -416,6 +434,15 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     () => getDepartmentAwareInformationalRecipients(informationalRecipientOptions, selectedEvaluatorRecipients),
     [informationalRecipientOptions, selectedEvaluatorRecipients]
   );
+  const anonymousTargetOptions = useMemo(() => {
+    const options = recipientOptions.filter(isSeniorOrManagerFeedbackTarget);
+
+    return options.filter(
+      (recipient, index, list) =>
+        recipient.name &&
+        list.findIndex((item) => getRecipientOptionValue(item) === getRecipientOptionValue(recipient)) === index
+    );
+  }, [recipientOptions]);
   const selectedRecipientsSummary = useMemo(() => {
     const recipients = missionEvaluations.flatMap((item) =>
       getMissionEvaluatingRecipients(item).map((recipient) => ({
@@ -450,6 +477,41 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   function removeSelectedRecipient(value) {
     setSelectedRecipientValues((current) => current.filter((item) => item !== value));
     clearScopedFeedback("addMission");
+  }
+
+  function addAnonymousFeedbackTarget() {
+    const recipient = anonymousTargetOptions.find((item) => getRecipientOptionValue(item) === anonymousTargetValue);
+    if (!recipient) return;
+
+    const targetUserId = recipient.id;
+    setAnonymousFeedback((current) =>
+      current.some((item) => String(item.targetUserId || "") === String(targetUserId))
+        ? current
+        : [
+            ...current,
+            {
+              targetUserId,
+              targetName: recipient.name,
+              targetGrade: recipient.grade,
+              targetDepartment: recipient.department,
+              comment: "",
+            },
+          ]
+    );
+    setAnonymousTargetValue("");
+    clearScopedFeedback("final");
+  }
+
+  function updateAnonymousFeedbackComment(targetUserId, comment) {
+    setAnonymousFeedback((current) =>
+      current.map((item) => (String(item.targetUserId || "") === String(targetUserId) ? { ...item, comment } : item))
+    );
+    clearScopedFeedback("final");
+  }
+
+  function removeAnonymousFeedbackTarget(targetUserId) {
+    setAnonymousFeedback((current) => current.filter((item) => String(item.targetUserId || "") !== String(targetUserId)));
+    clearScopedFeedback("final");
   }
 
   useEffect(() => {
@@ -526,6 +588,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     try {
       const response = await saveMyAssistantEvaluation({
         missionEvaluations: nextMissionEvaluations,
+        anonymousFeedback,
       });
       dirtyMissionRef.current = false;
       skipAutoSaveRef.current = true;
@@ -768,6 +831,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
           manager: recipient.name,
         })),
         missionEvaluations,
+        anonymousFeedback,
       });
       setScopedFeedback("final", "success", submittedResponse.message || "Évaluations par mission soumises aux managers.");
       onEvaluationChange?.(submittedResponse);
@@ -1213,6 +1277,84 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                   <p className="text-[11px] font-semibold text-slate-500">Statut</p>
                   <p className="mt-1 text-sm font-black text-[#0F3A63]">{evaluationData?.evaluation?.status || "En cours"}</p>
                 </div>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-md border border-[#D9E3EE] bg-[#F8FAFC] p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-bold text-[#0F3A63]">Commentaires anonymes d'amélioration</h4>
+                  <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                    Ces commentaires ne sont pas pris en compte dans les moyennes. Ils servent uniquement à aider les seniors et managers à progresser.
+                  </p>
+                </div>
+                <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold text-[#0F4A72]">
+                  Anonyme
+                </span>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <select
+                  value={anonymousTargetValue}
+                  onChange={(event) => setAnonymousTargetValue(event.target.value)}
+                  className="h-10 w-full rounded-md border border-[#D9E3EE] bg-white px-3 text-sm font-semibold text-[#0F3A63] outline-none"
+                >
+                  <option value="">Sélectionner un senior ou manager</option>
+                  {anonymousTargetOptions.map((recipient) => {
+                    const value = getRecipientOptionValue(recipient);
+                    const isAlreadySelected = anonymousFeedback.some((item) => String(item.targetUserId || "") === String(recipient.id));
+
+                    return (
+                      <option key={value} value={value} disabled={isAlreadySelected}>
+                        {recipient.department} - {getRecipientLabel(recipient)}
+                        {isAlreadySelected ? " - déjà ajouté" : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+                <button
+                  type="button"
+                  onClick={addAnonymousFeedbackTarget}
+                  disabled={!anonymousTargetValue}
+                  className="h-10 rounded-md bg-[#0B4C7A] px-4 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Ajouter
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {anonymousFeedback.length ? (
+                  anonymousFeedback.map((item) => (
+                    <div key={item.targetUserId || item.targetName} className="rounded-md bg-white p-3">
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[12px] font-bold text-[#0F3A63]">{item.targetName}</p>
+                          <p className="text-[11px] font-semibold text-slate-500">
+                            {item.targetDepartment} - {item.targetGrade}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeAnonymousFeedbackTarget(item.targetUserId)}
+                          className="rounded-md bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-500"
+                        >
+                          Retirer
+                        </button>
+                      </div>
+                      <textarea
+                        rows={4}
+                        value={item.comment || ""}
+                        onChange={(event) => updateAnonymousFeedbackComment(item.targetUserId, event.target.value)}
+                        placeholder="Commentaire final anonyme pour aider cette personne à s'améliorer..."
+                        className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <p className="rounded-md bg-white px-3 py-3 text-[12px] font-semibold text-slate-500">
+                    Aucun commentaire anonyme ajouté pour le moment.
+                  </p>
+                )}
               </div>
             </div>
 

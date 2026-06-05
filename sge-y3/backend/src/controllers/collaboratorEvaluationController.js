@@ -379,6 +379,30 @@ function formatMissionEvaluations(missionEvaluations = []) {
   }));
 }
 
+function normalizeAnonymousFeedback(feedbackItems = []) {
+  return feedbackItems
+    .map((item) => ({
+      target_user_id: item.target_user_id || item.targetUserId || item.id || null,
+      target_name: String(item.target_name || item.targetName || item.name || '').trim(),
+      target_grade: String(item.target_grade || item.targetGrade || item.grade || '').trim(),
+      target_department: String(item.target_department || item.targetDepartment || item.department || '').trim(),
+      comment: String(item.comment || '').trim(),
+      submitted_at: item.submitted_at || item.submittedAt || null,
+    }))
+    .filter((item) => item.target_name && item.comment);
+}
+
+function formatAnonymousFeedback(feedbackItems = []) {
+  return normalizeAnonymousFeedback(feedbackItems).map((item) => ({
+    targetUserId: item.target_user_id ? String(item.target_user_id) : '',
+    targetName: item.target_name,
+    targetGrade: item.target_grade,
+    targetDepartment: item.target_department,
+    comment: item.comment,
+    submittedAt: item.submitted_at || null,
+  }));
+}
+
 function validateMissionEvaluations(missionEvaluations = []) {
   for (const mission of missionEvaluations) {
     for (const criterion of mission.criteria || []) {
@@ -613,6 +637,7 @@ async function buildEvaluationPayload(instance, user) {
       submitted_to_managers: instance.submitted_to_managers || [],
     },
     mission_evaluations: missionEvaluations,
+    anonymous_feedback: formatAnonymousFeedback(instance.anonymous_feedback || []),
   };
 }
 
@@ -712,6 +737,7 @@ async function saveMySeniorEvaluation(request, response) {
 async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
   const rawSections = Array.isArray(request.body?.sections) ? request.body.sections : null;
   const rawMissionEvaluations = Array.isArray(request.body?.missionEvaluations) ? request.body.missionEvaluations : null;
+  const rawAnonymousFeedback = Array.isArray(request.body?.anonymousFeedback) ? request.body.anonymousFeedback : null;
   const instance = await getOrCreateEvaluation(request.user);
   const isAssistantEvaluation = instance.template_type === 'assistant-self-evaluation';
   const isSeniorEvaluation = instance.template_type === 'senior-self-evaluation';
@@ -823,6 +849,7 @@ async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
   await persistEvaluationInstance(instance, {
     ...(rawSections?.length || !isMissionOnlySelfEvaluation ? { sections: toPersistenceSections(sections) } : {}),
     ...(missionEvaluations ? { mission_evaluations: missionEvaluations } : {}),
+    ...(rawAnonymousFeedback ? { anonymous_feedback: normalizeAnonymousFeedback(rawAnonymousFeedback) } : {}),
     status: summary.globalProgress === 0 ? 'Brouillon' : 'En cours',
     last_saved_at: new Date(),
   });
@@ -907,6 +934,12 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
   const isAssistantEvaluation = instance.template_type === 'assistant-self-evaluation';
   const isSeniorEvaluation = instance.template_type === 'senior-self-evaluation';
   const isMissionOnlySelfEvaluation = isAssistantEvaluation || isSeniorEvaluation;
+  const submittedAnonymousFeedback = Array.isArray(request.body?.anonymousFeedback)
+    ? normalizeAnonymousFeedback(request.body.anonymousFeedback).map((item) => ({
+        ...item,
+        submitted_at: item.submitted_at || new Date(),
+      }))
+    : null;
   const managerRecipients =
     allowExplicitRecipients && Array.isArray(request.body?.managerRecipients)
       ? request.body.managerRecipients
@@ -976,6 +1009,7 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
       submitted_to_managers: mergedMissionRecipients,
       submitted_to_user_ids: resolvedManagers.map((manager) => manager._id),
       submitted_to_names: mergedMissionRecipients.map((recipient) => recipient.manager),
+      ...(submittedAnonymousFeedback ? { anonymous_feedback: submittedAnonymousFeedback } : {}),
       submitted_at: new Date(),
       last_saved_at: new Date(),
     });

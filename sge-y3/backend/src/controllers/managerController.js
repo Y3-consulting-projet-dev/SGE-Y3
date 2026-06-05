@@ -302,7 +302,7 @@ async function getSelfEvaluationInstanceForMember(member) {
     evalue_id: member._id,
     cycle_label: CURRENT_CYCLE_LABEL,
     template_type: getExpectedTemplateType(member),
-  }).select('status submitted_at sections submitted_to_user_ids mission_evaluations');
+  }).select('status submitted_at sections submitted_to_user_ids mission_evaluations anonymous_feedback');
 }
 
 function buildSelfEvaluationPayload(instance) {
@@ -328,7 +328,28 @@ function buildSelfEvaluationPayload(instance) {
       })),
     titleJustifications: getPageJustifications(sections),
     missionEvaluations,
+    anonymous_feedback: instance?.anonymous_feedback || [],
   };
+}
+
+function formatAnonymousFeedbackForUser(feedbackItems = [], targetUser) {
+  const targetId = String(targetUser?._id || '');
+  const targetName = normalizeText(targetUser?.name || '');
+
+  return (feedbackItems || [])
+    .filter((item) => {
+      const itemTargetId = String(item?.target_user_id || '');
+      const itemTargetName = normalizeText(item?.target_name || '');
+      return (targetId && itemTargetId === targetId) || (targetName && itemTargetName === targetName);
+    })
+    .map((item) => ({
+      targetName: item.target_name || targetUser?.name || '',
+      targetGrade: item.target_grade || targetUser?.grade || '',
+      targetDepartment: item.target_department || targetUser?.department || '',
+      comment: item.comment || '',
+      submittedAt: item.submitted_at || null,
+    }))
+    .filter((item) => String(item.comment || '').trim());
 }
 
 async function getOrCreateManagerSelfEvaluation(user) {
@@ -877,6 +898,7 @@ async function getOrCreateManagerMemberReview(managerUser, member) {
 function buildManagerReviewPayload(review, managerUser, member, selfEvaluation, rhRecipients = [], missionAndScoreData = {}) {
   const sections = normalizeSections(review.sections);
   const activeSection = sections.find((section) => section.status !== 'Complete') || sections[0] || null;
+  const { anonymous_feedback: anonymousFeedbackSource = [], ...publicSelfEvaluation } = selfEvaluation || {};
 
   return {
     review: {
@@ -910,7 +932,10 @@ function buildManagerReviewPayload(review, managerUser, member, selfEvaluation, 
     review_context: {
       evaluationDepartment: review.member_department || member.department,
     },
-    self_evaluation: selfEvaluation,
+    self_evaluation: {
+      ...publicSelfEvaluation,
+      anonymousFeedback: formatAnonymousFeedbackForUser(anonymousFeedbackSource, managerUser),
+    },
     received_global_scores: missionAndScoreData.globalScores || [],
     submitted_missions: missionAndScoreData.missions || [],
     mission_reviews: formatMissionReviews(review.mission_reviews || []),

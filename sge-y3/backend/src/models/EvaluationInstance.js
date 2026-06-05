@@ -110,6 +110,18 @@ const missionEvaluationSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const anonymousFeedbackSchema = new mongoose.Schema(
+  {
+    target_user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    target_name: { type: String, default: '', trim: true },
+    target_grade: { type: String, default: '', trim: true },
+    target_department: { type: String, default: '', trim: true },
+    comment: { type: String, default: '', trim: true },
+    submitted_at: { type: Date, default: null },
+  },
+  { _id: false }
+);
+
 const evaluationInstanceSchema = new mongoose.Schema(
   {
     cycle_label: { type: String, required: true, trim: true },
@@ -133,6 +145,7 @@ const evaluationInstanceSchema = new mongoose.Schema(
       default: [],
     },
     mission_evaluations: { type: [missionEvaluationSchema], default: [] },
+    anonymous_feedback: { type: [anonymousFeedbackSchema], default: [] },
     sections: { type: [sectionSchema], default: [] },
     rh_validation_selected: { type: Boolean, default: false },
     rh_validation_selected_at: { type: Date, default: null },
