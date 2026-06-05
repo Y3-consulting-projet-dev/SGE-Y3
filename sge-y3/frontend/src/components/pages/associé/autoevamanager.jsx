@@ -15,6 +15,17 @@ function formatScore(score) {
   return typeof score === "number" ? `${score.toFixed(1)}/5` : "--";
 }
 
+function formatCompactScore(score) {
+  return typeof score === "number" ? `${score.toFixed(1)} / 5` : "--";
+}
+
+function formatDisplayDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("fr-FR");
+}
+
 function scoreTone(score) {
   if (typeof score !== "number") return "text-[#0F3A63]";
   if (score >= 4) return "text-[#78B843]";
@@ -79,8 +90,131 @@ function getSectionsForMission(sections = [], missionKey = "", missionsCount = 0
   const keyedSections = sections.filter((section) => String(section.subtitle || "") === String(missionKey));
   if (keyedSections.length) return keyedSections;
 
-  const hasMissionKeys = sections.some((section) => String(section.subtitle || "").trim());
-  return missionsCount <= 1 && !hasMissionKeys ? sections : [];
+  if (missionsCount <= 1) return sections;
+
+  return [];
+}
+
+function buildPagesFromCriteria(section) {
+  const pageMap = new Map();
+
+  (section?.criteria || []).forEach((criterion, index) => {
+    const pageTitle = criterion.pageTitle || criterion.page_title || criterion.label || `Titre ${index + 1}`;
+    const pageKey = `${pageTitle}::${criterion.sourceSheet || criterion.source_sheet || ""}`;
+
+    if (!pageMap.has(pageKey)) {
+      pageMap.set(pageKey, {
+        page_id: criterion.pageId || criterion.page_id || `${section.id || section.section_id || "section"}-${pageMap.size + 1}`,
+        title: pageTitle,
+        source_sheet: criterion.sourceSheet || criterion.source_sheet || "",
+        source_label: criterion.sourceLabel || criterion.source_label || "",
+        comment: criterion.pageComment || criterion.page_comment || "",
+        themes: [],
+      });
+    }
+
+    pageMap.get(pageKey).themes.push({
+      theme_id: criterion.id || criterion.criterion_id || `${pageMap.get(pageKey).page_id}-${index + 1}`,
+      code: criterion.themeCode || criterion.theme_code || `${pageMap.get(pageKey).themes.length + 1}`,
+      label: criterion.label || "",
+      statement: criterion.statement || "",
+      score: typeof criterion.score === "number" ? criterion.score : null,
+      required: criterion.required !== false,
+    });
+  });
+
+  return Array.from(pageMap.values());
+}
+
+function buildBlankSectionsFromMission(mission = {}, missionKey = "", sectionBase = 0) {
+  const sectionMap = new Map();
+
+  (mission.criteria || []).forEach((criterion, index) => {
+    const sectionTitle = criterion.sectionTitle || criterion.section_title || "Mission";
+    const pageTitle = criterion.pageTitle || criterion.page_title || criterion.label || `Titre ${index + 1}`;
+    const sectionKey = String(sectionTitle || "Mission");
+
+    if (!sectionMap.has(sectionKey)) {
+      const sectionId = sectionBase + sectionMap.size + 1;
+      sectionMap.set(sectionKey, {
+        id: sectionId,
+        section_id: sectionId,
+        title: sectionTitle,
+        subtitle: missionKey,
+        status: "En cours",
+        comment: "",
+        pages: new Map(),
+      });
+    }
+
+    const section = sectionMap.get(sectionKey);
+    const pageKey = `${pageTitle}::${criterion.sourceSheet || criterion.source_sheet || ""}`;
+    if (!section.pages.has(pageKey)) {
+      section.pages.set(pageKey, {
+        page_id: `${section.id}-${section.pages.size + 1}`,
+        title: pageTitle,
+        source_sheet: criterion.sourceSheet || criterion.source_sheet || "",
+        source_label: criterion.sourceLabel || criterion.source_label || "",
+        comment: "",
+        themes: [],
+      });
+    }
+
+    const page = section.pages.get(pageKey);
+    page.themes.push({
+      theme_id: `${page.page_id}-${page.themes.length + 1}`,
+      code: criterion.themeCode || criterion.theme_code || `${page.themes.length + 1}`,
+      label: criterion.label || "",
+      statement: criterion.statement || "",
+      score: null,
+      required: true,
+    });
+  });
+
+  return Array.from(sectionMap.values()).map((section) => ({
+    ...section,
+    pages: Array.from(section.pages.values()),
+  }));
+}
+
+function hydrateReceivedSections(sections = [], missions = []) {
+  const firstMissionKey = missions[0] ? getMissionKey(missions[0], 0) : "";
+  const shouldApplySingleMissionKey = missions.length === 1 && firstMissionKey;
+
+  return sections.map((section) => {
+    const pages = section.pages?.length ? section.pages : buildPagesFromCriteria(section);
+
+    return {
+      ...section,
+      subtitle: shouldApplySingleMissionKey ? firstMissionKey : section.subtitle || "",
+      pages,
+    };
+  });
+}
+
+function ensureReceivedSectionsForMissions(sections = [], missions = []) {
+  const nextSections = [...sections];
+
+  missions.forEach((mission, index) => {
+    const missionKey = getMissionKey(mission, index);
+    const hasMissionSections = nextSections.some((section) => String(section.subtitle || "") === String(missionKey));
+
+    if (!hasMissionSections) {
+      nextSections.push(...buildBlankSectionsFromMission(mission, missionKey, (index + 1) * 100));
+    }
+  });
+
+  return nextSections;
+}
+
+function getMissionResultRows(missionResults = [], missionKey = "") {
+  return (
+    missionResults.find(
+      (item) =>
+        String(item.missionId || "").trim() === String(missionKey || "").trim() ||
+        String(item.missionKey || "").trim() === String(missionKey || "").trim()
+    )?.results || []
+  );
 }
 
 function getCandidateSectionComment(mission, sectionTitle = "") {
@@ -217,8 +351,11 @@ function Autoevamanager() {
         const response = await getReceivedAssociateEvaluation(selectedReceivedId);
         if (cancelled) return;
 
-        const nextSections = response.peerReview?.sections || [];
         const nextMissions = response.evaluation?.missions || [];
+        const nextSections = ensureReceivedSectionsForMissions(
+          hydrateReceivedSections(response.peerReview?.sections || [], nextMissions),
+          nextMissions
+        );
         const firstMissionKey = nextMissions[0] ? getMissionKey(nextMissions[0], 0) : "";
         const firstMissionSections = getSectionsForMission(nextSections, firstMissionKey, nextMissions.length);
         setReceivedDetail(response);
@@ -240,6 +377,12 @@ function Autoevamanager() {
       cancelled = true;
     };
   }, [selectedReceivedId]);
+
+  useEffect(() => {
+    if (activeView === "received" && !selectedReceivedId && receivedEvaluations[0]?.id) {
+      setSelectedReceivedId(receivedEvaluations[0].id);
+    }
+  }, [activeView, receivedEvaluations, selectedReceivedId]);
 
   const items = useMemo(() => listData?.items || [], [listData?.items]);
   const selectedManager = items.find((item) => item.id === selectedManagerId) || null;
@@ -265,6 +408,10 @@ function Autoevamanager() {
   const currentReceivedSections = useMemo(
     () => getSectionsForMission(receivedSections, selectedReceivedMissionKey, receivedMissions.length),
     [receivedSections, selectedReceivedMissionKey, receivedMissions.length]
+  );
+  const selectedReceivedMissionResults = useMemo(
+    () => getMissionResultRows(receivedDetail?.evaluation?.missionResults || [], selectedReceivedMissionKey),
+    [receivedDetail?.evaluation?.missionResults, selectedReceivedMissionKey]
   );
   const receivedSection =
     currentReceivedSections.find((section) => String(section.id) === String(receivedSectionId)) ||
@@ -316,7 +463,8 @@ function Autoevamanager() {
   const setReceivedThemeScore = (themeId, score) => {
     setReceivedSections((currentSections) =>
       currentSections.map((section) =>
-        String(section.id) !== String(receivedSection?.id)
+        String(section.id) !== String(receivedSection?.id) ||
+        String(section.subtitle || "") !== String(selectedReceivedMissionKey || "")
           ? section
           : {
               ...section,
@@ -341,7 +489,10 @@ function Autoevamanager() {
   const setReceivedSectionComment = (comment) => {
     setReceivedSections((currentSections) =>
       currentSections.map((section) =>
-        String(section.id) === String(receivedSection?.id) ? { ...section, comment } : section
+        String(section.id) === String(receivedSection?.id) &&
+        String(section.subtitle || "") === String(selectedReceivedMissionKey || "")
+          ? { ...section, comment }
+          : section
       )
     );
     setStatus("");
@@ -386,7 +537,11 @@ function Autoevamanager() {
       const response = await saveReceivedAssociateEvaluationComment(selectedReceivedId, {
         sections: receivedSections,
       });
-      const nextSections = response.peerReview?.sections || [];
+      const responseMissions = response.evaluation?.missions || receivedMissions;
+      const nextSections = ensureReceivedSectionsForMissions(
+        hydrateReceivedSections(response.peerReview?.sections || [], responseMissions),
+        responseMissions
+      );
       setReceivedDetail(response);
       setReceivedSections(nextSections);
       setReceivedEvaluations((current) =>
@@ -464,12 +619,22 @@ function Autoevamanager() {
       const savedResponse = await saveReceivedAssociateEvaluationComment(selectedReceivedId, {
         sections: receivedSections,
       });
-      const savedSections = savedResponse.peerReview?.sections || [];
+      const savedMissions = savedResponse.evaluation?.missions || receivedMissions;
+      const savedSections = ensureReceivedSectionsForMissions(
+        hydrateReceivedSections(savedResponse.peerReview?.sections || [], savedMissions),
+        savedMissions
+      );
       setReceivedDetail(savedResponse);
       setReceivedSections(savedSections);
 
       const response = await submitReceivedAssociateEvaluationToRh(selectedReceivedId);
+      const responseMissions = response.evaluation?.missions || receivedMissions;
+      const responseSections = ensureReceivedSectionsForMissions(
+        hydrateReceivedSections(response.peerReview?.sections || [], responseMissions),
+        responseMissions
+      );
       setReceivedDetail(response);
+      setReceivedSections(responseSections);
       setReceivedEvaluations((current) =>
         current.map((item) =>
           item.id === selectedReceivedId
@@ -837,7 +1002,7 @@ function Autoevamanager() {
                 </select>
               </div>
 
-              {receivedDetail ? (
+              {/* {receivedDetail ? (
                 <div className="rounded-lg border border-[#76B82A] bg-[#EEF6E8] p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -870,7 +1035,7 @@ function Autoevamanager() {
                 <p className="rounded-lg bg-white p-3 text-sm font-semibold text-slate-500">
                   Chargement des missions du collaborateur...
                 </p>
-              )}
+              )} */}
 
               <div>
                 <div className="mb-2 flex items-center justify-between gap-2">
@@ -921,6 +1086,67 @@ function Autoevamanager() {
             </aside>
 
             <article className="rounded-lg border border-slate-200 bg-[#F8FAFC] p-4">
+              {receivedDetail && selectedReceivedMission ? (
+                <>
+                  <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-xl font-black text-[#0F3A63]">{selectedReceivedMission.title || getMissionLabel(selectedReceivedMission)}</h3>
+                      <p className="mt-2 text-sm font-bold text-slate-500">
+                        {selectedReceivedMission.period || "Période non renseignée"} - {selectedReceivedMission.department || receivedDetail.submitter?.department}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 border-t border-slate-200 pt-4">
+                    {selectedReceivedMissionResults.length ? (
+                      selectedReceivedMissionResults.map((result, index) => (
+                        <section key={`${result.evaluatorName}-${index}`} className="rounded-lg bg-white p-4 shadow-sm">
+                          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-3">
+                            <div>
+                              <p className="text-sm font-black text-[#0F3A63]">{result.evaluatorName || "Évaluateur"}</p>
+                              <p className="mt-1 text-xs font-semibold text-slate-500">{result.evaluatorGrade || "Grade non renseigné"}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className={`text-sm font-black ${scoreTone(result.score)}`}>{formatCompactScore(result.score)}</p>
+                              {formatDisplayDate(result.submittedAt) ? (
+                                <p className="mt-1 text-xs font-semibold text-slate-500">{formatDisplayDate(result.submittedAt)}</p>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className="mt-4 space-y-3">
+                            {(result.sectionComments || []).length ? (
+                              result.sectionComments.map((section) => (
+                                <div key={`${result.evaluatorName}-${section.title}`} className="rounded-lg bg-[#F8FAFC] px-4 py-3">
+                                  <p className="text-xs font-black uppercase text-[#0F3A63]">{section.title || "Section"}</p>
+                                  <p className="mt-2 text-sm font-bold leading-6 text-slate-600">
+                                    {section.comment || "Rien à signaler."}
+                                  </p>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="rounded-lg bg-[#F8FAFC] px-4 py-3">
+                                <p className="text-sm font-bold text-slate-600">Aucun commentaire disponible.</p>
+                              </div>
+                            )}
+                          </div>
+                        </section>
+                      ))
+                    ) : (
+                      <p className="rounded-lg bg-white p-4 text-sm font-semibold text-slate-500">
+                        Aucun résultat d'évaluation n'est disponible pour cette mission.
+                      </p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <p className="rounded-lg bg-white p-4 text-sm font-semibold text-slate-500">
+                  Sélectionnez une évaluation reçue pour la traiter.
+                </p>
+              )}
+            </article>
+
+            <article className="rounded-lg border border-slate-200 bg-[#F8FAFC] p-4 xl:col-start-2">
               {receivedDetail && selectedReceivedMission && receivedPage ? (
                 <>
                   <div className="mb-4 flex flex-wrap items-start justify-between gap-3">

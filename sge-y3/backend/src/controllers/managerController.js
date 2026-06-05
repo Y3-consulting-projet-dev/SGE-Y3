@@ -531,6 +531,32 @@ function isEvaluatingRecipientUser(recipient, user) {
   return recipient?.can_evaluate !== false && isRecipientUser(recipient, user);
 }
 
+function isSubmittedMissionForManager(mission = {}, managerUser) {
+  return (
+    mission.status === 'Soumise' &&
+    (mission.recipients || []).some((recipient) => isEvaluatingRecipientUser(recipient, managerUser))
+  );
+}
+
+function isSubmittedManagerMissionReview(missionReview = {}) {
+  const status = normalizeText(missionReview.status || '');
+  return Boolean(
+    missionReview.submitted_at ||
+      status === 'SOUMISE A LA RH' ||
+      status === 'SOUMISE A RH' ||
+      status.includes('SOUMIS') ||
+      status.includes('TRANSMIS')
+  );
+}
+
+function hasSubmittedManagerMissionReview(review = {}, missionId = '') {
+  return (review.mission_reviews || []).some(
+    (missionReview) =>
+      String(missionReview.mission_id || missionReview.id || '').trim() === String(missionId || '').trim() &&
+      isSubmittedManagerMissionReview(missionReview)
+  );
+}
+
 function normalizeMissionReviews(missionReviews = []) {
   return missionReviews.map((mission) => ({
     mission_id: String(mission.id || mission.mission_id || '').trim(),
@@ -721,7 +747,11 @@ async function syncManagerMissionReviews(review, managerUser, selfEvaluationInst
     (mission) => mission.origin === 'manager-assigned' && !submittedMissionIds.has(mission.mission_id)
   );
 
-  review.mission_reviews = [...pendingManagerAssignedReviews, ...persistedSubmittedReviews, ...nextMissionReviews];
+  const visiblePersistedSubmittedReviews = persistedSubmittedReviews.filter(
+    (mission) => mission.origin === 'manager-assigned' || submittedMissionIds.has(mission.mission_id)
+  );
+
+  review.mission_reviews = [...pendingManagerAssignedReviews, ...visiblePersistedSubmittedReviews, ...nextMissionReviews];
   return review;
 }
 
@@ -745,6 +775,16 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
     : [];
   const seniorUserById = new Map(seniorUsers.map((user) => [String(user._id), user]));
   const missionsMap = new Map();
+  const evaluableMissionIds = new Set(
+    (selfEvaluationInstance?.mission_evaluations || [])
+      .filter(
+        (mission) =>
+          mission.status === 'Soumise' &&
+          (mission.recipients || []).some((recipient) => isEvaluatingRecipientUser(recipient, managerUser))
+      )
+      .map((mission) => String(mission.mission_id || mission.id || '').trim())
+      .filter(Boolean)
+  );
   const managerMissionReviewById = new Map(
     normalizeMissionReviews(review?.mission_reviews || []).map((missionReview) => [missionReview.mission_id, missionReview])
   );
@@ -773,6 +813,9 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
       if (missionReview.status !== 'Transmise') {
         continue;
       }
+      if (!evaluableMissionIds.has(String(missionReview.mission_id || missionReview.id || '').trim())) {
+        continue;
+      }
 
       const existingMission = missionsMap.get(missionReview.mission_id) || {
         id: missionReview.mission_id,
@@ -798,10 +841,9 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
   }
 
   for (const mission of selfEvaluationInstance?.mission_evaluations || []) {
-    const missionAlreadyKnownByManager = missionsMap.has(mission.mission_id);
-    const isSubmittedToManager = (mission.recipients || []).some((recipient) => isRecipientUser(recipient, managerUser));
+    const isSubmittedToManager = (mission.recipients || []).some((recipient) => isEvaluatingRecipientUser(recipient, managerUser));
 
-    if (mission.status !== 'Soumise' || (!isSubmittedToManager && !missionAlreadyKnownByManager)) {
+    if (mission.status !== 'Soumise' || !isSubmittedToManager) {
       continue;
     }
 
@@ -1117,12 +1159,12 @@ async function getManagerOverview(request, response) {
           evalue_id: { $in: memberIds },
           cycle_label: CURRENT_CYCLE_LABEL,
           template_type: { $in: ['assistant-self-evaluation', 'senior-self-evaluation'] },
-        }).select('evalue_id template_type status submitted_at submitted_to_user_ids sections'),
+        }).select('evalue_id template_type status submitted_at submitted_to_user_ids sections mission_evaluations'),
         ManagerMemberReview.find({
           cycle_label: CURRENT_CYCLE_LABEL,
           manager_id: request.user._id,
           member_id: { $in: memberIds },
-        }).select('member_id status submitted_at sections'),
+        }).select('member_id status submitted_at sections mission_reviews'),
       ])
     : [[], []];
 
@@ -1153,9 +1195,41 @@ async function getManagerOverview(request, response) {
     );
   });
 
-  const pendingEvaluations = receivedEvaluations.map((member) => {
+  const pendingEvaluations = members.map((member) => {
     const instance = relevantInstancesByMemberId.get(String(member._id));
     const review = managerReviewsByMemberId.get(String(member._id));
+    const hasGlobalSubmission =
+      instance &&
+      (instance.submitted_to_user_ids || []).some((userId) => String(userId) === String(request.user._id)) &&
+      (instance.status === 'Soumis aux Managers' || instance.status === 'Soumis au Manager');
+    const pendingMissions = (instance?.mission_evaluations || []).filter(
+      (mission) =>
+        isSubmittedMissionForManager(mission, request.user) &&
+        !hasSubmittedManagerMissionReview(review, mission.mission_id || mission.id)
+    );
+
+    if (!hasGlobalSubmission && !pendingMissions.length) {
+      return null;
+    }
+
+    if (pendingMissions.length) {
+      const latestMissionSubmittedAt = pendingMissions
+        .map((mission) => mission.submitted_at || mission.submittedAt || null)
+        .filter(Boolean)
+        .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0];
+
+      return {
+        id: member._id.toString(),
+        name: member.name,
+        grade: member.grade,
+        department: member.department,
+        submittedAt: latestMissionSubmittedAt || instance?.submitted_at || null,
+        status: 'Mission à évaluer',
+        templateType: instance?.template_type || getExpectedTemplateType(member),
+        pendingType: 'mission',
+        pendingMissionsCount: pendingMissions.length,
+      };
+    }
 
     if (review?.status === 'Soumis à la RH') {
       return null;

@@ -159,11 +159,6 @@ function buildMissionRecipients(recipients = []) {
   }));
 }
 
-function isManagerOrSeniorManager(recipient = {}) {
-  const normalizedCategory = String(recipient.code_categorie || '').trim().toUpperCase();
-  return normalizedCategory === '10B' || normalizedCategory === '10C';
-}
-
 function resolveMissionRecipientMetadata(recipient = {}, resolvedMissionRecipients = []) {
   const recipientUserId = String(recipient._id || recipient.user_id || recipient.id || '').trim();
   const recipientName = normalizeText(recipient.name || '');
@@ -186,24 +181,12 @@ function resolveMissionRecipientMetadata(recipient = {}, resolvedMissionRecipien
   );
 }
 
-function getSelectedEvaluatorDepartments(selectedRecipients = []) {
-  return Array.from(
-    new Set(
-      selectedRecipients
-        .filter((recipient) => recipient && !isManagerOrSeniorManager(recipient))
-        .map((recipient) => normalizeText(recipient.department || ''))
-        .filter(Boolean)
-    )
-  );
-}
-
 function createAssistantMissionRecipients(selectedRecipients = [], resolvedMissionRecipients = []) {
-  const normalizedSelectedRecipients = selectedRecipients.map((recipient) =>
-    resolveMissionRecipientMetadata(recipient, resolvedMissionRecipients)
-  );
-  const selectedDepartments = getSelectedEvaluatorDepartments(normalizedSelectedRecipients);
+  const normalizedSelectedRecipients = selectedRecipients
+    .filter((recipient) => recipient?.can_evaluate !== false && recipient?.canEvaluate !== false)
+    .map((recipient) => resolveMissionRecipientMetadata(recipient, resolvedMissionRecipients));
   const evaluators = normalizedSelectedRecipients
-    .filter((recipient) => recipient && !isManagerOrSeniorManager(recipient))
+    .filter((recipient) => recipient)
     .map((recipient) => ({
       user_id: recipient._id || recipient.user_id || recipient.id,
       name: recipient.name,
@@ -213,26 +196,7 @@ function createAssistantMissionRecipients(selectedRecipients = [], resolvedMissi
       receives_copy: false,
     }));
 
-  const informedManagers = resolvedMissionRecipients
-    .filter((recipient) => {
-      if (!isManagerOrSeniorManager(recipient)) {
-        return false;
-      }
-
-      if (!selectedDepartments.length) {
-        return true;
-      }
-
-      return selectedDepartments.includes(normalizeText(recipient.department || ''));
-    })
-    .map((recipient) => ({
-      user_id: recipient._id || recipient.user_id || recipient.id,
-      name: recipient.name,
-      grade: recipient.grade,
-      department: recipient.department,
-      can_evaluate: false,
-      receives_copy: true,
-    }));
+  const informedManagers = [];
 
   const seen = new Set();
   const mergedRecipients = [];

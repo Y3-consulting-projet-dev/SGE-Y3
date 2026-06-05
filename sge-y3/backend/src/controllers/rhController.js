@@ -49,6 +49,24 @@ function normalizeText(value = '') {
   return String(value || '').replace(/\s+/g, ' ').trim().toUpperCase();
 }
 
+function normalizeStatusText(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
+function isManagerMissionSubmittedStatus(status = '') {
+  const normalized = normalizeStatusText(status);
+  return (
+    normalized.includes('SOUMISE') ||
+    normalized.includes('SOUMIS') ||
+    normalized.includes('TRANSMIS')
+  );
+}
+
 function buildRhDepartmentClause() {
   return {
     $or: [{ department: RH_DEPARTMENT_REGEX }, { department: CAPITAL_HUMAIN_DEPARTMENT_REGEX }],
@@ -487,6 +505,60 @@ function getAssistantRhDisplayStatus(instance) {
   return 'En attente';
 }
 
+function isRhValidationQueueItem(row = {}) {
+  const status = normalizeStatusText(row.status || '');
+  const displayStatus = normalizeStatusText(row.displayStatus || '');
+
+  if (status.includes('VALIDE') || status.includes('CLOTURE') || status.includes('TRANSMIS')) {
+    return false;
+  }
+
+  return (
+    row.rhValidationSelected ||
+    status.includes('SOUMIS') ||
+    displayStatus.includes('VALIDER RH') ||
+    displayStatus.includes('ARBITRER') ||
+    displayStatus.includes('COMPLETER')
+  );
+}
+
+function getRhRowMemberKey(row = {}) {
+  return String(row.memberId || row.rawId || row.id || '').trim();
+}
+
+function getRhRowPriority(row = {}) {
+  const sourceType = String(row.sourceType || '');
+  const status = normalizeStatusText(row.status || '');
+  const displayStatus = normalizeStatusText(row.displayStatus || '');
+  let priority = 0;
+
+  if (sourceType.includes('self-evaluation')) priority += 100;
+  if (row.rhValidationSelected) priority += 20;
+  if (status.includes('SOUMIS') || displayStatus.includes('VALIDER RH')) priority += 10;
+  if (typeof row.rhValidationFinalScore === 'number') priority += 5;
+  if ((row.missionScoreDetails || []).length) priority += 2;
+
+  return priority;
+}
+
+function dedupeRhRowsByMember(rows = []) {
+  const byMember = new Map();
+
+  rows.forEach((row) => {
+    const key = getRhRowMemberKey(row);
+    if (!key) {
+      return;
+    }
+
+    const current = byMember.get(key);
+    if (!current || getRhRowPriority(row) > getRhRowPriority(current)) {
+      byMember.set(key, row);
+    }
+  });
+
+  return Array.from(byMember.values());
+}
+
 function getMissionAverage(criteria = []) {
   const scores = (criteria || []).map((criterion) => criterion.score).filter((score) => typeof score === 'number');
 
@@ -535,6 +607,282 @@ function buildScoreDetail({
     submittedAt,
     sectionComments,
     titleJustifications,
+  };
+}
+
+function normalizeGradeForWeight(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[Ã‰ÃˆÃŠÃ‹]/g, 'E')
+    .trim()
+    .toUpperCase();
+}
+
+function getMissionRecipientRole(recipient = {}) {
+  const category = String(recipient.code_categorie || '').trim().toUpperCase();
+  const grade = normalizeGradeForWeight(recipient.grade || '');
+
+  if (category === '11' || grade.includes('ASSOCIE')) return 'associate';
+  if (category === '10B' || category === '10C' || grade.includes('MANAGER')) return 'manager';
+  if (category === '9A' || category === '9B' || grade.includes('SENIOR')) return 'senior';
+  return '';
+}
+
+function getEvaluatingMissionRecipients(mission = {}) {
+  return (mission.recipients || []).filter((recipient) => recipient.can_evaluate !== false && recipient.canEvaluate !== false);
+}
+
+function isAssociateDepartmentMission(mission = {}) {
+  return normalizeText(mission.department || mission.primaryRecipientDepartment || '').includes('ASSOCIE');
+}
+
+function getAssistantMissionWeights(mission = {}) {
+  const roles = new Set(getEvaluatingMissionRecipients(mission).map(getMissionRecipientRole).filter(Boolean));
+  if (isAssociateDepartmentMission(mission) && roles.has('associate') && !roles.has('senior')) {
+    roles.delete('manager');
+  }
+
+  const hasSenior = roles.has('senior');
+  const hasManager = roles.has('manager');
+  const hasAssociate = roles.has('associate');
+
+  if (hasSenior && hasManager && hasAssociate) {
+    return { self: 0.15, senior: 0.2, manager: 0.3, associate: 0.35 };
+  }
+
+  if (hasSenior && hasManager) {
+    return { self: 0.2, senior: 0.3, manager: 0.5 };
+  }
+
+  if (hasManager && hasAssociate) {
+    return { self: 0.2, manager: 0.3, associate: 0.5 };
+  }
+
+  if (hasAssociate) {
+    return { self: 0.4, associate: 0.6 };
+  }
+
+  if (hasManager) {
+    return { self: 0.4, manager: 0.6 };
+  }
+
+  return { self: 0.4, manager: 0.6 };
+}
+
+function isSameMissionId(left, right) {
+  return String(left || '').trim() === String(right || '').trim();
+}
+
+function getMissionReviewScoreById(missionReviews = [], missionId, allowedStatuses = []) {
+  const scores = (missionReviews || [])
+    .filter((missionReview) => isSameMissionId(missionReview.mission_id || missionReview.id, missionId))
+    .filter((missionReview) => !allowedStatuses.length || allowedStatuses.includes(missionReview.status))
+    .map((missionReview) => getMissionAverage(missionReview.criteria || []))
+    .filter((score) => typeof score === 'number');
+
+  return getAverageFromScores(scores);
+}
+
+function getAssociateMissionSections(instance = {}, mission = {}) {
+  const peerSections = normalizeSections(instance.peer_review_sections || []);
+  const missionId = String(mission.mission_id || mission.id || '').trim();
+  const missionSections = peerSections.filter((section) => String(section.subtitle || '').trim() === missionId);
+
+  if (missionSections.length) {
+    return missionSections;
+  }
+
+  const submittedAssociateMissions = (instance.mission_evaluations || []).filter(
+    (item) => item.status === 'Soumise' && getEvaluatingMissionRecipients(item).some((recipient) => getMissionRecipientRole(recipient) === 'associate')
+  );
+
+  if (submittedAssociateMissions.length === 1 && isSameMissionId(submittedAssociateMissions[0].mission_id, missionId)) {
+    return peerSections;
+  }
+
+  return [];
+}
+
+function getSectionCommentsFromSections(sections = []) {
+  return normalizeSections(sections)
+    .filter((section) => String(section.comment || '').trim())
+    .map((section) => ({
+      sectionId: section.id || section.title,
+      title: section.title || 'Section',
+      comment: String(section.comment || '').trim(),
+    }));
+}
+
+function getAssociateMissionScore(instance = {}, mission = {}) {
+  const missionSections = getAssociateMissionSections(instance, mission);
+
+  if (missionSections.length) {
+    return getOverallAverageScore(missionSections);
+  }
+
+  return null;
+}
+
+function buildAssistantWeightedMissionScoreDetails({
+  selfEvaluation = {},
+  memberSeniorReviews = [],
+  managerReview = null,
+  fallbackMember = null,
+  fallbackManager = null,
+  userById = new Map(),
+}) {
+  const missionScoreDetails = [];
+  const weightedScores = [];
+
+  (selfEvaluation?.mission_evaluations || []).forEach((mission) => {
+    if (mission.status !== 'Soumise') {
+      return;
+    }
+
+    const missionId = mission.mission_id || mission.id;
+    const selfScore = getMissionAverage(mission.criteria || []);
+    const seniorScores = memberSeniorReviews
+      .map((seniorReview) => {
+        const seniorUser = userById.get(String(seniorReview.senior_id));
+        const selectedSeniorIds = new Set(
+          getEvaluatingMissionRecipients(mission)
+            .filter((recipient) => getMissionRecipientRole(recipient) === 'senior')
+            .map((recipient) => String(recipient.user_id || recipient.id || '').trim())
+            .filter(Boolean)
+        );
+
+        if (selectedSeniorIds.size && !selectedSeniorIds.has(String(seniorReview.senior_id || '').trim())) {
+          return null;
+        }
+
+        const missionReview = (seniorReview.mission_reviews || []).find(
+          (item) => isSameMissionId(item.mission_id || item.id, missionId) && item.status === 'Transmise'
+        );
+        const score = missionReview ? getMissionAverage(missionReview.criteria || []) : null;
+        return typeof score === 'number'
+          ? {
+              score,
+              evaluatorName: seniorUser?.name || 'Senior',
+              evaluatorGrade: seniorUser?.grade || 'Senior',
+              submittedAt:
+                missionReview?.submitted_at || seniorReview.submitted_at || null,
+              sectionComments: getMissionSectionComments(missionReview),
+              titleJustifications: getMissionTitleJustifications(missionReview),
+            }
+          : null;
+      })
+      .filter(Boolean);
+    const seniorScore = getAverageFromScores(seniorScores.map((item) => item.score));
+    const weights = getAssistantMissionWeights(mission);
+    const managerMissionReview = (managerReview?.mission_reviews || []).find(
+      (item) =>
+        isSameMissionId(item.mission_id || item.id, missionId) &&
+        ([
+          'Transmis a l associe',
+          'Transmis à l associé',
+          "Transmis à l'associé",
+          'Soumise a RH',
+          'Soumise à la RH',
+          'Soumise Ã  la RH',
+          'Soumise ÃƒÂ  la RH',
+        ].includes(item.status) || isManagerMissionSubmittedStatus(item.status))
+    );
+    const managerScore = weights.manager ? (managerMissionReview ? getMissionAverage(managerMissionReview.criteria || []) : getMissionReviewScoreById(managerReview?.mission_reviews || [], missionId, [
+      'Transmis a l associe',
+      'Transmis à l associé',
+      "Transmis à l'associé",
+      'Soumise a RH',
+      'Soumise à la RH',
+      'Soumise Ã  la RH',
+      'Soumise ÃƒÂ  la RH',
+    ])) : null;
+    const associateScore = getAssociateMissionScore(selfEvaluation, mission);
+    const associateSections = getAssociateMissionSections(selfEvaluation, mission);
+    const roleScores = {
+      self: selfScore,
+      senior: seniorScore,
+      manager: managerScore,
+      associate: associateScore,
+    };
+    const expectedRoles = Object.keys(weights);
+    const hasAllExpectedScores = expectedRoles.every((role) => typeof roleScores[role] === 'number');
+
+    if (!hasAllExpectedScores) {
+      return;
+    }
+
+    const weightedScore = Number(
+      expectedRoles.reduce((total, role) => total + roleScores[role] * weights[role], 0).toFixed(1)
+    );
+    weightedScores.push(weightedScore);
+
+    const addWeightedDetail = (roleKey, roleLabel, evaluatorName, evaluatorGrade, submittedAt = null, detailSource = null) => {
+      missionScoreDetails.push(
+        buildScoreDetail({
+          source: `${roleLabel} (${Math.round(weights[roleKey] * 100)}%)`,
+          evaluatorName,
+          evaluatorGrade,
+          missionTitle: mission.title,
+          score: roleScores[roleKey],
+          submittedAt,
+          sectionComments: detailSource ? getMissionSectionComments(detailSource) : [],
+          titleJustifications: detailSource ? getMissionTitleJustifications(detailSource) : [],
+        })
+      );
+    };
+
+    addWeightedDetail('self', 'Auto-évaluation', fallbackMember?.name || 'Collaborateur', fallbackMember?.grade || 'Collaborateur', mission.submitted_at || null, mission);
+    if (weights.senior) {
+      seniorScores.forEach((seniorItem) =>
+        missionScoreDetails.push(
+          buildScoreDetail({
+            source: `Senior (${Math.round(weights.senior * 100)}%)`,
+            evaluatorName: seniorItem.evaluatorName,
+            evaluatorGrade: seniorItem.evaluatorGrade,
+            missionTitle: mission.title,
+            score: seniorItem.score,
+            submittedAt: seniorItem.submittedAt,
+            sectionComments: seniorItem.sectionComments || [],
+            titleJustifications: seniorItem.titleJustifications || [],
+          })
+        )
+      );
+    }
+    if (weights.manager) {
+      addWeightedDetail('manager', 'Manager', fallbackManager?.name || 'Manager', fallbackManager?.grade || 'Manager', managerMissionReview?.submitted_at || managerReview?.submitted_at || null, managerMissionReview);
+    }
+    if (weights.associate) {
+      missionScoreDetails.push(
+        buildScoreDetail({
+          source: `Associé (${Math.round(weights.associate * 100)}%)`,
+          evaluatorName: selfEvaluation.peer_review_comment_by_name || 'Associé',
+          evaluatorGrade: 'Associé',
+          missionTitle: mission.title,
+          score: roleScores.associate,
+          submittedAt: selfEvaluation.peer_review_comment_saved_at || null,
+          sectionComments: getSectionCommentsFromSections(associateSections),
+          titleJustifications: getPageJustifications(associateSections),
+        })
+      );
+    }
+    missionScoreDetails.push(
+      buildScoreDetail({
+        source: 'Score final pondere',
+        evaluatorName: 'Mission',
+        evaluatorGrade: 'Synthese',
+        missionTitle: mission.title,
+        score: weightedScore,
+        submittedAt: null,
+      })
+    );
+  });
+
+  return {
+    missionScoreDetails,
+    missionScore: getAverageFromScores(weightedScores),
+    missionScoreTotal: getSumFromScores(weightedScores),
+    missionScoreCount: weightedScores.length,
   };
 }
 
@@ -707,7 +1055,9 @@ async function loadRhReviewDataset(rhUserIds) {
     }));
 
   const selfEvaluations = selfEvaluationQueries.length
-    ? await EvaluationInstance.find({ $or: selfEvaluationQueries }).select('evalue_id sections mission_evaluations submitted_at')
+    ? await EvaluationInstance.find({ $or: selfEvaluationQueries }).select(
+        'evalue_id template_type sections mission_evaluations submitted_at peer_review_sections peer_review_comment_by_name peer_review_comment_saved_at'
+      )
     : [];
   const selfEvaluationByMemberId = new Map(selfEvaluations.map((instance) => [String(instance.evalue_id), instance]));
   const reviewByMemberId = new Map(reviews.map((review) => [String(review.member_id), review]));
@@ -767,6 +1117,17 @@ async function loadRhReviewDataset(rhUserIds) {
     );
     const missionScoreDetails = [];
     const globalScoreDetails = [];
+    const assistantWeightedMissionSummary =
+      selfEvaluation?.template_type === 'assistant-self-evaluation'
+        ? buildAssistantWeightedMissionScoreDetails({
+            selfEvaluation,
+            memberSeniorReviews,
+            managerReview: review,
+            fallbackMember,
+            fallbackManager,
+            userById,
+          })
+        : null;
 
     if (selfEvaluation?.submitted_at && typeof selfScore === 'number') {
       globalScoreDetails.push(
@@ -780,21 +1141,25 @@ async function loadRhReviewDataset(rhUserIds) {
       );
     }
 
-    (selfEvaluation?.mission_evaluations || []).forEach((mission) => {
-      const score = getMissionAverage(mission.criteria || []);
-      if (mission.status === 'Soumise' && typeof score === 'number') {
-        missionScoreDetails.push(
-          buildScoreDetail({
-            source: 'Auto-evaluation',
-            evaluatorName: fallbackMember?.name || 'Collaborateur',
-            evaluatorGrade: fallbackMember?.grade || 'Collaborateur',
-            missionTitle: mission.title,
-            score,
-            submittedAt: mission.submitted_at || null,
-          })
-        );
-      }
-    });
+    if (assistantWeightedMissionSummary) {
+      missionScoreDetails.push(...assistantWeightedMissionSummary.missionScoreDetails);
+    } else {
+      (selfEvaluation?.mission_evaluations || []).forEach((mission) => {
+        const score = getMissionAverage(mission.criteria || []);
+        if (mission.status === 'Soumise' && typeof score === 'number') {
+          missionScoreDetails.push(
+            buildScoreDetail({
+              source: 'Auto-evaluation',
+              evaluatorName: fallbackMember?.name || 'Collaborateur',
+              evaluatorGrade: fallbackMember?.grade || 'Collaborateur',
+              missionTitle: mission.title,
+              score,
+              submittedAt: mission.submitted_at || null,
+            })
+          );
+        }
+      });
+    }
 
     memberSeniorReviews.forEach((seniorReview) => {
       const seniorUser = userById.get(String(seniorReview.senior_id));
@@ -812,23 +1177,25 @@ async function loadRhReviewDataset(rhUserIds) {
         );
       }
 
-      (seniorReview.mission_reviews || []).forEach((missionReview) => {
-        const score = getMissionAverage(missionReview.criteria || []);
-        if (missionReview.status === 'Transmise' && typeof score === 'number') {
-          missionScoreDetails.push(
-            buildScoreDetail({
-              source: 'Senior',
-              evaluatorName: seniorUser?.name || 'Senior',
-              evaluatorGrade: seniorUser?.grade || 'Senior',
-              missionTitle: missionReview.title,
-              score,
-              submittedAt: missionReview.submitted_at || null,
-              sectionComments: getMissionSectionComments(missionReview),
-              titleJustifications: getMissionTitleJustifications(missionReview),
-            })
-          );
-        }
-      });
+      if (selfEvaluation?.template_type !== 'assistant-self-evaluation') {
+        (seniorReview.mission_reviews || []).forEach((missionReview) => {
+          const score = getMissionAverage(missionReview.criteria || []);
+          if (missionReview.status === 'Transmise' && typeof score === 'number') {
+            missionScoreDetails.push(
+              buildScoreDetail({
+                source: 'Senior',
+                evaluatorName: seniorUser?.name || 'Senior',
+                evaluatorGrade: seniorUser?.grade || 'Senior',
+                missionTitle: missionReview.title,
+                score,
+                submittedAt: missionReview.submitted_at || null,
+                sectionComments: getMissionSectionComments(missionReview),
+                titleJustifications: getMissionTitleJustifications(missionReview),
+              })
+            );
+          }
+        });
+      }
     });
 
     if (review?.submitted_at && typeof managerScore === 'number') {
@@ -843,29 +1210,42 @@ async function loadRhReviewDataset(rhUserIds) {
       );
     }
 
-    (review?.mission_reviews || []).forEach((missionReview) => {
-      const score = getMissionAverage(missionReview.criteria || []);
-      if (missionReview.status === 'Soumise a RH' && typeof score === 'number') {
-        missionScoreDetails.push(
-          buildScoreDetail({
-            source: 'Manager',
-            evaluatorName: fallbackManager?.name || 'Manager',
-            evaluatorGrade: fallbackManager?.grade || 'Manager',
-            missionTitle: missionReview.title,
-            score,
-            submittedAt: missionReview.submitted_at || null,
-            sectionComments: getMissionSectionComments(missionReview),
-            titleJustifications: getMissionTitleJustifications(missionReview),
-          })
-        );
-      }
-    });
+    if (selfEvaluation?.template_type !== 'assistant-self-evaluation') {
+      (review?.mission_reviews || []).forEach((missionReview) => {
+        const score = getMissionAverage(missionReview.criteria || []);
+        if (missionReview.status === 'Soumise a RH' && typeof score === 'number') {
+          missionScoreDetails.push(
+            buildScoreDetail({
+              source: 'Manager',
+              evaluatorName: fallbackManager?.name || 'Manager',
+              evaluatorGrade: fallbackManager?.grade || 'Manager',
+              missionTitle: missionReview.title,
+              score,
+              submittedAt: missionReview.submitted_at || null,
+              sectionComments: getMissionSectionComments(missionReview),
+              titleJustifications: getMissionTitleJustifications(missionReview),
+            })
+          );
+        }
+      });
+    }
 
-    const missionScore = getAverageFromDetailRows(missionScoreDetails);
-    const missionScoreCount = missionScoreDetails.length;
+    const missionScore = assistantWeightedMissionSummary
+      ? assistantWeightedMissionSummary.missionScore
+      : getAverageFromDetailRows(missionScoreDetails);
+    const missionScoreCount = assistantWeightedMissionSummary
+      ? assistantWeightedMissionSummary.missionScoreCount
+      : missionScoreDetails.length;
     const scoreGlobal = getAverageFromDetailRows(globalScoreDetails);
     const scoreGlobalCount = globalScoreDetails.length;
-    const finalScore = getAverageFromScores([missionScore, scoreGlobal]);
+    const finalScore =
+      selfEvaluation?.template_type === 'assistant-self-evaluation' && typeof missionScore === 'number'
+        ? missionScore
+        : getAverageFromScores([missionScore, scoreGlobal]);
+    const rhValidationFinalScore =
+      selfEvaluation?.template_type === 'assistant-self-evaluation' && assistantWeightedMissionSummary
+        ? assistantWeightedMissionSummary.missionScore
+        : finalScore;
     const hasSubmittedManagerMission = (review?.mission_reviews || []).some((mission) => mission.status === 'Soumise a RH');
     const effectiveStatus =
       review?.status === 'Soumis a RH' || review?.status === 'Valide RH' || review?.status === 'Transmis a l associe' || review?.status === 'Cloture'
@@ -898,6 +1278,7 @@ async function loadRhReviewDataset(rhUserIds) {
       managerMissionScoreCount: getMissionScoreCount(review?.mission_reviews || [], ['Soumise a RH']),
       managerScore,
       finalScore,
+      rhValidationFinalScore,
       status: effectiveStatus,
       submittedAt: review?.submitted_at || null,
       unjustifiedLowScores,
@@ -937,11 +1318,54 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
       : [],
   ]);
   const userById = new Map(users.map((user) => [String(user._id), user]));
+  const [seniorReviews, missionManagerReviews] = await Promise.all([
+    userIds.length
+      ? SeniorAssistantReview.find({
+          cycle_label: CURRENT_CYCLE_LABEL,
+          assistant_id: { $in: userIds },
+        }).select('assistant_id senior_id submitted_at sections mission_reviews')
+      : [],
+    userIds.length
+      ? ManagerMemberReview.find({
+          cycle_label: CURRENT_CYCLE_LABEL,
+          member_id: { $in: userIds },
+          template_type: { $ne: 'rh-assistant-evaluation' },
+        }).select('member_id manager_id status submitted_at sections mission_reviews')
+      : [],
+  ]);
+  const reviewerIds = [
+    ...seniorReviews.map((review) => review.senior_id).filter(Boolean),
+    ...missionManagerReviews.map((review) => review.manager_id).filter(Boolean),
+  ];
+  const missingReviewerIds = reviewerIds.filter((reviewerId) => reviewerId && !userById.has(String(reviewerId)));
+  const reviewerUsers = missingReviewerIds.length
+    ? await User.find({ _id: { $in: missingReviewerIds } }).select('_id name first_name last_name grade department code_categorie')
+    : [];
+  reviewerUsers.forEach((user) => userById.set(String(user._id), user));
   const reviewByMemberId = new Map(reviews.map((review) => [String(review.member_id), review]));
+  const seniorReviewsByAssistantId = new Map();
+  const managerReviewByMemberId = new Map();
+
+  seniorReviews.forEach((review) => {
+    const key = String(review.assistant_id);
+    const current = seniorReviewsByAssistantId.get(key) || [];
+    current.push(review);
+    seniorReviewsByAssistantId.set(key, current);
+  });
+
+  missionManagerReviews.forEach((review) => {
+    const key = String(review.member_id);
+    if (!managerReviewByMemberId.has(key)) {
+      managerReviewByMemberId.set(key, review);
+    }
+  });
 
   return instances.map((instance) => {
     const assistantUser = userById.get(String(instance.evalue_id));
     const review = reviewByMemberId.get(String(instance.evalue_id));
+    const missionManagerReview = managerReviewByMemberId.get(String(instance.evalue_id));
+    const missionManagerUser = missionManagerReview?.manager_id ? userById.get(String(missionManagerReview.manager_id)) : null;
+    const memberSeniorReviews = seniorReviewsByAssistantId.get(String(instance.evalue_id)) || [];
     const sections = normalizeSections(instance.sections || []);
     const reviewSections = normalizeSections(review?.sections || instance.peer_review_sections || []);
     const reviewerName = review?.manager_id ? 'RH' : instance.peer_review_comment_by_name || 'Associé';
@@ -964,6 +1388,17 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
     );
     const missionScoreDetails = [];
     const globalScoreDetails = [];
+    const assistantWeightedMissionSummary =
+      instance.template_type === 'assistant-self-evaluation'
+        ? buildAssistantWeightedMissionScoreDetails({
+            selfEvaluation: instance,
+            memberSeniorReviews,
+            managerReview: missionManagerReview,
+            fallbackMember: assistantUser,
+            fallbackManager: missionManagerUser,
+            userById,
+          })
+        : null;
 
     if (instance.submitted_at && typeof selfScore === 'number') {
       globalScoreDetails.push(
@@ -977,23 +1412,27 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
       );
     }
 
-    (review?.mission_reviews || []).forEach((missionReview) => {
-      const score = getMissionAverage(missionReview.criteria || []);
-      if (missionReview.status === 'Soumise a RH' && typeof score === 'number') {
-        missionScoreDetails.push(
-          buildScoreDetail({
-            source: 'Manager',
-            evaluatorName: 'RH',
-            evaluatorGrade: 'RH',
-            missionTitle: missionReview.title,
-            score,
-            submittedAt: missionReview.submitted_at || null,
-            sectionComments: getMissionSectionComments(missionReview),
-            titleJustifications: getMissionTitleJustifications(missionReview),
-          })
-        );
-      }
-    });
+    if (assistantWeightedMissionSummary) {
+      missionScoreDetails.push(...assistantWeightedMissionSummary.missionScoreDetails);
+    } else {
+      (review?.mission_reviews || []).forEach((missionReview) => {
+        const score = getMissionAverage(missionReview.criteria || []);
+        if (missionReview.status === 'Soumise a RH' && typeof score === 'number') {
+          missionScoreDetails.push(
+            buildScoreDetail({
+              source: 'Manager',
+              evaluatorName: 'RH',
+              evaluatorGrade: 'RH',
+              missionTitle: missionReview.title,
+              score,
+              submittedAt: missionReview.submitted_at || null,
+              sectionComments: getMissionSectionComments(missionReview),
+              titleJustifications: getMissionTitleJustifications(missionReview),
+            })
+          );
+        }
+      });
+    }
 
     if (review?.submitted_at && typeof managerScore === 'number') {
       globalScoreDetails.push(
@@ -1007,11 +1446,22 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
       );
     }
 
-    const missionScore = getAverageFromDetailRows(missionScoreDetails);
-    const missionScoreCount = missionScoreDetails.length;
+    const missionScore = assistantWeightedMissionSummary
+      ? assistantWeightedMissionSummary.missionScore
+      : getAverageFromDetailRows(missionScoreDetails);
+    const missionScoreCount = assistantWeightedMissionSummary
+      ? assistantWeightedMissionSummary.missionScoreCount
+      : missionScoreDetails.length;
     const scoreGlobal = getAverageFromDetailRows(globalScoreDetails);
     const scoreGlobalCount = globalScoreDetails.length;
-    const finalScore = getAverageFromScores([missionScore, scoreGlobal]);
+    const finalScore =
+      instance.template_type === 'assistant-self-evaluation' && typeof missionScore === 'number'
+        ? missionScore
+        : getAverageFromScores([missionScore, scoreGlobal]);
+    const rhValidationFinalScore =
+      instance.template_type === 'assistant-self-evaluation' && assistantWeightedMissionSummary
+        ? assistantWeightedMissionSummary.missionScore
+        : finalScore;
     const managerMissionScore = getMissionScoreTotal(review?.mission_reviews || [], ['Soumise a RH']);
     const managerMissionScoreCount = getMissionScoreCount(review?.mission_reviews || [], ['Soumise a RH']);
     const reviewHasBeenSubmitted =
@@ -1051,6 +1501,7 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
       managerMissionScoreCount,
       managerScore,
       finalScore,
+      rhValidationFinalScore,
       status: effectiveStatus,
       submittedAt: instance.submitted_at || null,
       unjustifiedLowScores: 0,
@@ -1090,9 +1541,11 @@ function buildDepartmentGroups(rows = []) {
       scoreGlobal: row.scoreGlobal,
       missionScoreDetails: row.missionScoreDetails || [],
       globalScoreDetails: row.globalScoreDetails || [],
+      missionScoreCount: row.missionScoreCount,
       selfScore: row.selfScore,
       managerScore: row.managerScore,
       finalScore: row.finalScore,
+      rhValidationFinalScore: row.rhValidationFinalScore,
       status: row.displayStatus,
       rhValidationSelected: row.rhValidationSelected,
       commentSummary: row.commentSummary,
@@ -1105,7 +1558,9 @@ function buildDepartmentGroups(rows = []) {
   });
 
   const ordered = Array.from(groups.values()).map((group) => {
-    const scores = group.members.map((member) => member.finalScore).filter((score) => typeof score === 'number');
+    const scores = group.members
+      .map((member) => member.rhValidationFinalScore ?? member.finalScore)
+      .filter((score) => typeof score === 'number');
     const average = scores.length ? Number((scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1)) : null;
     return {
       ...group,
@@ -1149,7 +1604,7 @@ async function getRhOverview(request, response) {
     loadAssistantRhSelfDataset(rhUserIds),
   ]);
 
-  const combinedReviewRows = [...reviewRows, ...assistantRhRows];
+  const combinedReviewRows = dedupeRhRowsByMember([...reviewRows, ...assistantRhRows]);
   const receivedCount =
     combinedReviewRows.filter((item) => RH_RELEVANT_STATUSES.includes(item.status)).length +
     managerSelfEvaluations.filter((item) => RH_RELEVANT_STATUSES.includes(item.status)).length;
@@ -1286,7 +1741,7 @@ async function getRhValidations(request, response) {
     loadRhReviewDataset(rhUserIds),
     loadAssistantRhSelfDataset(rhUserIds),
   ]);
-  const items = [...rows, ...assistantRhRows].filter((row) => row.status === 'Soumis a RH');
+  const items = dedupeRhRowsByMember([...rows, ...assistantRhRows].filter(isRhValidationQueueItem));
 
   return response.json({
     cycle_label: CURRENT_CYCLE_LABEL,
@@ -1326,9 +1781,8 @@ async function validateRhSelection(request, response) {
   const assistantReviews = assistantReviewMemberIds.length
     ? await ManagerMemberReview.find({
         cycle_label: CURRENT_CYCLE_LABEL,
-        manager_id: request.user._id,
         member_id: { $in: assistantReviewMemberIds },
-        template_type: 'rh-assistant-evaluation',
+        submitted_to_user_ids: { $in: rhUserIds },
       })
     : [];
 
@@ -1367,7 +1821,7 @@ async function getRhSyntheses(request, response) {
     loadRhReviewDataset(rhUserIds),
     loadAssistantRhSelfDataset(rhUserIds),
   ]);
-  const items = [...rows, ...assistantRhRows].filter((row) => row.status === 'Valide RH' || row.status === 'Cloture');
+  const items = dedupeRhRowsByMember([...rows, ...assistantRhRows]).filter((row) => row.status === 'Valide RH' || row.status === 'Cloture');
 
   return response.json({
     cycle_label: CURRENT_CYCLE_LABEL,
@@ -1382,7 +1836,7 @@ async function submitRhSyntheses(request, response) {
     loadAssistantRhSelfDataset(rhUserIds),
   ]);
 
-  const readyRows = [...rows, ...assistantRhRows].filter((row) => row.status === 'Valide RH' || row.status === 'Cloture');
+  const readyRows = dedupeRhRowsByMember([...rows, ...assistantRhRows]).filter((row) => row.status === 'Valide RH' || row.status === 'Cloture');
 
   if (!readyRows.length) {
     return response.json({
@@ -1393,12 +1847,12 @@ async function submitRhSyntheses(request, response) {
   }
 
   const managerReviewIds = readyRows
-    .filter((row) => row.managerName !== 'RH')
+    .filter((row) => !String(row.id || '').startsWith('assistant-rh:'))
     .map((row) => row.id)
     .filter(Boolean);
   const assistantInstanceIds = readyRows
-    .filter((row) => row.managerName === 'RH')
-    .map((row) => row.id)
+    .filter((row) => String(row.id || '').startsWith('assistant-rh:'))
+    .map((row) => String(row.id || '').replace('assistant-rh:', ''))
     .filter(Boolean);
 
   await Promise.all([
