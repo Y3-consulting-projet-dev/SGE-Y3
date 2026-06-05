@@ -1,4 +1,1464 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+﻿// import { useEffect, useMemo, useRef, useState } from "react";
+// import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+// import {
+//   saveMyAssistantEvaluation,
+//   submitMyAssistantEvaluation,
+//   submitMyAssistantMissionEvaluation,
+// } from "@/lib/collaboratorEvaluation";
+
+// const gradingHelp = [
+//   { level: "1", text: "Insuffisant - objectif non atteint", color: "text-[#FF7A00]" },
+//   { level: "2", text: "En progression - à améliorer", color: "text-[#0F3A63]" },
+//   { level: "3", text: "Satisfaisant - niveau attendu", color: "text-[#0F3A63]" },
+//   { level: "4", text: "Bon - dépasse les attentes", color: "text-[#0F3A63]" },
+//   { level: "5", text: "Excellent - référence dans l'équipe", color: "text-[#76B82A]" },
+// ];
+
+// function getRecipientLabel(recipient) {
+//   if (!recipient?.name) return "";
+//   if (!recipient?.grade) return recipient.name;
+//   return `${recipient.name} (${recipient.grade})`;
+// }
+
+// function getRecipientOptionValue(recipient) {
+//   return `${recipient.department}::${recipient.id}`;
+// }
+
+// function isManagerOrSeniorManagerRecipient(recipient) {
+//   const category = String(recipient?.code_categorie || "").trim().toUpperCase();
+//   return category === "10B" || category === "10C";
+// }
+
+// function isSeniorOrManagerFeedbackTarget(recipient) {
+//   const category = String(recipient?.code_categorie || "").trim().toUpperCase();
+//   const grade = normalizeDepartment(recipient?.grade || "");
+
+//   return (
+//     category === "9A" ||
+//     category === "9B" ||
+//     category === "10B" ||
+//     category === "10C" ||
+//     grade === "SENIOR" ||
+//     grade === "ASSISTANT MANAGER" ||
+//     grade === "MANAGER" ||
+//     grade === "SENIOR MANAGER"
+//   );
+// }
+
+// function getMissionEvaluatingRecipients(mission) {
+//   return (mission?.recipients || []).filter((recipient) => recipient?.canEvaluate !== false && recipient?.can_evaluate !== false);
+// }
+
+// function getMissionInformationalRecipients(mission) {
+//   return (mission?.recipients || []).filter((recipient) => recipient?.canEvaluate === false || recipient?.can_evaluate === false);
+// }
+
+// function getDepartmentAwareInformationalRecipients(allInformationalRecipients = [], selectedRecipients = []) {
+//   const selectedDepartments = Array.from(
+//     new Set(selectedRecipients.map((recipient) => normalizeDepartment(recipient?.department || "")).filter(Boolean))
+//   );
+
+//   if (!selectedDepartments.length) {
+//     return allInformationalRecipients;
+//   }
+
+//   return allInformationalRecipients.filter((recipient) =>
+//     selectedDepartments.includes(normalizeDepartment(recipient?.department || ""))
+//   );
+// }
+
+// function getMissionDepartmentFromSelectedRecipients(selectedRecipients = [], fallbackDepartment = "") {
+//   const selectedDepartments = Array.from(
+//     new Set(selectedRecipients.map((recipient) => normalizeDepartment(recipient?.department || "")).filter(Boolean))
+//   );
+
+//   if (selectedDepartments.includes("AUDIT") && selectedDepartments.includes("EXPERTISE COMPTABLE")) {
+//     return "AUDIT & EXPERTISE COMPTABLE";
+//   }
+
+//   if (selectedDepartments.length === 1) {
+//     return selectedDepartments[0];
+//   }
+
+//   return fallbackDepartment || "";
+// }
+
+// function getSourceBadgeLabel(page) {
+//   if (page?.source_label) return page.source_label;
+//   if (page?.source_sheet === "AUDIT") return "Audit";
+//   if (page?.source_sheet === "EXPERTISE COMPTABLE") return "Expertise comptable";
+//   return "";
+// }
+
+// function normalizeDepartment(value = "") {
+//   return String(value).replace(/\s+/g, " ").trim().toUpperCase();
+// }
+
+// function shouldShowMissionGroupForRecipient(group, recipientDepartment) {
+//   const normalizedRecipientDepartment = normalizeDepartment(recipientDepartment);
+//   const normalizedSourceSheet = normalizeDepartment(group?.sourceSheet || group?.source_sheet);
+
+//   if (!normalizedRecipientDepartment || !normalizedSourceSheet || normalizedSourceSheet === "TRONC COMMUN") {
+//     return true;
+//   }
+
+//   if (normalizedRecipientDepartment === "AUDIT") {
+//     return normalizedSourceSheet === "AUDIT";
+//   }
+
+//   if (normalizedRecipientDepartment === "EXPERTISE COMPTABLE") {
+//     return normalizedSourceSheet === "EXPERTISE COMPTABLE";
+//   }
+
+//   if (normalizedRecipientDepartment === "AUDIT & EXPERTISE COMPTABLE") {
+//     return normalizedSourceSheet === "AUDIT" || normalizedSourceSheet === "EXPERTISE COMPTABLE";
+//   }
+
+//   return true;
+// }
+
+// function getMissionProgress(mission) {
+//   const criteria = mission?.criteria || [];
+//   const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
+
+//   if (!criteria.length) return 0;
+//   return Math.round((answered / criteria.length) * 100);
+// }
+
+// function getMissionAverage(criteria = []) {
+//   const scores = criteria.map((criterion) => criterion.score).filter((score) => typeof score === "number");
+
+//   if (!scores.length) return "--";
+//   return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
+// }
+
+// function formatDisplayDate(value) {
+//   if (!value) return "";
+
+//   const [year, month, day] = String(value).split("-");
+//   if (!year || !month || !day) return value;
+//   return `${day}-${month}-${year}`;
+// }
+
+// function formatMissionPeriodLabel(startDate, endDate) {
+//   const formattedStartDate = formatDisplayDate(startDate);
+//   const formattedEndDate = formatDisplayDate(endDate);
+
+//   if (!formattedStartDate && !formattedEndDate) return "Période non renseignée";
+//   if (formattedStartDate && formattedEndDate) return `Du ${formattedStartDate} au ${formattedEndDate}`;
+//   if (formattedStartDate) return `À partir du ${formattedStartDate}`;
+//   return `Jusqu'au ${formattedEndDate}`;
+// }
+
+// function getMissionFinalScore(missions = []) {
+//   const missionScores = missions
+//     .map((mission) => {
+//       const average = getMissionAverage(mission.criteria || []);
+//       return average === "--" ? null : Number(average);
+//     })
+//     .filter((score) => typeof score === "number");
+
+//   if (!missionScores.length) return "--";
+//   return (missionScores.reduce((total, score) => total + score, 0) / missionScores.length).toFixed(1);
+// }
+
+// function getMissionAssignmentLabel(mission) {
+//   if (mission?.createdByRole === "senior") {
+//     return `Mission ajoutée par ${mission?.assignedByName || "le Senior"}`;
+//   }
+
+//   return "";
+// }
+
+// function getMissionEvaluationDepartment(mission) {
+//   return mission?.department || mission?.primaryRecipientDepartment || mission?.recipients?.[0]?.department || "";
+// }
+
+// function getMissionPrimaryRecipient(mission) {
+//   if (mission?.createdByRole === "senior") {
+//     return mission?.assignedByName || "";
+//   }
+
+//   if (mission?.primaryRecipientName) {
+//     return mission.primaryRecipientName;
+//   }
+
+//   return getMissionEvaluatingRecipients(mission)[0]?.name || mission?.recipients?.[0]?.name || "";
+// }
+
+// function getMissionEvaluatorsLabel(mission) {
+//   const evaluators = getMissionEvaluatingRecipients(mission);
+
+//   if (!evaluators.length) return "";
+//   return evaluators.map((recipient) => recipient.name).filter(Boolean).join(", ");
+// }
+
+// function getMissionValidationLabel(mission) {
+//   const department = getMissionEvaluationDepartment(mission);
+//   const primaryRecipient = getMissionEvaluatorsLabel(mission) || getMissionPrimaryRecipient(mission);
+
+//   if (mission?.createdByRole === "senior") {
+//     return primaryRecipient ? `${department} - Destinataire : ${primaryRecipient}` : department;
+//   }
+
+//   if (!department) {
+//     return primaryRecipient ? `Évaluateur(s) : ${primaryRecipient}` : "Circuit de validation du département";
+//   }
+
+//   return primaryRecipient ? `${department} - Évaluateur(s) : ${primaryRecipient}` : `${department} - Circuit de validation du département`;
+// }
+
+// function isSameMissionId(left, right) {
+//   return String(left ?? "") === String(right ?? "");
+// }
+
+// function buildMissionCriteriaFromSections(sections = [], recipientDepartment = "") {
+//   return sections.flatMap((section) =>
+//     (section.pages || []).flatMap((page) =>
+//       shouldShowMissionGroupForRecipient({ sourceSheet: page.source_sheet || "" }, recipientDepartment)
+//         ? (page.themes || []).map((theme) => ({
+//             id: `${page.page_id}-${theme.theme_id}`,
+//             sectionTitle: section.title,
+//             sectionComment: "",
+//             pageTitle: page.title,
+//             sourceSheet: page.source_sheet || "",
+//             sourceLabel: page.source_label || "",
+//             themeCode: theme.code,
+//             label: theme.label,
+//             statement: theme.statement,
+//             score: null,
+//           }))
+//         : []
+//     )
+//   );
+// }
+
+// function getMissionCriteriaGroups(criteria = []) {
+//   const groups = [];
+//   for (const criterion of criteria) {
+//     const key = `${criterion.sectionTitle}::${criterion.pageTitle}::${criterion.sourceSheet || ""}::${criterion.sourceLabel || ""}`;
+//     const existingGroup = groups.find((group) => group.key === key);
+
+//     if (existingGroup) {
+//       existingGroup.criteria.push(criterion);
+//       continue;
+//     }
+
+//     groups.push({
+//       key,
+//       sectionTitle: criterion.sectionTitle,
+//       pageTitle: criterion.pageTitle,
+//       sourceSheet: criterion.sourceSheet,
+//       sourceLabel: criterion.sourceLabel,
+//       criteria: [criterion],
+//     });
+//   }
+
+//   return groups;
+// }
+
+// function getMissionSections(groups = []) {
+//   const sections = [];
+
+//   for (const group of groups) {
+//     const existingSection = sections.find((section) => section.title === group.sectionTitle);
+
+//     if (existingSection) {
+//       if (!existingSection.comment && group.criteria?.[0]?.sectionComment) {
+//         existingSection.comment = group.criteria[0].sectionComment;
+//       }
+//       existingSection.groups.push(group);
+//       continue;
+//     }
+
+//     sections.push({
+//       id: group.sectionTitle,
+//       title: group.sectionTitle,
+//       comment: group.criteria?.[0]?.sectionComment || "",
+//       groups: [group],
+//     });
+//   }
+
+//   return sections;
+// }
+
+// function getMissionSectionProgress(section) {
+//   const criteria = (section?.groups || []).flatMap((group) => group.criteria || []);
+//   const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
+
+//   if (!criteria.length) return 0;
+//   return Math.round((answered / criteria.length) * 100);
+// }
+
+// function getMissionGroupProgress(group) {
+//   const criteria = group?.criteria || [];
+//   const answered = criteria.filter((criterion) => criterion.score !== null && criterion.score !== undefined).length;
+
+//   if (!criteria.length) return 0;
+//   return Math.round((answered / criteria.length) * 100);
+// }
+
+// function sanitizeMissionEvaluation(mission) {
+//   if (!mission) return mission;
+
+//   const recipientDepartment = getMissionEvaluationDepartment(mission);
+
+//   return {
+//     ...mission,
+//     department: recipientDepartment || mission.department || "",
+//     criteria: (mission.criteria || []).filter((criterion) =>
+//       shouldShowMissionGroupForRecipient(
+//         {
+//           sourceSheet: criterion.sourceSheet || criterion.source_sheet || "",
+//         },
+//         recipientDepartment
+//       )
+//     ),
+//   };
+// }
+
+// function sanitizeMissionEvaluations(missions = []) {
+//   return missions.map(sanitizeMissionEvaluation);
+// }
+
+// function InlineFeedback({ feedback }) {
+//   if (!feedback?.message) return null;
+
+//   return (
+//     <div
+//       className={`rounded-md px-3 py-2 text-xs font-semibold ${
+//         feedback.tone === "error" ? "bg-[#FDEBEC] text-[#B93840]" : "bg-[#DCECCB] text-[#184D2E]"
+//       }`}
+//     >
+//       {feedback.message}
+//     </div>
+//   );
+// }
+
+// function MissionScoreRow({ themeCode, label, statement, selected, onSelect }) {
+//   return (
+//     <div className="rounded-md border border-[#E3EAF3] bg-[#F8FBFF] p-3">
+//       <p className="text-[12px] font-semibold text-[#0F3A63]">
+//         {themeCode ? `${themeCode}. ` : ""}
+//         {label}
+//       </p>
+//       {statement ? <p className="mt-1 text-[11px] leading-5 text-slate-600">{statement}</p> : null}
+//       <div className="mt-2 flex items-center gap-2">
+//         {[1, 2, 3, 4, 5].map((score) => (
+//           <button
+//             key={score}
+//             type="button"
+//             onClick={() => onSelect(score)}
+//             className={`inline-flex h-6 w-8 items-center justify-center rounded text-[12px] font-bold ${
+//               selected === score ? "bg-[#0B4C7A] text-white" : "bg-slate-200 text-slate-500 hover:bg-slate-300"
+//             }`}
+//           >
+//             {score}
+//           </button>
+//         ))}
+//       </div>
+//     </div>
+//   );
+// }
+
+// function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvaluationsChange, onSubmitted }) {
+//   const departmentRecipients = evaluationData?.assignee?.recipient_options || [];
+//   const recipientOptions = departmentRecipients.flatMap((item) =>
+//     (item.users || []).map((recipient) => ({
+//       ...recipient,
+//       department: item.department,
+//     }))
+//   );
+//   const evaluatorRecipientOptions = useMemo(
+//     () => recipientOptions.filter((recipient) => !isManagerOrSeniorManagerRecipient(recipient)),
+//     [recipientOptions]
+//   );
+//   const informationalRecipientOptions = useMemo(
+//     () => recipientOptions.filter((recipient) => isManagerOrSeniorManagerRecipient(recipient)),
+//     [recipientOptions]
+//   );
+//   const sections = useMemo(() => evaluationData?.evaluation?.sections || [], [evaluationData?.evaluation?.sections]);
+//   const [missionEvaluations, setMissionEvaluations] = useState(() => sanitizeMissionEvaluations(evaluationData?.mission_evaluations || []));
+//   const [missionId, setMissionId] = useState(null);
+//   const [missionSectionIds, setMissionSectionIds] = useState({});
+//   const [missionPageIndexes, setMissionPageIndexes] = useState({});
+//   const [missionTitle, setMissionTitle] = useState("");
+//   const [missionStartDate, setMissionStartDate] = useState("");
+//   const [missionEndDate, setMissionEndDate] = useState("");
+//   const [selectedRecipientValue, setSelectedRecipientValue] = useState("");
+//   const [selectedRecipientValues, setSelectedRecipientValues] = useState([]);
+//   const [anonymousTargetValue, setAnonymousTargetValue] = useState("");
+//   const [anonymousFeedback, setAnonymousFeedback] = useState(() => evaluationData?.anonymous_feedback || []);
+//   const [isSaving, setIsSaving] = useState(false);
+//   const [isSubmitting, setIsSubmitting] = useState(false);
+//   const [addMissionFeedback, setAddMissionFeedback] = useState(null);
+//   const [missionFeedback, setMissionFeedback] = useState(null);
+//   const [finalFeedback, setFinalFeedback] = useState(null);
+//   const missionCreationCounterRef = useRef(0);
+//   const skipAutoSaveRef = useRef(true);
+//   const autoSaveTimeoutRef = useRef(null);
+//   const autoSaveRequestRef = useRef(0);
+//   const dirtyMissionRef = useRef(false);
+
+//   const shouldShowSourceLabel = evaluationData?.assignee?.department === "AUDIT & EXPERTISE COMPTABLE";
+//   const effectiveMissionId =
+//     missionEvaluations.some((mission) => isSameMissionId(mission.id, missionId)) ? missionId : missionEvaluations[0]?.id || null;
+//   const mission = missionEvaluations.find((item) => isSameMissionId(item.id, effectiveMissionId)) || null;
+//   const missionProgress = missionEvaluations.length
+//     ? Math.round(missionEvaluations.reduce((total, item) => total + getMissionProgress(item), 0) / missionEvaluations.length)
+//     : 0;
+//   const missionAverage = useMemo(() => getMissionAverage(mission?.criteria), [mission]);
+//   const finalMissionScore = useMemo(() => getMissionFinalScore(missionEvaluations), [missionEvaluations]);
+//   const submittedMissionsCount = missionEvaluations.filter((item) => item.status === "Soumise").length;
+//   const filteredMissionCriteriaGroups = useMemo(() => {
+//     const allGroups = getMissionCriteriaGroups(mission?.criteria || []);
+//     const recipientDepartment = getMissionEvaluationDepartment(mission);
+
+//     return allGroups.filter((group) => shouldShowMissionGroupForRecipient(group, recipientDepartment));
+//   }, [mission]);
+//   const missionSections = useMemo(() => getMissionSections(filteredMissionCriteriaGroups), [filteredMissionCriteriaGroups]);
+//   const missionSectionId = missionSectionIds[effectiveMissionId] || missionSections[0]?.id || "";
+//   const missionSection = missionSections.find((section) => section.id === missionSectionId) || missionSections[0] || null;
+//   const missionSectionIndex = missionSections.findIndex((section) => section.id === missionSection?.id);
+//   const missionPageIndex = Math.min(
+//     missionPageIndexes[effectiveMissionId] || 0,
+//     Math.max((missionSection?.groups?.length || 1) - 1, 0)
+//   );
+//   const missionGroup = missionSection?.groups?.[missionPageIndex] || missionSection?.groups?.[0] || null;
+//   const selectedEvaluatorRecipients = useMemo(
+//     () => evaluatorRecipientOptions.filter((recipient) => selectedRecipientValues.includes(getRecipientOptionValue(recipient))),
+//     [evaluatorRecipientOptions, selectedRecipientValues]
+//   );
+//   const selectedInformationalRecipients = useMemo(
+//     () => getDepartmentAwareInformationalRecipients(informationalRecipientOptions, selectedEvaluatorRecipients),
+//     [informationalRecipientOptions, selectedEvaluatorRecipients]
+//   );
+//   const anonymousTargetOptions = useMemo(() => {
+//     const options = recipientOptions.filter(isSeniorOrManagerFeedbackTarget);
+
+//     return options.filter(
+//       (recipient, index, list) =>
+//         recipient.name &&
+//         list.findIndex((item) => getRecipientOptionValue(item) === getRecipientOptionValue(recipient)) === index
+//     );
+//   }, [recipientOptions]);
+//   const selectedRecipientsSummary = useMemo(() => {
+//     const recipients = missionEvaluations.flatMap((item) =>
+//       getMissionEvaluatingRecipients(item).map((recipient) => ({
+//         department: recipient.department || item.department,
+//         name: recipient.name,
+//         grade: recipient.grade,
+//       }))
+//     );
+
+//     return recipients.filter(
+//       (recipient, index, list) =>
+//         recipient.name &&
+//         list.findIndex(
+//           (item) =>
+//             item.name === recipient.name &&
+//             item.department === recipient.department &&
+//             item.grade === recipient.grade
+//         ) === index
+//     );
+//   }, [missionEvaluations]);
+
+//   function addSelectedRecipient() {
+//     if (!selectedRecipientValue) return;
+
+//     setSelectedRecipientValues((current) =>
+//       current.includes(selectedRecipientValue) ? current : [...current, selectedRecipientValue]
+//     );
+//     setSelectedRecipientValue("");
+//     clearScopedFeedback("addMission");
+//   }
+
+//   function removeSelectedRecipient(value) {
+//     setSelectedRecipientValues((current) => current.filter((item) => item !== value));
+//     clearScopedFeedback("addMission");
+//   }
+
+//   function addAnonymousFeedbackTarget() {
+//     const recipient = anonymousTargetOptions.find((item) => getRecipientOptionValue(item) === anonymousTargetValue);
+//     if (!recipient) return;
+
+//     const targetUserId = recipient.id;
+//     setAnonymousFeedback((current) =>
+//       current.some((item) => String(item.targetUserId || "") === String(targetUserId))
+//         ? current
+//         : [
+//             ...current,
+//             {
+//               targetUserId,
+//               targetName: recipient.name,
+//               targetGrade: recipient.grade,
+//               targetDepartment: recipient.department,
+//               comment: "",
+//             },
+//           ]
+//     );
+//     setAnonymousTargetValue("");
+//     clearScopedFeedback("final");
+//   }
+
+//   function updateAnonymousFeedbackComment(targetUserId, comment) {
+//     setAnonymousFeedback((current) =>
+//       current.map((item) => (String(item.targetUserId || "") === String(targetUserId) ? { ...item, comment } : item))
+//     );
+//     clearScopedFeedback("final");
+//   }
+
+//   function removeAnonymousFeedbackTarget(targetUserId) {
+//     setAnonymousFeedback((current) => current.filter((item) => String(item.targetUserId || "") !== String(targetUserId)));
+//     clearScopedFeedback("final");
+//   }
+
+//   useEffect(() => {
+//     onMissionEvaluationsChange?.(missionEvaluations);
+//   }, [missionEvaluations, onMissionEvaluationsChange]);
+
+//   useEffect(() => {
+//     if (skipAutoSaveRef.current) {
+//       skipAutoSaveRef.current = false;
+//       return undefined;
+//     }
+
+//     if (!missionEvaluations.length) {
+//       return undefined;
+//     }
+
+//     clearTimeout(autoSaveTimeoutRef.current);
+//     autoSaveTimeoutRef.current = setTimeout(() => {
+//       void (async () => {
+//         const requestId = autoSaveRequestRef.current + 1;
+//         autoSaveRequestRef.current = requestId;
+
+//         try {
+//           await saveMyAssistantEvaluation({
+//             missionEvaluations,
+//           });
+//           dirtyMissionRef.current = false;
+//         } catch (error) {
+//           if (autoSaveRequestRef.current === requestId) {
+//             setScopedFeedback("mission", "error", error.message || "Sauvegarde impossible.");
+//           }
+//         }
+//       })();
+//     }, 250);
+
+//     return () => {
+//       clearTimeout(autoSaveTimeoutRef.current);
+//     };
+//   }, [missionEvaluations]);
+
+//   useEffect(() => {
+//     return () => {
+//       clearTimeout(autoSaveTimeoutRef.current);
+
+//       if (dirtyMissionRef.current && missionEvaluations.length) {
+//         void saveMyAssistantEvaluation({
+//           missionEvaluations,
+//         });
+//       }
+//     };
+//   }, [missionEvaluations]);
+
+//   function clearScopedFeedback(scope) {
+//     if (scope === "addMission") setAddMissionFeedback(null);
+//     if (scope === "mission") setMissionFeedback(null);
+//     if (scope === "final") setFinalFeedback(null);
+//   }
+
+//   function setScopedFeedback(scope, tone, message) {
+//     const payload = message ? { tone, message } : null;
+
+//     if (scope === "addMission") setAddMissionFeedback(payload);
+//     if (scope === "mission") setMissionFeedback(payload);
+//     if (scope === "final") setFinalFeedback(payload);
+//   }
+
+//   async function persistMissionEvaluations(
+//     nextMissionEvaluations = missionEvaluations,
+//     { scope = null, showSuccess = true, showError = true } = {}
+//   ) {
+//     clearTimeout(autoSaveTimeoutRef.current);
+//     setIsSaving(true);
+
+//     try {
+//       const response = await saveMyAssistantEvaluation({
+//         missionEvaluations: nextMissionEvaluations,
+//         anonymousFeedback,
+//       });
+//       dirtyMissionRef.current = false;
+//       skipAutoSaveRef.current = true;
+//       setMissionEvaluations(sanitizeMissionEvaluations(response.mission_evaluations || []));
+//       if (scope && showSuccess) {
+//         setScopedFeedback(scope, "success", response.message || "Sauvegarde réussie.");
+//       }
+//       onEvaluationChange?.(response);
+//       return response;
+//     } catch (error) {
+//       if (scope && showError) {
+//         setScopedFeedback(scope, "error", error.message || "Sauvegarde impossible.");
+//       }
+//       return null;
+//     } finally {
+//       setIsSaving(false);
+//     }
+//   }
+
+//   async function addMission() {
+//     const title = missionTitle.trim();
+//     if (!title) {
+//       setScopedFeedback("addMission", "error", "Renseignez le nom de la mission.");
+//       return;
+//     }
+
+//     if (!selectedEvaluatorRecipients.length) {
+//       setScopedFeedback("addMission", "error", "S\u00E9lectionnez au moins un \u00E9valuateur pour cette mission.");
+//       return;
+//     }
+
+//     if (missionStartDate && missionEndDate && missionEndDate < missionStartDate) {
+//       setScopedFeedback("addMission", "error", "La date de fin doit être postérieure ou égale à la date de début.");
+//       return;
+//     }
+
+//     clearScopedFeedback("addMission");
+
+//     const primaryRecipient = selectedEvaluatorRecipients[0];
+//     const missionDepartment = getMissionDepartmentFromSelectedRecipients(
+//       selectedEvaluatorRecipients,
+//       evaluationData?.assignee?.department || ""
+//     );
+//     const evaluatorRecipients = selectedEvaluatorRecipients.map((recipient) => ({
+//       id: recipient.id,
+//       name: recipient.name,
+//       grade: recipient.grade,
+//       department: recipient.department,
+//       canEvaluate: true,
+//       receivesCopy: false,
+//     }));
+//     const informationalRecipients = selectedInformationalRecipients.map((recipient) => ({
+//       id: recipient.id,
+//       name: recipient.name,
+//       grade: recipient.grade,
+//       department: recipient.department,
+//       canEvaluate: false,
+//       receivesCopy: true,
+//     }));
+//     const autoRecipients = [...evaluatorRecipients, ...informationalRecipients];
+
+//     missionCreationCounterRef.current += 1;
+
+//     const nextMission = {
+//       id: `mission-${missionCreationCounterRef.current}-${missionEvaluations.length + 1}`,
+//       title,
+//       period: formatMissionPeriodLabel(missionStartDate, missionEndDate),
+//       department: missionDepartment,
+//       createdByRole: "self",
+//       primaryRecipientUserId: primaryRecipient.id,
+//       primaryRecipientName: primaryRecipient.name,
+//       primaryRecipientGrade: primaryRecipient.grade,
+//       primaryRecipientDepartment: primaryRecipient.department,
+//       recipients: autoRecipients,
+//       criteria: buildMissionCriteriaFromSections(sections, missionDepartment),
+//       comment: "",
+//     };
+
+//     const nextMissionEvaluations = [...missionEvaluations, nextMission];
+
+//     clearTimeout(autoSaveTimeoutRef.current);
+//     skipAutoSaveRef.current = true;
+//     dirtyMissionRef.current = true;
+//     setMissionEvaluations(nextMissionEvaluations);
+//     setMissionId(nextMission.id);
+//     setMissionSectionIds((current) => ({
+//       ...current,
+//       [nextMission.id]: nextMission.criteria[0]?.sectionTitle || "",
+//     }));
+//     setMissionPageIndexes((current) => ({
+//       ...current,
+//       [nextMission.id]: 0,
+//     }));
+//     setMissionTitle("");
+//     setMissionStartDate("");
+//     setMissionEndDate("");
+//     setSelectedRecipientValue("");
+//     setSelectedRecipientValues([]);
+
+//     const savedResponse = await persistMissionEvaluations(nextMissionEvaluations, {
+//       scope: "addMission",
+//     });
+//     if (!savedResponse) return;
+
+//     setScopedFeedback("addMission", "success", "Mission ajoutée et enregistrée. Elle restera disponible même si vous quittez la page.");
+//   }
+
+//   function updateMissionScore(criterionId, score) {
+//     dirtyMissionRef.current = true;
+//     clearScopedFeedback("mission");
+//     clearScopedFeedback("final");
+//     setMissionEvaluations((missions) =>
+//       missions.map((item) =>
+//         !isSameMissionId(item.id, effectiveMissionId)
+//           ? item
+//           : {
+//               ...item,
+//               criteria: item.criteria.map((criterion) => (criterion.id === criterionId ? { ...criterion, score } : criterion)),
+//             }
+//       )
+//     );
+//   }
+
+//   function updateMissionSectionComment(comment) {
+//     dirtyMissionRef.current = true;
+//     clearScopedFeedback("mission");
+//     clearScopedFeedback("final");
+//     setMissionEvaluations((missions) =>
+//       missions.map((item) =>
+//         !isSameMissionId(item.id, effectiveMissionId)
+//           ? item
+//           : {
+//               ...item,
+//               criteria: item.criteria.map((criterion) =>
+//                 criterion.sectionTitle === missionSection?.title ? { ...criterion, sectionComment: comment } : criterion
+//               ),
+//             }
+//       )
+//     );
+//   }
+
+//   function goToMissionStep(direction) {
+//     if (!mission || !missionSection) return;
+
+//     const nextPageIndex = missionPageIndex + direction;
+//     if (nextPageIndex >= 0 && nextPageIndex < (missionSection.groups?.length || 0)) {
+//       setMissionPageIndexes((current) => ({
+//         ...current,
+//         [mission.id]: nextPageIndex,
+//       }));
+//       return;
+//     }
+
+//     const nextSection = missionSections[missionSectionIndex + direction];
+//     if (!nextSection) return;
+
+//     setMissionSectionIds((current) => ({
+//       ...current,
+//       [mission.id]: nextSection.id,
+//     }));
+//     setMissionPageIndexes((current) => ({
+//       ...current,
+//       [mission.id]: direction > 0 ? 0 : Math.max((nextSection.groups?.length || 1) - 1, 0),
+//     }));
+//   }
+
+//   async function handleSubmitMission() {
+//     if (!mission) return;
+//     clearTimeout(autoSaveTimeoutRef.current);
+
+//     const hasIncompleteCriterion = (mission.criteria || []).some(
+//       (criterion) => criterion.score === null || criterion.score === undefined
+//     );
+
+//     if (hasIncompleteCriterion) {
+//       setScopedFeedback("mission", "error", "Toutes les questions de la mission doivent être renseignées avant soumission.");
+//       return;
+//     }
+
+//     const hasSectionWithoutComment = missionSections.some((section) => String(section.comment || "").trim().length < 3);
+//     if (hasSectionWithoutComment) {
+//       setScopedFeedback("mission", "error", "Un commentaire de section d'au moins 3 caractères est obligatoire pour chaque section avant soumission.");
+//       return;
+//     }
+
+//     clearScopedFeedback("mission");
+//     setIsSubmitting(true);
+
+//     try {
+//       const savedResponse = await persistMissionEvaluations(missionEvaluations, {
+//         scope: "mission",
+//         showSuccess: false,
+//       });
+//       if (!savedResponse) return;
+
+//       const response = await submitMyAssistantMissionEvaluation(mission.id);
+//       dirtyMissionRef.current = false;
+//       skipAutoSaveRef.current = true;
+//       setMissionEvaluations(sanitizeMissionEvaluations(response.mission_evaluations || []));
+//       setScopedFeedback("mission", "success", response.message || "Mission soumise.");
+//       onEvaluationChange?.(response);
+//     } catch (error) {
+//       setScopedFeedback("mission", "error", error.message || "Soumission de la mission impossible.");
+//     } finally {
+//       setIsSubmitting(false);
+//     }
+//   }
+
+//   async function handleSubmit() {
+//     clearTimeout(autoSaveTimeoutRef.current);
+//     if (!missionEvaluations.length) {
+//       setScopedFeedback("final", "error", "Ajoutez au moins une mission avant la soumission finale.");
+//       return;
+//     }
+
+//     const hasSectionWithoutComment = missionEvaluations.some((item) =>
+//       getMissionSections(getMissionCriteriaGroups(item.criteria || [])).some(
+//         (section) => String(section.comment || "").trim().length < 3
+//       )
+//     );
+
+//     if (hasSectionWithoutComment) {
+//       setScopedFeedback("final", "error", "Un commentaire d'au moins 3 caractères est obligatoire pour chaque section avant la soumission finale.");
+//       return;
+//     }
+
+//     clearScopedFeedback("final");
+//     setIsSubmitting(true);
+
+//     try {
+//       const savedResponse = await persistMissionEvaluations(missionEvaluations, {
+//         scope: "final",
+//         showSuccess: false,
+//       });
+//       if (!savedResponse) return;
+
+//       const submittedResponse = await submitMyAssistantEvaluation({
+//         managerRecipients: selectedRecipientsSummary.map((recipient) => ({
+//           department: recipient.department,
+//           manager: recipient.name,
+//         })),
+//         missionEvaluations,
+//         anonymousFeedback,
+//       });
+//       setScopedFeedback("final", "success", submittedResponse.message || "Évaluations par mission soumises aux managers.");
+//       onEvaluationChange?.(submittedResponse);
+//       onSubmitted?.(submittedResponse);
+//     } catch (error) {
+//       setScopedFeedback("final", "error", error.message || "Soumission impossible.");
+//     } finally {
+//       setIsSubmitting(false);
+//     }
+//   }
+
+//   const isLastMissionStep =
+//     missionSectionIndex === missionSections.length - 1 &&
+//     missionPageIndex === Math.max((missionSection?.groups?.length || 1) - 1, 0);
+
+//   async function handleSaveAndContinue() {
+//     const response = await persistMissionEvaluations(missionEvaluations, {
+//       scope: "mission",
+//       showSuccess: false,
+//     });
+
+//     if (response) {
+//       goToMissionStep(1);
+//     }
+//   }
+
+//   return (
+//     <div className="space-y-3">
+//       <div className="text-[10px] text-slate-500">
+//         {evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"} - Auto-évaluation par mission - Sauvegarde progressive activée
+//       </div>
+
+//       <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+//         <article className="rounded-md bg-white p-4 shadow-sm">
+//           <h3 className="text-lg font-bold text-[#0F3A63]">Mes missions de l'année</h3>
+//           <p className="mt-1 text-xs font-semibold text-slate-500">
+//             L'assistant s'évalue désormais uniquement par mission. Le score final sera la moyenne de toutes les missions notées.
+//           </p>
+
+//           <div className="mt-4 rounded-lg bg-[#F8FAFC] p-3">
+//             <p className="text-xs font-bold uppercase text-slate-500">Ajouter une mission</p>
+//             <input
+//               value={missionTitle}
+//               onChange={(event) => {
+//                 setMissionTitle(event.target.value);
+//                 clearScopedFeedback("addMission");
+//               }}
+//               placeholder="Nom ou type de mission"
+//               className="mt-3 h-10 w-full rounded-md bg-white px-3 text-sm font-semibold text-slate-600 outline-none placeholder:text-slate-400"
+//             />
+//             <div className="mt-2 text-[11px] font-semibold text-slate-500">Date de début</div>
+//             <input
+//               type="date"
+//               value={missionStartDate}
+//               onChange={(event) => {
+//                 setMissionStartDate(event.target.value);
+//                 clearScopedFeedback("addMission");
+//               }}
+//               className="mt-2 h-10 w-full rounded-md bg-white px-3 text-sm font-semibold text-slate-600 outline-none"
+//             />
+//             <div className="mt-2 text-[11px] font-semibold text-slate-500">Date de fin</div>
+//             <input
+//               type="date"
+//               value={missionEndDate}
+//               min={missionStartDate || undefined}
+//               onChange={(event) => {
+//                 setMissionEndDate(event.target.value);
+//                 clearScopedFeedback("addMission");
+//               }}
+//               className="mt-2 h-10 w-full rounded-md bg-white px-3 text-sm font-semibold text-slate-600 outline-none"
+//             />
+//             <div className="mt-2 rounded-md bg-white p-3">
+//               <p className="text-[12px] font-bold text-[#0F3A63]">{"\u00C9valuateurs de la mission"}</p>
+//               {selectedEvaluatorRecipients.length ? (
+//                 <div className="mt-3 flex flex-wrap gap-2">
+//                   {selectedEvaluatorRecipients.map((recipient) => {
+//                     const value = getRecipientOptionValue(recipient);
+
+//                     return (
+//                       <span
+//                         key={value}
+//                         className="inline-flex max-w-full items-center gap-2 rounded-full bg-[#EEF6E8] px-3 py-1.5 text-[11px] font-semibold text-[#0F3A63]"
+//                       >
+//                         <span className="truncate">
+//                           {recipient.department} - {getRecipientLabel(recipient)}
+//                         </span>
+//                         <button
+//                           type="button"
+//                           onClick={() => removeSelectedRecipient(value)}
+//                           className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-[13px] font-bold text-[#0F3A63]"
+//                           aria-label={`Retirer ${getRecipientLabel(recipient)}`}
+//                         >
+//                           x
+//                         </button>
+//                       </span>
+//                     );
+//                   })}
+//                 </div>
+//               ) : (
+//                 <p className="mt-3 rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-slate-500">
+//                   {"Aucun \u00E9valuateur s\u00E9lectionn\u00E9 pour le moment."}
+//                 </p>
+//               )}
+
+//               {evaluatorRecipientOptions.length ? (
+//                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+//                   <select
+//                     value={selectedRecipientValue}
+//                     onChange={(event) => {
+//                       setSelectedRecipientValue(event.target.value);
+//                       clearScopedFeedback("addMission");
+//                     }}
+//                     className="h-10 w-full rounded-md border border-[#D9E3EE] bg-white px-3 text-sm font-semibold text-[#0F3A63] outline-none"
+//                   >
+//                     <option value="">Sélectionner un supérieur</option>
+//                     {evaluatorRecipientOptions.map((recipient) => {
+//                       const value = getRecipientOptionValue(recipient);
+//                       const isAlreadySelected = selectedRecipientValues.includes(value);
+
+//                       return (
+//                         <option key={value} value={value} disabled={isAlreadySelected}>
+//                           {recipient.department} - {getRecipientLabel(recipient)}
+//                           {isAlreadySelected ? " - déjà sélectionné" : ""}
+//                         </option>
+//                       );
+//                     })}
+//                   </select>
+//                   <button
+//                     type="button"
+//                     onClick={addSelectedRecipient}
+//                     disabled={!selectedRecipientValue}
+//                     className="h-10 rounded-md bg-[#0B4C7A] px-4 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+//                   >
+//                     Ajouter
+//                   </button>
+//                 </div>
+//               ) : (
+//                 <p className="mt-3 rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-slate-500">
+//                   {"Aucun \u00E9valuateur s\u00E9lectionnable n'est disponible pour le moment."}
+//                 </p>
+//               )}
+//             </div>
+//             <p className="mt-2 text-[11px] font-semibold text-slate-500">
+//               {"S\u00E9lectionnez un ou plusieurs \u00E9valuateurs parmi vos sup\u00E9rieurs. Le manager ou senior manager recevra aussi la mission \u00E0 titre informatif, sans pouvoir l'\u00E9valuer."}
+//             </p>
+//             <button
+//               type="button"
+//               onClick={addMission}
+//               className="mt-3 rounded-md bg-[#76B82A] px-4 py-2 text-xs font-bold text-white"
+//             >
+//               Ajouter la mission
+//             </button>
+//             <div className="mt-3">
+//               <InlineFeedback feedback={addMissionFeedback} />
+//             </div>
+//           </div>
+
+//           <div className="mt-4 space-y-3">
+//             {missionEvaluations.length ? (
+//               missionEvaluations.map((item) => {
+//                 const progress = getMissionProgress(item);
+//                 const isActive = isSameMissionId(missionId, item.id);
+
+//                 return (
+//                   <button
+//                     key={item.id}
+//                     type="button"
+//                     onClick={() => {
+//                       setMissionId(item.id);
+//                       setMissionSectionIds((current) => ({
+//                         ...current,
+//                         [item.id]: current[item.id] || item.criteria[0]?.sectionTitle || "",
+//                       }));
+//                       setMissionPageIndexes((current) => ({
+//                         ...current,
+//                         [item.id]: current[item.id] || 0,
+//                       }));
+//                     }}
+//                     className={`w-full rounded-md border p-3 text-left transition ${
+//                       isActive ? "border-[#76B82A] bg-[#EEF6E8]" : "border-slate-100 bg-[#F8FAFC] hover:bg-slate-100"
+//                     }`}
+//                   >
+//                     <div>
+//                       <p className="text-sm font-extrabold text-[#0F3A63]">{item.title}</p>
+//                       {item.createdByRole === "senior" ? (
+//                         <span className="mt-2 inline-flex rounded-full bg-[#E8F3D6] px-2.5 py-1 text-[10px] font-bold text-[#4E8B1B]">
+//                           {getMissionAssignmentLabel(item)}
+//                         </span>
+//                       ) : null}
+//                     </div>
+//                     <p className="mt-1 text-xs font-semibold text-slate-500">{item.period}</p>
+//                     <p className="mt-1 text-xs font-bold text-[#0F4A72]">{getMissionValidationLabel(item)}</p>
+//                     <div className="mt-3 h-1.5 rounded-full bg-slate-200">
+//                       <div className="h-1.5 rounded-full bg-[#76B82A]" style={{ width: `${progress}%` }} />
+//                     </div>
+//                     <p className="mt-1 text-xs font-bold text-[#76B82A]">{progress}% complète</p>
+//                   </button>
+//                 );
+//               })
+//             ) : (
+//               <p className="rounded-md bg-[#EEF2F6] px-3 py-3 text-sm font-semibold text-slate-500">
+//                 Aucune mission ajoutée pour le moment.
+//               </p>
+//             )}
+//           </div>
+//         </article>
+
+//         <article className="rounded-md bg-white p-4 shadow-sm">
+//           {mission ? (
+//             <>
+//               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+//                 <div>
+//                   <h3 className="text-2xl font-black leading-tight text-[#0F3A63]">{mission.title}</h3>
+//                   <p className="mt-1 text-sm font-semibold text-slate-500">{mission.period}</p>
+//                   <p className="mt-1 text-sm font-bold text-[#0F4A72]">Validation : {getMissionValidationLabel(mission)}</p>
+//                   {getMissionInformationalRecipients(mission).length ? (
+//                     <p className="mt-1 text-xs font-semibold text-slate-500">
+//                       Information : {getMissionInformationalRecipients(mission).map((recipient) => recipient.name).filter(Boolean).join(", ")}
+//                     </p>
+//                   ) : null}
+//                   {mission.createdByRole === "senior" ? (
+//                     <p className="mt-2 text-xs font-semibold text-[#4E8B1B]">Notification : {getMissionAssignmentLabel(mission)}.</p>
+//                   ) : (
+//                     <p className="mt-2 text-xs font-semibold text-slate-500">{"Cette mission sera transmise aux \u00E9valuateurs s\u00E9lectionn\u00E9s, ainsi qu'au manager ou senior manager \u00E0 titre informatif."}</p>
+//                   )}
+//                 </div>
+//                 <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">Moyenne {missionAverage} / 5</span>
+//               </div>
+
+//               <section className="mb-4 rounded-md bg-[#F8FAFC] p-4">
+//                 <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+//                   {missionSections.map((section) => {
+//                     const isActive = section.id === missionSection?.id;
+//                     const progress = getMissionSectionProgress(section);
+//                     const done = progress === 100;
+
+//                     return (
+//                       <button
+//                         key={section.id}
+//                         type="button"
+//                         onClick={() => {
+//                           setMissionSectionIds((current) => ({
+//                             ...current,
+//                             [mission.id]: section.id,
+//                           }));
+//                           setMissionPageIndexes((current) => ({
+//                             ...current,
+//                             [mission.id]: 0,
+//                           }));
+//                         }}
+//                         className={`rounded-md border px-3 py-3 text-left text-white transition ${
+//                           isActive ? "border-[#76B82A] bg-[#003B63] shadow-[0_0_0_1px_#76B82A]" : "border-transparent bg-[#003B63] hover:bg-[#0B4C7A]"
+//                         }`}
+//                       >
+//                         <div className="mb-2 flex items-center justify-between">
+//                           <h4 className="text-[13px] font-bold">{section.title}</h4>
+//                           {done ? <Check size={14} className="text-white" /> : null}
+//                         </div>
+//                         <p className="text-[12px] font-semibold">{section.groups.length} titre(s)</p>
+//                         <div className="mt-3 h-1.5 rounded-full bg-slate-200">
+//                           <div className={`h-1.5 rounded-full ${done ? "bg-[#7BC443]" : "bg-[#D6DCE2]"}`} style={{ width: `${progress}%` }} />
+//                         </div>
+//                         <p className="mt-1.5 text-[10px] font-semibold text-slate-200">
+//                           {done ? "Complète" : progress ? `En cours - ${progress}%` : "À faire"}
+//                         </p>
+//                       </button>
+//                     );
+//                   })}
+//                 </div>
+
+//                 <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+//                   <div>
+//                     <p className="text-[12px] font-semibold text-slate-500">Pagination dans la mission</p>
+//                     <h4 className="text-[16px] font-bold text-[#0F3A63]">{missionSection?.title}</h4>
+//                   </div>
+//                   <span className="text-[12px] font-semibold text-[#0F3A63]">
+//                     Titre {missionPageIndex + 1} / {missionSection?.groups?.length || 1}
+//                   </span>
+//                 </div>
+
+//                 <div className="flex flex-wrap gap-2">
+//                   {(missionSection?.groups || []).map((group, index) => {
+//                     const isActive = index === missionPageIndex;
+//                     const progress = getMissionGroupProgress(group);
+
+//                     return (
+//                       <button
+//                         key={group.key}
+//                         type="button"
+//                         onClick={() =>
+//                           setMissionPageIndexes((current) => ({
+//                             ...current,
+//                             [mission.id]: index,
+//                           }))
+//                         }
+//                         className={`rounded-md border px-3 py-2 text-left transition ${
+//                           isActive ? "border-[#76B82A] bg-[#F3FAEA] text-[#0F3A63]" : "border-[#D9E3EE] bg-white text-slate-600 hover:bg-slate-50"
+//                         }`}
+//                       >
+//                         <p className="text-[11px] font-bold">Titre {index + 1}</p>
+//                         <p className="mt-1 text-[12px] font-semibold">{group.pageTitle}</p>
+//                         {shouldShowSourceLabel &&
+//                         group.sourceSheet !== "TRONC COMMUN" &&
+//                         (group.sourceLabel || getSourceBadgeLabel({ source_sheet: group.sourceSheet })) ? (
+//                           <span className="mt-2 inline-flex rounded-full bg-[#EEF3F8] px-2 py-0.5 text-[10px] font-semibold text-[#0F3A63]">
+//                             {group.sourceLabel || getSourceBadgeLabel({ source_sheet: group.sourceSheet })}
+//                           </span>
+//                         ) : null}
+//                         <p className="mt-1 text-[10px] font-semibold text-[#76B82A]">{progress}%</p>
+//                       </button>
+//                     );
+//                   })}
+//                 </div>
+//               </section>
+
+//               {missionGroup ? (
+//                 <div className="space-y-3.5">
+//                   <div>
+//                     <p className="text-[11px] font-bold uppercase text-slate-500">{missionGroup.sectionTitle}</p>
+//                     <p className="mt-1 text-[15px] font-bold text-[#0F3A63]">{missionGroup.pageTitle}</p>
+//                     {shouldShowSourceLabel &&
+//                     missionGroup.sourceSheet !== "TRONC COMMUN" &&
+//                     (missionGroup.sourceLabel || getSourceBadgeLabel({ source_sheet: missionGroup.sourceSheet })) ? (
+//                       <span className="mt-2 inline-flex rounded-full bg-[#EEF3F8] px-2.5 py-1 text-[11px] font-semibold text-[#0F3A63]">
+//                         {missionGroup.sourceLabel || getSourceBadgeLabel({ source_sheet: missionGroup.sourceSheet })}
+//                       </span>
+//                     ) : null}
+//                   </div>
+
+//                   {missionGroup.criteria.map((item) => (
+//                     <MissionScoreRow
+//                       key={item.id}
+//                       themeCode={item.themeCode}
+//                       label={item.label}
+//                       statement={item.statement}
+//                       selected={item.score}
+//                       onSelect={(score) => updateMissionScore(item.id, score)}
+//                     />
+//                   ))}
+//                 </div>
+//               ) : null}
+
+//               <div className="mt-4">
+//                 <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire de section obligatoire</p>
+//                 <textarea
+//                   rows={4}
+//                   value={missionSection?.comment || ""}
+//                   onChange={(event) => updateMissionSectionComment(event.target.value)}
+//                   placeholder="Décrire les faits marquants de cette section..."
+//                   className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
+//                 />
+//               </div>
+
+//               <div className="mt-5 flex justify-end">
+//                 <div className="flex flex-wrap items-center gap-3">
+//                   <button
+//                     type="button"
+//                     onClick={() => goToMissionStep(-1)}
+//                     disabled={missionSectionIndex === 0 && missionPageIndex === 0}
+//                     className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+//                   >
+//                     <ChevronLeft size={14} />
+//                     Précédent
+//                   </button>
+//                   {!isLastMissionStep ? (
+//                     <button
+//                       type="button"
+//                       onClick={handleSaveAndContinue}
+//                       className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
+//                     >
+//                       Sauvegarder et continuer
+//                       <ChevronRight size={14} />
+//                     </button>
+//                   ) : (
+//                     <div className="flex flex-wrap items-center gap-3">
+//                       <button
+//                         type="button"
+//                         onClick={handleSubmitMission}
+//                         disabled={isSaving || isSubmitting}
+//                         className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+//                       >
+//                         {isSubmitting ? "Soumission..." : mission?.status === "Soumise" ? "Retransmettre la mission" : "Soumettre la mission"}
+//                       </button>
+//                       <button
+//                         type="button"
+//                         onClick={() =>
+//                           persistMissionEvaluations(missionEvaluations, {
+//                             scope: "mission",
+//                           })
+//                         }
+//                         className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
+//                       >
+//                         Enregistrer la mission
+//                         <ChevronRight size={14} />
+//                       </button>
+//                     </div>
+//                   )}
+//                 </div>
+//               </div>
+//               <div className="mt-3">
+//                 <InlineFeedback feedback={missionFeedback} />
+//               </div>
+//             </>
+//           ) : (
+//             <div className="rounded-md bg-[#EEF2F6] p-5 text-sm font-semibold text-slate-500">
+//               Ajoutez une mission pour commencer votre auto-évaluation par mission.
+//             </div>
+//           )}
+//         </article>
+
+//         <div className="space-y-4">
+//           <article className="rounded-md bg-white p-4 shadow-sm">
+//             <div className="mb-4 flex items-center justify-between gap-3">
+//               <div>
+//                 <h3 className="text-[22px] font-bold text-[#0F3A63]">Synthèse de l'évaluation</h3>
+//                 <p className="mt-1 text-[12px] font-semibold text-slate-500">
+//                   Score final = somme des scores de mission divisée par le nombre de missions notées.
+//                 </p>
+//               </div>
+//               <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">
+//                 Score final {finalMissionScore} / 5
+//               </span>
+//             </div>
+
+//             <div className="space-y-3">
+//               <div className="flex items-center justify-between text-sm">
+//                 <p className="font-semibold text-[#0F3A63]">Progression globale des missions</p>
+//                 <span className="font-bold text-[#76B82A]">{missionProgress}%</span>
+//               </div>
+//               <div className="h-2 rounded-full bg-slate-200">
+//                 <div className="h-2 rounded-full bg-[#76B82A]" style={{ width: `${missionProgress}%` }} />
+//               </div>
+//               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+//                 <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
+//                   <p className="text-[11px] font-semibold text-slate-500">Missions</p>
+//                   <p className="mt-1 text-lg font-black text-[#0F3A63]">{missionEvaluations.length}</p>
+//                 </div>
+//                 <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
+//                   <p className="text-[11px] font-semibold text-slate-500">Missions soumises</p>
+//                   <p className="mt-1 text-lg font-black text-[#0F3A63]">{submittedMissionsCount}</p>
+//                 </div>
+//                 <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
+//                   <p className="text-[11px] font-semibold text-slate-500">Statut</p>
+//                   <p className="mt-1 text-sm font-black text-[#0F3A63]">{evaluationData?.evaluation?.status || "En cours"}</p>
+//                 </div>
+//               </div>
+//             </div>
+
+//             <div className="mt-5 rounded-md border border-[#D9E3EE] bg-[#F8FAFC] p-4">
+//               <div className="flex flex-wrap items-start justify-between gap-3">
+//                 <div>
+//                   <h4 className="text-sm font-bold text-[#0F3A63]">Commentaires anonymes d'amélioration</h4>
+//                   <p className="mt-1 text-[11px] font-semibold text-slate-500">
+//                     Ces commentaires ne sont pas pris en compte dans les moyennes. Ils servent uniquement à aider les seniors et managers à progresser.
+//                   </p>
+//                 </div>
+//                 <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold text-[#0F4A72]">
+//                   Anonyme
+//                 </span>
+//               </div>
+
+//               <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+//                 <select
+//                   value={anonymousTargetValue}
+//                   onChange={(event) => setAnonymousTargetValue(event.target.value)}
+//                   className="h-10 w-full rounded-md border border-[#D9E3EE] bg-white px-3 text-sm font-semibold text-[#0F3A63] outline-none"
+//                 >
+//                   <option value="">Sélectionner un senior ou manager</option>
+//                   {anonymousTargetOptions.map((recipient) => {
+//                     const value = getRecipientOptionValue(recipient);
+//                     const isAlreadySelected = anonymousFeedback.some((item) => String(item.targetUserId || "") === String(recipient.id));
+
+//                     return (
+//                       <option key={value} value={value} disabled={isAlreadySelected}>
+//                         {recipient.department} - {getRecipientLabel(recipient)}
+//                         {isAlreadySelected ? " - déjà ajouté" : ""}
+//                       </option>
+//                     );
+//                   })}
+//                 </select>
+//                 <button
+//                   type="button"
+//                   onClick={addAnonymousFeedbackTarget}
+//                   disabled={!anonymousTargetValue}
+//                   className="h-10 rounded-md bg-[#0B4C7A] px-4 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+//                 >
+//                   Ajouter
+//                 </button>
+//               </div>
+
+//               <div className="mt-4 space-y-3">
+//                 {anonymousFeedback.length ? (
+//                   anonymousFeedback.map((item) => (
+//                     <div key={item.targetUserId || item.targetName} className="rounded-md bg-white p-3">
+//                       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+//                         <div>
+//                           <p className="text-[12px] font-bold text-[#0F3A63]">{item.targetName}</p>
+//                           <p className="text-[11px] font-semibold text-slate-500">
+//                             {item.targetDepartment} - {item.targetGrade}
+//                           </p>
+//                         </div>
+//                         <button
+//                           type="button"
+//                           onClick={() => removeAnonymousFeedbackTarget(item.targetUserId)}
+//                           className="rounded-md bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-500"
+//                         >
+//                           Retirer
+//                         </button>
+//                       </div>
+//                       <textarea
+//                         rows={4}
+//                         value={item.comment || ""}
+//                         onChange={(event) => updateAnonymousFeedbackComment(item.targetUserId, event.target.value)}
+//                         placeholder="Commentaire final anonyme pour aider cette personne à s'améliorer..."
+//                         className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
+//                       />
+//                     </div>
+//                   ))
+//                 ) : (
+//                   <p className="rounded-md bg-white px-3 py-3 text-[12px] font-semibold text-slate-500">
+//                     Aucun commentaire anonyme ajouté pour le moment.
+//                   </p>
+//                 )}
+//               </div>
+//             </div>
+
+//             <div className="mt-4 rounded-sm bg-[#DCECCB] px-3 py-2 text-[10px] font-semibold text-[#5A8A3A]">
+//               La soumission finale est possible quand chaque mission a été soumise à son destinataire.
+//             </div>
+
+//             <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+//               <div className="flex flex-wrap items-center gap-3">
+//                 <button
+//                   type="button"
+//                   onClick={() =>
+//                     persistMissionEvaluations(missionEvaluations, {
+//                       scope: "final",
+//                     })
+//                   }
+//                   disabled={isSaving || isSubmitting}
+//                   className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600 disabled:opacity-70"
+//                 >
+//                   {isSaving ? "Sauvegarde..." : "Enregistrer"}
+//                 </button>
+//                 <button
+//                   type="button"
+//                   onClick={handleSubmit}
+//                   disabled={
+//                     isSaving ||
+//                     isSubmitting ||
+//                     evaluationData?.evaluation?.status === "Soumis aux Managers" ||
+//                     evaluationData?.evaluation?.status === "Soumis à la RH"
+//                   }
+//                   className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+//                 >
+//                   {isSubmitting ? "Soumission..." : "Finaliser l'évaluation"}
+//                 </button>
+//               </div>
+//             </div>
+//             <div className="mt-3">
+//               <InlineFeedback feedback={finalFeedback} />
+//             </div>
+//           </article>
+
+//           <div className="space-y-4">
+//             <article className="rounded-md bg-white p-4 shadow-sm">
+//               <h3 className="mb-3 text-[22px] font-bold text-[#0F3A63]">Missions prêtes</h3>
+//               <div className="space-y-3">
+//                 {missionEvaluations.length ? (
+//                   missionEvaluations.map((item) => (
+//                     <div key={item.id} className="flex items-center justify-between text-[12px]">
+//                       <div>
+//                         <p className="font-semibold text-[#0F3A63]">{item.title}</p>
+//                         <p className="text-[11px] text-slate-500">{item.period}</p>
+//                       </div>
+//                       <span className="font-bold text-[#76B82A]">
+//                         {item.status === "Soumise" ? "Soumise" : `${getMissionProgress(item)}%`}
+//                       </span>
+//                     </div>
+//                   ))
+//                 ) : (
+//                   <p className="rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-slate-500">
+//                     Aucune mission ajoutée pour le moment.
+//                   </p>
+//                 )}
+//               </div>
+//             </article>
+
+//             <article className="rounded-md bg-white p-4 shadow-sm">
+//               <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">{"\u00C9valuateurs s\u00E9lectionn\u00E9s"}</h3>
+//               <div className="space-y-2">
+//                 {selectedRecipientsSummary.length ? (
+//                   selectedRecipientsSummary.map((recipient) => (
+//                     <div key={`${recipient.department}-${recipient.name}`} className="rounded-md bg-[#F8FAFC] px-3 py-3">
+//                       <p className="text-[12px] font-bold text-[#0F3A63]">{recipient.name}</p>
+//                       <p className="mt-1 text-[11px] text-slate-500">{recipient.department}</p>
+//                     </div>
+//                   ))
+//                 ) : (
+//                   <p className="rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-slate-500">
+//                     {"Les personnes s\u00E9lectionn\u00E9es appara\u00EEtront ici d\u00E8s qu'une mission sera ajout\u00E9e."}
+//                   </p>
+//                 )}
+//               </div>
+//             </article>
+
+//             <article className="rounded-md bg-white p-4 shadow-sm">
+//               <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">Aide à la notation</h3>
+//               <div className="space-y-2">
+//                 {gradingHelp.map((item) => (
+//                   <div key={item.level} className="flex items-center gap-2 text-[12px]">
+//                     <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-200 font-bold text-slate-500">
+//                       {item.level}
+//                     </span>
+//                     <p className={`font-semibold ${item.color}`}>{item.text}</p>
+//                   </div>
+//                 ))}
+//               </div>
+//             </article>
+//           </div>
+//         </div>
+//       </section>
+//     </div>
+//   );
+// }
+
+// export default Monautoevaluation;
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   saveMyAssistantEvaluation,
@@ -151,6 +1611,8 @@ function formatMissionPeriodLabel(startDate, endDate) {
 }
 
 function getMissionFinalScore(missions = []) {
+  // NOTE: anonymousFeedback criteria are intentionally excluded here.
+  // Only mission evaluations are used for the final score.
   const missionScores = missions
     .map((mission) => {
       const average = getMissionAverage(mission.criteria || []);
@@ -229,6 +1691,29 @@ function buildMissionCriteriaFromSections(sections = [], recipientDepartment = "
             score: null,
           }))
         : []
+    )
+  );
+}
+
+/**
+ * Builds criteria for anonymous feedback annotations using the same structure as mission criteria.
+ * IMPORTANT: These scores are purely informational and are NEVER passed to getMissionAverage()
+ * or getMissionFinalScore(). They do not affect the assistant's final score in any way.
+ */
+function buildAnonymousFeedbackCriteriaFromSections(sections = []) {
+  return sections.flatMap((section) =>
+    (section.pages || []).flatMap((page) =>
+      (page.themes || []).map((theme) => ({
+        id: `${page.page_id}-${theme.theme_id}`,
+        sectionTitle: section.title,
+        pageTitle: page.title,
+        sourceSheet: page.source_sheet || "",
+        sourceLabel: page.source_label || "",
+        themeCode: theme.code,
+        label: theme.label,
+        statement: theme.statement,
+        score: null,
+      }))
     )
   );
 }
@@ -358,6 +1843,101 @@ function MissionScoreRow({ themeCode, label, statement, selected, onSelect }) {
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Panel for annotating a single manager/senior anonymously.
+ * Uses the same criteria and MissionScoreRow as missions, but scores
+ * are stored only in anonymousFeedback and never fed into any score calculation.
+ */
+function AnonymousFeedbackPanel({ item, onUpdateScore, onUpdateComment, onRemove }) {
+  const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+
+  const criteriaGroups = useMemo(() => getMissionCriteriaGroups(item.criteria || []), [item.criteria]);
+  const feedbackSections = useMemo(() => getMissionSections(criteriaGroups), [criteriaGroups]);
+  const activeSection = feedbackSections[activeSectionIndex] || feedbackSections[0] || null;
+
+  const answeredCount = (item.criteria || []).filter((c) => c.score !== null && c.score !== undefined).length;
+  const totalCount = (item.criteria || []).length;
+
+  return (
+    <div className="rounded-md border border-[#E3EAF3] bg-white p-3">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[13px] font-bold text-[#0F3A63]">{item.targetName}</p>
+          <p className="text-[11px] font-semibold text-slate-500">
+            {item.targetDepartment} - {item.targetGrade}
+          </p>
+          {totalCount > 0 && (
+            <p className="mt-1 text-[10px] font-semibold text-[#76B82A]">
+              {answeredCount} / {totalCount} critères notés
+              <span className="ml-1 text-slate-400 italic">· hors calcul de score</span>
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="rounded-md bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-500 hover:bg-slate-200"
+        >
+          Retirer
+        </button>
+      </div>
+
+      {feedbackSections.length > 0 && (
+        <>
+          {/* Section tabs */}
+          <div className="mb-3 flex flex-wrap gap-2">
+            {feedbackSections.map((section, index) => {
+              const progress = getMissionSectionProgress(section);
+              const isActive = index === activeSectionIndex;
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => setActiveSectionIndex(index)}
+                  className={`rounded-md border px-3 py-1.5 text-[11px] font-bold transition ${
+                    isActive
+                      ? "border-[#76B82A] bg-[#003B63] text-white"
+                      : "border-[#D9E3EE] bg-[#F8FAFC] text-[#0F3A63] hover:bg-slate-100"
+                  }`}
+                >
+                  {section.title}
+                  <span className="ml-1.5 opacity-60">{progress}%</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Criteria rows for the active section */}
+          {activeSection && (
+            <div className="mb-3 space-y-2">
+              {(activeSection.groups || []).flatMap((group) =>
+                (group.criteria || []).map((criterion) => (
+                  <MissionScoreRow
+                    key={criterion.id}
+                    themeCode={criterion.themeCode}
+                    label={criterion.label}
+                    statement={criterion.statement}
+                    selected={criterion.score}
+                    onSelect={(score) => onUpdateScore(item.targetUserId, criterion.id, score)}
+                  />
+                ))
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      <textarea
+        rows={3}
+        value={item.comment || ""}
+        onChange={(event) => onUpdateComment(item.targetUserId, event.target.value)}
+        placeholder="Commentaire anonyme pour aider cette personne à s'améliorer..."
+        className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
+      />
     </div>
   );
 }
@@ -495,6 +2075,10 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
               targetGrade: recipient.grade,
               targetDepartment: recipient.department,
               comment: "",
+              // Criteria use same structure as mission criteria for consistent UX.
+              // IMPORTANT: these scores are NEVER passed to getMissionAverage() or
+              // getMissionFinalScore() — they have zero impact on the assistant's score.
+              criteria: buildAnonymousFeedbackCriteriaFromSections(sections),
             },
           ]
     );
@@ -505,6 +2089,27 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   function updateAnonymousFeedbackComment(targetUserId, comment) {
     setAnonymousFeedback((current) =>
       current.map((item) => (String(item.targetUserId || "") === String(targetUserId) ? { ...item, comment } : item))
+    );
+    clearScopedFeedback("final");
+  }
+
+  /**
+   * Updates a criterion score inside an anonymous feedback entry.
+   * These scores are stored only in anonymousFeedback state and are deliberately
+   * excluded from all score calculation functions (getMissionAverage, getMissionFinalScore).
+   */
+  function updateAnonymousFeedbackScore(targetUserId, criterionId, score) {
+    setAnonymousFeedback((current) =>
+      current.map((item) =>
+        String(item.targetUserId || "") !== String(targetUserId)
+          ? item
+          : {
+              ...item,
+              criteria: (item.criteria || []).map((criterion) =>
+                criterion.id === criterionId ? { ...criterion, score } : criterion
+              ),
+            }
+      )
     );
     clearScopedFeedback("final");
   }
@@ -616,7 +2221,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     }
 
     if (!selectedEvaluatorRecipients.length) {
-      setScopedFeedback("addMission", "error", "S\u00E9lectionnez au moins un \u00E9valuateur pour cette mission.");
+      setScopedFeedback("addMission", "error", "Sélectionnez au moins un évaluateur pour cette mission.");
       return;
     }
 
@@ -1280,16 +2885,21 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
               </div>
             </div>
 
+            {/* ── Anonymous annotations for managers/seniors ──────────────────────────
+                Scores stored here are NEVER passed to getMissionAverage() or
+                getMissionFinalScore(). They have zero impact on the assistant's score. */}
             <div className="mt-5 rounded-md border border-[#D9E3EE] bg-[#F8FAFC] p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h4 className="text-sm font-bold text-[#0F3A63]">Commentaires anonymes d'amélioration</h4>
+                  <h4 className="text-sm font-bold text-[#0F3A63]">Annotations anonymes — Seniors &amp; Managers</h4>
                   <p className="mt-1 text-[11px] font-semibold text-slate-500">
-                    Ces commentaires ne sont pas pris en compte dans les moyennes. Ils servent uniquement à aider les seniors et managers à progresser.
+                    Notez vos supérieurs sur les mêmes critères que vos missions et laissez un commentaire.
+                    Ces notes sont <span className="font-bold text-[#0F3A63]">anonymes</span> et{" "}
+                    <span className="font-bold text-[#0F3A63]">ne sont jamais comptabilisées dans votre score final</span>.
                   </p>
                 </div>
-                <span className="rounded-full bg-white px-3 py-1 text-[11px] font-bold text-[#0F4A72]">
-                  Anonyme
+                <span className="rounded-full bg-white border border-[#D9E3EE] px-3 py-1 text-[11px] font-bold text-[#0F4A72]">
+                  Anonyme · Hors calcul
                 </span>
               </div>
 
@@ -1322,37 +2932,20 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                 </button>
               </div>
 
-              <div className="mt-4 space-y-3">
+              <div className="mt-4 space-y-4">
                 {anonymousFeedback.length ? (
                   anonymousFeedback.map((item) => (
-                    <div key={item.targetUserId || item.targetName} className="rounded-md bg-white p-3">
-                      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-[12px] font-bold text-[#0F3A63]">{item.targetName}</p>
-                          <p className="text-[11px] font-semibold text-slate-500">
-                            {item.targetDepartment} - {item.targetGrade}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeAnonymousFeedbackTarget(item.targetUserId)}
-                          className="rounded-md bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-500"
-                        >
-                          Retirer
-                        </button>
-                      </div>
-                      <textarea
-                        rows={4}
-                        value={item.comment || ""}
-                        onChange={(event) => updateAnonymousFeedbackComment(item.targetUserId, event.target.value)}
-                        placeholder="Commentaire final anonyme pour aider cette personne à s'améliorer..."
-                        className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
-                      />
-                    </div>
+                    <AnonymousFeedbackPanel
+                      key={item.targetUserId || item.targetName}
+                      item={item}
+                      onUpdateScore={updateAnonymousFeedbackScore}
+                      onUpdateComment={updateAnonymousFeedbackComment}
+                      onRemove={() => removeAnonymousFeedbackTarget(item.targetUserId)}
+                    />
                   ))
                 ) : (
                   <p className="rounded-md bg-white px-3 py-3 text-[12px] font-semibold text-slate-500">
-                    Aucun commentaire anonyme ajouté pour le moment.
+                    Aucune annotation ajoutée pour le moment.
                   </p>
                 )}
               </div>
