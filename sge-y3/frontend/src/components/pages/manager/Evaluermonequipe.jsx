@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   createManagerMemberMission,
@@ -1351,6 +1351,18 @@ function Evaluermonequipe({ member }) {
                 <p className="mt-4 border-t border-slate-100 pt-3 text-sm font-semibold text-slate-500">
                   Statut : {selfEvaluation.status || "En attente"} | Moyenne : {selfEvaluation.overallAverage ?? "--"} / 5
                 </p>
+                {(selfEvaluation.chiefComments || []).length > 0 && (
+                  <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
+                    <p className="text-xs font-bold uppercase tracking-wide text-[#0F3A63]">
+                      Commentaire anonyme reçu
+                    </p>
+                    {(selfEvaluation.chiefComments || []).map((item, index) => (
+                      <div key={index} className="rounded-md bg-[#F4FAED] p-3 ring-1 ring-[#C3DFAA]">
+                        <p className="text-[12px] font-semibold text-slate-700">{item.comment}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="rounded-md border border-[#D9E3EE] bg-white p-4 shadow-sm">

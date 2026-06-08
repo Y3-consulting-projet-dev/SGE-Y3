@@ -1,9 +1,12 @@
-import { BarChart3, CalendarDays, ClipboardCheck, FileText, LayoutDashboard, Settings2, Target, Users } from "lucide-react";
+import { BarChart3, CalendarDays, ClipboardCheck, FileText, LayoutDashboard, MessageSquare, Settings2, Target, Users } from "lucide-react";
 
 export const menuGroups = [
   {
     title: "Tableau de bord",
-    items: [{ key: "overview", label: "Vue d'ensemble", icon: LayoutDashboard }],
+    items: [
+      { key: "overview", label: "Vue d'ensemble", icon: LayoutDashboard },
+      { key: "comments", label: "Commentaires reçus", icon: MessageSquare },
+    ],
   },
   {
     title: "Missions assistants",
@@ -21,7 +24,7 @@ export const menuGroups = [
     title: "Mon évaluation",
     items: [
       { key: "self-evaluation", label: "Mon auto-évaluation", icon: BarChart3 },
-      { key: "calendar", label: "Calendrier", icon: CalendarDays },
+      { key: "calendar", label: "Mon calendrier", icon: CalendarDays },
     ],
   },
   {

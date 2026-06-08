@@ -83,3 +83,18 @@ export function saveAssociateManagerEvaluation(managerId, payload) {
     body: JSON.stringify(payload),
   });
 }
+
+export function getAssociateSupportEvaluations() {
+  return request("/associate/support-evaluations");
+}
+
+export function getAssociateSupportEvaluation(supportId) {
+  return request(`/associate/support-evaluations/${supportId}`);
+}
+
+export function saveAssociateSupportEvaluation(supportId, payload) {
+  return request(`/associate/support-evaluations/${supportId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}

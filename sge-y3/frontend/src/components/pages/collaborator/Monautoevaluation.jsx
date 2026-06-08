@@ -1,7 +1,10 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+﻿
+// export default Monautoevaluation;
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, MessageSquare, ClipboardList } from "lucide-react";
 import {
   saveMyAssistantEvaluation,
+  saveMyChiefComments,
   submitMyAssistantEvaluation,
   submitMyAssistantMissionEvaluation,
 } from "@/lib/collaboratorEvaluation";
@@ -28,6 +31,22 @@ function getRecipientOptionValue(recipient) {
 function isManagerOrSeniorManagerRecipient(recipient) {
   const category = String(recipient?.code_categorie || "").trim().toUpperCase();
   return category === "10B" || category === "10C";
+}
+
+function isSeniorOrManagerFeedbackTarget(recipient) {
+  const category = String(recipient?.code_categorie || "").trim().toUpperCase();
+  const grade = normalizeDepartment(recipient?.grade || "");
+
+  return (
+    category === "9A" ||
+    category === "9B" ||
+    category === "10B" ||
+    category === "10C" ||
+    grade === "SENIOR" ||
+    grade === "ASSISTANT MANAGER" ||
+    grade === "MANAGER" ||
+    grade === "SENIOR MANAGER"
+  );
 }
 
 function getMissionEvaluatingRecipients(mission) {
@@ -136,6 +155,8 @@ function formatMissionPeriodLabel(startDate, endDate) {
 }
 
 function getMissionFinalScore(missions = []) {
+  // NOTE: anonymousFeedback criteria are intentionally excluded here.
+  // Only mission evaluations are used for the final score.
   const missionScores = missions
     .map((mission) => {
       const average = getMissionAverage(mission.criteria || []);
@@ -214,6 +235,29 @@ function buildMissionCriteriaFromSections(sections = [], recipientDepartment = "
             score: null,
           }))
         : []
+    )
+  );
+}
+
+/**
+ * Builds criteria for anonymous feedback annotations using the same structure as mission criteria.
+ * IMPORTANT: These scores are purely informational and are NEVER passed to getMissionAverage()
+ * or getMissionFinalScore(). They do not affect the assistant's final score in any way.
+ */
+function buildAnonymousFeedbackCriteriaFromSections(sections = []) {
+  return sections.flatMap((section) =>
+    (section.pages || []).flatMap((page) =>
+      (page.themes || []).map((theme) => ({
+        id: `${page.page_id}-${theme.theme_id}`,
+        sectionTitle: section.title,
+        pageTitle: page.title,
+        sourceSheet: page.source_sheet || "",
+        sourceLabel: page.source_label || "",
+        themeCode: theme.code,
+        label: theme.label,
+        statement: theme.statement,
+        score: null,
+      }))
     )
   );
 }
@@ -347,6 +391,101 @@ function MissionScoreRow({ themeCode, label, statement, selected, onSelect }) {
   );
 }
 
+/**
+ * Panel for annotating a single manager/senior anonymously.
+ * Uses the same criteria and MissionScoreRow as missions, but scores
+ * are stored only in anonymousFeedback and never fed into any score calculation.
+ */
+function AnonymousFeedbackPanel({ item, onUpdateScore, onUpdateComment, onRemove }) {
+  const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+
+  const criteriaGroups = useMemo(() => getMissionCriteriaGroups(item.criteria || []), [item.criteria]);
+  const feedbackSections = useMemo(() => getMissionSections(criteriaGroups), [criteriaGroups]);
+  const activeSection = feedbackSections[activeSectionIndex] || feedbackSections[0] || null;
+
+  const answeredCount = (item.criteria || []).filter((c) => c.score !== null && c.score !== undefined).length;
+  const totalCount = (item.criteria || []).length;
+
+  return (
+    <div className="rounded-md border border-[#E3EAF3] bg-white p-3">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[13px] font-bold text-[#0F3A63]">{item.targetName}</p>
+          <p className="text-[11px] font-semibold text-slate-500">
+            {item.targetDepartment} - {item.targetGrade}
+          </p>
+          {totalCount > 0 && (
+            <p className="mt-1 text-[10px] font-semibold text-[#76B82A]">
+              {answeredCount} / {totalCount} critères notés
+              <span className="ml-1 text-slate-400 italic">· hors calcul de score</span>
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="rounded-md bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-500 hover:bg-slate-200"
+        >
+          Retirer
+        </button>
+      </div>
+
+      {feedbackSections.length > 0 && (
+        <>
+          {/* Section tabs */}
+          <div className="mb-3 flex flex-wrap gap-2">
+            {feedbackSections.map((section, index) => {
+              const progress = getMissionSectionProgress(section);
+              const isActive = index === activeSectionIndex;
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => setActiveSectionIndex(index)}
+                  className={`rounded-md border px-3 py-1.5 text-[11px] font-bold transition ${
+                    isActive
+                      ? "border-[#76B82A] bg-[#003B63] text-white"
+                      : "border-[#D9E3EE] bg-[#F8FAFC] text-[#0F3A63] hover:bg-slate-100"
+                  }`}
+                >
+                  {section.title}
+                  <span className="ml-1.5 opacity-60">{progress}%</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Criteria rows for the active section */}
+          {activeSection && (
+            <div className="mb-3 space-y-2">
+              {(activeSection.groups || []).flatMap((group) =>
+                (group.criteria || []).map((criterion) => (
+                  <MissionScoreRow
+                    key={criterion.id}
+                    themeCode={criterion.themeCode}
+                    label={criterion.label}
+                    statement={criterion.statement}
+                    selected={criterion.score}
+                    onSelect={(score) => onUpdateScore(item.targetUserId, criterion.id, score)}
+                  />
+                ))
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      <textarea
+        rows={3}
+        value={item.comment || ""}
+        onChange={(event) => onUpdateComment(item.targetUserId, event.target.value)}
+        placeholder="Commentaire anonyme pour aider cette personne à s'améliorer..."
+        className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
+      />
+    </div>
+  );
+}
+
 function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvaluationsChange, onSubmitted }) {
   const departmentRecipients = evaluationData?.assignee?.recipient_options || [];
   const recipientOptions = departmentRecipients.flatMap((item) =>
@@ -373,6 +512,13 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   const [missionEndDate, setMissionEndDate] = useState("");
   const [selectedRecipientValue, setSelectedRecipientValue] = useState("");
   const [selectedRecipientValues, setSelectedRecipientValues] = useState([]);
+  const [anonymousTargetValue, setAnonymousTargetValue] = useState("");
+  const [anonymousFeedback, setAnonymousFeedback] = useState(() => evaluationData?.anonymous_feedback || []);
+  const [activeTab, setActiveTab] = useState("missions");
+  const [chiefComments, setChiefComments] = useState(() => evaluationData?.chief_comments || []);
+  const [chiefTargetValue, setChiefTargetValue] = useState("");
+  const [chiefFeedback, setChiefFeedback] = useState(null);
+  const [isSavingChief, setIsSavingChief] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addMissionFeedback, setAddMissionFeedback] = useState(null);
@@ -417,6 +563,15 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     () => getDepartmentAwareInformationalRecipients(informationalRecipientOptions, selectedEvaluatorRecipients),
     [informationalRecipientOptions, selectedEvaluatorRecipients]
   );
+  const anonymousTargetOptions = useMemo(() => {
+    const options = recipientOptions.filter(isSeniorOrManagerFeedbackTarget);
+
+    return options.filter(
+      (recipient, index, list) =>
+        recipient.name &&
+        list.findIndex((item) => getRecipientOptionValue(item) === getRecipientOptionValue(recipient)) === index
+    );
+  }, [recipientOptions]);
   const selectedRecipientsSummary = useMemo(() => {
     const recipients = missionEvaluations.flatMap((item) =>
       getMissionEvaluatingRecipients(item).map((recipient) => ({
@@ -451,6 +606,123 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   function removeSelectedRecipient(value) {
     setSelectedRecipientValues((current) => current.filter((item) => item !== value));
     clearScopedFeedback("addMission");
+  }
+
+  function addAnonymousFeedbackTarget() {
+    const recipient = anonymousTargetOptions.find((item) => getRecipientOptionValue(item) === anonymousTargetValue);
+    if (!recipient) return;
+
+    const targetUserId = recipient.id;
+    setAnonymousFeedback((current) =>
+      current.some((item) => String(item.targetUserId || "") === String(targetUserId))
+        ? current
+        : [
+            ...current,
+            {
+              targetUserId,
+              targetName: recipient.name,
+              targetGrade: recipient.grade,
+              targetDepartment: recipient.department,
+              comment: "",
+              // Criteria use same structure as mission criteria for consistent UX.
+              // IMPORTANT: these scores are NEVER passed to getMissionAverage() or
+              // getMissionFinalScore() — they have zero impact on the assistant's score.
+              criteria: buildAnonymousFeedbackCriteriaFromSections(sections),
+            },
+          ]
+    );
+    setAnonymousTargetValue("");
+    clearScopedFeedback("final");
+  }
+
+  function updateAnonymousFeedbackComment(targetUserId, comment) {
+    setAnonymousFeedback((current) =>
+      current.map((item) => (String(item.targetUserId || "") === String(targetUserId) ? { ...item, comment } : item))
+    );
+    clearScopedFeedback("final");
+  }
+
+  /**
+   * Updates a criterion score inside an anonymous feedback entry.
+   * These scores are stored only in anonymousFeedback state and are deliberately
+   * excluded from all score calculation functions (getMissionAverage, getMissionFinalScore).
+   */
+  function updateAnonymousFeedbackScore(targetUserId, criterionId, score) {
+    setAnonymousFeedback((current) =>
+      current.map((item) =>
+        String(item.targetUserId || "") !== String(targetUserId)
+          ? item
+          : {
+              ...item,
+              criteria: (item.criteria || []).map((criterion) =>
+                criterion.id === criterionId ? { ...criterion, score } : criterion
+              ),
+            }
+      )
+    );
+    clearScopedFeedback("final");
+  }
+
+  function removeAnonymousFeedbackTarget(targetUserId) {
+    setAnonymousFeedback((current) => current.filter((item) => String(item.targetUserId || "") !== String(targetUserId)));
+    clearScopedFeedback("final");
+  }
+
+  function addChiefComment() {
+    const recipient = anonymousTargetOptions.find((item) => getRecipientOptionValue(item) === chiefTargetValue);
+    if (!recipient) return;
+    const targetUserId = recipient.id;
+    setChiefComments((current) =>
+      current.some((item) => String(item.targetUserId || "") === String(targetUserId))
+        ? current
+        : [
+            ...current,
+            {
+              targetUserId,
+              targetName: recipient.name,
+              targetGrade: recipient.grade,
+              targetDepartment: recipient.department,
+              comment: "",
+            },
+          ]
+    );
+    setChiefTargetValue("");
+    setChiefFeedback(null);
+  }
+
+  function updateChiefComment(targetUserId, comment) {
+    setChiefComments((current) =>
+      current.map((item) => (String(item.targetUserId || "") === String(targetUserId) ? { ...item, comment } : item))
+    );
+    setChiefFeedback(null);
+  }
+
+  function removeChiefComment(targetUserId) {
+    setChiefComments((current) => current.filter((item) => String(item.targetUserId || "") !== String(targetUserId)));
+    setChiefFeedback(null);
+  }
+
+  async function handleSendChiefComments() {
+    const hasCommentToSend = chiefComments.some((item) => String(item.comment || "").trim() && !item.submittedAt);
+    if (!hasCommentToSend) {
+      setChiefFeedback({ tone: "error", message: "Rédigez au moins un commentaire avant d'envoyer." });
+      return;
+    }
+    setIsSavingChief(true);
+    setChiefFeedback(null);
+    const now = new Date().toISOString();
+    const toSend = chiefComments.map((item) =>
+      String(item.comment || "").trim() && !item.submittedAt ? { ...item, submittedAt: now } : item
+    );
+    try {
+      await saveMyChiefComments(toSend);
+      setChiefComments(toSend);
+      setChiefFeedback({ tone: "success", message: "Commentaire(s) envoyé(s) avec succès." });
+    } catch (error) {
+      setChiefFeedback({ tone: "error", message: error.message || "Envoi impossible." });
+    } finally {
+      setIsSavingChief(false);
+    }
   }
 
   useEffect(() => {
@@ -527,6 +799,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     try {
       const response = await saveMyAssistantEvaluation({
         missionEvaluations: nextMissionEvaluations,
+        anonymousFeedback,
       });
       dirtyMissionRef.current = false;
       skipAutoSaveRef.current = true;
@@ -554,7 +827,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     }
 
     if (!selectedEvaluatorRecipients.length) {
-      setScopedFeedback("addMission", "error", "S\u00E9lectionnez au moins un \u00E9valuateur pour cette mission.");
+      setScopedFeedback("addMission", "error", "Sélectionnez au moins un évaluateur pour cette mission.");
       return;
     }
 
@@ -769,6 +1042,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
           manager: recipient.name,
         })),
         missionEvaluations,
+        anonymousFeedback,
       });
       setScopedFeedback("final", "success", submittedResponse.message || "Évaluations par mission soumises aux managers.");
       onEvaluationChange?.(submittedResponse);
@@ -801,6 +1075,39 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
         {evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"} - Auto-évaluation par mission - Sauvegarde progressive activée
       </div>
 
+      <div className="flex gap-1 border-b border-[#D9E3EE]">
+        <button
+          type="button"
+          onClick={() => setActiveTab("missions")}
+          className={`inline-flex items-center gap-2 rounded-t-md border border-b-0 px-4 py-2.5 text-[13px] font-bold transition ${
+            activeTab === "missions"
+              ? "border-[#D9E3EE] bg-white text-[#0F3A63]"
+              : "border-transparent bg-transparent text-slate-500 hover:text-[#0F3A63]"
+          }`}
+        >
+          <ClipboardList size={14} />
+          Mes missions
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("chef-comment")}
+          className={`inline-flex items-center gap-2 rounded-t-md border border-b-0 px-4 py-2.5 text-[13px] font-bold transition ${
+            activeTab === "chef-comment"
+              ? "border-[#D9E3EE] bg-white text-[#0F3A63]"
+              : "border-transparent bg-transparent text-slate-500 hover:text-[#0F3A63]"
+          }`}
+        >
+          <MessageSquare size={14} />
+          Commentaire anonyme
+          {chiefComments.length > 0 && (
+            <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#0B4C7A] text-[9px] font-bold text-white">
+              {chiefComments.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === "missions" && (
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <article className="rounded-md bg-white p-4 shadow-sm">
           <h3 className="text-lg font-bold text-[#0F3A63]">Mes missions de l'année</h3>
@@ -1217,6 +1524,73 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
               </div>
             </div>
 
+            {/* ── Anonymous annotations for managers/seniors ──────────────────────────
+                Scores stored here are NEVER passed to getMissionAverage() or
+                getMissionFinalScore(). They have zero impact on the assistant's score. */}
+            <div className="mt-5 rounded-md border border-[#D9E3EE] bg-[#F8FAFC] p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                
+                <div>
+                  <h4 className="text-sm font-bold text-[#0F3A63]">Annotations anonymes — Seniors &amp; Managers</h4>
+                  <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                    Notez vos supérieurs sur les mêmes critères que vos missions et laissez un commentaire.
+                    Ces notes sont <span className="font-bold text-[#0F3A63]">anonymes</span> et{" "}
+                    <span className="font-bold text-[#0F3A63]">ne sont jamais comptabilisées dans votre score final</span>.
+                  </p>
+                </div>
+                <span className="rounded-full bg-white border border-[#D9E3EE] px-3 py-1 text-[11px] font-bold text-[#0F4A72]">
+                  Anonyme · Hors calcul
+                </span>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <select
+                  value={anonymousTargetValue}
+                  onChange={(event) => setAnonymousTargetValue(event.target.value)}
+                  className="h-10 w-full rounded-md border border-[#D9E3EE] bg-white px-3 text-sm font-semibold text-[#0F3A63] outline-none"
+                >
+                  <option value="">Sélectionner un senior ou manager</option>
+                  {anonymousTargetOptions.map((recipient) => {
+                    const value = getRecipientOptionValue(recipient);
+                    const isAlreadySelected = anonymousFeedback.some((item) => String(item.targetUserId || "") === String(recipient.id));
+
+                    return (
+                      <option key={value} value={value} disabled={isAlreadySelected}>
+                        {recipient.department} - {getRecipientLabel(recipient)}
+                        {isAlreadySelected ? " - déjà ajouté" : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+                <button
+                  type="button"
+                  onClick={addAnonymousFeedbackTarget}
+                  disabled={!anonymousTargetValue}
+                  className="h-10 rounded-md bg-[#0B4C7A] px-4 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Ajouter
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-4">
+                {anonymousFeedback.length ? (
+                  anonymousFeedback.map((item) => (
+                    <AnonymousFeedbackPanel
+                      key={item.targetUserId || item.targetName}
+                      item={item}
+                      onUpdateScore={updateAnonymousFeedbackScore}
+                      onUpdateComment={updateAnonymousFeedbackComment}
+                      onRemove={() => removeAnonymousFeedbackTarget(item.targetUserId)}
+                    />
+                  ))
+                ) : (
+                  <p className="rounded-md bg-white px-3 py-3 text-[12px] font-semibold text-slate-500">
+                    Aucune annotation ajoutée pour le moment.
+                  </p>
+                )}
+              </div>
+            </div>
+
             <div className="mt-4 rounded-sm bg-[#DCECCB] px-3 py-2 text-[10px] font-semibold text-[#5A8A3A]">
               La soumission finale est possible quand chaque mission a été soumise à son destinataire.
             </div>
@@ -1313,6 +1687,146 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
           </div>
         </div>
       </section>
+      )}
+
+      {activeTab === "chef-comment" && (
+        <section className="space-y-4">
+          <article className="rounded-md bg-white p-5 shadow-sm">
+            <div className="mb-1 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-[22px] font-bold text-[#0F3A63]">Commentaire anonyme</h3>
+                <p className="mt-1 text-[12px] font-semibold text-slate-500">
+                  Choisissez un supérieur et rédigez un commentaire. Cliquez sur{" "}
+                  <span className="font-bold text-[#0F3A63]">Envoyer</span> pour le transmettre — il apparaîtra
+                  directement chez votre supérieur. Un commentaire envoyé ne peut plus être modifié.
+                </p>
+              </div>
+              <span className="rounded-full border border-[#D9E3EE] bg-white px-3 py-1 text-[11px] font-bold text-[#0F4A72]">
+                Anonyme · Visible par le destinataire
+              </span>
+            </div>
+
+            {anonymousTargetOptions.some(
+              (recipient) => !chiefComments.some((item) => String(item.targetUserId || "") === String(recipient.id))
+            ) && (
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <select
+                  value={chiefTargetValue}
+                  onChange={(event) => setChiefTargetValue(event.target.value)}
+                  className="h-10 w-full rounded-md border border-[#D9E3EE] bg-white px-3 text-sm font-semibold text-[#0F3A63] outline-none"
+                >
+                  <option value="">Sélectionner un supérieur</option>
+                  {anonymousTargetOptions.map((recipient) => {
+                    const value = getRecipientOptionValue(recipient);
+                    const alreadyAdded = chiefComments.some((item) => String(item.targetUserId || "") === String(recipient.id));
+                    return (
+                      <option key={value} value={value} disabled={alreadyAdded}>
+                        {recipient.department} — {getRecipientLabel(recipient)}
+                        {alreadyAdded ? " · déjà ajouté" : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+                <button
+                  type="button"
+                  onClick={addChiefComment}
+                  disabled={!chiefTargetValue}
+                  className="h-10 rounded-md bg-[#0B4C7A] px-5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Ajouter
+                </button>
+              </div>
+            )}
+
+            <div className="mt-5 space-y-4">
+              {chiefComments.length ? (
+                chiefComments.map((item) => {
+                  const isSent = Boolean(item.submittedAt);
+                  return (
+                    <div
+                      key={item.targetUserId || item.targetName}
+                      className={`rounded-md border p-4 ${isSent ? "border-[#C3DFAA] bg-[#F4FAED]" : "border-[#E3EAF3] bg-[#F8FBFF]"}`}
+                    >
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[13px] font-bold text-[#0F3A63]">{item.targetName}</p>
+                          <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                            {item.targetDepartment} — {item.targetGrade}
+                          </p>
+                        </div>
+                        {isSent ? (
+                          <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-[10px] font-bold text-[#4E8B1B]">
+                            Envoyé
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => removeChiefComment(item.targetUserId)}
+                            className="rounded-md bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-500 hover:bg-slate-200"
+                          >
+                            Retirer
+                          </button>
+                        )}
+                      </div>
+                      {isSent ? (
+                        <p className="rounded-md bg-white px-3 py-2 text-[12px] text-slate-700 ring-1 ring-[#C3DFAA]">
+                          {item.comment || "—"}
+                        </p>
+                      ) : (
+                        <textarea
+                          rows={4}
+                          value={item.comment || ""}
+                          onChange={(event) => updateChiefComment(item.targetUserId, event.target.value)}
+                          placeholder={`Votre commentaire pour ${item.targetName}…`}
+                          className="w-full resize-none rounded-md bg-white px-3 py-2 text-[12px] text-slate-700 outline-none ring-1 ring-[#D9E3EE] focus:ring-[#0B4C7A]"
+                        />
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="rounded-md bg-[#EEF2F6] px-4 py-4 text-sm font-semibold text-slate-500">
+                  Aucun supérieur sélectionné pour le moment.
+                </p>
+              )}
+            </div>
+
+            {chiefComments.some((item) => !item.submittedAt && String(item.comment || "").trim()) && (
+              <div className="mt-5 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleSendChiefComments}
+                  disabled={isSavingChief}
+                  className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-5 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                >
+                  {isSavingChief ? "Envoi…" : "Envoyer"}
+                </button>
+                {chiefFeedback && (
+                  <span
+                    className={`text-[12px] font-semibold ${
+                      chiefFeedback.tone === "error" ? "text-[#B93840]" : "text-[#184D2E]"
+                    }`}
+                  >
+                    {chiefFeedback.message}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {chiefFeedback && !chiefComments.some((item) => !item.submittedAt && String(item.comment || "").trim()) && (
+              <div className="mt-4">
+                <span
+                  className={`text-[12px] font-semibold ${
+                    chiefFeedback.tone === "error" ? "text-[#B93840]" : "text-[#184D2E]"
+                  }`}
+                >
+                  {chiefFeedback.message}
+                </span>
+              </div>
+            )}
+          </article>
+        </section>
+      )}
     </div>
   );
 }

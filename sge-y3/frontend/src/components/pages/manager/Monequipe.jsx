@@ -68,7 +68,7 @@ function Monequipe({ searchTerm, onSearchChange, onEvaluate, relanceMessage, mem
 
       <section className="overflow-hidden rounded-md bg-white">
         {!rows.length ? (
-          <div className="p-5 text-sm font-semibold text-slate-500">Aucun membre trouve dans votre perimetre.</div>
+          <div className="p-5 text-sm font-semibold text-slate-500">Aucun membre trouve dans votre périmetre.</div>
         ) : null}
         <table className="w-full border-collapse text-sm">
           <thead>

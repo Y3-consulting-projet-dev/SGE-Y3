@@ -10,7 +10,7 @@ const SUPPORT_ROLE_BY_EMAIL = {
   'adele.creppy@ycubeac.com': 'Comptable Interne Senior',
 };
 
-function getSupportCommonGradeKey(user = {}, supportRoleKey = '') {
+function getSupportCommonGradeKey(user = {}) {
   const source = normalizeDepartment(`${user.grade || ''} ${user.code_categorie || ''}`);
 
   if (source.includes('SENIOR') || source.includes('9A')) {
@@ -29,7 +29,7 @@ function getSupportCommonGradeKey(user = {}, supportRoleKey = '') {
     return 'AssociÃ©';
   }
 
-  return normalizeDepartment(supportRoleKey).includes('COMPTABLE INTERNE SENIOR') ? 'Senior' : 'Manager';
+  return 'Manager';
 }
 
 function getGradeColumnKey(grade = '') {
@@ -120,6 +120,14 @@ function getSourceLabel(sheetName) {
   return sheetName;
 }
 
+function getTemplateSectionKey(sheetName, sectionKey) {
+  return sheetName === 'TRONC COMMUN' ? sectionKey : `${sheetName}::${sectionKey}`;
+}
+
+function getTemplateSectionTitle(sheetName, sectionTitle) {
+  return sheetName === 'TRONC COMMUN' ? sectionTitle : `${getSourceLabel(sheetName)} - ${sectionTitle}`;
+}
+
 function createSectionRecord(sectionKey, index, sectionTitle = sectionKey) {
   return {
     id: index + 1,
@@ -186,11 +194,12 @@ function applyCustomQuestionnaire(sectionsMap, orderedSectionKeys, sheetNames, g
       return;
     }
 
+    const targetSectionKey = getTemplateSectionKey(page.source_sheet, page.section_key);
     const targetSection = ensureSection(
       sectionsMap,
       orderedSectionKeys,
-      page.section_key,
-      page.section_title || page.section_key
+      targetSectionKey,
+      getTemplateSectionTitle(page.source_sheet, page.section_title || page.section_key)
     );
 
     appendPageToSection(targetSection, page, page.source_sheet, getGradeColumnKeyForSheet(page.source_sheet));
@@ -201,7 +210,7 @@ function applyCustomQuestionnaire(sectionsMap, orderedSectionKeys, sheetNames, g
       return;
     }
 
-    const targetSection = sectionsMap.get(addition.section_key);
+    const targetSection = sectionsMap.get(getTemplateSectionKey(addition.source_sheet, addition.section_key));
     if (!targetSection) {
       return;
     }
@@ -243,7 +252,7 @@ function applyCustomQuestionnaire(sectionsMap, orderedSectionKeys, sheetNames, g
 function buildEvaluationTemplateForUser(user = {}) {
   const supportRoleKey = SUPPORT_ROLE_BY_EMAIL[normalizeEmail(user.email || '')];
   const gradeColumnKey = supportRoleKey || getGradeColumnKey(user.grade);
-  const supportCommonGradeKey = getSupportCommonGradeKey(user, supportRoleKey);
+  const supportCommonGradeKey = getSupportCommonGradeKey(user);
   const sheetNames = supportRoleKey ? ['TRONC COMMUN', 'SERVICE SUPPORT'] : getSheetNamesForDepartment(user.department);
   const getGradeColumnKeyForSheet = (sheetName) =>
     supportRoleKey && sheetName === 'TRONC COMMUN' ? supportCommonGradeKey : gradeColumnKey;
@@ -260,11 +269,12 @@ function buildEvaluationTemplateForUser(user = {}) {
     const sheetSections = matrixData[sheetName] || [];
 
     sheetSections.forEach((section) => {
-      const targetSection = sectionsMap.get(section.key);
-
-      if (!targetSection) {
-        return;
-      }
+      const targetSection = ensureSection(
+        sectionsMap,
+        orderedSectionKeys,
+        getTemplateSectionKey(sheetName, section.key),
+        getTemplateSectionTitle(sheetName, section.title || section.key)
+      );
 
       section.pages.forEach((page) => {
         appendPageToSection(targetSection, page, sheetName, getGradeColumnKeyForSheet(sheetName));

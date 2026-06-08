@@ -478,6 +478,176 @@ const ASSOCIATE_DASHBOARD_DEPARTMENTS = [
   'Service support',
 ];
 
+const SUPPORT_ROLE_BY_EMAIL = {
+  'fleur.nguessan@ycubeac.com': 'Office Manager',
+  'aziz.ouattara@ycubeac.com': 'PMO',
+  'porthela.kakou@ycubeac.com': 'Responsable IT',
+  'adele.creppy@ycubeac.com': 'Comptable interne senior',
+};
+
+const SUPPORT_EMAILS = Object.keys(SUPPORT_ROLE_BY_EMAIL);
+
+function normalizeEmail(value = '') {
+  return String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function isSupportEvaluationTarget(user) {
+  return SUPPORT_EMAILS.includes(normalizeEmail(user?.email || ''));
+}
+
+function getSupportRoleLabel(user) {
+  return SUPPORT_ROLE_BY_EMAIL[normalizeEmail(user?.email || '')] || user?.grade || 'Service support';
+}
+
+function cloneSectionsForSupport(user) {
+  return buildEvaluationTemplateForUser({
+    email: user?.email || '',
+    grade: user?.grade || '',
+    department: user?.department || 'Service support',
+    code_categorie: user?.code_categorie || '',
+  }).map((section) => ({
+    ...section,
+    pages: (section.pages || []).map((page) => ({
+      ...page,
+      themes: (page.themes || []).map((theme) => ({ ...theme })),
+    })),
+    criteria: (section.criteria || []).map((criterion) => ({ ...criterion })),
+  }));
+}
+
+function getSupportPageMatchKey(page = {}) {
+  return `${String(page.source_sheet || '').trim()}::${String(page.title || '').trim()}`;
+}
+
+function getSupportThemeMatchKey(page = {}, theme = {}) {
+  return `${getSupportPageMatchKey(page)}::${String(theme.code || '').trim()}::${String(theme.label || '').trim()}`;
+}
+
+function mergeSupportReviewSectionsWithTemplate(savedSections = [], templateSections = []) {
+  const normalizedSavedSections = normalizeSections(savedSections || []);
+  const savedSectionByTitle = new Map(normalizedSavedSections.map((section) => [section.title, section]));
+  const savedPageByKey = new Map();
+  const savedThemeByKey = new Map();
+
+  normalizedSavedSections.forEach((section) => {
+    (section.pages || []).forEach((page) => {
+      savedPageByKey.set(getSupportPageMatchKey(page), page);
+      (page.themes || []).forEach((theme) => {
+        savedThemeByKey.set(getSupportThemeMatchKey(page, theme), theme);
+      });
+    });
+  });
+
+  return templateSections.map((templateSection) => {
+    const savedSection = savedSectionByTitle.get(templateSection.title);
+
+    return {
+      ...templateSection,
+      comment: savedSection?.comment || templateSection.comment || '',
+      pages: (templateSection.pages || []).map((templatePage) => {
+        const savedPage = savedPageByKey.get(getSupportPageMatchKey(templatePage));
+
+        return {
+          ...templatePage,
+          comment: savedPage?.comment || templatePage.comment || '',
+          themes: (templatePage.themes || []).map((templateTheme) => {
+            const savedTheme = savedThemeByKey.get(getSupportThemeMatchKey(templatePage, templateTheme));
+
+            return {
+              ...templateTheme,
+              score: typeof savedTheme?.score === 'number' ? savedTheme.score : templateTheme.score,
+            };
+          }),
+        };
+      }),
+    };
+  });
+}
+
+async function syncSupportSelfEvaluationWithTemplate(selfEvaluation, supportUser) {
+  if (!selfEvaluation) {
+    return null;
+  }
+
+  const syncedSections = mergeSupportReviewSectionsWithTemplate(
+    selfEvaluation.sections || [],
+    cloneSectionsForSupport(supportUser)
+  );
+
+  selfEvaluation.sections = toPersistenceSections(normalizeSections(syncedSections));
+  selfEvaluation.last_saved_at = new Date();
+  await selfEvaluation.save();
+  return selfEvaluation;
+}
+
+function getAssociateSupportReviewSections(instance, supportUser) {
+  const savedSections = normalizeSections(instance?.peer_review_sections || []);
+  const templateSections = cloneSectionsForSupport(supportUser);
+
+  if (savedSections.length) {
+    return mergeSupportReviewSectionsWithTemplate(savedSections, templateSections);
+  }
+
+  return templateSections;
+}
+
+function buildAssociateSupportListItem(supportUser, selfEvaluation) {
+  const selfSections = normalizeSections(selfEvaluation?.sections || []);
+  const reviewSections = normalizeSections(selfEvaluation?.peer_review_sections || []);
+
+  return {
+    id: supportUser._id.toString(),
+    evaluationId: selfEvaluation?._id?.toString?.() || '',
+    name: supportUser.name,
+    email: supportUser.email || '',
+    role: getSupportRoleLabel(supportUser),
+    department: supportUser.department || 'Service support',
+    status: selfEvaluation?.status || 'En attente',
+    submittedAt: selfEvaluation?.submitted_at || null,
+    selfEvaluationAvailable: Boolean(selfEvaluation?.submitted_at),
+    selfScore: getOverallAverageScore(selfSections),
+    associateScore: getOverallAverageScore(reviewSections),
+    evaluationProgress: getEvaluationSummary(reviewSections).globalProgress,
+    annotationSaved: Boolean(String(selfEvaluation?.peer_review_comment || '').trim() || reviewSections.length),
+  };
+}
+
+function buildAssociateSupportPayload(supportUser, selfEvaluation) {
+  const selfSections = normalizeSections(selfEvaluation?.sections || []);
+  const reviewSections = getAssociateSupportReviewSections(selfEvaluation, supportUser);
+
+  return {
+    cycle_label: CURRENT_CYCLE_LABEL,
+    support: {
+      id: supportUser._id.toString(),
+      name: supportUser.name,
+      email: supportUser.email || '',
+      role: getSupportRoleLabel(supportUser),
+      grade: supportUser.grade || '',
+      department: supportUser.department || 'Service support',
+    },
+    self_evaluation: {
+      id: selfEvaluation?._id?.toString?.() || '',
+      status: selfEvaluation?.status || 'En attente',
+      submitted_at: selfEvaluation?.submitted_at || null,
+      sections: selfSections,
+      summary: {
+        ...getEvaluationSummary(selfSections),
+        overallAverage: getOverallAverageScore(selfSections),
+      },
+    },
+    associate_review: {
+      last_saved_at: selfEvaluation?.peer_review_comment_saved_at || null,
+      note: selfEvaluation?.peer_review_comment || '',
+      sections: reviewSections,
+      summary: {
+        ...getEvaluationSummary(reviewSections),
+        overallAverage: getOverallAverageScore(reviewSections),
+      },
+    },
+  };
+}
+
 function buildDecisionMap(decisionDocument) {
   const map = new Map();
   const decisions = decisionDocument?.decisions;
@@ -995,6 +1165,85 @@ module.exports = {
     return response.json({
       message: "Évaluation de l'associé enregistrée.",
       ...buildAssociateManagerPayload(manager, selfEvaluation, associateReview),
+    });
+  },
+  async getAssociateSupportEvaluations(request, response) {
+    const supportUsers = await User.find({
+      is_active: true,
+      email: { $in: SUPPORT_EMAILS },
+    }).select('_id name first_name last_name email grade department code_categorie');
+    const supportIds = supportUsers.map((user) => user._id);
+    const selfEvaluations = supportIds.length
+      ? await EvaluationInstance.find({
+          cycle_label: CURRENT_CYCLE_LABEL,
+          evalue_id: { $in: supportIds },
+          template_type: 'support-self-evaluation',
+        }).select('_id evalue_id status submitted_at sections peer_review_sections peer_review_comment peer_review_comment_saved_at')
+      : [];
+    const selfEvaluationByUserId = new Map(selfEvaluations.map((instance) => [String(instance.evalue_id), instance]));
+
+    return response.json({
+      cycle_label: CURRENT_CYCLE_LABEL,
+      items: supportUsers
+        .map((supportUser) => buildAssociateSupportListItem(supportUser, selfEvaluationByUserId.get(String(supportUser._id))))
+        .sort((left, right) => String(left.name || '').localeCompare(String(right.name || ''), 'fr', { sensitivity: 'base' })),
+    });
+  },
+  async getAssociateSupportEvaluation(request, response) {
+    const supportUser = await User.findById(request.params.supportId).select(
+      '_id name first_name last_name email grade department code_categorie'
+    );
+
+    if (!supportUser || !isSupportEvaluationTarget(supportUser)) {
+      return response.status(404).json({ message: 'Membre du service support introuvable.' });
+    }
+
+    let selfEvaluation = await EvaluationInstance.findOne({
+      cycle_label: CURRENT_CYCLE_LABEL,
+      evalue_id: supportUser._id,
+      template_type: 'support-self-evaluation',
+    }).select('_id evalue_id status submitted_at sections peer_review_sections peer_review_comment peer_review_comment_saved_at');
+
+    const syncedSelfEvaluation = await syncSupportSelfEvaluationWithTemplate(selfEvaluation, supportUser);
+
+    return response.json(buildAssociateSupportPayload(supportUser, syncedSelfEvaluation));
+  },
+  async saveAssociateSupportEvaluation(request, response) {
+    const supportUser = await User.findById(request.params.supportId).select(
+      '_id name first_name last_name email grade department code_categorie'
+    );
+
+    if (!supportUser || !isSupportEvaluationTarget(supportUser)) {
+      return response.status(404).json({ message: 'Membre du service support introuvable.' });
+    }
+
+    const selfEvaluation = await EvaluationInstance.findOne({
+      cycle_label: CURRENT_CYCLE_LABEL,
+      evalue_id: supportUser._id,
+      template_type: 'support-self-evaluation',
+    }).select('_id evalue_id status submitted_at sections peer_review_sections peer_review_comment peer_review_comment_saved_at');
+
+    if (!selfEvaluation) {
+      return response.status(404).json({ message: "Auto-évaluation support introuvable." });
+    }
+
+    selfEvaluation = await syncSupportSelfEvaluationWithTemplate(selfEvaluation, supportUser);
+
+    const rawSections = Array.isArray(request.body?.sections) ? request.body.sections : [];
+    if (rawSections.length) {
+      selfEvaluation.peer_review_sections = toPersistenceSections(normalizeSections(rawSections));
+    }
+
+    selfEvaluation.peer_review_comment = String(request.body?.note || '').trim();
+    selfEvaluation.peer_review_comment_by_user_id = request.user._id;
+    selfEvaluation.peer_review_comment_by_name =
+      [request.user?.first_name, request.user?.last_name].filter(Boolean).join(' ').trim() || request.user?.name || '';
+    selfEvaluation.peer_review_comment_saved_at = new Date();
+    await selfEvaluation.save();
+
+    return response.json({
+      message: "Évaluation support enregistrée.",
+      ...buildAssociateSupportPayload(supportUser, selfEvaluation),
     });
   },
   async getAssociateSyntheses(_request, response) {

@@ -2323,7 +2323,7 @@
             {
               "code": "A",
               "label": "Gestion de la trésorerie",
-              "statements": {
+              "statements": { 
                 "Comptable Interne Senior": "Supervise les flux de trésorerie, élabore les prévisions de trésorerie et assure le suivi des positions bancaires. Gère les règlements fournisseurs et le recouvrement des créances clients du cabinet.",
                 "Comptabilite interne senior": "Supervise les flux de trésorerie, élabore les prévisions de trésorerie et assure le suivi des positions bancaires. Gère les règlements fournisseurs et le recouvrement des créances clients du cabinet.",
                 "Manager": "Supervise les flux de trésorerie, élabore les prévisions de trésorerie et assure le suivi des positions bancaires. Gère les règlements fournisseurs et le recouvrement des créances clients du cabinet."

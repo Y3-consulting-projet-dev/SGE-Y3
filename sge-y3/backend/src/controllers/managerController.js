@@ -302,11 +302,12 @@ async function getSelfEvaluationInstanceForMember(member) {
     evalue_id: member._id,
     cycle_label: CURRENT_CYCLE_LABEL,
     template_type: getExpectedTemplateType(member),
-  }).select('status submitted_at sections submitted_to_user_ids mission_evaluations');
+  }).select('status submitted_at sections submitted_to_user_ids mission_evaluations anonymous_feedback chief_comments');
 }
 
 function buildSelfEvaluationPayload(instance) {
   const sections = normalizeSections(instance?.sections || []);
+  const missionEvaluations = formatManagerMissionEvaluations(normalizeManagerMissionEvaluations(instance?.mission_evaluations || []));
 
   return {
     status: instance?.status || 'En attente',
@@ -326,7 +327,35 @@ function buildSelfEvaluationPayload(instance) {
         comment: String(section.comment || '').trim(),
       })),
     titleJustifications: getPageJustifications(sections),
+    missionEvaluations,
+    anonymous_feedback: instance?.anonymous_feedback || [],
+    chief_comments: instance?.chief_comments || [],
   };
+}
+
+function formatAnonymousFeedbackForUser(feedbackItems = [], targetUser) {
+  const targetId = String(targetUser?._id || '');
+  const targetName = normalizeText(targetUser?.name || '');
+
+  return (feedbackItems || [])
+    .filter((item) => {
+      const itemTargetId = String(item?.target_user_id || '');
+      const itemTargetName = normalizeText(item?.target_name || '');
+      return (targetId && itemTargetId === targetId) || (targetName && itemTargetName === targetName);
+    })
+    .map((item) => ({
+      targetName: item.target_name || targetUser?.name || '',
+      targetGrade: item.target_grade || targetUser?.grade || '',
+      targetDepartment: item.target_department || targetUser?.department || '',
+      comment: item.comment || '',
+      submittedAt: item.submitted_at || null,
+    }))
+    .filter((item) => String(item.comment || '').trim());
+}
+
+function formatSentChiefCommentsForUser(feedbackItems = [], targetUser) {
+  return formatAnonymousFeedbackForUser(feedbackItems, targetUser)
+    .filter((item) => item.submittedAt !== null);
 }
 
 async function getOrCreateManagerSelfEvaluation(user) {
@@ -875,6 +904,7 @@ async function getOrCreateManagerMemberReview(managerUser, member) {
 function buildManagerReviewPayload(review, managerUser, member, selfEvaluation, rhRecipients = [], missionAndScoreData = {}) {
   const sections = normalizeSections(review.sections);
   const activeSection = sections.find((section) => section.status !== 'Complete') || sections[0] || null;
+  const { anonymous_feedback: anonymousFeedbackSource = [], chief_comments: chiefCommentsSource = [], ...publicSelfEvaluation } = selfEvaluation || {};
 
   return {
     review: {
@@ -908,7 +938,11 @@ function buildManagerReviewPayload(review, managerUser, member, selfEvaluation, 
     review_context: {
       evaluationDepartment: review.member_department || member.department,
     },
-    self_evaluation: selfEvaluation,
+    self_evaluation: {
+      ...publicSelfEvaluation,
+      anonymousFeedback: formatAnonymousFeedbackForUser(anonymousFeedbackSource, managerUser),
+      chiefComments: formatSentChiefCommentsForUser(chiefCommentsSource, managerUser),
+    },
     received_global_scores: missionAndScoreData.globalScores || [],
     submitted_missions: missionAndScoreData.missions || [],
     mission_reviews: formatMissionReviews(review.mission_reviews || []),
@@ -1117,7 +1151,7 @@ async function getManagerOverview(request, response) {
           evalue_id: { $in: memberIds },
           cycle_label: CURRENT_CYCLE_LABEL,
           template_type: { $in: ['assistant-self-evaluation', 'senior-self-evaluation'] },
-        }).select('evalue_id template_type status submitted_at submitted_to_user_ids sections'),
+        }).select('evalue_id template_type status submitted_at submitted_to_user_ids sections chief_comments'),
         ManagerMemberReview.find({
           cycle_label: CURRENT_CYCLE_LABEL,
           manager_id: request.user._id,
@@ -1178,6 +1212,18 @@ async function getManagerOverview(request, response) {
   const totalMembers = members.length;
   const receivedCount = receivedEvaluations.length;
 
+  const chiefCommentInstances = await EvaluationInstance.find({
+    cycle_label: CURRENT_CYCLE_LABEL,
+    'chief_comments.target_user_id': request.user._id,
+  }).select('chief_comments');
+
+  const anonymousComments = chiefCommentInstances.flatMap((instance) =>
+    (instance.chief_comments || [])
+      .filter((comment) => String(comment.target_user_id) === String(request.user._id) && comment.submitted_at)
+      .map((comment) => ({ comment: comment.comment, submittedAt: comment.submitted_at }))
+  );
+  const anonymousCommentsCount = anonymousComments.length;
+
   let selfEvaluationInstance = await EvaluationInstance.findOne({
     evalue_id: request.user._id,
     cycle_label: CURRENT_CYCLE_LABEL,
@@ -1204,6 +1250,7 @@ async function getManagerOverview(request, response) {
       pendingEvaluationsCount: pendingEvaluations.length,
       selfEvaluationStatus: selfEvaluationInstance?.status || 'En attente',
       selfEvaluationSubmittedAt: selfEvaluationInstance?.submitted_at || null,
+      anonymousCommentsCount,
     },
     members: members.map((member) =>
       formatMember(
@@ -1213,6 +1260,7 @@ async function getManagerOverview(request, response) {
       )
     ),
     pendingEvaluations,
+    anonymousComments,
   });
 }
 
