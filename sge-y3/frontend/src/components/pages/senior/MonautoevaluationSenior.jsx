@@ -503,7 +503,7 @@ function MonautoevaluationSenior({ user }) {
     });
     if (!savedResponse) return;
 
-    setScopedFeedback("addMission", "success", "Mission ajout?e et enregistr?e.");
+    setScopedFeedback("addMission", "success", "Mission ajoutée et enregistrée.");
   }
 
   function updateMissionScore(criterionId, score) {

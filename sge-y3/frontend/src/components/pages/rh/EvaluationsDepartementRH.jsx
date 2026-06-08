@@ -26,7 +26,8 @@ function groupDetailsByMission(details = []) {
 
   details.forEach((detail, index) => {
     const missionTitle = detail.missionTitle || "Évaluation globale";
-    const current = missionMap.get(missionTitle) || {
+    const missionKey = detail.missionId || missionTitle;
+    const current = missionMap.get(missionKey) || {
       title: missionTitle,
       finalScore: null,
       evaluators: [],
@@ -36,10 +37,10 @@ function groupDetailsByMission(details = []) {
     if (isFinalScore) {
       current.finalScore = detail.score;
     } else {
-      current.evaluators.push({ ...detail, key: `${missionTitle}-${detail.source}-${detail.evaluatorName}-${index}` });
+      current.evaluators.push({ ...detail, key: `${missionKey}-${detail.source}-${detail.evaluatorName}-${index}` });
     }
 
-    missionMap.set(missionTitle, current);
+    missionMap.set(missionKey, current);
   });
 
   return Array.from(missionMap.values());

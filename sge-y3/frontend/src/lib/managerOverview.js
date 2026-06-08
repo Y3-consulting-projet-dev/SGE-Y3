@@ -61,10 +61,10 @@ export function submitManagerSelfEvaluation() {
   });
 }
 
-export function submitManagerMissionEvaluation(missionId) {
+export function submitManagerMissionEvaluation(missionId, payload = {}) {
   return request("/manager/self-evaluation/missions/submit", {
     method: "POST",
-    body: JSON.stringify({ missionId }),
+    body: JSON.stringify({ missionId, ...payload }),
   });
 }
 

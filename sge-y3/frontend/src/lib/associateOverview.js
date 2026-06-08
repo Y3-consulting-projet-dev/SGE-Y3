@@ -90,3 +90,10 @@ export function saveAssociateManagerEvaluation(managerId, payload) {
     body: JSON.stringify(payload),
   });
 }
+
+export function submitAssociateManagerEvaluationToRh(managerId, payload) {
+  return request(`/associate/manager-evaluations/${managerId}/submit-rh`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

@@ -65,6 +65,25 @@ function getAssociateManagerSelfTemplateType(user) {
   return isRhDepartment(user) ? 'rh-self-evaluation' : 'manager-self-evaluation';
 }
 
+function isMissionAssignedToAssociate(mission, associateId) {
+  const targetId = String(associateId || '').trim();
+
+  if (!targetId || mission?.status !== 'Soumise') {
+    return false;
+  }
+
+  return (mission.recipients || []).some((recipient) => {
+    const recipientId = String(recipient?.user_id || recipient?.id || '').trim();
+    return recipientId === targetId && recipient?.can_evaluate !== false;
+  });
+}
+
+function getAssociateManagerAvailableMissions(selfEvaluation, associateId) {
+  return (selfEvaluation?.mission_evaluations || []).filter((mission) =>
+    isMissionAssignedToAssociate(mission, associateId)
+  );
+}
+
 function toPersistenceSections(sections = []) {
   return sections.map((section, index) => {
     const rawSectionId = Number(section.section_id ?? section.id);
@@ -691,7 +710,9 @@ function toAssociateMissionCriteria(criteria = []) {
   return (criteria || []).map((criterion) => ({
     criterion_id: String(criterion.criterion_id || criterion.id || '').trim(),
     section_title: String(criterion.section_title || criterion.sectionTitle || '').trim(),
+    section_comment: String(criterion.section_comment || criterion.sectionComment || '').trim(),
     page_title: String(criterion.page_title || criterion.pageTitle || '').trim(),
+    page_comment: String(criterion.page_comment || criterion.pageComment || '').trim(),
     source_sheet: String(criterion.source_sheet || criterion.sourceSheet || '').trim(),
     source_label: String(criterion.source_label || criterion.sourceLabel || '').trim(),
     theme_code: String(criterion.theme_code || criterion.themeCode || '').trim(),
@@ -709,8 +730,7 @@ async function getOrCreateAssociateManagerReview(associateUser, managerUser, man
   });
 
   const templateSections = cloneSectionsForManager(managerUser);
-  const availableMissions = (managerSelfEvaluation?.mission_evaluations || [])
-    .filter((mission) => mission.status === 'Soumise')
+  const availableMissions = getAssociateManagerAvailableMissions(managerSelfEvaluation, associateUser._id)
     .map((mission) => ({
       mission_id: mission.mission_id,
       title: mission.title,
@@ -744,7 +764,13 @@ async function getOrCreateAssociateManagerReview(associateUser, managerUser, man
 function buildAssociateManagerListItem(manager, selfEvaluation, associateReview) {
   const selfSections = normalizeSections(selfEvaluation?.sections || []);
   const reviewSections = normalizeSections(associateReview?.sections || []);
-  const missionReviews = formatMissionReviews(normalizeMissionReviews(associateReview?.mission_reviews || []));
+  const missionReviews = formatMissionReviews(
+    normalizeMissionReviews(
+      associateReview?.mission_reviews?.length
+        ? associateReview.mission_reviews
+        : getAssociateManagerAvailableMissions(selfEvaluation, associateReview?.associate_id)
+    )
+  );
   const missionAverage = getAverageFromScores(missionReviews.map((mission) => mission.average));
   const globalAverage = getOverallAverageScore(reviewSections);
 
@@ -785,8 +811,7 @@ function buildAssociateManagerPayload(manager, selfEvaluation, associateReview) 
         ...getEvaluationSummary(selfSections),
         overallAverage: getOverallAverageScore(selfSections),
       },
-      missions: (selfEvaluation?.mission_evaluations || [])
-        .filter((mission) => mission.status === 'Soumise')
+      missions: getAssociateManagerAvailableMissions(selfEvaluation, associateReview.associate_id)
         .map((mission) => ({
           id: mission.mission_id,
           title: mission.title,
@@ -1356,8 +1381,6 @@ module.exports = {
       cycle_label: CURRENT_CYCLE_LABEL,
       evalue_id: { $in: managerIds },
       template_type: { $in: ['manager-self-evaluation', 'rh-self-evaluation'] },
-      status: { $in: ['Soumis à RH', 'Validé RH', 'Clôture'] },
-      submitted_at: { $ne: null },
     }).select('_id evalue_id template_type status submitted_at sections mission_evaluations');
 
     const selfEvaluationByManagerId = new Map(
@@ -1370,7 +1393,7 @@ module.exports = {
           cycle_label: CURRENT_CYCLE_LABEL,
           associate_id: request.user._id,
           manager_id: { $in: managerIds },
-        }).select('manager_id sections mission_reviews associate_note last_saved_at')
+        }).select('associate_id manager_id sections mission_reviews associate_note last_saved_at')
       : [];
 
     const reviewByManagerId = new Map(associateReviews.map((review) => [String(review.manager_id), review]));
@@ -1378,7 +1401,8 @@ module.exports = {
     const items = managers
       .map((manager) => {
         const managerId = String(manager._id);
-        return buildAssociateManagerListItem(manager, selfEvaluationByManagerId.get(managerId), reviewByManagerId.get(managerId));
+        const associateReview = reviewByManagerId.get(managerId) || { associate_id: request.user._id, mission_reviews: [] };
+        return buildAssociateManagerListItem(manager, selfEvaluationByManagerId.get(managerId), associateReview);
       })
       .filter(Boolean)
       .sort((left, right) => String(left.name || '').localeCompare(String(right.name || ''), 'fr', { sensitivity: 'base' }));
@@ -1399,8 +1423,6 @@ module.exports = {
       cycle_label: CURRENT_CYCLE_LABEL,
       evalue_id: manager._id,
       template_type: getAssociateManagerSelfTemplateType(manager),
-      status: { $in: ['Soumis à RH', 'Validé RH', 'Clôture'] },
-      submitted_at: { $ne: null },
     }).select('status submitted_at sections mission_evaluations');
 
     const associateReview = await getOrCreateAssociateManagerReview(request.user, manager, selfEvaluation);
@@ -1418,8 +1440,6 @@ module.exports = {
       cycle_label: CURRENT_CYCLE_LABEL,
       evalue_id: manager._id,
       template_type: getAssociateManagerSelfTemplateType(manager),
-      status: { $in: ['Soumis à RH', 'Validé RH', 'Clôture'] },
-      submitted_at: { $ne: null },
     }).select('status submitted_at sections mission_evaluations');
 
     const associateReview = await getOrCreateAssociateManagerReview(request.user, manager, selfEvaluation);
@@ -1433,7 +1453,7 @@ module.exports = {
     if (rawMissionReviews.length) {
       const incomingMissionMap = new Map(normalizeMissionReviews(rawMissionReviews).map((mission) => [mission.mission_id, mission]));
       const availableMissionIds = new Set(
-        (selfEvaluation?.mission_evaluations || []).filter((mission) => mission.status === 'Soumise').map((mission) => String(mission.mission_id))
+        getAssociateManagerAvailableMissions(selfEvaluation, request.user._id).map((mission) => String(mission.mission_id))
       );
       associateReview.mission_reviews = normalizeMissionReviews(associateReview.mission_reviews || []).map((mission) =>
         availableMissionIds.has(mission.mission_id) && incomingMissionMap.has(mission.mission_id)
@@ -1442,12 +1462,87 @@ module.exports = {
       );
     }
 
+
     associateReview.associate_note = String(request.body?.note || '').trim();
     associateReview.last_saved_at = new Date();
     await associateReview.save();
 
     return response.json({
       message: "Évaluation de l'associé enregistrée.",
+      ...buildAssociateManagerPayload(manager, selfEvaluation, associateReview),
+    });
+  },
+  async submitAssociateManagerEvaluationToRh(request, response) {
+    const manager = await User.findById(request.params.managerId).select('_id name grade department code_categorie');
+
+    if (!manager || !isAssociateManagerEvaluationTarget(manager)) {
+      return response.status(404).json({ message: 'Manager introuvable.' });
+    }
+
+    const selfEvaluation = await EvaluationInstance.findOne({
+      cycle_label: CURRENT_CYCLE_LABEL,
+      evalue_id: manager._id,
+      template_type: getAssociateManagerSelfTemplateType(manager),
+    }).select('status submitted_at sections mission_evaluations');
+
+    const associateReview = await getOrCreateAssociateManagerReview(request.user, manager, selfEvaluation);
+    const rawMissionReviews = Array.isArray(request.body?.missions) ? request.body.missions : [];
+
+    if (rawMissionReviews.length) {
+      const incomingMissionMap = new Map(normalizeMissionReviews(rawMissionReviews).map((mission) => [mission.mission_id, mission]));
+      const availableMissionIds = new Set(
+        getAssociateManagerAvailableMissions(selfEvaluation, request.user._id).map((mission) => String(mission.mission_id))
+      );
+      associateReview.mission_reviews = normalizeMissionReviews(associateReview.mission_reviews || []).map((mission) =>
+        availableMissionIds.has(mission.mission_id) && incomingMissionMap.has(mission.mission_id)
+          ? incomingMissionMap.get(mission.mission_id)
+          : mission
+      );
+    }
+
+    const missions = normalizeMissionReviews(associateReview.mission_reviews || []);
+    const hasIncompleteMission = missions.some((mission) =>
+      (mission.criteria || []).some((criterion) => typeof criterion.score !== 'number')
+    );
+
+    if (!missions.length) {
+      return response.status(400).json({ message: "Aucune mission manager n'est disponible pour transmission à la RH." });
+    }
+
+    if (hasIncompleteMission) {
+      return response.status(400).json({ message: 'Toutes les notes de la mission manager doivent être renseignées avant transmission à la RH.' });
+    }
+
+    const hasMissingSectionComment = missions.some((mission) => {
+      const commentsBySection = new Map();
+
+      (mission.criteria || []).forEach((criterion) => {
+        const sectionTitle = String(criterion.section_title || 'Mission').trim() || 'Mission';
+        if (!commentsBySection.has(sectionTitle)) {
+          commentsBySection.set(sectionTitle, '');
+        }
+
+        const comment = String(criterion.section_comment || '').trim();
+        if (comment) {
+          commentsBySection.set(sectionTitle, comment);
+        }
+      });
+
+      return Array.from(commentsBySection.values()).some((comment) => comment.length < 3);
+    });
+
+    if (hasMissingSectionComment) {
+      return response.status(400).json({ message: 'Un commentaire est obligatoire pour chaque section avant transmission à la RH.' });
+    }
+
+    associateReview.associate_note = String(request.body?.note || associateReview.associate_note || '').trim();
+    associateReview.status = 'Soumis à RH';
+    associateReview.submitted_at = new Date();
+    associateReview.last_saved_at = new Date();
+    await associateReview.save();
+
+    return response.json({
+      message: "Évaluation du manager transmise à la RH.",
       ...buildAssociateManagerPayload(manager, selfEvaluation, associateReview),
     });
   },

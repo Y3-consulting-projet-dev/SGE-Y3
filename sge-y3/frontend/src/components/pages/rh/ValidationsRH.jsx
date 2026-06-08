@@ -98,7 +98,8 @@ function groupScoreDetailsByMission(details = []) {
 
   details.forEach((detail, index) => {
     const missionTitle = detail.missionTitle || "Évaluation globale";
-    const current = missionMap.get(missionTitle) || {
+    const missionKey = detail.missionId || missionTitle;
+    const current = missionMap.get(missionKey) || {
       title: missionTitle,
       evaluators: [],
       finalScore: null,
@@ -109,10 +110,10 @@ function groupScoreDetailsByMission(details = []) {
     if (isFinalMissionScore) {
       current.finalScore = detail.score;
     } else {
-      current.evaluators.push({ ...detail, key: `${missionTitle}-${source}-${detail.evaluatorName}-${index}` });
+      current.evaluators.push({ ...detail, key: `${missionKey}-${source}-${detail.evaluatorName}-${index}` });
     }
 
-    missionMap.set(missionTitle, current);
+    missionMap.set(missionKey, current);
   });
 
   return Array.from(missionMap.values());

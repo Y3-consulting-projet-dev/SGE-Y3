@@ -57,7 +57,9 @@ const missionCriterionSchema = new mongoose.Schema(
   {
     criterion_id: { type: String, default: '', trim: true },
     section_title: { type: String, default: '', trim: true },
+    section_comment: { type: String, default: '', trim: true },
     page_title: { type: String, default: '', trim: true },
+    page_comment: { type: String, default: '', trim: true },
     source_sheet: { type: String, default: '', trim: true },
     source_label: { type: String, default: '', trim: true },
     theme_code: { type: String, default: '', trim: true },
@@ -90,6 +92,8 @@ const associateManagerReviewSchema = new mongoose.Schema(
     sections: { type: [reviewSectionSchema], default: [] },
     mission_reviews: { type: [missionReviewSchema], default: [] },
     associate_note: { type: String, default: '', trim: true },
+    status: { type: String, default: 'En cours', trim: true },
+    submitted_at: { type: Date, default: null },
     last_saved_at: { type: Date, default: null },
   },
   {

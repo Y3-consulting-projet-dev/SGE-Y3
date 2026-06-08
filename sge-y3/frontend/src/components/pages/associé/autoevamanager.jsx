@@ -7,6 +7,7 @@ import {
   getReceivedAssociateEvaluations,
   saveAssociateManagerEvaluation,
   saveReceivedAssociateEvaluationComment,
+  submitAssociateManagerEvaluationToRh,
   submitReceivedAssociateEvaluationToRh,
 } from "@/lib/associateOverview";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
@@ -44,7 +45,9 @@ function buildMissionsPayload(missions = []) {
     criteria: (mission.criteria || []).map((criterion) => ({
       id: criterion.id,
       sectionTitle: criterion.sectionTitle,
+      sectionComment: criterion.sectionComment || "",
       pageTitle: criterion.pageTitle,
+      pageComment: criterion.pageComment || "",
       sourceSheet: criterion.sourceSheet,
       sourceLabel: criterion.sourceLabel,
       themeCode: criterion.themeCode,
@@ -70,6 +73,32 @@ function getMissionProgress(mission) {
   if (!criteria.length) return 0;
   const completed = criteria.filter((criterion) => typeof criterion.score === "number").length;
   return Math.round((completed / criteria.length) * 100);
+}
+
+function buildManagerMissionPages(mission) {
+  const pageMap = new Map();
+
+  (mission?.criteria || []).forEach((criterion, index) => {
+    const sectionTitle = criterion.sectionTitle || "Mission";
+    const pageTitle = criterion.pageTitle || criterion.label || `Titre ${index + 1}`;
+    const key = `${sectionTitle}::${pageTitle}::${criterion.sourceSheet || ""}`;
+
+    if (!pageMap.has(key)) {
+      pageMap.set(key, {
+        id: key,
+        sectionTitle,
+        title: pageTitle,
+        criteria: [],
+      });
+    }
+
+    pageMap.get(key).criteria.push({
+      ...criterion,
+      criteriaIndex: index,
+    });
+  });
+
+  return Array.from(pageMap.values());
 }
 
 function getMissionsAverage(missions = []) {
@@ -257,6 +286,7 @@ function Autoevamanager() {
   const [status, setStatus] = useState("");
   const [associateMissions, setAssociateMissions] = useState([]);
   const [selectedMissionId, setSelectedMissionId] = useState("");
+  const [managerMissionPageIndexes, setManagerMissionPageIndexes] = useState({});
   const [receivedEvaluations, setReceivedEvaluations] = useState([]);
   const [activeView, setActiveView] = useState("managers");
   const [selectedReceivedId, setSelectedReceivedId] = useState("");
@@ -396,6 +426,22 @@ function Autoevamanager() {
   const currentMission = associateMissions[currentMissionIndex] || null;
   const currentSelfMission = selfMissions[currentMissionIndex] || null;
   const currentMissionProgress = getMissionProgress(currentMission);
+  const managerMissionPages = useMemo(() => buildManagerMissionPages(currentMission), [currentMission]);
+  const managerMissionPageIndex = Math.min(
+    managerMissionPageIndexes[selectedMissionId] || 0,
+    Math.max(managerMissionPages.length - 1, 0)
+  );
+  const currentManagerMissionPage = managerMissionPages[managerMissionPageIndex] || null;
+  const isLastManagerMissionPage =
+    managerMissionPages.length > 0 && managerMissionPageIndex >= managerMissionPages.length - 1;
+  const currentManagerSectionTitle = currentManagerMissionPage?.sectionTitle || "";
+  const currentManagerSectionComment = useMemo(() => {
+    const matchingCriterion = (currentMission?.criteria || []).find(
+      (criterion) => String(criterion.sectionTitle || "") === String(currentManagerSectionTitle || "")
+    );
+
+    return matchingCriterion?.sectionComment || "";
+  }, [currentMission, currentManagerSectionTitle]);
   const receivedMissions = receivedDetail?.evaluation?.missions || [];
   const selectedReceivedMissionIndex = Math.max(
     0,
@@ -500,8 +546,51 @@ function Autoevamanager() {
     setReceivedActionType("info");
   };
 
+  const validateCurrentManagerSectionComment = () => {
+    if (String(currentManagerSectionComment || "").trim().length >= 3) {
+      return true;
+    }
+
+    setStatus("Le commentaire de la section est obligatoire avant de continuer.");
+    return false;
+  };
+
+  const validateAllManagerSectionComments = () => {
+    const sectionComments = new Map();
+
+    (currentMission?.criteria || []).forEach((criterion) => {
+      const sectionTitle = criterion.sectionTitle || "Mission";
+      if (!sectionComments.has(sectionTitle)) {
+        sectionComments.set(sectionTitle, "");
+      }
+
+      const comment = String(criterion.sectionComment || "").trim();
+      if (comment) {
+        sectionComments.set(sectionTitle, comment);
+      }
+    });
+
+    const hasMissingComment = Array.from(sectionComments.values()).some((comment) => comment.length < 3);
+    if (!hasMissingComment) {
+      return true;
+    }
+
+    setStatus("Un commentaire est obligatoire pour chaque section avant transmission à la RH.");
+    return false;
+  };
+
+  const validateCurrentManagerMissionPage = () => {
+    const missingScore = (currentManagerMissionPage?.criteria || []).some((criterion) => typeof criterion.score !== "number");
+    if (!missingScore) {
+      return true;
+    }
+
+    setStatus("Toutes les notes de la page en cours doivent être renseignées.");
+    return false;
+  };
+
   const saveEvaluation = async () => {
-    if (!selectedManagerId) return;
+    if (!selectedManagerId) return false;
 
     try {
       const response = await saveAssociateManagerEvaluation(selectedManagerId, {
@@ -526,6 +615,55 @@ function Autoevamanager() {
       }));
     } catch (error) {
       setStatus(error.message || "Enregistrement impossible.");
+      return false;
+    }
+
+    return true;
+  };
+
+  const saveManagerMissionAndContinue = async () => {
+    if (!validateCurrentManagerMissionPage()) return;
+    if (!validateCurrentManagerSectionComment()) return;
+
+    const saved = await saveEvaluation();
+    if (!saved || !currentMission?.id) return;
+
+    if (!isLastManagerMissionPage) {
+      setManagerMissionPageIndexes((current) => ({
+        ...current,
+        [currentMission.id]: managerMissionPageIndex + 1,
+      }));
+    }
+  };
+
+  const submitManagerEvaluationToRh = async () => {
+    if (!selectedManagerId) return;
+    if (!validateCurrentManagerMissionPage()) return;
+    if (!validateCurrentManagerSectionComment()) return;
+    if (!validateAllManagerSectionComments()) return;
+
+    try {
+      const response = await submitAssociateManagerEvaluationToRh(selectedManagerId, {
+        missions: associateMissions,
+      });
+      const nextMissions = buildMissionsPayload(response?.associate_review?.missions || []);
+
+      setDetailData(response);
+      setAssociateMissions(nextMissions);
+      setStatus("Évaluation du manager transmise à la RH.");
+      setListData((current) => ({
+        ...current,
+        items: (current?.items || []).map((item) =>
+          item.id === selectedManagerId
+            ? {
+                ...item,
+                associateMissionScore: getMissionsAverage(nextMissions),
+              }
+            : item
+        ),
+      }));
+    } catch (error) {
+      setStatus(error.message || "Transmission à la RH impossible.");
     }
   };
 
@@ -710,76 +848,56 @@ function Autoevamanager() {
       {activeView === "managers" ? (
       <section className="rounded-lg bg-white p-4 shadow-sm">
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[380px_1fr]">
-          <aside className="rounded-xl bg-[#F4F7FB] p-4">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-base font-extrabold text-[#0F3A63]">Sélection du manager</h2>
-              <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#0F4A72]">
-                {items.length} profil(s)
-              </span>
-            </div>
+          <div>
+            <aside className="rounded-xl bg-[#F4F7FB] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-base font-extrabold text-[#0F3A63]">Sélection du manager</h2>
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#0F4A72]">
+                  {items.length} profil(s)
+                </span>
+              </div>
 
-            <label className="mt-4 block text-sm font-bold text-[#0F3A63]">
-              Filtrer / sélectionner
-              <select
-                value={selectedManagerId}
-                onChange={(event) => setSelectedManagerId(event.target.value)}
-                className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-[#0F3A63] outline-none"
-              >
-                {items.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name} - {item.department}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <label className="mt-4 block text-sm font-bold text-[#0F3A63]">
+                Filtrer / sélectionner
+                <select
+                  value={selectedManagerId}
+                  onChange={(event) => setSelectedManagerId(event.target.value)}
+                  className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-[#0F3A63] outline-none"
+                >
+                  {items.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name} - {item.department}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-            {selectedManager ? (
-              <div className="mt-4 rounded-xl border border-[#8BC43F] bg-[#F1F8E8] p-4">
-                <p className="text-base font-extrabold text-[#0F3A63]">{selectedManager.name}</p>
-                <p className="mt-1 text-xs font-semibold text-slate-500">
-                  {selectedManager.grade} - {selectedManager.department}
-                </p>
+              {selectedManager ? (
+                <div className="mt-4 rounded-xl border border-[#8BC43F] bg-[#F1F8E8] p-4">
+                  <p className="text-base font-extrabold text-[#0F3A63]">{selectedManager.name}</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    {selectedManager.grade} - {selectedManager.department}
+                  </p>
 
-                <div className="mt-4 grid grid-cols-1 gap-3">
-                  <div className="rounded-lg bg-white p-3">
-                    <p className="text-xs font-bold text-[#0F4A72]">Missions</p>
-                    <p className={`mt-2 text-lg font-black ${scoreTone(selectedManager.associateMissionScore)}`}>
-                      {formatScore(selectedManager.associateMissionScore)}
+                  <div className="mt-4 grid grid-cols-1 gap-3">
+                    <div className="rounded-lg bg-white p-3">
+                      <p className="text-xs font-bold text-[#0F4A72]">Missions</p>
+                      <p className={`mt-2 text-lg font-black ${scoreTone(selectedManager.associateMissionScore)}`}>
+                        {formatScore(selectedManager.associateMissionScore)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2 text-xs font-semibold">
+                    <p className={selectedManager.missionsCount ? "text-[#78B843]" : "text-slate-500"}>
+                      {selectedManager.missionsCount ? `${selectedManager.missionsCount} mission(s) à évaluer` : "Aucune mission transmise à l'associé pour l'instant"}
                     </p>
                   </div>
                 </div>
-
-                <div className="mt-4 space-y-2 text-xs font-semibold">
-                  <p className={selectedManager.missionsCount ? "text-[#78B843]" : "text-slate-500"}>
-                    {selectedManager.missionsCount ? `${selectedManager.missionsCount} mission(s) à évaluer` : "Aucune mission transmise à l'associé pour l'instant"}
-                  </p>
-                </div>
-              </div>
-            ) : null}
-          </aside>
-
-          <div className="rounded-xl bg-[#D4DADF] p-3">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-sm font-extrabold text-[#0F3A63]">Évaluation par mission</h2>
-
-              {selectedManager ? (
-                <span className="rounded-full bg-[#E5EFE1] px-4 py-1 text-xs font-semibold text-[#0F4A72]">
-                  {selectedManager.name}
-                </span>
               ) : null}
-            </div>
+            </aside>
 
-            {errorMessage && items.length ? (
-              <div className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-600">{errorMessage}</div>
-            ) : null}
-
-            {isDetailLoading ? (
-              <section className="rounded-lg bg-white p-5 text-sm font-semibold text-slate-500">
-                Chargement du détail manager...
-              </section>
-            ) : (
-              <section className="grid grid-cols-1 gap-4 xl:grid-cols-[320px_1fr]">
-                <aside className="rounded-lg bg-white p-3 shadow-sm">
+            <aside className="rounded-lg bg-white p-3 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-extrabold text-[#0F4A72]">Missions à évaluer</p>
                     <span className="rounded-full bg-[#F4F7FB] px-3 py-1 text-xs font-bold text-[#0F4A72]">
@@ -829,7 +947,31 @@ function Autoevamanager() {
                     )}
                   </div>
                 </aside>
+          </div>
 
+
+
+          <div className="rounded-xl bg-[#D4DADF] p-3">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-sm font-extrabold text-[#0F3A63]">Évaluation par mission</h2>
+
+              {selectedManager ? (
+                <span className="rounded-full bg-[#E5EFE1] px-4 py-1 text-xs font-semibold text-[#0F4A72]">
+                  {selectedManager.name}
+                </span>
+              ) : null}
+            </div>
+
+            {errorMessage && items.length ? (
+              <div className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-600">{errorMessage}</div>
+            ) : null}
+
+            {isDetailLoading ? (
+              <section className="rounded-lg bg-white p-5 text-sm font-semibold text-slate-500">
+                Chargement du détail manager...
+              </section>
+            ) : (
+              <section className="flex">
                 <article className="rounded-lg bg-white p-4 shadow-sm">
                   {currentMission ? (
                     <>
@@ -894,9 +1036,23 @@ function Autoevamanager() {
                         </div>
                       </div>
 
+                      <div className="mb-3 rounded-lg bg-[#F7FAFC] p-3">
+                        <p className="text-xs font-bold uppercase text-slate-400">
+                          {currentManagerMissionPage?.sectionTitle || "Mission"}
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+                          <h4 className="text-base font-black text-[#0F3A63]">
+                            {currentManagerMissionPage?.title || "Page d'évaluation"}
+                          </h4>
+                          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#0F4A72]">
+                            Page {managerMissionPageIndex + 1} / {managerMissionPages.length || 1}
+                          </span>
+                        </div>
+                      </div>
+
                       <div className="space-y-3">
-                        {(currentMission.criteria || []).map((criterion, index) => {
-                          const managerCriterion = (currentSelfMission?.criteria || [])[index];
+                        {(currentManagerMissionPage?.criteria || []).map((criterion, index) => {
+                          const managerCriterion = (currentSelfMission?.criteria || [])[criterion.criteriaIndex ?? index];
 
                           return (
                             <div key={criterion.id || index} className="rounded-lg bg-[#F8FAFC] p-3">
@@ -930,23 +1086,67 @@ function Autoevamanager() {
                       </div>
 
                       <div className="mt-4 rounded-xl bg-[#F7FAFC] p-4">
-                        <p className="mb-2 text-sm font-bold text-[#0F4A72]">Commentaire mission associé</p>
+                        <p className="mb-2 text-sm font-bold text-[#0F4A72]">Commentaire de section associé</p>
                         <textarea
-                          value={currentMission.comment || ""}
+                          value={currentManagerSectionComment}
                           onChange={(event) => {
                             const nextComment = event.target.value;
                             setAssociateMissions((currentMissions) =>
                               currentMissions.map((mission) =>
-                                mission.id === currentMission.id ? { ...mission, comment: nextComment } : mission
+                                mission.id === currentMission.id
+                                  ? {
+                                      ...mission,
+                                      criteria: (mission.criteria || []).map((criterion) =>
+                                        String(criterion.sectionTitle || "") === String(currentManagerSectionTitle || "")
+                                          ? { ...criterion, sectionComment: nextComment }
+                                          : criterion
+                                      ),
+                                    }
+                                  : mission
                               )
                             );
                             setStatus("");
                           }}
                           className="min-h-[120px] w-full resize-none rounded-lg bg-[#ECEFF3] px-3 py-3 text-sm text-slate-700 outline-none"
                         />
-                        <button onClick={saveEvaluation} className="mt-4 rounded-md bg-[#0C4B6C] px-5 py-2 text-sm font-bold text-white">
-                          Enregistrer
-                        </button>
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              currentMission?.id &&
+                              setManagerMissionPageIndexes((current) => ({
+                                ...current,
+                                [currentMission.id]: Math.max(managerMissionPageIndex - 1, 0),
+                              }))
+                            }
+                            disabled={managerMissionPageIndex === 0}
+                            className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-5 py-2 text-sm font-bold text-slate-500 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <ChevronLeft size={16} />
+                            Précédent
+                          </button>
+
+                          <div className="flex flex-wrap gap-3">
+                            {isLastManagerMissionPage ? (
+                              <button
+                                type="button"
+                                onClick={submitManagerEvaluationToRh}
+                                className="rounded-md bg-[#76B82A] px-5 py-2 text-sm font-bold text-white"
+                              >
+                                Soumettre à la RH
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={saveManagerMissionAndContinue}
+                                className="inline-flex items-center gap-2 rounded-md bg-[#0C4B6C] px-5 py-2 text-sm font-bold text-white"
+                              >
+                                Sauvegarder et continuer
+                                <ChevronRight size={16} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
                         {status ? <p className="mt-2 text-xs font-semibold text-[#0F4A72]">{status}</p> : null}
                       </div>
                     </>
