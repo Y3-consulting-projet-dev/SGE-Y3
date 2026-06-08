@@ -1009,7 +1009,7 @@ function Monautoevaluation() {
                     <button
                       key={mission.id}
                       type="button"
-                      onClick={() => setActiveMissionId(mission.id)}
+                      onClick={() => setActiveMissionId(mission.id)}  
                       className={`w-full rounded-md p-4 text-left shadow-sm transition ${
                         isActive ? "bg-[#EEF6E8] ring-2 ring-[#79B742]" : "bg-white hover:bg-slate-50"
                       }`}

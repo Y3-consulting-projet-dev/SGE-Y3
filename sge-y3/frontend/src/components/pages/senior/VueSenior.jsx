@@ -10,6 +10,7 @@ import MesobjectifsSenior from "@/components/pages/senior/MesobjectifsSenior";
 import MonautoevaluationSenior from "@/components/pages/senior/MonautoevaluationSenior";
 import CalendrierAssistants from "@/components/pages/collaborator/CalendrierAssistants";
 import ProfilePanel from "@/components/profile/ProfilePanel";
+import CommentairesRecus from "@/components/CommentairesRecus";
 import { getDisplayName, getInitials } from "@/lib/userPresentation";
 import { getSeniorAssistantEvaluation, getSeniorAssistants, getSeniorCommonMissions, getSeniorOverview } from "@/lib/seniorAssistants";
 import { getMySeniorEvaluation } from "@/lib/seniorEvaluation";
@@ -142,6 +143,7 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
     if (activeSection === "self-evaluation") return "MON AUTO-EVALUATION";
     if (activeSection === "calendar") return "MON CALENDRIER";
     if (activeSection === "profile") return "MON PROFIL";
+    if (activeSection === "comments") return "COMMENTAIRES RECUS";
     return "TABLEAU DE BORD SENIOR";
   }, [activeSection]);
 
@@ -169,6 +171,7 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
                   {group.items.map((item) => {
                     const Icon = item.icon;
                     const isActive = activeSection === item.key;
+                    const badge = item.key === "comments" ? (overviewData?.anonymousComments || []).length : 0;
                     return (
                       <button
                         key={item.key}
@@ -180,6 +183,11 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
                         <span className="flex items-center gap-2">
                           <Icon size={15} />
                           {item.label}
+                          {badge > 0 && (
+                            <span className="ml-auto rounded-full bg-[#7CB342] px-2 py-0.5 text-xs font-bold text-white">
+                              {badge}
+                            </span>
+                          )}
                         </span>
                       </button>
                     );
@@ -266,6 +274,11 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
                 fetchAssistantEvaluation={getSeniorAssistantEvaluation}
               />
             )
+          ) : activeSection === "comments" ? (
+            <CommentairesRecus
+              comments={overviewData?.anonymousComments || []}
+              isLoading={isLoadingAssistants}
+            />
           ) : activeSection === "profile" ? (
             <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />
           ) : (

@@ -146,6 +146,7 @@ const evaluationInstanceSchema = new mongoose.Schema(
     },
     mission_evaluations: { type: [missionEvaluationSchema], default: [] },
     anonymous_feedback: { type: [anonymousFeedbackSchema], default: [] },
+    chief_comments: { type: [anonymousFeedbackSchema], default: [] },
     sections: { type: [sectionSchema], default: [] },
     rh_validation_selected: { type: Boolean, default: false },
     rh_validation_selected_at: { type: Date, default: null },

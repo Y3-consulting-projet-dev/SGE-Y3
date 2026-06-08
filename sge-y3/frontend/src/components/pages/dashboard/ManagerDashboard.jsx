@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { BarChart3, CalendarDays, FileBarChart2, FolderKanban, LayoutDashboard, LogOut, Settings2, Users, X } from "lucide-react";
+import { BarChart3, CalendarDays, FileBarChart2, FolderKanban, LayoutDashboard, LogOut, MessageSquare, Settings2, Users, X } from "lucide-react";
 import Monequipe from "@/components/pages/manager/Monequipe";
 import Evaluermonequipe from "@/components/pages/manager/Evaluermonequipe";
 import Objectifsequipe from "@/components/pages/manager/Objectifsequipe";
@@ -7,12 +7,19 @@ import Monautoevaluation from "@/components/pages/manager/Monautoevaluation";
 import Rapportsequipe from "@/components/pages/manager/Rapportsequipe";
 import CalendrierAssistants from "@/components/pages/collaborator/CalendrierAssistants";
 import ProfilePanel from "@/components/profile/ProfilePanel";
+import CommentairesRecus from "@/components/CommentairesRecus";
 import logoY3 from "@/assets/logo-y3.png";
 import { getDisplayName, getInitials } from "@/lib/userPresentation";
 import { getManagerMemberEvaluation, getManagerOverview, getManagerSelfEvaluation } from "@/lib/managerOverview";
 
 const sidebarSections = [
-  { group: "Tableau de bord", items: [{ key: "overview", label: "Vue d'ensemble", icon: LayoutDashboard }] },
+  {
+    group: "Tableau de bord",
+    items: [
+      { key: "overview", label: "Vue d'ensemble", icon: LayoutDashboard },
+      { key: "comments", label: "Commentaires reçus", icon: MessageSquare },
+    ],
+  },
   {
     group: "Equipe",
     items: [
@@ -61,6 +68,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
     if (activeSection === "calendar") return "MON CALENDRIER";
     if (activeSection === "reports") return "RAPPORTS";
     if (activeSection === "profile") return "MON PROFIL";
+    if (activeSection === "comments") return "COMMENTAIRES RECUS";
     return "WORKFLOW MANAGER";
   }, [activeSection]);
 
@@ -170,6 +178,21 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
               ? "Mon auto-évaluation a déjà été soumise."
               : "Mon auto-évaluation est en attente."}
         </div>
+
+        {!isLoadingOverview && (overviewData?.anonymousComments || []).length > 0 && (
+          <button
+            type="button"
+            onClick={() => setActiveSection("comments")}
+            className="mb-7 w-full rounded-lg border border-[#C3DFAA] bg-[#F4FAED] px-4 py-3 text-left transition hover:bg-[#EAF5D8]"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm font-bold text-[#184D2E]">
+                {(overviewData.anonymousComments || []).length} commentaire{(overviewData.anonymousComments || []).length > 1 ? "s" : ""} anonyme{(overviewData.anonymousComments || []).length > 1 ? "s" : ""} reçu{(overviewData.anonymousComments || []).length > 1 ? "s" : ""}
+              </p>
+              <span className="text-xs font-semibold text-[#4E8B1B]">Consulter →</span>
+            </div>
+          </button>
+        )}
 
         <section className="mb-7 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <button
@@ -289,6 +312,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
                   {section.items.map((item) => {
                     const Icon = item.icon;
                     const isActive = activeSection === item.key;
+                    const badge = item.key === "comments" ? (overviewData?.anonymousComments || []).length : 0;
 
                     return (
                       <button
@@ -301,6 +325,11 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
                         <span className="flex items-center gap-2">
                           <Icon size={14} />
                           {item.label}
+                          {badge > 0 && (
+                            <span className="ml-auto rounded-full bg-[#7CB342] px-2 py-0.5 text-xs font-bold text-white">
+                              {badge}
+                            </span>
+                          )}
                         </span>
                       </button>
                     );
@@ -392,6 +421,11 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
             )
           ) : activeSection === "reports" ? (
             <Rapportsequipe />
+          ) : activeSection === "comments" ? (
+            <CommentairesRecus
+              comments={overviewData?.anonymousComments || []}
+              isLoading={isLoadingOverview}
+            />
           ) : (
             <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />
           )}

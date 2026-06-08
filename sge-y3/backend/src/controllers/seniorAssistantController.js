@@ -770,6 +770,11 @@ function formatAnonymousFeedbackForUser(feedbackItems = [], targetUser) {
     .filter((item) => String(item.comment || '').trim());
 }
 
+function formatSentChiefCommentsForUser(feedbackItems = [], targetUser) {
+  return formatAnonymousFeedbackForUser(feedbackItems, targetUser)
+    .filter((item) => item.submittedAt !== null);
+}
+
 function buildAssistantSelfEvaluationPayload(instance, targetUser = null) {
   const selfSections = normalizeSections(instance?.sections || []);
   const missionEvaluations = formatMissionReviews(instance?.mission_evaluations || []);
@@ -796,6 +801,7 @@ function buildAssistantSelfEvaluationPayload(instance, targetUser = null) {
     missionEvaluations,
     missionSummary,
     anonymousFeedback: targetUser ? formatAnonymousFeedbackForUser(instance?.anonymous_feedback || [], targetUser) : [],
+    chiefComments: targetUser ? formatSentChiefCommentsForUser(instance?.chief_comments || [], targetUser) : [],
   };
 }
 
@@ -1118,7 +1124,7 @@ async function buildSeniorOverviewMetrics(user) {
         evalue_id: { $in: assistantIds },
         cycle_label: CURRENT_CYCLE_LABEL,
         template_type: 'assistant-self-evaluation',
-      }).select('evalue_id mission_evaluations')
+      }).select('evalue_id mission_evaluations chief_comments')
     : [];
 
   const assistantById = new Map(assistants.map((assistant) => [String(assistant._id), assistant]));
@@ -1191,6 +1197,18 @@ async function buildSeniorOverviewMetrics(user) {
             : 'Evaluations completes',
     }));
 
+  const chiefCommentInstances = await EvaluationInstance.find({
+    cycle_label: CURRENT_CYCLE_LABEL,
+    'chief_comments.target_user_id': user._id,
+  }).select('chief_comments');
+
+  const anonymousComments = chiefCommentInstances.flatMap((instance) =>
+    (instance.chief_comments || [])
+      .filter((comment) => String(comment.target_user_id) === String(user._id) && comment.submitted_at)
+      .map((comment) => ({ comment: comment.comment, submittedAt: comment.submitted_at }))
+  );
+  const anonymousCommentsCount = anonymousComments.length;
+
   return {
     cycle_label: CURRENT_CYCLE_LABEL,
     missions,
@@ -1207,7 +1225,9 @@ async function buildSeniorOverviewMetrics(user) {
         const missionReview = (review?.mission_reviews || []).find((item) => item.mission_id === mission.missionId);
         return missionReview?.status === 'Transmise';
       }).length,
+      anonymousCommentsCount,
     },
+    anonymousComments,
     assistants: assistantRows,
   };
 }

@@ -302,7 +302,7 @@ async function getSelfEvaluationInstanceForMember(member) {
     evalue_id: member._id,
     cycle_label: CURRENT_CYCLE_LABEL,
     template_type: getExpectedTemplateType(member),
-  }).select('status submitted_at sections submitted_to_user_ids mission_evaluations anonymous_feedback');
+  }).select('status submitted_at sections submitted_to_user_ids mission_evaluations anonymous_feedback chief_comments');
 }
 
 function buildSelfEvaluationPayload(instance) {
@@ -329,6 +329,7 @@ function buildSelfEvaluationPayload(instance) {
     titleJustifications: getPageJustifications(sections),
     missionEvaluations,
     anonymous_feedback: instance?.anonymous_feedback || [],
+    chief_comments: instance?.chief_comments || [],
   };
 }
 
@@ -350,6 +351,11 @@ function formatAnonymousFeedbackForUser(feedbackItems = [], targetUser) {
       submittedAt: item.submitted_at || null,
     }))
     .filter((item) => String(item.comment || '').trim());
+}
+
+function formatSentChiefCommentsForUser(feedbackItems = [], targetUser) {
+  return formatAnonymousFeedbackForUser(feedbackItems, targetUser)
+    .filter((item) => item.submittedAt !== null);
 }
 
 async function getOrCreateManagerSelfEvaluation(user) {
@@ -898,7 +904,7 @@ async function getOrCreateManagerMemberReview(managerUser, member) {
 function buildManagerReviewPayload(review, managerUser, member, selfEvaluation, rhRecipients = [], missionAndScoreData = {}) {
   const sections = normalizeSections(review.sections);
   const activeSection = sections.find((section) => section.status !== 'Complete') || sections[0] || null;
-  const { anonymous_feedback: anonymousFeedbackSource = [], ...publicSelfEvaluation } = selfEvaluation || {};
+  const { anonymous_feedback: anonymousFeedbackSource = [], chief_comments: chiefCommentsSource = [], ...publicSelfEvaluation } = selfEvaluation || {};
 
   return {
     review: {
@@ -935,6 +941,7 @@ function buildManagerReviewPayload(review, managerUser, member, selfEvaluation, 
     self_evaluation: {
       ...publicSelfEvaluation,
       anonymousFeedback: formatAnonymousFeedbackForUser(anonymousFeedbackSource, managerUser),
+      chiefComments: formatSentChiefCommentsForUser(chiefCommentsSource, managerUser),
     },
     received_global_scores: missionAndScoreData.globalScores || [],
     submitted_missions: missionAndScoreData.missions || [],
@@ -1144,7 +1151,7 @@ async function getManagerOverview(request, response) {
           evalue_id: { $in: memberIds },
           cycle_label: CURRENT_CYCLE_LABEL,
           template_type: { $in: ['assistant-self-evaluation', 'senior-self-evaluation'] },
-        }).select('evalue_id template_type status submitted_at submitted_to_user_ids sections'),
+        }).select('evalue_id template_type status submitted_at submitted_to_user_ids sections chief_comments'),
         ManagerMemberReview.find({
           cycle_label: CURRENT_CYCLE_LABEL,
           manager_id: request.user._id,
@@ -1205,6 +1212,18 @@ async function getManagerOverview(request, response) {
   const totalMembers = members.length;
   const receivedCount = receivedEvaluations.length;
 
+  const chiefCommentInstances = await EvaluationInstance.find({
+    cycle_label: CURRENT_CYCLE_LABEL,
+    'chief_comments.target_user_id': request.user._id,
+  }).select('chief_comments');
+
+  const anonymousComments = chiefCommentInstances.flatMap((instance) =>
+    (instance.chief_comments || [])
+      .filter((comment) => String(comment.target_user_id) === String(request.user._id) && comment.submitted_at)
+      .map((comment) => ({ comment: comment.comment, submittedAt: comment.submitted_at }))
+  );
+  const anonymousCommentsCount = anonymousComments.length;
+
   let selfEvaluationInstance = await EvaluationInstance.findOne({
     evalue_id: request.user._id,
     cycle_label: CURRENT_CYCLE_LABEL,
@@ -1231,6 +1250,7 @@ async function getManagerOverview(request, response) {
       pendingEvaluationsCount: pendingEvaluations.length,
       selfEvaluationStatus: selfEvaluationInstance?.status || 'En attente',
       selfEvaluationSubmittedAt: selfEvaluationInstance?.submitted_at || null,
+      anonymousCommentsCount,
     },
     members: members.map((member) =>
       formatMember(
@@ -1240,6 +1260,7 @@ async function getManagerOverview(request, response) {
       )
     ),
     pendingEvaluations,
+    anonymousComments,
   });
 }
 

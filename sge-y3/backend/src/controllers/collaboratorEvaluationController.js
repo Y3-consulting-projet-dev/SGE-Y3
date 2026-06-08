@@ -403,6 +403,30 @@ function formatAnonymousFeedback(feedbackItems = []) {
   }));
 }
 
+function normalizeChiefComments(items = []) {
+  return items
+    .map((item) => ({
+      target_user_id: item.target_user_id || item.targetUserId || null,
+      target_name: String(item.target_name || item.targetName || '').trim(),
+      target_grade: String(item.target_grade || item.targetGrade || '').trim(),
+      target_department: String(item.target_department || item.targetDepartment || '').trim(),
+      comment: String(item.comment || '').trim(),
+      submitted_at: item.submitted_at || item.submittedAt || null,
+    }))
+    .filter((item) => item.target_name);
+}
+
+function formatChiefComments(items = []) {
+  return normalizeChiefComments(items).map((item) => ({
+    targetUserId: item.target_user_id ? String(item.target_user_id) : '',
+    targetName: item.target_name,
+    targetGrade: item.target_grade,
+    targetDepartment: item.target_department,
+    comment: item.comment,
+    submittedAt: item.submitted_at || null,
+  }));
+}
+
 function validateMissionEvaluations(missionEvaluations = []) {
   for (const mission of missionEvaluations) {
     for (const criterion of mission.criteria || []) {
@@ -638,6 +662,7 @@ async function buildEvaluationPayload(instance, user) {
     },
     mission_evaluations: missionEvaluations,
     anonymous_feedback: formatAnonymousFeedback(instance.anonymous_feedback || []),
+    chief_comments: formatChiefComments(instance.chief_comments || []),
   };
 }
 
@@ -738,6 +763,7 @@ async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
   const rawSections = Array.isArray(request.body?.sections) ? request.body.sections : null;
   const rawMissionEvaluations = Array.isArray(request.body?.missionEvaluations) ? request.body.missionEvaluations : null;
   const rawAnonymousFeedback = Array.isArray(request.body?.anonymousFeedback) ? request.body.anonymousFeedback : null;
+  const rawChiefComments = Array.isArray(request.body?.chiefComments) ? request.body.chiefComments : null;
   const instance = await getOrCreateEvaluation(request.user);
   const isAssistantEvaluation = instance.template_type === 'assistant-self-evaluation';
   const isSeniorEvaluation = instance.template_type === 'senior-self-evaluation';
@@ -846,11 +872,19 @@ async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
     }));
   }
 
+  const SUBMITTED_STATUSES = [
+    'Soumis aux Managers', 'Soumis au Manager', 'Soumis a RH',
+    'Valide RH', 'Transmis a l associe', 'En correction', 'Cloture',
+  ];
+  const preserveStatus = SUBMITTED_STATUSES.includes(instance.status);
+  const newStatus = preserveStatus ? instance.status : (summary.globalProgress === 0 ? 'Brouillon' : 'En cours');
+
   await persistEvaluationInstance(instance, {
     ...(rawSections?.length || !isMissionOnlySelfEvaluation ? { sections: toPersistenceSections(sections) } : {}),
     ...(missionEvaluations ? { mission_evaluations: missionEvaluations } : {}),
     ...(rawAnonymousFeedback ? { anonymous_feedback: normalizeAnonymousFeedback(rawAnonymousFeedback) } : {}),
-    status: summary.globalProgress === 0 ? 'Brouillon' : 'En cours',
+    ...(rawChiefComments ? { chief_comments: normalizeChiefComments(rawChiefComments) } : {}),
+    status: newStatus,
     last_saved_at: new Date(),
   });
 
