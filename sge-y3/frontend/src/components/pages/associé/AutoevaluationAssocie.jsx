@@ -7,6 +7,7 @@ import {
   saveAssociateSelfEvaluation,
   saveReceivedAssociateEvaluationComment,
   submitAssociateSelfEvaluation,
+  submitReceivedAssociateEvaluationToRh,
 } from "@/lib/associateOverview";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
 
@@ -76,14 +77,14 @@ function ScoreSelector({ selected, onSelect }) {
 
 function SectionBadge({ progress }) {
   if (progress === 100) {
-    return <span className="rounded-full bg-[#DFECD4] px-3 py-1 text-[11px] font-semibold text-[#79B742]">ComplÃ¨te</span>;
+    return <span className="rounded-full bg-[#DFECD4] px-3 py-1 text-[11px] font-semibold text-[#79B742]">Complète</span>;
   }
 
   if (progress > 0) {
     return <span className="rounded-full bg-[#F6D4D4] px-3 py-1 text-xs font-semibold text-[#DF4C4C]">En cours</span>;
   }
 
-  return <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">Ã€ faire</span>;
+  return <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">À faire</span>;
 }
 
 function formatAssociateStatus(status = "") {
@@ -121,7 +122,7 @@ function AutoevaluationAssocie() {
         setErrorMessage("");
         const [selfResponse, receivedResponse] = await Promise.all([
           getAssociateSelfEvaluation(),
-          getReceivedAssociateEvaluations(),
+          getReceivedAssociateEvaluations("associate-only"),
         ]);
 
         if (cancelled) return;
@@ -151,9 +152,7 @@ function AutoevaluationAssocie() {
 
   useEffect(() => {
     if (!selectedReceivedId) {
-      setReceivedDetail(null);
-      setReceivedComment("");
-      return;
+      return undefined;
     }
 
     let cancelled = false;
@@ -170,7 +169,7 @@ function AutoevaluationAssocie() {
         setPeerPageIndexes(createInitialPageIndexes(reviewSections));
       } catch (error) {
         if (!cancelled) {
-          setErrorMessage(error.message || "Chargement du dÃ©tail associé impossible.");
+          setErrorMessage(error.message || "Chargement du détail associé impossible.");
         }
       }
     }
@@ -353,12 +352,40 @@ function AutoevaluationAssocie() {
         )
       );
       setFeedbackTone("success");
-      setFeedbackMessage(response.message || "Ã‰valuation associé enregistrée.");
+      setFeedbackMessage(response.message || "Évaluation associé enregistrée.");
     } catch (error) {
       setFeedbackTone("error");
       setFeedbackMessage(error.message || "Enregistrement de l'évaluation impossible.");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleSubmitReceivedToRh() {
+    if (!selectedReceivedId) return;
+
+    try {
+      setIsSubmitting(true);
+      const response = await submitReceivedAssociateEvaluationToRh(selectedReceivedId);
+      setReceivedDetail(response);
+      setReceivedList((current) =>
+        current.map((item) =>
+          item.id === selectedReceivedId
+            ? {
+                ...item,
+                status: response.evaluation?.status || item.status,
+                submittedAt: response.evaluation?.submitted_at || item.submittedAt,
+              }
+            : item
+        )
+      );
+      setFeedbackTone("success");
+      setFeedbackMessage(response.message || "Évaluation transmise à la RH.");
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedbackMessage(error.message || "Transmission à la RH impossible.");
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -428,7 +455,7 @@ function AutoevaluationAssocie() {
           className={`rounded-md p-4 text-left transition ${activeTab === "received" ? "bg-[#003B63] text-white" : "bg-white text-[#0F3A63] shadow-sm"}`}
         >
           <p className="text-xs font-semibold uppercase tracking-wide opacity-80">Associé</p>
-          <h2 className="mt-1 text-lg font-black">Ã‰valuation reçue</h2>
+          <h2 className="mt-1 text-lg font-black">Évaluation reçue</h2>
           <p className="mt-2 text-xs font-semibold opacity-80">{receivedList.length} évaluation(s) à traiter</p>
         </button>
       </section>
@@ -480,7 +507,7 @@ function AutoevaluationAssocie() {
 
             {selfData?.evaluation?.peerComment ? (
               <article className="rounded-md bg-white p-4 shadow-sm">
-                <h3 className="text-sm font-bold text-[#79B742]">Ã‰valuation de l'autre associé</h3>
+                <h3 className="text-sm font-bold text-[#79B742]">Évaluation de l'autre associé</h3>
                 <p className="mt-2 text-xs font-semibold text-slate-500">{selfData.evaluation.peerComment.authorName}</p>
                 <p className="mt-2 text-sm font-black text-[#0F3A63]">
                   Note : {typeof selfData.evaluation.peerComment.summary?.overallAverage === "number" ? `${selfData.evaluation.peerComment.summary.overallAverage}/5` : "--"}
@@ -573,7 +600,7 @@ function AutoevaluationAssocie() {
                       rows={4}
                       value={activeSection.comment || ""}
                       onChange={(event) => updateComment(event.target.value)}
-                      placeholder="SynthÃ¨se globale de la section..."
+                      placeholder="Synthèse globale de la section..."
                       className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
                     />
                   </div>
@@ -587,7 +614,7 @@ function AutoevaluationAssocie() {
                     className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:opacity-50"
                   >
                     <ChevronLeft size={14} />
-                    PrÃ©cÃ©dent
+                    Précédent
                   </button>
                   <div className="flex flex-wrap gap-3">
                     <button
@@ -627,7 +654,7 @@ function AutoevaluationAssocie() {
       ) : (
         <section className="grid grid-cols-1 gap-5 xl:grid-cols-[320px_1fr]">
           <aside className="rounded-xl bg-white p-4 shadow-sm">
-            <h2 className="text-lg font-extrabold text-[#0F3A63]">Ã‰valuations reçues</h2>
+            <h2 className="text-lg font-extrabold text-[#0F3A63]">Évaluations reçues</h2>
             <div className="mt-4 space-y-2">
               {receivedList.length ? (
                 receivedList.map((item) => (
@@ -673,15 +700,41 @@ function AutoevaluationAssocie() {
 
                 <h3 className="mb-3 text-sm font-black uppercase text-slate-500">Auto-évaluation reçue</h3>
                 <div className="space-y-3">
-                  {(receivedDetail.evaluation.sections || []).map((section) => (
-                    <div key={section.id} className="rounded-lg bg-[#F8FAFC] p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-bold text-[#0F3A63]">{section.title}</p>
-                        <p className="text-xs font-semibold text-[#79B742]">{getPageAverage({ themes: (section.pages || []).flatMap((page) => page.themes || []) })}/5</p>
+                  {(receivedDetail.evaluation.sections || []).length ? (
+                    (receivedDetail.evaluation.sections || []).map((section) => (
+                      <div key={section.id} className="rounded-lg bg-[#F8FAFC] p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-bold text-[#0F3A63]">{section.title}</p>
+                          <p className="text-xs font-semibold text-[#79B742]">{getPageAverage({ themes: (section.pages || []).flatMap((page) => page.themes || []) })}/5</p>
+                        </div>
+                        <p className="mt-2 text-sm font-semibold text-slate-600">{section.comment || "Aucun commentaire de section."}</p>
                       </div>
-                      <p className="mt-2 text-sm font-semibold text-slate-600">{section.comment || "Aucun commentaire de section."}</p>
+                    ))
+                  ) : (
+                    <p className="rounded-lg bg-[#F8FAFC] p-4 text-sm font-semibold text-slate-500">
+                      Cette auto-évaluation est structurée par mission.
+                    </p>
+                  )}
+                  {(receivedDetail.evaluation.missions || []).length ? (
+                    <div className="rounded-lg bg-[#F8FAFC] p-4">
+                      <p className="mb-3 text-sm font-black uppercase text-slate-500">Missions transmises</p>
+                      <div className="space-y-2">
+                        {(receivedDetail.evaluation.missions || []).map((mission) => (
+                          <div key={mission.id} className="rounded-md bg-white px-3 py-2">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-sm font-bold text-[#0F3A63]">{mission.title}</p>
+                              <p className="text-xs font-black text-[#76B82A]">
+                                {typeof mission.average === "number" ? `${mission.average}/5` : "--"}
+                              </p>
+                            </div>
+                            <p className="mt-1 text-xs font-semibold text-slate-500">
+                              {mission.period} - {mission.department}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  ))}
+                  ) : null}
                 </div>
 
                 <div className="mt-6 rounded-lg border border-[#D9E3EE] bg-white p-4">
@@ -794,7 +847,7 @@ function AutoevaluationAssocie() {
                           className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:opacity-50"
                         >
                           <ChevronLeft size={14} />
-                          PrÃ©cÃ©dent
+                          Précédent
                         </button>
                         <button
                           type="button"
@@ -823,15 +876,25 @@ function AutoevaluationAssocie() {
                   className="mt-5 min-h-[120px] w-full resize-none rounded-lg border border-slate-200 px-3 py-3 text-sm text-[#0F3A63] outline-none"
                 />
 
-                <div className="mt-4 flex justify-end">
+                <div className="mt-4 flex flex-wrap justify-end gap-3">
                   <button
                     type="button"
                     onClick={handleSaveReceivedComment}
-                    disabled={isSaving}
+                    disabled={isSaving || isSubmitting}
                     className="rounded-full bg-[#0F3A63] px-5 py-2 text-sm font-bold text-white disabled:opacity-70"
                   >
                     {isSaving ? "Enregistrement..." : "Enregistrer l'évaluation"}
                   </button>
+                  {receivedDetail.evaluation?.templateType !== "associate-self-evaluation" ? (
+                    <button
+                      type="button"
+                      onClick={handleSubmitReceivedToRh}
+                      disabled={isSaving || isSubmitting || receivedDetail.evaluation?.status === "Soumis a RH"}
+                      className="rounded-full bg-[#76B82A] px-5 py-2 text-sm font-bold text-white disabled:opacity-70"
+                    >
+                      {isSubmitting ? "Transmission..." : "Transmettre à la RH"}
+                    </button>
+                  ) : null}
                 </div>
               </>
             ) : (

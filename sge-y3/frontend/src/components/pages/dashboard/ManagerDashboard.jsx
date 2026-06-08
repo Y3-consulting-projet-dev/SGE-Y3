@@ -264,6 +264,11 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
                       {evaluation.grade} - {evaluation.department}
                     </p>
                     <p className="mt-2 text-xs font-semibold text-[#0F3A63]">{formatSubmissionDate(evaluation.submittedAt)}</p>
+                    {evaluation.pendingMissionsCount ? (
+                      <p className="mt-1 text-xs font-bold text-[#4E8B1B]">
+                        {evaluation.pendingMissionsCount} mission(s) à évaluer
+                      </p>
+                    ) : null}
                   </button>
                 ))}
               </div>

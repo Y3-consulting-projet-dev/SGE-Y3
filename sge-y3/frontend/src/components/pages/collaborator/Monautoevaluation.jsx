@@ -61,13 +61,15 @@ function getDepartmentAwareInformationalRecipients(allInformationalRecipients = 
   const selectedDepartments = Array.from(
     new Set(selectedRecipients.map((recipient) => normalizeDepartment(recipient?.department || "")).filter(Boolean))
   );
+  const selectedValues = new Set(selectedRecipients.map(getRecipientOptionValue));
 
   if (!selectedDepartments.length) {
-    return allInformationalRecipients;
+    return allInformationalRecipients.filter((recipient) => !selectedValues.has(getRecipientOptionValue(recipient)));
   }
 
   return allInformationalRecipients.filter((recipient) =>
-    selectedDepartments.includes(normalizeDepartment(recipient?.department || ""))
+    selectedDepartments.includes(normalizeDepartment(recipient?.department || "")) &&
+    !selectedValues.has(getRecipientOptionValue(recipient))
   );
 }
 
@@ -491,11 +493,11 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   const recipientOptions = departmentRecipients.flatMap((item) =>
     (item.users || []).map((recipient) => ({
       ...recipient,
-      department: item.department,
+      department: recipient.department || item.department,
     }))
   );
   const evaluatorRecipientOptions = useMemo(
-    () => recipientOptions.filter((recipient) => !isManagerOrSeniorManagerRecipient(recipient)),
+    () => recipientOptions,
     [recipientOptions]
   );
   const informationalRecipientOptions = useMemo(
@@ -904,7 +906,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     });
     if (!savedResponse) return;
 
-    setScopedFeedback("addMission", "success", "Mission ajoutée et enregistrée. Elle restera disponible même si vous quittez la page.");
+    setScopedFeedback("addMission", "success", "Mission ajoutée et enregistrée.");
   }
 
   function updateMissionScore(criterionId, score) {
@@ -1219,7 +1221,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
               )}
             </div>
             <p className="mt-2 text-[11px] font-semibold text-slate-500">
-              {"S\u00E9lectionnez un ou plusieurs \u00E9valuateurs parmi vos sup\u00E9rieurs. Le manager ou senior manager recevra aussi la mission \u00E0 titre informatif, sans pouvoir l'\u00E9valuer."}
+              {"S\u00E9lectionnez un ou plusieurs \u00E9valuateurs parmi vos sup\u00E9rieurs. Les managers, seniors et associ\u00E9s s\u00E9lectionn\u00E9s pourront \u00E9valuer la mission."}
             </p>
             <button
               type="button"
@@ -1299,7 +1301,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                   {mission.createdByRole === "senior" ? (
                     <p className="mt-2 text-xs font-semibold text-[#4E8B1B]">Notification : {getMissionAssignmentLabel(mission)}.</p>
                   ) : (
-                    <p className="mt-2 text-xs font-semibold text-slate-500">{"Cette mission sera transmise aux \u00E9valuateurs s\u00E9lectionn\u00E9s, ainsi qu'au manager ou senior manager \u00E0 titre informatif."}</p>
+                    <p className="mt-2 text-xs font-semibold text-slate-500">{"Cette mission sera transmise aux \u00E9valuateurs s\u00E9lectionn\u00E9s selon leur grade."}</p>
                   )}
                 </div>
                 <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">Moyenne {missionAverage} / 5</span>

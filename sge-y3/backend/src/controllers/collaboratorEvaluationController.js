@@ -29,6 +29,12 @@ function getManagerDepartmentsForDepartment(department = '') {
   return normalized ? [normalized] : [];
 }
 
+function isAssociateRecipient(recipient = {}) {
+  const category = String(recipient.code_categorie || '').trim().toUpperCase();
+  const grade = normalizeText(recipient.grade || '').replace(/[ÉÈÊË]/g, 'E');
+  return category === '11' || grade === 'ASSOCIE';
+}
+
 async function resolveManagersForAssistant(user) {
   const targetDepartments = getManagerDepartmentsForDepartment(user.department);
 
@@ -54,8 +60,12 @@ async function resolveMissionRecipientsForAssistant(user) {
 
   return User.find({
     is_active: true,
-    code_categorie: { $in: ['9A', '9B', '10B', '10C'] },
-    department: { $in: targetDepartments },
+    $or: [
+      { code_categorie: { $in: ['9A', '9B', '10B', '10C'] }, department: { $in: targetDepartments } },
+      { code_categorie: '11' },
+      { grade: 'Associé' },
+      { grade: 'Associe' },
+    ],
   })
     .sort({ last_name: 1, first_name: 1 })
     .select('_id name first_name last_name grade department code_categorie');
@@ -70,8 +80,12 @@ async function resolveManagersForSenior(user) {
 
   return User.find({
     is_active: true,
-    code_categorie: { $in: ['10B', '10C'] },
-    department: { $in: targetDepartments },
+    $or: [
+      { code_categorie: { $in: ['10B', '10C'] }, department: { $in: targetDepartments } },
+      { code_categorie: '11' },
+      { grade: 'Associé' },
+      { grade: 'Associe' },
+    ],
   })
     .sort({ last_name: 1, first_name: 1 })
     .select('_id name first_name last_name grade department code_categorie');
@@ -87,11 +101,13 @@ async function resolveRecipientsForInstance(instance, user) {
 
 function buildRecipientOptions(recipients = [], user) {
   const targetDepartments = getManagerDepartmentsForDepartment(user?.department);
+  const groupedRecipientIds = new Set();
 
-  return targetDepartments.map((department) => {
+  const departmentGroups = targetDepartments.map((department) => {
     const users = recipients.filter(
       (recipient) => String(recipient.department || '').trim().toUpperCase() === String(department || '').trim().toUpperCase()
     );
+    users.forEach((recipient) => groupedRecipientIds.add(String(recipient._id || recipient.id || '')));
 
     return {
       department,
@@ -106,6 +122,30 @@ function buildRecipientOptions(recipients = [], user) {
       })),
     };
   });
+
+  const ungroupedAssociates = recipients.filter(
+    (recipient) => isAssociateRecipient(recipient) && !groupedRecipientIds.has(String(recipient._id || recipient.id || ''))
+  );
+
+  if (!ungroupedAssociates.length) {
+    return departmentGroups;
+  }
+
+  return [
+    ...departmentGroups,
+    {
+      department: 'Associés',
+      users: ungroupedAssociates.map((recipient) => ({
+        id: recipient._id.toString(),
+        name: recipient.name,
+        first_name: recipient.first_name,
+        last_name: recipient.last_name,
+        grade: recipient.grade,
+        department: recipient.department,
+        code_categorie: recipient.code_categorie,
+      })),
+    },
+  ];
 }
 
 function buildMissionRecipients(recipients = []) {
@@ -117,11 +157,6 @@ function buildMissionRecipients(recipients = []) {
     can_evaluate: recipient.can_evaluate !== false,
     receives_copy: recipient.receives_copy === true,
   }));
-}
-
-function isManagerOrSeniorManager(recipient = {}) {
-  const normalizedCategory = String(recipient.code_categorie || '').trim().toUpperCase();
-  return normalizedCategory === '10B' || normalizedCategory === '10C';
 }
 
 function resolveMissionRecipientMetadata(recipient = {}, resolvedMissionRecipients = []) {
@@ -146,24 +181,12 @@ function resolveMissionRecipientMetadata(recipient = {}, resolvedMissionRecipien
   );
 }
 
-function getSelectedEvaluatorDepartments(selectedRecipients = []) {
-  return Array.from(
-    new Set(
-      selectedRecipients
-        .filter((recipient) => recipient && !isManagerOrSeniorManager(recipient))
-        .map((recipient) => normalizeText(recipient.department || ''))
-        .filter(Boolean)
-    )
-  );
-}
-
 function createAssistantMissionRecipients(selectedRecipients = [], resolvedMissionRecipients = []) {
-  const normalizedSelectedRecipients = selectedRecipients.map((recipient) =>
-    resolveMissionRecipientMetadata(recipient, resolvedMissionRecipients)
-  );
-  const selectedDepartments = getSelectedEvaluatorDepartments(normalizedSelectedRecipients);
+  const normalizedSelectedRecipients = selectedRecipients
+    .filter((recipient) => recipient?.can_evaluate !== false && recipient?.canEvaluate !== false)
+    .map((recipient) => resolveMissionRecipientMetadata(recipient, resolvedMissionRecipients));
   const evaluators = normalizedSelectedRecipients
-    .filter((recipient) => recipient && !isManagerOrSeniorManager(recipient))
+    .filter((recipient) => recipient)
     .map((recipient) => ({
       user_id: recipient._id || recipient.user_id || recipient.id,
       name: recipient.name,
@@ -173,26 +196,7 @@ function createAssistantMissionRecipients(selectedRecipients = [], resolvedMissi
       receives_copy: false,
     }));
 
-  const informedManagers = resolvedMissionRecipients
-    .filter((recipient) => {
-      if (!isManagerOrSeniorManager(recipient)) {
-        return false;
-      }
-
-      if (!selectedDepartments.length) {
-        return true;
-      }
-
-      return selectedDepartments.includes(normalizeText(recipient.department || ''));
-    })
-    .map((recipient) => ({
-      user_id: recipient._id || recipient.user_id || recipient.id,
-      name: recipient.name,
-      grade: recipient.grade,
-      department: recipient.department,
-      can_evaluate: false,
-      receives_copy: true,
-    }));
+  const informedManagers = [];
 
   const seen = new Set();
   const mergedRecipients = [];
@@ -243,6 +247,25 @@ function mergeManagerRecipients(explicitRecipients = [], resolvedManagers = []) 
   );
 
   return merged;
+}
+
+function resolveSubmittedRecipientUsers(recipients = [], resolvedRecipients = []) {
+  const submittedRecipientKeys = new Set(
+    recipients.map((recipient) => `${normalizeText(recipient.manager || recipient.name || '')}::${normalizeText(recipient.department || '')}`)
+  );
+  const seen = new Set();
+
+  return resolvedRecipients.filter((recipient) => {
+    const key = `${normalizeText(recipient.name || '')}::${normalizeText(recipient.department || '')}`;
+    const id = String(recipient._id || recipient.id || '');
+
+    if (!submittedRecipientKeys.has(key) || seen.has(id)) {
+      return false;
+    }
+
+    seen.add(id);
+    return true;
+  });
 }
 
 function toPersistenceSections(sections = []) {
@@ -801,6 +824,9 @@ async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
 
   const summary = isMissionOnlySelfEvaluation ? getMissionEvaluationSummary(missionEvaluations || instance.mission_evaluations || []) : getEvaluationSummary(sections);
   const resolvedManagers = await resolveRecipientsForInstance(instance, request.user);
+  const resolvedEvaluationRecipients = isAssistantEvaluation
+    ? await resolveMissionRecipientsForAssistant(request.user)
+    : resolvedManagers;
   const resolvedMissionRecipients =
     isAssistantEvaluation
       ? await resolveMissionRecipientsForAssistant(request.user)
@@ -952,7 +978,7 @@ async function submitMySelfMissionEvaluation(request, response, getOrCreateEvalu
   });
 
   return response.json({
-    message: `Mission soumise a ${mission.recipients.map((recipient) => recipient.name).join(', ')}.`,
+    message: `Mission soumise à ${mission.recipients.map((recipient) => recipient.name).join(', ')}.`,
     ...(await buildEvaluationPayload(instance, request.user)),
   });
 }
@@ -1030,18 +1056,21 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
     }
 
     const missionRecipients = missionEvaluations.flatMap((mission) =>
-      (mission.recipients || []).map((recipient) => ({
-        department: recipient.department || mission.department || '',
-        manager: recipient.name,
-      }))
+      (mission.recipients || [])
+        .filter((recipient) => recipient.can_evaluate !== false)
+        .map((recipient) => ({
+          department: recipient.department || mission.department || '',
+          manager: recipient.name,
+        }))
     );
     const mergedMissionRecipients = mergeManagerRecipients(managerRecipients.length ? managerRecipients : missionRecipients, []);
+    const submittedRecipientUsers = resolveSubmittedRecipientUsers(mergedMissionRecipients, resolvedEvaluationRecipients);
 
     await persistEvaluationInstance(instance, {
       status: 'Soumis aux Managers',
       submitted_to_role: 'manager',
       submitted_to_managers: mergedMissionRecipients,
-      submitted_to_user_ids: resolvedManagers.map((manager) => manager._id),
+      submitted_to_user_ids: submittedRecipientUsers.map((recipient) => recipient._id),
       submitted_to_names: mergedMissionRecipients.map((recipient) => recipient.manager),
       ...(submittedAnonymousFeedback ? { anonymous_feedback: submittedAnonymousFeedback } : {}),
       submitted_at: new Date(),
@@ -1050,8 +1079,8 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
 
     return response.json({
       message: mergedMissionRecipients.length
-        ? `Evaluations par mission soumises aux managers concernés (${mergedMissionRecipients.map((recipient) => recipient.manager).join(', ')}).`
-        : 'Evaluations par mission soumises.',
+        ? `Évaluations par mission soumises aux destinataires concernés (${mergedMissionRecipients.map((recipient) => recipient.manager).join(', ')}).`
+        : 'Évaluations par mission soumises.',
       ...(await buildEvaluationPayload(instance, request.user)),
     });
   }
@@ -1089,8 +1118,8 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
 
   return response.json({
     message: mergedManagerRecipients.length
-      ? `Auto-évaluation soumise aux managers concernes (${mergedManagerRecipients.map((recipient) => recipient.manager).join(', ')}).`
-      : `Auto-évaluation soumise a ${formatSubmissionTarget(resolvedManagers)}.`,
+      ? `Auto-évaluation soumise aux managers concernés (${mergedManagerRecipients.map((recipient) => recipient.manager).join(', ')}).`
+      : `Auto-évaluation soumise à ${formatSubmissionTarget(resolvedManagers)}.`,
     ...(await buildEvaluationPayload(instance, request.user)),
   });
 }
@@ -1137,10 +1166,11 @@ async function getMyAssistantResults(request, response) {
       return rightDate - leftDate;
     });
 
+  const departmentScope = getManagerDepartmentsForDepartment(request.user.department);
   const assistantUsers = await User.find({
     grade: 'Assistant',
     is_active: true,
-    _id: { $ne: request.user._id },
+    ...(departmentScope.length ? { department: { $in: departmentScope } } : { department: request.user.department }),
   }).select('_id');
 
   const otherIds = assistantUsers.map((user) => user._id);
@@ -1152,22 +1182,23 @@ async function getMyAssistantResults(request, response) {
       })
     : [];
 
-  const teamScores = otherInstances
+  const departmentScores = otherInstances
     .map((otherInstance) => getAverageFromMissionEvaluations(normalizeMissionEvaluations(otherInstance.mission_evaluations || [])))
     .filter((score) => typeof score === 'number');
-  const comparedAssistantsCount = teamScores.length;
+  const evaluatedDepartmentAssistantsCount = departmentScores.length;
 
-  const teamAverage = teamScores.length
-    ? Number((teamScores.reduce((total, score) => total + score, 0) / teamScores.length).toFixed(1))
+  const departmentAverage = departmentScores.length
+    ? Number((departmentScores.reduce((total, score) => total + score, 0) / departmentScores.length).toFixed(1))
     : scoreFinal;
 
-  const teamDelta =
-    typeof scoreFinal === 'number' && typeof teamAverage === 'number'
-      ? Number((scoreFinal - teamAverage).toFixed(1))
+  const departmentDelta =
+    typeof scoreFinal === 'number' && typeof departmentAverage === 'number'
+      ? Number((scoreFinal - departmentAverage).toFixed(1))
       : 0;
 
-  const comparisonSubtitle =
-    teamDelta > 0 ? 'Au-dessus de la moyenne' : teamDelta < 0 ? 'En-dessous de la moyenne' : 'Egal à la moyenne';
+  const departmentAverageSubtitle = evaluatedDepartmentAssistantsCount
+    ? `${evaluatedDepartmentAssistantsCount} assistant(s) évalué(s) - ${request.user.department || 'Département non renseigné'}`
+    : `Aucune moyenne disponible - ${request.user.department || 'Département non renseigné'}`;
 
   return response.json({
     cycle_label: CURRENT_CYCLE_LABEL,
@@ -1190,11 +1221,15 @@ async function getMyAssistantResults(request, response) {
     kpis: {
       scoreFinal: scoreFinal || 0,
       scoreFinalPercent: Math.round(((scoreFinal || 0) / 5) * 100),
-      comparaisonEquipe: teamDelta,
-      comparaisonEquipeLabel: teamDelta > 0 ? `+${teamDelta}` : `${teamDelta}`,
-      comparaisonEquipeSubtitle: comparisonSubtitle,
-      moyenneEquipe: teamAverage || 0,
-      assistantsEvalues: comparedAssistantsCount,
+      comparaisonEquipe: departmentDelta,
+      comparaisonEquipeLabel: `${(departmentAverage || 0).toFixed(1)}/5`,
+      comparaisonEquipeSubtitle: departmentAverageSubtitle,
+      moyenneEquipe: departmentAverage || 0,
+      moyenneDepartement: departmentAverage || 0,
+      moyenneDepartementLabel: `${(departmentAverage || 0).toFixed(1)}/5`,
+      moyenneDepartementSubtitle: departmentAverageSubtitle,
+      assistantsEvalues: evaluatedDepartmentAssistantsCount,
+      assistantsDepartementEvalues: evaluatedDepartmentAssistantsCount,
     },
     managerComments,
   });

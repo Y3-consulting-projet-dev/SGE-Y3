@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   createManagerMissionEvaluation,
@@ -8,7 +8,6 @@ import {
   submitManagerSelfEvaluation,
 } from "@/lib/managerOverview";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
-
 
 function getPageProgress(page) {
   const themes = page?.themes || [];
@@ -177,6 +176,14 @@ function isRhValidationRecipient(recipient) {
   return normalizedDepartment === "RH";
 }
 
+function getRecipientOptionValue(recipient) {
+  return String(recipient?.id || recipient?.user_id || "");
+}
+
+function getMissionEvaluatingRecipients(mission) {
+  return (mission?.recipients || []).filter((recipient) => recipient?.canEvaluate !== false && recipient?.can_evaluate !== false);
+}
+
 function hasRequiredSubmissionComment(sections = []) {
   return sections.length > 0 && sections.every((section) => String(section.comment || "").trim().length >= 3);
 }
@@ -238,6 +245,8 @@ function Monautoevaluation() {
   const [missionTitle, setMissionTitle] = useState("");
   const [missionStartDate, setMissionStartDate] = useState("");
   const [missionEndDate, setMissionEndDate] = useState("");
+  const [selectedAssociateValues, setSelectedAssociateValues] = useState([]);
+  const [selectedAssociateValue, setSelectedAssociateValue] = useState("");
   const [activeSectionId, setActiveSectionId] = useState(1);
   const [pageIndexes, setPageIndexes] = useState({});
   const [savedComments, setSavedComments] = useState({});
@@ -302,6 +311,30 @@ function Monautoevaluation() {
   const averageScore = useMemo(() => getPageAverage(activePage), [activePage]);
   const rhRecipients = evaluationData?.submitted_to || [];
   const rhValidationRecipients = rhRecipients.filter(isRhValidationRecipient);
+  const associateRecipients = evaluationData?.associate_recipients || [];
+  const selectedAssociates = useMemo(
+    () => associateRecipients.filter((recipient) => selectedAssociateValues.includes(getRecipientOptionValue(recipient))),
+    [associateRecipients, selectedAssociateValues]
+  );
+  const availableAssociates = useMemo(
+    () => associateRecipients.filter((recipient) => !selectedAssociateValues.includes(getRecipientOptionValue(recipient))),
+    [associateRecipients, selectedAssociateValues]
+  );
+
+  function handleAddAssociateRecipient() {
+    if (!selectedAssociateValue) return;
+
+    setSelectedAssociateValues((current) =>
+      current.includes(selectedAssociateValue) ? current : [...current, selectedAssociateValue]
+    );
+    setSelectedAssociateValue("");
+    setFeedbackMessage("");
+  }
+
+  function handleRemoveAssociateRecipient(value) {
+    setSelectedAssociateValues((current) => current.filter((item) => item !== value));
+    setSelectedAssociateValue((current) => (current === value ? "" : current));
+  }
 
   const missionProgress = missionEvaluations.length
     ? Math.round(missionEvaluations.reduce((total, mission) => total + getMissionProgress(mission), 0) / missionEvaluations.length)
@@ -477,12 +510,24 @@ function Monautoevaluation() {
       return;
     }
 
+    if (!selectedAssociates.length) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Sélectionnez au moins un associé destinataire pour cette mission.");
+      return;
+    }
+
     try {
       setIsSaving(true);
       setFeedbackMessage("");
       const response = await createManagerMissionEvaluation({
         title,
         period: formatMissionPeriod("", missionStartDate, missionEndDate),
+        selectedAssociateRecipients: selectedAssociates.map((associate) => ({
+          id: associate.id,
+          name: associate.name,
+          grade: associate.grade,
+          department: associate.department,
+        })),
       });
 
       setEvaluationData(response);
@@ -495,6 +540,8 @@ function Monautoevaluation() {
       setMissionTitle("");
       setMissionStartDate("");
       setMissionEndDate("");
+      setSelectedAssociateValues([]);
+      setSelectedAssociateValue("");
       setFeedbackTone("success");
       setFeedbackMessage(response.message || "Mission manager ajoutée.");
     } catch (error) {
@@ -566,6 +613,11 @@ function Monautoevaluation() {
     goToStep(1);
   }
 
+  async function handleSaveMissionAndContinue() {
+    await persistMissionEvaluations(missionEvaluations, "Mission manager enregistrée.");
+    goToMissionStep(1);
+  }
+
   async function handleSubmit() {
     if (!hasRequiredSubmissionComment(sections)) {
       setFeedbackTone("error");
@@ -597,6 +649,14 @@ function Monautoevaluation() {
   async function handleSubmitMission() {
     if (!activeMission) return;
 
+    const missionAssociates = selectedAssociates.length ? selectedAssociates : getMissionEvaluatingRecipients(activeMission);
+
+    if (!missionAssociates.length) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Sélectionnez au moins un associé destinataire pour cette mission.");
+      return;
+    }
+
     const hasIncompleteCriterion = (activeMission.criteria || []).some(
       (criterion) => criterion.score === null || criterion.score === undefined
     );
@@ -615,10 +675,19 @@ function Monautoevaluation() {
 
     try {
       setIsSubmitting(true);
-      const response = await submitManagerMissionEvaluation(activeMission.id);
+      const response = await submitManagerMissionEvaluation(activeMission.id, {
+        selectedAssociateRecipients: missionAssociates.map((associate) => ({
+          id: associate.id,
+          name: associate.name,
+          grade: associate.grade,
+          department: associate.department,
+        })),
+      });
       setEvaluationData(response);
       setSections(response.evaluation.sections || []);
       setMissionEvaluations(response.mission_evaluations || []);
+      setSelectedAssociateValues([]);
+      setSelectedAssociateValue("");
       setFeedbackTone("success");
       setFeedbackMessage(response.message || "Mission manager soumise à la RH et aux associés.");
     } catch (error) {
@@ -914,7 +983,7 @@ function Monautoevaluation() {
                         disabled={isSaving || isSubmitting}
                         className="inline-flex items-center gap-2 rounded-md bg-[#003B63] px-4 py-2 text-[12px] font-semibold text-white disabled:opacity-70"
                       >
-                        Section suivante
+                        Sauvegarder et continuer
                         <ChevronRight size={14} />
                       </button>
                     ) : (
@@ -963,32 +1032,92 @@ function Monautoevaluation() {
                 </div>
               </div>
             </article>
-
             <article className="rounded-md bg-white p-4 shadow-sm">
-              <p className="text-xs font-bold uppercase text-slate-500">Nouvelle mission manager</p>
+              <p className="text-xs font-bold uppercase text-slate-500">Ajouter une mission</p>
               <p className="mt-1 text-xs font-semibold text-slate-500">
                 Saisissez le nom de la mission, sa date de début et sa date de fin. Elle sera ensuite soumise à la RH et aux associés.
               </p>
-              <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <div className="mt-4 space-y-3">
                 <input
                   value={missionTitle}
                   onChange={(event) => setMissionTitle(event.target.value)}
-                  placeholder="Nom de la mission"
-                  className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
+                  placeholder="Nom ou type de mission"
+                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
                 />
-                <input
-                  type="date"
-                  value={missionStartDate}
-                  onChange={(event) => setMissionStartDate(event.target.value)}
-                  className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none"
-                />
-                <input
-                  type="date"
-                  value={missionEndDate}
-                  min={missionStartDate || undefined}
-                  onChange={(event) => setMissionEndDate(event.target.value)}
-                  className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none"
-                />
+                <label className="block">
+                  <span className="text-xs font-bold text-slate-500">Date de début</span>
+                  <input
+                    type="date"
+                    value={missionStartDate}
+                    onChange={(event) => setMissionStartDate(event.target.value)}
+                    className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-3 text-sm text-[#0F3A63] outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs font-bold text-slate-500">Date de fin</span>
+                  <input
+                    type="date"
+                    value={missionEndDate}
+                    min={missionStartDate || undefined}
+                    onChange={(event) => setMissionEndDate(event.target.value)}
+                    className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-3 text-sm text-[#0F3A63] outline-none"
+                  />
+                </label>
+              </div>
+              <div className="mt-3 rounded-md bg-slate-50 p-3">
+                <p className="text-xs font-bold text-[#0F3A63]">Évaluateurs de la mission</p>
+                <div className="mt-3 rounded-md bg-slate-200/60 p-3 text-xs font-semibold text-slate-500">
+                  {selectedAssociates.length ? (
+                    <div className="space-y-2">
+                      {selectedAssociates.map((associate) => {
+                        const value = getRecipientOptionValue(associate);
+
+                        return (
+                          <div key={value} className="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2">
+                            <span className="text-[#0F3A63]">
+                              Associés - {associate.name} ({associate.grade || "Associé"})
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveAssociateRecipient(value)}
+                              className="text-[11px] font-bold text-red-500"
+                            >
+                              Retirer
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    "Aucun évaluateur sélectionné pour le moment."
+                  )}
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <select
+                    value={selectedAssociateValue}
+                    onChange={(event) => setSelectedAssociateValue(event.target.value)}
+                    className="min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-[#0F3A63] outline-none"
+                  >
+                    <option value="">Sélectionner un supérieur</option>
+                    {availableAssociates.map((associate) => {
+                      const value = getRecipientOptionValue(associate);
+
+                      return (
+                        <option key={value} value={value}>
+                          Associés - {associate.name} ({associate.grade || "Associé"})
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleAddAssociateRecipient}
+                    disabled={!selectedAssociateValue}
+                    className="rounded-md bg-[#8CAFC7] px-5 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  >
+                    Ajouter
+                  </button>
+                </div>
               </div>
               <button
                 type="button"
@@ -1010,7 +1139,7 @@ function Monautoevaluation() {
                     <button
                       key={mission.id}
                       type="button"
-                      onClick={() => setActiveMissionId(mission.id)}  
+                      onClick={() => setActiveMissionId(mission.id)}
                       className={`w-full rounded-md p-4 text-left shadow-sm transition ${
                         isActive ? "bg-[#EEF6E8] ring-2 ring-[#79B742]" : "bg-white hover:bg-slate-50"
                       }`}
@@ -1019,6 +1148,11 @@ function Monautoevaluation() {
                         <div>
                           <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
                           <p className="mt-1 text-xs font-semibold text-slate-500">{formatMissionPeriod(mission.period)}</p>
+                          {getMissionEvaluatingRecipients(mission).length ? (
+                            <p className="mt-1 text-[11px] font-semibold text-slate-400">
+                              Associé(s) : {getMissionEvaluatingRecipients(mission).map((recipient) => recipient.name).join(", ")}
+                            </p>
+                          ) : null}
                         </div>
                         <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#4E8B1B]">{mission.status}</span>
                       </div>
@@ -1162,6 +1296,15 @@ function Monautoevaluation() {
                   <div className="flex flex-wrap items-center gap-3">
                     <button
                       type="button"
+                      onClick={handleSaveMissionAndContinue}
+                      disabled={isSaving || isSubmitting}
+                      className="inline-flex items-center gap-2 rounded-md bg-[#003B63] px-4 py-2 text-[12px] font-semibold text-white disabled:opacity-70"
+                    >
+                      Sauvegarder et continuer
+                      <ChevronRight size={14} />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => persistMissionEvaluations(missionEvaluations)}
                       disabled={isSaving || isSubmitting}
                       className="rounded-md bg-[#0D496A] px-8 py-2 text-xs font-semibold text-white disabled:opacity-70"
@@ -1192,4 +1335,3 @@ function Monautoevaluation() {
 }
 
 export default Monautoevaluation;
-

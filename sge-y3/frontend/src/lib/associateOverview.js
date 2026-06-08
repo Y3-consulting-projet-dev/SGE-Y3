@@ -54,8 +54,9 @@ export function submitAssociateSelfEvaluation() {
   });
 }
 
-export function getReceivedAssociateEvaluations() {
-  return request("/associate/received-evaluations");
+export function getReceivedAssociateEvaluations(scope = "") {
+  const query = scope ? `?scope=${encodeURIComponent(scope)}` : "";
+  return request(`/associate/received-evaluations${query}`);
 }
 
 export function getReceivedAssociateEvaluation(evaluationId) {
@@ -66,6 +67,12 @@ export function saveReceivedAssociateEvaluationComment(evaluationId, payload) {
   return request(`/associate/received-evaluations/${evaluationId}/comment`, {
     method: "PUT",
     body: JSON.stringify(payload),
+  });
+}
+
+export function submitReceivedAssociateEvaluationToRh(evaluationId) {
+  return request(`/associate/received-evaluations/${evaluationId}/submit-rh`, {
+    method: "POST",
   });
 }
 
@@ -96,5 +103,11 @@ export function saveAssociateSupportEvaluation(supportId, payload) {
   return request(`/associate/support-evaluations/${supportId}`, {
     method: "PUT",
     body: JSON.stringify(payload),
-  });
+  })}
+    
+export function submitAssociateManagerEvaluationToRh(managerId, payload) {
+  return request(`/associate/manager-evaluations/${managerId}/submit-rh`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
 }

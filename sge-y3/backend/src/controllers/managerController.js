@@ -280,10 +280,49 @@ async function resolveRhRecipients() {
 async function resolveAssociateRecipients() {
   return User.find({
     is_active: true,
-    $or: [{ code_categorie: '11' }, { grade: 'Associé' }, { grade: 'Associe' }],
+    $or: [
+      { code_categorie: '11' },
+      { grade: /Associ/i },
+    ],
   })
     .sort({ last_name: 1, first_name: 1 })
     .select('_id name first_name last_name grade department code_categorie');
+}
+
+function resolveSelectedAssociateRecipients(associateRecipients = [], selectedRecipients = []) {
+  const selected = Array.isArray(selectedRecipients) ? selectedRecipients : [];
+
+  if (!selected.length) {
+    return [];
+  }
+
+  const seen = new Set();
+
+  return selected
+    .map((recipient) => {
+      const selectedId = String(recipient?.id || recipient?.user_id || '').trim();
+      const selectedName = normalizeText(recipient?.name || '');
+
+      return (
+        associateRecipients.find((associate) => {
+          const associateId = String(associate._id || associate.id || '').trim();
+          if (selectedId && associateId && selectedId === associateId) {
+            return true;
+          }
+
+          return selectedName && normalizeText(associate.name || '') === selectedName;
+        }) || null
+      );
+    })
+    .filter((associate) => {
+      const key = String(associate?._id || associate?.id || '');
+      if (!key || seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    });
 }
 
 async function getMemberForManager(managerUser, memberId) {
@@ -403,7 +442,7 @@ async function resolveManagerTeamMembers(managerUser) {
     .select('_id name first_name last_name grade department code_categorie');
 }
 
-function buildManagerSelfEvaluationPayload(instance, user, rhRecipients = [], teamMembers = []) {
+function buildManagerSelfEvaluationPayload(instance, user, rhRecipients = [], teamMembers = [], associateRecipients = []) {
   const sections = normalizeSections(instance.sections || []);
   const activeSection = sections.find((section) => section.status !== 'Complete') || sections[0] || null;
   const missionEvaluations = formatManagerMissionEvaluations(normalizeManagerMissionEvaluations(instance.mission_evaluations || []));
@@ -432,6 +471,12 @@ function buildManagerSelfEvaluationPayload(instance, user, rhRecipients = [], te
       department: user.department,
     },
     submitted_to: rhRecipients.map((recipient) => ({
+      id: recipient._id.toString(),
+      name: recipient.name,
+      department: recipient.department,
+      grade: recipient.grade,
+    })),
+    associate_recipients: associateRecipients.map((recipient) => ({
       id: recipient._id.toString(),
       name: recipient.name,
       department: recipient.department,
@@ -558,6 +603,32 @@ function isRecipientUser(recipient, user) {
 
 function isEvaluatingRecipientUser(recipient, user) {
   return recipient?.can_evaluate !== false && isRecipientUser(recipient, user);
+}
+
+function isSubmittedMissionForManager(mission = {}, managerUser) {
+  return (
+    mission.status === 'Soumise' &&
+    (mission.recipients || []).some((recipient) => isEvaluatingRecipientUser(recipient, managerUser))
+  );
+}
+
+function isSubmittedManagerMissionReview(missionReview = {}) {
+  const status = normalizeText(missionReview.status || '');
+  return Boolean(
+    missionReview.submitted_at ||
+      status === 'SOUMISE A LA RH' ||
+      status === 'SOUMISE A RH' ||
+      status.includes('SOUMIS') ||
+      status.includes('TRANSMIS')
+  );
+}
+
+function hasSubmittedManagerMissionReview(review = {}, missionId = '') {
+  return (review.mission_reviews || []).some(
+    (missionReview) =>
+      String(missionReview.mission_id || missionReview.id || '').trim() === String(missionId || '').trim() &&
+      isSubmittedManagerMissionReview(missionReview)
+  );
 }
 
 function normalizeMissionReviews(missionReviews = []) {
@@ -743,14 +814,18 @@ async function syncManagerMissionReviews(review, managerUser, selfEvaluationInst
   });
 
   const persistedSubmittedReviews = currentMissionReviews.filter(
-    (mission) => mission.status === 'Soumise à la RH' && !submittedMissionIds.has(mission.mission_id)
+    (mission) => mission.status === 'Soumise ÃƒÂ  la RH' && !submittedMissionIds.has(mission.mission_id)
   );
 
   const pendingManagerAssignedReviews = currentMissionReviews.filter(
     (mission) => mission.origin === 'manager-assigned' && !submittedMissionIds.has(mission.mission_id)
   );
 
-  review.mission_reviews = [...pendingManagerAssignedReviews, ...persistedSubmittedReviews, ...nextMissionReviews];
+  const visiblePersistedSubmittedReviews = persistedSubmittedReviews.filter(
+    (mission) => mission.origin === 'manager-assigned' || submittedMissionIds.has(mission.mission_id)
+  );
+
+  review.mission_reviews = [...pendingManagerAssignedReviews, ...visiblePersistedSubmittedReviews, ...nextMissionReviews];
   return review;
 }
 
@@ -774,6 +849,16 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
     : [];
   const seniorUserById = new Map(seniorUsers.map((user) => [String(user._id), user]));
   const missionsMap = new Map();
+  const evaluableMissionIds = new Set(
+    (selfEvaluationInstance?.mission_evaluations || [])
+      .filter(
+        (mission) =>
+          mission.status === 'Soumise' &&
+          (mission.recipients || []).some((recipient) => isEvaluatingRecipientUser(recipient, managerUser))
+      )
+      .map((mission) => String(mission.mission_id || mission.id || '').trim())
+      .filter(Boolean)
+  );
   const managerMissionReviewById = new Map(
     normalizeMissionReviews(review?.mission_reviews || []).map((missionReview) => [missionReview.mission_id, missionReview])
   );
@@ -802,6 +887,9 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
       if (missionReview.status !== 'Transmise') {
         continue;
       }
+      if (!evaluableMissionIds.has(String(missionReview.mission_id || missionReview.id || '').trim())) {
+        continue;
+      }
 
       const existingMission = missionsMap.get(missionReview.mission_id) || {
         id: missionReview.mission_id,
@@ -827,10 +915,9 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
   }
 
   for (const mission of selfEvaluationInstance?.mission_evaluations || []) {
-    const missionAlreadyKnownByManager = missionsMap.has(mission.mission_id);
-    const isSubmittedToManager = (mission.recipients || []).some((recipient) => isRecipientUser(recipient, managerUser));
+    const isSubmittedToManager = (mission.recipients || []).some((recipient) => isEvaluatingRecipientUser(recipient, managerUser));
 
-    if (mission.status !== 'Soumise' || (!isSubmittedToManager && !missionAlreadyKnownByManager)) {
+    if (mission.status !== 'Soumise' || !isSubmittedToManager) {
       continue;
     }
 
@@ -1122,7 +1209,7 @@ function validateMissionReviewCriteria(criteria = []) {
   for (const criterion of criteria) {
     if (criterion.score !== null && criterion.score !== undefined) {
       if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
-        return `La note du critère "${criterion.label}" doit être comprise entre 1 et 5.`;
+        return `La note du critÃƒÂ¨re "${criterion.label}" doit ÃƒÂªtre comprise entre 1 et 5.`;
       }
     }
   }
@@ -1151,12 +1238,12 @@ async function getManagerOverview(request, response) {
           evalue_id: { $in: memberIds },
           cycle_label: CURRENT_CYCLE_LABEL,
           template_type: { $in: ['assistant-self-evaluation', 'senior-self-evaluation'] },
-        }).select('evalue_id template_type status submitted_at submitted_to_user_ids sections chief_comments'),
+        }).select('evalue_id template_type status submitted_at submitted_to_user_ids sections mission_evaluations'),
         ManagerMemberReview.find({
           cycle_label: CURRENT_CYCLE_LABEL,
           manager_id: request.user._id,
           member_id: { $in: memberIds },
-        }).select('member_id status submitted_at sections'),
+        }).select('member_id status submitted_at sections mission_reviews'),
       ])
     : [[], []];
 
@@ -1187,11 +1274,43 @@ async function getManagerOverview(request, response) {
     );
   });
 
-  const pendingEvaluations = receivedEvaluations.map((member) => {
+  const pendingEvaluations = members.map((member) => {
     const instance = relevantInstancesByMemberId.get(String(member._id));
     const review = managerReviewsByMemberId.get(String(member._id));
+    const hasGlobalSubmission =
+      instance &&
+      (instance.submitted_to_user_ids || []).some((userId) => String(userId) === String(request.user._id)) &&
+      (instance.status === 'Soumis aux Managers' || instance.status === 'Soumis au Manager');
+    const pendingMissions = (instance?.mission_evaluations || []).filter(
+      (mission) =>
+        isSubmittedMissionForManager(mission, request.user) &&
+        !hasSubmittedManagerMissionReview(review, mission.mission_id || mission.id)
+    );
 
-    if (review?.status === 'Soumis à la RH') {
+    if (!hasGlobalSubmission && !pendingMissions.length) {
+      return null;
+    }
+
+    if (pendingMissions.length) {
+      const latestMissionSubmittedAt = pendingMissions
+        .map((mission) => mission.submitted_at || mission.submittedAt || null)
+        .filter(Boolean)
+        .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0];
+
+      return {
+        id: member._id.toString(),
+        name: member.name,
+        grade: member.grade,
+        department: member.department,
+        submittedAt: latestMissionSubmittedAt || instance?.submitted_at || null,
+        status: 'Mission ÃƒÂ  ÃƒÂ©valuer',
+        templateType: instance?.template_type || getExpectedTemplateType(member),
+        pendingType: 'mission',
+        pendingMissionsCount: pendingMissions.length,
+      };
+    }
+
+    if (review?.status === 'Soumis ÃƒÂ  la RH') {
       return null;
     }
 
@@ -1347,7 +1466,7 @@ async function getManagerTeamReport(request, response) {
         missionScoreDetails.push(
           buildScoreDetail({
             category: 'mission',
-            source: 'Auto-évaluation',
+            source: 'Auto-ÃƒÂ©valuation',
             evaluatorName: member.name,
             evaluatorGrade: member.grade,
             missionTitle: mission.title,
@@ -1388,7 +1507,7 @@ async function getManagerTeamReport(request, response) {
       }
       for (const missionReview of managerReview.mission_reviews || []) {
         const score = getMissionAverage(missionReview.criteria || []);
-        if (missionReview.status === 'Soumise à la RH' && typeof score === 'number') {
+        if (missionReview.status === 'Soumise ÃƒÂ  la RH' && typeof score === 'number') {
           missionScoreDetails.push(
             buildScoreDetail({
               category: 'mission',
@@ -1410,7 +1529,7 @@ async function getManagerTeamReport(request, response) {
       globalScoreDetails.push(
         buildScoreDetail({
           category: 'global',
-          source: 'Auto-évaluation',
+          source: 'Auto-ÃƒÂ©valuation',
           evaluatorName: member.name,
           evaluatorGrade: member.grade,
           score: selfGlobalScore,
@@ -1517,13 +1636,14 @@ async function getManagerTeamReport(request, response) {
 }
 
 async function getMyManagerEvaluation(request, response) {
-  const [instance, rhRecipients, teamMembers] = await Promise.all([
+  const [instance, rhRecipients, teamMembers, associateRecipients] = await Promise.all([
     getOrCreateManagerSelfEvaluation(request.user),
     resolveRhRecipients(),
     resolveManagerTeamMembers(request.user),
+    resolveAssociateRecipients(),
   ]);
 
-  return response.json(buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers));
+  return response.json(buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers, associateRecipients));
 }
 
 async function addMyManagerMissionEvaluation(request, response) {
@@ -1536,11 +1656,23 @@ async function addMyManagerMissionEvaluation(request, response) {
     });
   }
 
-  const [instance, rhRecipients, teamMembers] = await Promise.all([
+  const [instance, rhRecipients, teamMembers, associateRecipients] = await Promise.all([
     getOrCreateManagerSelfEvaluation(request.user),
     resolveRhRecipients(),
     resolveManagerTeamMembers(request.user),
+    resolveAssociateRecipients(),
   ]);
+  const selectedAssociateRecipients = resolveSelectedAssociateRecipients(
+    associateRecipients,
+    request.body?.selectedAssociateRecipients
+  );
+
+  if (!selectedAssociateRecipients.length) {
+    return response.status(400).json({
+      message: 'Selectionnez au moins un associe destinataire pour cette mission manager.',
+    });
+  }
+
   const templateSections = cloneManagerSelfTemplate(request.user);
   const missionEvaluations = normalizeManagerMissionEvaluations(instance.mission_evaluations || []);
 
@@ -1558,11 +1690,18 @@ async function addMyManagerMissionEvaluation(request, response) {
     assigned_by_name: '',
     assigned_by_grade: '',
     assigned_at: null,
-    primary_recipient_user_id: null,
-    primary_recipient_name: '',
-    primary_recipient_grade: '',
-    primary_recipient_department: '',
-    recipients: [],
+    primary_recipient_user_id: selectedAssociateRecipients[0]?._id || null,
+    primary_recipient_name: selectedAssociateRecipients[0]?.name || '',
+    primary_recipient_grade: selectedAssociateRecipients[0]?.grade || '',
+    primary_recipient_department: selectedAssociateRecipients[0]?.department || '',
+    recipients: selectedAssociateRecipients.map((recipient) => ({
+      user_id: recipient._id,
+      name: recipient.name,
+      grade: recipient.grade,
+      department: recipient.department,
+      can_evaluate: true,
+      receives_copy: false,
+    })),
     criteria: buildManagerMissionCriteria(templateSections),
     comment: '',
     status: 'Brouillon',
@@ -1574,14 +1713,14 @@ async function addMyManagerMissionEvaluation(request, response) {
   await instance.save();
 
   return response.json({
-    message: 'Mission manager ajoutée.',
-    ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers),
+    message: 'Mission manager ajoutÃƒÂ©e.',
+    ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers, associateRecipients),
   });
 }
 
 async function addMissionToManagerMember(request, response) {
   const title = String(request.body?.title || '').trim();
-  const period = String(request.body?.period || '').trim() || 'Période non renseignée';
+  const period = String(request.body?.period || '').trim() || 'PÃƒÂ©riode non renseignÃƒÂ©e';
 
   if (!title) {
     return response.status(400).json({
@@ -1593,7 +1732,7 @@ async function addMissionToManagerMember(request, response) {
 
   if (!member) {
     return response.status(404).json({
-      message: "Membre d'équipe introuvable pour ce manager.",
+      message: "Membre d'ÃƒÂ©quipe introuvable pour ce manager.",
     });
   }
 
@@ -1654,7 +1793,7 @@ async function addMissionToManagerMember(request, response) {
   const missionAndScoreData = await buildManagerMissionAndGlobalInputs(request.user, member, selfEvaluationInstance, review);
 
   return response.json({
-    message: `Mission ajoutée pour ${member.name}. Le membre la verra dans son auto-évaluation par mission.`,
+    message: `Mission ajoutÃƒÂ©e pour ${member.name}. Le membre la verra dans son auto-ÃƒÂ©valuation par mission.`,
     ...buildManagerReviewPayload(
       review,
       request.user,
@@ -1675,7 +1814,7 @@ async function saveMyManagerEvaluation(request, response) {
 
   if (!rawSections?.length && !isMissionOnlyEvaluation) {
     return response.status(400).json({
-      message: "Les sections ou les évaluations par mission de l'auto-évaluation manager sont requises.",
+      message: "Les sections ou les ÃƒÂ©valuations par mission de l'auto-ÃƒÂ©valuation manager sont requises.",
     });
   }
 
@@ -1687,7 +1826,7 @@ async function saveMyManagerEvaluation(request, response) {
         if (criterion.score !== null && criterion.score !== undefined) {
           if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
             return response.status(400).json({
-              message: `La note du critère "${criterion.label}" doit être comprise entre 1 et 5.`,
+              message: `La note du critÃƒÂ¨re "${criterion.label}" doit ÃƒÂªtre comprise entre 1 et 5.`,
             });
           }
         }
@@ -1701,7 +1840,7 @@ async function saveMyManagerEvaluation(request, response) {
         if (criterion.score !== null && criterion.score !== undefined) {
           if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
             return response.status(400).json({
-              message: `La note du critère "${criterion.label}" doit être comprise entre 1 et 5.`,
+              message: `La note du critÃƒÂ¨re "${criterion.label}" doit ÃƒÂªtre comprise entre 1 et 5.`,
             });
           }
         }
@@ -1709,10 +1848,11 @@ async function saveMyManagerEvaluation(request, response) {
     }
   }
 
-  const [instance, rhRecipients, teamMembers] = await Promise.all([
+  const [instance, rhRecipients, teamMembers, associateRecipients] = await Promise.all([
     getOrCreateManagerSelfEvaluation(request.user),
     resolveRhRecipients(),
     resolveManagerTeamMembers(request.user),
+    resolveAssociateRecipients(),
   ]);
   const summary = getEvaluationSummary(sections);
 
@@ -1734,16 +1874,17 @@ async function saveMyManagerEvaluation(request, response) {
   await instance.save();
 
   return response.json({
-    message: 'Auto-évaluation manager enregistrée.',
-    ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers),
+    message: 'Auto-ÃƒÂ©valuation manager enregistrÃƒÂ©e.',
+    ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers, associateRecipients),
   });
 }
 
 async function submitMyManagerEvaluation(request, response) {
-  const [instance, rhRecipients, teamMembers] = await Promise.all([
+  const [instance, rhRecipients, teamMembers, associateRecipients] = await Promise.all([
     getOrCreateManagerSelfEvaluation(request.user),
     resolveRhRecipients(),
     resolveManagerTeamMembers(request.user),
+    resolveAssociateRecipients(),
   ]);
   const sections = normalizeSections(instance.sections || []);
   const missionEvaluations = normalizeManagerMissionEvaluations(instance.mission_evaluations || []);
@@ -1754,7 +1895,7 @@ async function submitMyManagerEvaluation(request, response) {
 
     if (pendingMissions.length) {
       return response.status(400).json({
-        message: 'Chaque mission doit être soumise à la RH et aux associés avant la soumission finale.',
+        message: 'Chaque mission doit ÃƒÂªtre soumise ÃƒÂ  la RH et aux associÃƒÂ©s avant la soumission finale.',
         pendingMissions: pendingMissions.map((mission) => ({
           missionId: mission.mission_id,
           title: mission.title,
@@ -1762,7 +1903,7 @@ async function submitMyManagerEvaluation(request, response) {
       });
     }
 
-    instance.status = 'Soumis à la RH';
+    instance.status = 'Soumis ÃƒÂ  la RH';
     instance.submitted_to_role = 'rh';
     instance.submitted_to_user_ids = rhRecipients.map((recipient) => recipient._id);
     instance.submitted_to_names = rhRecipients.map((recipient) => recipient.name);
@@ -1771,8 +1912,8 @@ async function submitMyManagerEvaluation(request, response) {
     await instance.save();
 
     return response.json({
-      message: 'Evaluations par mission manager transmises à la RH et aux associés.',
-      ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers),
+      message: 'Evaluations par mission manager transmises ÃƒÂ  la RH et aux associÃƒÂ©s.',
+      ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers, associateRecipients),
     });
   }
 
@@ -1780,7 +1921,7 @@ async function submitMyManagerEvaluation(request, response) {
 
   if (missingAnswers.length) {
     return response.status(400).json({
-      message: 'Toutes les questions obligatoires doivent être renseignées avant soumission.',
+      message: 'Toutes les questions obligatoires doivent ÃƒÂªtre renseignÃƒÂ©es avant soumission.',
       missingAnswers,
     });
   }
@@ -1789,13 +1930,13 @@ async function submitMyManagerEvaluation(request, response) {
 
   if (missingSectionComments.length) {
     return response.status(400).json({
-      message: "Un commentaire de section d'au moins 3 caractères est obligatoire pour chaque section avant soumission.",
+      message: "Un commentaire de section d'au moins 3 caractÃƒÂ¨res est obligatoire pour chaque section avant soumission.",
       missingSectionComments,
     });
   }
 
   instance.sections = toPersistenceSections(sections);
-  instance.status = 'Soumis à la RH';
+  instance.status = 'Soumis ÃƒÂ  la RH';
   instance.submitted_to_role = 'rh';
   instance.submitted_to_user_ids = rhRecipients.map((recipient) => recipient._id);
   instance.submitted_to_names = rhRecipients.map((recipient) => recipient.name);
@@ -1804,8 +1945,8 @@ async function submitMyManagerEvaluation(request, response) {
   await instance.save();
 
   return response.json({
-    message: 'Auto-évaluation manager soumise à la RH.',
-    ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers),
+    message: 'Auto-ÃƒÂ©valuation manager soumise ÃƒÂ  la RH.',
+    ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers, associateRecipients),
   });
 }
 
@@ -1814,7 +1955,7 @@ async function submitMyManagerMissionEvaluation(request, response) {
 
   if (!missionId) {
     return response.status(400).json({
-      message: 'La mission manager à soumettre est requise.',
+      message: 'La mission manager ÃƒÂ  soumettre est requise.',
     });
   }
 
@@ -1839,27 +1980,38 @@ async function submitMyManagerMissionEvaluation(request, response) {
 
   if (hasIncompleteCriterion) {
     return response.status(400).json({
-      message: 'Toutes les questions de la mission manager doivent être renseignées avant soumission.',
+      message: 'Toutes les questions de la mission manager doivent ÃƒÂªtre renseignÃƒÂ©es avant soumission.',
     });
   }
 
-  const allRecipients = [...rhRecipients, ...associateRecipients];
+  const selectedAssociateRecipients = resolveSelectedAssociateRecipients(
+    associateRecipients,
+    Array.isArray(request.body?.selectedAssociateRecipients) && request.body.selectedAssociateRecipients.length
+      ? request.body.selectedAssociateRecipients
+      : mission.recipients
+  );
+  const allRecipients = [
+    ...rhRecipients.map((recipient) => ({ ...(recipient.toObject?.() || recipient), can_evaluate: false, receives_copy: true })),
+    ...selectedAssociateRecipients.map((recipient) => ({ ...(recipient.toObject?.() || recipient), can_evaluate: true, receives_copy: false })),
+  ];
 
-  if (!allRecipients.length) {
+  if (!selectedAssociateRecipients.length) {
     return response.status(400).json({
-      message: "Aucun destinataire actif n'est disponible pour recevoir cette mission manager.",
+      message: 'Selectionnez au moins un associe destinataire pour cette mission manager.',
     });
   }
 
-  mission.primary_recipient_user_id = rhRecipients[0]?._id || associateRecipients[0]?._id || null;
-  mission.primary_recipient_name = rhRecipients[0]?.name || associateRecipients[0]?.name || '';
-  mission.primary_recipient_grade = rhRecipients[0]?.grade || associateRecipients[0]?.grade || '';
-  mission.primary_recipient_department = rhRecipients[0]?.department || associateRecipients[0]?.department || '';
+  mission.primary_recipient_user_id = selectedAssociateRecipients[0]?._id || null;
+  mission.primary_recipient_name = selectedAssociateRecipients[0]?.name || '';
+  mission.primary_recipient_grade = selectedAssociateRecipients[0]?.grade || '';
+  mission.primary_recipient_department = selectedAssociateRecipients[0]?.department || '';
   mission.recipients = allRecipients.map((recipient) => ({
     user_id: recipient._id,
     name: recipient.name,
     grade: recipient.grade,
     department: recipient.department,
+    can_evaluate: recipient.can_evaluate !== false,
+    receives_copy: recipient.receives_copy === true,
   }));
   mission.status = 'Soumise';
   mission.submitted_at = new Date();
@@ -1869,8 +2021,8 @@ async function submitMyManagerMissionEvaluation(request, response) {
   await instance.save();
 
   return response.json({
-    message: `Mission manager soumise à la RH et aux associés (${allRecipients.map((recipient) => recipient.name).join(', ')}).`,
-    ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers),
+    message: `Mission manager soumise a la RH et aux associes (${selectedAssociateRecipients.map((recipient) => recipient.name).join(', ')}).`,
+    ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers, associateRecipients),
   });
 }
 
@@ -1884,7 +2036,7 @@ module.exports = {
 
     if (!member) {
       return response.status(404).json({
-        message: "Membre d'équipe introuvable pour ce manager.",
+        message: "Membre d'ÃƒÂ©quipe introuvable pour ce manager.",
       });
     }
 
@@ -1915,7 +2067,7 @@ module.exports = {
 
     if (!rawSections?.length) {
       return response.status(400).json({
-        message: "Les sections de l'évaluation manager sont requises.",
+        message: "Les sections de l'ÃƒÂ©valuation manager sont requises.",
       });
     }
 
@@ -1923,7 +2075,7 @@ module.exports = {
 
     if (!member) {
       return response.status(404).json({
-        message: "Membre d'équipe introuvable pour ce manager.",
+        message: "Membre d'ÃƒÂ©quipe introuvable pour ce manager.",
       });
     }
 
@@ -1932,7 +2084,7 @@ module.exports = {
 
     if (missingPageComments.length) {
       return response.status(400).json({
-        message: "Une justification par titre d'au moins 3 caractères est obligatoire pour toute note inferieure a 3.",
+        message: "Une justification par titre d'au moins 3 caractÃƒÂ¨res est obligatoire pour toute note inferieure a 3.",
         missingPageComments,
       });
     }
@@ -1942,7 +2094,7 @@ module.exports = {
         if (criterion.score !== null && criterion.score !== undefined) {
           if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
             return response.status(400).json({
-              message: `La note du critère "${criterion.label}" doit être comprise entre 1 et 5.`,
+              message: `La note du critÃƒÂ¨re "${criterion.label}" doit ÃƒÂªtre comprise entre 1 et 5.`,
             });
           }
         }
@@ -1964,7 +2116,7 @@ module.exports = {
     await review.save();
 
     return response.json({
-      message: 'Evaluation manager enregistrée.',
+      message: 'Evaluation manager enregistrÃƒÂ©e.',
       ...buildManagerReviewPayload(
         review,
         request.user,
@@ -1980,7 +2132,7 @@ module.exports = {
 
     if (!member) {
       return response.status(404).json({
-        message: "Membre d'équipe introuvable pour ce manager.",
+        message: "Membre d'ÃƒÂ©quipe introuvable pour ce manager.",
       });
     }
 
@@ -1996,7 +2148,7 @@ module.exports = {
 
     if (missingAnswers.length) {
       return response.status(400).json({
-        message: "Toutes les questions obligatoires doivent être renseignées avant soumission à la RH.",
+        message: "Toutes les questions obligatoires doivent ÃƒÂªtre renseignÃƒÂ©es avant soumission ÃƒÂ  la RH.",
         missingAnswers,
       });
     }
@@ -2005,7 +2157,7 @@ module.exports = {
 
     if (missingSectionComments.length) {
       return response.status(400).json({
-        message: "Un commentaire de section d'au moins 3 caractères est obligatoire pour chaque section avant soumission.",
+        message: "Un commentaire de section d'au moins 3 caractÃƒÂ¨res est obligatoire pour chaque section avant soumission.",
         missingSectionComments,
       });
     }
@@ -2014,13 +2166,13 @@ module.exports = {
 
     if (missingPageComments.length) {
       return response.status(400).json({
-        message: "Une justification par titre d'au moins 3 caractères est obligatoire pour toute note inferieure a 3.",
+        message: "Une justification par titre d'au moins 3 caractÃƒÂ¨res est obligatoire pour toute note inferieure a 3.",
         missingPageComments,
       });
     }
 
     review.sections = toPersistenceSections(sections);
-    review.status = 'Soumis à la RH';
+    review.status = 'Soumis ÃƒÂ  la RH';
     review.submitted_to_user_ids = rhRecipients.map((recipient) => recipient._id);
     review.submitted_to_names = rhRecipients.map((recipient) => recipient.name);
     review.rh_validation_selected = true;
@@ -2031,8 +2183,8 @@ module.exports = {
 
     return response.json({
       message: rhRecipients.length
-        ? `Evaluation soumise à ${rhRecipients.map((recipient) => recipient.name).join(', ')}.`
-        : 'Evaluation soumise à la RH.',
+        ? `Evaluation soumise ÃƒÂ  ${rhRecipients.map((recipient) => recipient.name).join(', ')}.`
+        : 'Evaluation soumise ÃƒÂ  la RH.',
       ...buildManagerReviewPayload(
         review,
         request.user,
@@ -2048,7 +2200,7 @@ module.exports = {
 
     if (!rawMissionReviews) {
       return response.status(400).json({
-        message: "Les évaluations par mission sont requises.",
+        message: "Les ÃƒÂ©valuations par mission sont requises.",
       });
     }
 
@@ -2056,7 +2208,7 @@ module.exports = {
 
     if (!member) {
       return response.status(404).json({
-        message: "Membre d'équipe introuvable pour ce manager.",
+        message: "Membre d'ÃƒÂ©quipe introuvable pour ce manager.",
       });
     }
 
@@ -2083,7 +2235,7 @@ module.exports = {
     const missionAndScoreData = await buildManagerMissionAndGlobalInputs(request.user, member, selfEvaluationInstance, review);
 
     return response.json({
-      message: 'Evaluation manager par mission enregistrée.',
+      message: 'Evaluation manager par mission enregistrÃƒÂ©e.',
       ...buildManagerReviewPayload(
         review,
         request.user,
@@ -2099,7 +2251,7 @@ module.exports = {
 
     if (!missionId) {
       return response.status(400).json({
-        message: 'La mission à soumettre est requise.',
+        message: 'La mission ÃƒÂ  soumettre est requise.',
       });
     }
 
@@ -2107,7 +2259,7 @@ module.exports = {
 
     if (!member) {
       return response.status(404).json({
-        message: "Membre d'équipe introuvable pour ce manager.",
+        message: "Membre d'ÃƒÂ©quipe introuvable pour ce manager.",
       });
     }
 
@@ -2122,7 +2274,7 @@ module.exports = {
 
     if (!missionReview) {
       return response.status(404).json({
-        message: 'Mission introuvable dans cette évaluation manager.',
+        message: 'Mission introuvable dans cette ÃƒÂ©valuation manager.',
       });
     }
 
@@ -2132,7 +2284,7 @@ module.exports = {
 
     if (hasIncompleteCriterion) {
       return response.status(400).json({
-        message: 'Toutes les questions de la mission doivent être renseignées avant soumission à la RH.',
+        message: 'Toutes les questions de la mission doivent ÃƒÂªtre renseignÃƒÂ©es avant soumission ÃƒÂ  la RH.',
       });
     }
 
@@ -2140,7 +2292,7 @@ module.exports = {
 
     if (missingSectionComments.length) {
       return response.status(400).json({
-        message: "Un commentaire de section d'au moins 3 caractères est obligatoire pour chaque section avant soumission.",
+        message: "Un commentaire de section d'au moins 3 caractÃƒÂ¨res est obligatoire pour chaque section avant soumission.",
         missingSectionComments,
       });
     }
@@ -2149,14 +2301,14 @@ module.exports = {
 
     if (missingPageComments.length) {
       return response.status(400).json({
-        message: "Une justification par titre d'au moins 3 caractères est obligatoire pour toute note inferieure a 3.",
+        message: "Une justification par titre d'au moins 3 caractÃƒÂ¨res est obligatoire pour toute note inferieure a 3.",
         missingPageComments,
       });
     }
 
-    missionReview.status = 'Soumise à la RH';
+    missionReview.status = 'Soumise ÃƒÂ  la RH';
     missionReview.submitted_at = new Date();
-    review.status = 'Soumis à la RH';
+    review.status = 'Soumis ÃƒÂ  la RH';
     review.submitted_to_user_ids = rhRecipients.map((recipient) => recipient._id);
     review.submitted_to_names = rhRecipients.map((recipient) => recipient.name);
     review.rh_validation_selected = true;
@@ -2168,8 +2320,8 @@ module.exports = {
 
     return response.json({
       message: rhRecipients.length
-        ? `Mission soumise à ${rhRecipients.map((recipient) => recipient.name).join(', ')}.`
-        : 'Mission soumise à la RH.',
+        ? `Mission soumise ÃƒÂ  ${rhRecipients.map((recipient) => recipient.name).join(', ')}.`
+        : 'Mission soumise ÃƒÂ  la RH.',
       ...buildManagerReviewPayload(
         review,
         request.user,

@@ -310,7 +310,7 @@ function MonautoevaluationSenior({ user }) {
   const recipientOptions = departmentRecipients.flatMap((item) =>
     (item.users || []).map((recipient) => ({
       ...recipient,
-      department: item.department,
+      department: recipient.department || item.department,
     }))
   );
   const selectedRecipients = useMemo(
@@ -452,7 +452,7 @@ function MonautoevaluationSenior({ user }) {
     }
 
     if (!selectedRecipients.length) {
-      setScopedFeedback("addMission", "error", "S?lectionnez au moins un manager pour cette mission.");
+      setScopedFeedback("addMission", "error", "Sélectionnez au moins un destinataire pour cette mission.");
       return;
     }
 
@@ -503,7 +503,7 @@ function MonautoevaluationSenior({ user }) {
     });
     if (!savedResponse) return;
 
-    setScopedFeedback("addMission", "success", "Mission ajout?e et enregistr?e.");
+    setScopedFeedback("addMission", "success", "Mission ajoutée et enregistrée.");
   }
 
   function updateMissionScore(criterionId, score) {
@@ -713,7 +713,7 @@ function MonautoevaluationSenior({ user }) {
                 className="w-full rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-[#0F3A63] outline-none"
               />
               <div className="rounded-md bg-white p-3">
-                <p className="text-[12px] font-bold text-[#0F3A63]">Managers s?lectionn?s</p>
+                <p className="text-[12px] font-bold text-[#0F3A63]">Destinataires sélectionnés</p>
                 {selectedRecipients.length ? (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {selectedRecipients.map((recipient) => {
@@ -739,7 +739,7 @@ function MonautoevaluationSenior({ user }) {
                     })}
                   </div>
                 ) : (
-                  <p className="mt-2 text-[11px] font-semibold text-slate-500">Aucun manager s?lectionn? pour le moment.</p>
+                  <p className="mt-2 text-[11px] font-semibold text-slate-500">Aucun destinataire sélectionné pour le moment.</p>
                 )}
                 {recipientOptions.length ? (
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -751,7 +751,7 @@ function MonautoevaluationSenior({ user }) {
                       }}
                       className="h-10 flex-1 rounded-md border border-slate-200 bg-white px-3 text-[12px] font-semibold text-[#0F3A63] outline-none"
                     >
-                      <option value="">S?lectionner un manager</option>
+                      <option value="">Sélectionner un destinataire</option>
                       {recipientOptions.map((recipient) => {
                         const value = getRecipientOptionValue(recipient);
                         const isAlreadySelected = selectedRecipientValues.includes(value);
@@ -759,7 +759,7 @@ function MonautoevaluationSenior({ user }) {
                         return (
                           <option key={value} value={value} disabled={isAlreadySelected}>
                             {recipient.department} - {getRecipientLabel(recipient)}
-                            {isAlreadySelected ? " - d?j? s?lectionn?" : ""}
+                            {isAlreadySelected ? " - déjà sélectionné" : ""}
                           </option>
                         );
                       })}

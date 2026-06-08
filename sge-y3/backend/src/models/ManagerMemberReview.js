@@ -122,4 +122,20 @@ const managerMemberReviewSchema = new mongoose.Schema(
 
 managerMemberReviewSchema.index({ cycle_label: 1, manager_id: 1, member_id: 1 }, { unique: true });
 
+[
+  'Soumis a RH',
+  'Soumis à la RH',
+  'Valide RH',
+  'Validé RH',
+  'Transmis a l associe',
+  "Transmis à l'associe",
+  "Transmis à l'associé",
+  'Cloture',
+  'Clôture',
+].forEach((status) => {
+  if (!managerMemberReviewSchema.path('status').enumValues.includes(status)) {
+    managerMemberReviewSchema.path('status').enumValues.push(status);
+  }
+});
+
 module.exports = mongoose.model('ManagerMemberReview', managerMemberReviewSchema);
