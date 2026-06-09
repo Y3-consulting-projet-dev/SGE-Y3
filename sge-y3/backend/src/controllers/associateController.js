@@ -1719,6 +1719,17 @@ module.exports = {
     return response.json({
       message: "Évaluation support enregistrée.",
       ...buildAssociateSupportPayload(supportUser, selfEvaluation),
+    });
+  },
+  async submitAssociateManagerEvaluationToRh(request, response) {
+    const manager = await User.findById(request.params.managerId).select('_id name grade department code_categorie');
+
+    if (!manager || !isAssociateManagerEvaluationTarget(manager)) {
+      return response.status(404).json({ message: 'Manager introuvable.' });
+    }
+
+    const selfEvaluation = await EvaluationInstance.findOne({
+      cycle_label: CURRENT_CYCLE_LABEL,
       evalue_id: manager._id,
       template_type: getAssociateManagerSelfTemplateType(manager),
     }).select('status submitted_at sections mission_evaluations');
