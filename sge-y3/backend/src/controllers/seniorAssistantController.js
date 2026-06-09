@@ -750,7 +750,32 @@ function buildReviewPayload(review, seniorUser, assistant, managers = []) {
   };
 }
 
-function buildAssistantSelfEvaluationPayload(instance) {
+function formatAnonymousFeedbackForUser(feedbackItems = [], targetUser) {
+  const targetId = String(targetUser?._id || '');
+  const targetName = normalizeText(targetUser?.name || '');
+
+  return (feedbackItems || [])
+    .filter((item) => {
+      const itemTargetId = String(item?.target_user_id || '');
+      const itemTargetName = normalizeText(item?.target_name || '');
+      return (targetId && itemTargetId === targetId) || (targetName && itemTargetName === targetName);
+    })
+    .map((item) => ({
+      targetName: item.target_name || targetUser?.name || '',
+      targetGrade: item.target_grade || targetUser?.grade || '',
+      targetDepartment: item.target_department || targetUser?.department || '',
+      comment: item.comment || '',
+      submittedAt: item.submitted_at || null,
+    }))
+    .filter((item) => String(item.comment || '').trim());
+}
+
+function formatSentChiefCommentsForUser(feedbackItems = [], targetUser) {
+  return formatAnonymousFeedbackForUser(feedbackItems, targetUser)
+    .filter((item) => item.submittedAt !== null);
+}
+
+function buildAssistantSelfEvaluationPayload(instance, targetUser = null) {
   const selfSections = normalizeSections(instance?.sections || []);
   const missionEvaluations = formatMissionReviews(instance?.mission_evaluations || []);
   const missionSummary = getMissionReviewSummary(instance?.mission_evaluations || []);
@@ -775,6 +800,8 @@ function buildAssistantSelfEvaluationPayload(instance) {
     titleJustifications: getPageJustifications(selfSections),
     missionEvaluations,
     missionSummary,
+    anonymousFeedback: targetUser ? formatAnonymousFeedbackForUser(instance?.anonymous_feedback || [], targetUser) : [],
+    chiefComments: targetUser ? formatSentChiefCommentsForUser(instance?.chief_comments || [], targetUser) : [],
   };
 }
 
@@ -1097,7 +1124,7 @@ async function buildSeniorOverviewMetrics(user) {
         evalue_id: { $in: assistantIds },
         cycle_label: CURRENT_CYCLE_LABEL,
         template_type: 'assistant-self-evaluation',
-      }).select('evalue_id mission_evaluations')
+      }).select('evalue_id mission_evaluations chief_comments')
     : [];
 
   const assistantById = new Map(assistants.map((assistant) => [String(assistant._id), assistant]));
@@ -1170,6 +1197,18 @@ async function buildSeniorOverviewMetrics(user) {
             : 'Evaluations completes',
     }));
 
+  const chiefCommentInstances = await EvaluationInstance.find({
+    cycle_label: CURRENT_CYCLE_LABEL,
+    'chief_comments.target_user_id': user._id,
+  }).select('chief_comments');
+
+  const anonymousComments = chiefCommentInstances.flatMap((instance) =>
+    (instance.chief_comments || [])
+      .filter((comment) => String(comment.target_user_id) === String(user._id) && comment.submitted_at)
+      .map((comment) => ({ comment: comment.comment, submittedAt: comment.submitted_at }))
+  );
+  const anonymousCommentsCount = anonymousComments.length;
+
   return {
     cycle_label: CURRENT_CYCLE_LABEL,
     missions,
@@ -1186,7 +1225,9 @@ async function buildSeniorOverviewMetrics(user) {
         const missionReview = (review?.mission_reviews || []).find((item) => item.mission_id === mission.missionId);
         return missionReview?.status === 'Transmise';
       }).length,
+      anonymousCommentsCount,
     },
+    anonymousComments,
     assistants: assistantRows,
   };
 }
@@ -1210,7 +1251,7 @@ async function getMyAssistantEvaluation(request, response) {
     getOrCreateAssistantEvaluationInstance(assistant),
   ]);
   const payload = buildReviewPayload(review, request.user, assistant, managers);
-  payload.self_evaluation = buildAssistantSelfEvaluationPayload(selfEvaluationInstance);
+  payload.self_evaluation = buildAssistantSelfEvaluationPayload(selfEvaluationInstance, request.user);
 
   return response.json(payload);
 }
@@ -1291,7 +1332,7 @@ async function saveMyAssistantEvaluation(request, response) {
     message: 'Évaluation par mission enregistrée.',
     ...{
       ...buildReviewPayload(review, request.user, assistant, managers),
-      self_evaluation: buildAssistantSelfEvaluationPayload(selfEvaluationInstance),
+      self_evaluation: buildAssistantSelfEvaluationPayload(selfEvaluationInstance, request.user),
     },
   });
 }
@@ -1370,7 +1411,7 @@ async function addMissionToAssistant(request, response) {
       : `Mission ajoutée pour ${assistant.name}. Les managers de son département la verront en lecture seule.`,
     ...{
       ...buildReviewPayload(review, request.user, assistant, managers),
-      self_evaluation: buildAssistantSelfEvaluationPayload(evaluationInstance),
+      self_evaluation: buildAssistantSelfEvaluationPayload(evaluationInstance, request.user),
     },
   });
 }
@@ -1454,7 +1495,7 @@ async function submitMyAssistantMissionReview(request, response) {
       : 'Mission transmise au(x) manager(s).',
     ...{
       ...buildReviewPayload(review, request.user, assistant, managers),
-      self_evaluation: buildAssistantSelfEvaluationPayload(selfEvaluationInstance),
+      self_evaluation: buildAssistantSelfEvaluationPayload(selfEvaluationInstance, request.user),
     },
   });
 }
@@ -1537,7 +1578,7 @@ async function submitMyAssistantEvaluation(request, response) {
       : 'Évaluations par mission transmises au(x) manager(s).',
     ...{
       ...buildReviewPayload(review, request.user, assistant, managers),
-      self_evaluation: buildAssistantSelfEvaluationPayload(selfEvaluationInstance),
+      self_evaluation: buildAssistantSelfEvaluationPayload(selfEvaluationInstance, request.user),
     },
   });
 }

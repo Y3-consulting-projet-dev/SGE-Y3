@@ -44,6 +44,13 @@ export function saveMyAssistantEvaluation(payload) {
   });
 }
 
+export function saveMyChiefComments(chiefComments) {
+  return request("/collaborator/evaluation/me", {
+    method: "PUT",
+    body: JSON.stringify({ chiefComments }),
+  });
+}
+
 export function submitMyAssistantMissionEvaluation(missionId) {
   return request("/collaborator/evaluation/me/missions/submit", {
     method: "POST",

@@ -1,30 +1,37 @@
-import { useEffect, useMemo, useState } from "react";
-import { BarChart3, CalendarDays, FileBarChart2, FolderKanban, LayoutDashboard, LogOut, Settings2, Users, X } from "lucide-react";
+﻿import { useEffect, useMemo, useState } from "react";
+import { BarChart3, CalendarDays, FileBarChart2, FolderKanban, LayoutDashboard, LogOut, MessageSquare, Settings2, Users, X } from "lucide-react";
 import Monequipe from "@/components/pages/manager/Monequipe";
 import Evaluermonequipe from "@/components/pages/manager/Evaluermonequipe";
 import Objectifsequipe from "@/components/pages/manager/Objectifsequipe";
 import Monautoevaluation from "@/components/pages/manager/Monautoevaluation";
 import Rapportsequipe from "@/components/pages/manager/Rapportsequipe";
-import Calendrier from "@/components/pages/collaborator/Calendrier";
+import CalendrierAssistants from "@/components/pages/collaborator/CalendrierAssistants";
 import ProfilePanel from "@/components/profile/ProfilePanel";
+import CommentairesRecus from "@/components/CommentairesRecus";
 import logoY3 from "@/assets/logo-y3.png";
 import { getDisplayName, getInitials } from "@/lib/userPresentation";
-import { getManagerOverview, getManagerSelfEvaluation } from "@/lib/managerOverview";
+import { getManagerMemberEvaluation, getManagerOverview, getManagerSelfEvaluation } from "@/lib/managerOverview";
 
 const sidebarSections = [
-  { group: "Tableau de bord", items: [{ key: "overview", label: "Vue d'ensemble", icon: LayoutDashboard }] },
+  {
+    group: "Tableau de bord",
+    items: [
+      { key: "overview", label: "Vue d'ensemble", icon: LayoutDashboard },
+      { key: "comments", label: "Commentaires reçus", icon: MessageSquare },
+    ],
+  },
   {
     group: "Equipe",
     items: [
-      { key: "team", label: "Mon équipe", icon: Users },
-      { key: "team-goals", label: "Objectifs d'équipe", icon: FolderKanban },
+      { key: "team", label: "Mon Ã©quipe", icon: Users },
+      { key: "team-goals", label: "Objectifs d'Ã©quipe", icon: FolderKanban },
     ],
   },
   {
     group: "Mon evaluation",
     items: [
-      { key: "self-evaluation", label: "Mon auto-évaluation", icon: BarChart3 },
-      { key: "calendar", label: "Calendrier", icon: CalendarDays },
+      { key: "self-evaluation", label: "Mon auto-Ã©valuation", icon: BarChart3 },
+      { key: "calendar", label: "Mon calendrier", icon: CalendarDays },
     ],
   },
   { group: "Reporting", items: [{ key: "reports", label: "Rapports", icon: FileBarChart2 }] },
@@ -55,12 +62,13 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
 
   const pageTitle = useMemo(() => {
     if (activeSection === "overview") return "VUE D'ENSEMBLE";
-    if (activeSection === "team") return "MON ÉQUIPE";
-    if (activeSection === "team-goals") return "OBJECTIFS D'ÉQUIPE";
-    if (activeSection === "self-evaluation") return "MON AUTO-ÉVALUATION";
-    if (activeSection === "calendar") return "CALENDRIER";
+    if (activeSection === "team") return "MON EQUIPE";
+    if (activeSection === "team-goals") return "OBJECTIFS D'EQUIPE";
+    if (activeSection === "self-evaluation") return "MON AUTO-EVALUATION";
+    if (activeSection === "calendar") return "MON CALENDRIER";
     if (activeSection === "reports") return "RAPPORTS";
     if (activeSection === "profile") return "MON PROFIL";
+    if (activeSection === "comments") return "COMMENTAIRES RECUS";
     return "WORKFLOW MANAGER";
   }, [activeSection]);
 
@@ -112,7 +120,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
         }
       } catch (error) {
         if (!cancelled) {
-          setSelfEvaluationError(error.message || "Chargement du calendrier impossible.");
+          setSelfEvaluationError(error.message || "Chargement de mon calendrier impossible.");
         }
       } finally {
         if (!cancelled) {
@@ -130,6 +138,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
 
   const summary = overviewData?.summary || {};
   const members = overviewData?.members || [];
+  const assistantMembers = members.filter((member) => member.code_categorie === "8C" || member.grade === "Assistant");
   const pendingEvaluations = overviewData?.pendingEvaluations || [];
   const memberSummaryText = isLoadingOverview
     ? "Chargement..."
@@ -139,10 +148,10 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
     ? "Chargement..."
     : pendingEvaluations.length
       ? pendingEvaluations.slice(0, 2).map((evaluation) => evaluation.grade).join(", ")
-      : "Aucune évaluation globale en attente";
+      : "Aucune Ã©valuation globale en attente";
 
   const relanceMember = (member) => {
-    setRelanceMessage(`Relance envoyée à ${member.name} pour finaliser son évaluation.`);
+    setRelanceMessage(`Relance envoyÃ©e Ã  ${member.name} pour finaliser son Ã©valuation.`);
   };
 
   const openMemberEvaluation = (member) => {
@@ -169,6 +178,21 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
               ? "Mon auto-évaluation a déjà été soumise."
               : "Mon auto-évaluation est en attente."}
         </div>
+
+        {!isLoadingOverview && (overviewData?.anonymousComments || []).length > 0 && (
+          <button
+            type="button"
+            onClick={() => setActiveSection("comments")}
+            className="mb-7 w-full rounded-lg border border-[#C3DFAA] bg-[#F4FAED] px-4 py-3 text-left transition hover:bg-[#EAF5D8]"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm font-bold text-[#184D2E]">
+                {(overviewData.anonymousComments || []).length} commentaire{(overviewData.anonymousComments || []).length > 1 ? "s" : ""} anonyme{(overviewData.anonymousComments || []).length > 1 ? "s" : ""} reçu{(overviewData.anonymousComments || []).length > 1 ? "s" : ""}
+              </p>
+              <span className="text-xs font-semibold text-[#4E8B1B]">Consulter →</span>
+            </div>
+          </button>
+        )}
 
         <section className="mb-7 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <button
@@ -201,7 +225,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
             className="rounded-lg bg-[#003B63] p-5 text-left text-white transition hover:bg-[#0B4C7A]"
           >
             <div className="mb-4 flex items-start justify-between">
-              <p className="text-sm">Évaluations à donner</p>
+              <p className="text-sm">Evaluations à donner</p>
               <p className="text-2xl font-extrabold text-[#F34D4D]">{isLoadingOverview ? "..." : summary.pendingEvaluationsCount || 0}</p>
             </div>
             <p className="text-sm text-slate-200">{pendingSummaryText}</p>
@@ -220,7 +244,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
         <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <article className="rounded-xl bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold text-[#0F3A63]">Évaluations globales en attente</h2>
+              <h2 className="text-sm font-semibold text-[#0F3A63]">Evaluations globales en attente</h2>
               <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">
                 {isLoadingOverview ? "..." : `${pendingEvaluations.length} évaluation(s)`}
               </span>
@@ -250,13 +274,13 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
               </div>
             ) : (
               <p className="rounded-lg bg-slate-50 p-4 text-sm font-semibold text-slate-500">
-                Aucune évaluation globale en attente pour le moment.
+                Aucune Evaluation globale en attente pour le moment.
               </p>
             )}
           </article>
 
           <article className="rounded-xl bg-white p-5 shadow-sm">
-            <h2 className="mb-4 text-sm font-semibold text-[#0F3A63]">Périmètre manager</h2>
+            <h2 className="mb-4 text-sm font-semibold text-[#0F3A63]">Périmetre manager</h2>
             <div className="space-y-3 text-sm text-slate-600">
               <p>
                 Cette vue prend en compte les assistants, seniors et assistants managers du même département.
@@ -293,6 +317,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
                   {section.items.map((item) => {
                     const Icon = item.icon;
                     const isActive = activeSection === item.key;
+                    const badge = item.key === "comments" ? (overviewData?.anonymousComments || []).length : 0;
 
                     return (
                       <button
@@ -305,6 +330,11 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
                         <span className="flex items-center gap-2">
                           <Icon size={14} />
                           {item.label}
+                          {badge > 0 && (
+                            <span className="ml-auto rounded-full bg-[#7CB342] px-2 py-0.5 text-xs font-bold text-white">
+                              {badge}
+                            </span>
+                          )}
                         </span>
                       </button>
                     );
@@ -378,20 +408,29 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
             <Monautoevaluation />
           ) : activeSection === "calendar" ? (
             isLoadingSelfEvaluation ? (
-              <section className="rounded-lg bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement du calendrier...</section>
+              <section className="rounded-lg bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement de mon calendrier...</section>
             ) : selfEvaluationError ? (
               <section className="rounded-lg bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">{selfEvaluationError}</section>
             ) : (
-              <Calendrier
-                missionEvaluations={selfEvaluationData?.mission_evaluations || []}
-                title="Calendrier"
-                eyebrow="Missions manager évaluées"
-                emptyMessage="Aucune mission manager évaluée pour le moment."
-                exportFileName="resultats-mission-manager.xls"
+              <CalendrierAssistants
+                assistants={assistantMembers}
+                ownMissionEvaluations={selfEvaluationData?.mission_evaluations || []}
+                ownTitle="Mon calendrier"
+                ownEyebrow="Mes missions manager évaluées"
+                ownEmptyMessage="Aucune mission manager évaluée pour le moment."
+                ownExportFileName="resultats-mission-manager.xls"
+                emptyAssistantsMessage="Aucun assistant rattaché à ce Manager."
+                exportFileNamePrefix="resultats-mission-assistant-manager"
+                fetchAssistantEvaluation={getManagerMemberEvaluation}
               />
             )
           ) : activeSection === "reports" ? (
             <Rapportsequipe />
+          ) : activeSection === "comments" ? (
+            <CommentairesRecus
+              comments={overviewData?.anonymousComments || []}
+              isLoading={isLoadingOverview}
+            />
           ) : (
             <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />
           )}
@@ -409,7 +448,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
           >
             <header className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
               <div>
-                <p className="text-xs font-bold text-[#79B742]">Évaluation Manager</p>
+                <p className="text-xs font-bold text-[#79B742]">Evaluation Manager</p>
                 <h2 className="text-2xl font-black text-[#0F3A63]">{selectedMember.name}</h2>
                 <p className="text-sm font-semibold text-slate-500">
                   {selectedMember.role || selectedMember.grade} - {selectedMember.status || "En attente"}

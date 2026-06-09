@@ -784,6 +784,19 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
               </article>
             ) : null}
 
+            {(reviewData?.self_evaluation?.chiefComments || []).length > 0 && (
+              <article className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-[#C3DFAA]">
+                <h3 className="mb-3 text-[16px] font-bold text-[#0F3A63]">Commentaire anonyme reçu</h3>
+                <div className="space-y-2">
+                  {(reviewData?.self_evaluation?.chiefComments || []).map((item, index) => (
+                    <div key={index} className="rounded-md bg-[#F4FAED] p-3">
+                      <p className="text-[12px] font-semibold text-slate-700">{item.comment}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            )}
+
             <article className="rounded-xl bg-white p-4 shadow-sm">
               <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">Aide à la notation</h3>
               <div className="space-y-2">

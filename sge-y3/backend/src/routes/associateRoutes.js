@@ -12,8 +12,11 @@ const {
   getAssociateManagerEvaluations,
   getAssociateOverview,
   getAssociateSyntheses,
+  getAssociateSupportEvaluation,
+  getAssociateSupportEvaluations,
   saveAssociateManagerEvaluation,
   submitAssociateManagerEvaluationToRh,
+  saveAssociateSupportEvaluation,
 } = require('../controllers/associateController');
 const { requireAuth } = require('../middleware/authMiddleware');
 const { requireAssociate } = require('../middleware/collaboratorMiddleware');
@@ -33,5 +36,8 @@ router.get('/manager-evaluations', requireAuth, requireAssociate, getAssociateMa
 router.get('/manager-evaluations/:managerId', requireAuth, requireAssociate, getAssociateManagerEvaluation);
 router.put('/manager-evaluations/:managerId', requireAuth, requireAssociate, saveAssociateManagerEvaluation);
 router.post('/manager-evaluations/:managerId/submit-rh', requireAuth, requireAssociate, submitAssociateManagerEvaluationToRh);
+router.get('/support-evaluations', requireAuth, requireAssociate, getAssociateSupportEvaluations);
+router.get('/support-evaluations/:supportId', requireAuth, requireAssociate, getAssociateSupportEvaluation);
+router.put('/support-evaluations/:supportId', requireAuth, requireAssociate, saveAssociateSupportEvaluation);
 
 module.exports = router;
