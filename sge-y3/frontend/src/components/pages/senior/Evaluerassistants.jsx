@@ -338,7 +338,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
         missionReviews: nextMissionReviews,
       });
       normalizeLoadedResponse(response);
-      showFeedback(feedbackAnchorName, "success", response.message || "?valuation par mission enregistr?e.");
+      showFeedback(feedbackAnchorName, "success", response.message || "Évaluation par mission enregistrée.");
       return response;
     } catch (error) {
       showFeedback(feedbackAnchorName, "error", error.message || "Sauvegarde impossible.");
@@ -425,12 +425,12 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
 
     const title = missionTitle.trim();
     if (!title) {
-      showFeedback("mission-form", "error", "Renseignez le nom de la mission ? partager avec l'assistant.");
+      showFeedback("mission-form", "error", "Renseignez le nom de la mission à partager avec l'assistant.");
       return;
     }
 
     if (missionStartDate && missionEndDate && missionEndDate < missionStartDate) {
-      showFeedback("mission-form", "error", "La date de fin doit ?tre post?rieure ou ?gale ? la date de d?but.");
+      showFeedback("mission-form", "error", "La date de fin doit être postérieure ou égale à la date de début.");
       return;
     }
 
@@ -460,7 +460,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
       setMissionEndDate("");
       setSelectedMissionManagerValue("");
       setSelectedMissionManagerValues([]);
-      showFeedback("mission-form", "success", response.message || "Mission ajout?e pour l'assistant.");
+      showFeedback("mission-form", "success", response.message || "Mission ajoutée pour l'assistant.");
     } catch (error) {
       showFeedback("mission-form", "error", error.message || "Ajout de mission impossible.");
     } finally {
@@ -470,7 +470,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
 
   async function handleSaveMissionAndContinue() {
     if (hasLowScoreOnActiveMissionPage && String(activeMissionGroup?.pageComment || "").trim().length < 3) {
-      showFeedback("mission-actions", "error", "Une justification est requise pour toute note inf?rieure ? 3 sur ce titre.");
+      showFeedback("mission-actions", "error", "Une justification est requise pour toute note inférieure à 3 sur ce titre.");
       return;
     }
 
@@ -486,17 +486,17 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
     );
 
     if (hasIncompleteCriterion) {
-      showFeedback("mission-actions", "error", "Toutes les questions de la mission doivent ?tre renseign?es avant transmission.");
+      showFeedback("mission-actions", "error", "Toutes les questions de la mission doivent être renseignées avant transmission.");
       return;
     }
 
     if (!hasRequiredMissionSectionComments(missionSections)) {
-      showFeedback("mission-actions", "error", "Un commentaire d?au moins 3 caract?res est obligatoire pour chaque section de la mission.");
+      showFeedback("mission-actions", "error", "Un commentaire d'au moins 3 caractères est obligatoire pour chaque section de la mission.");
       return;
     }
 
     if (getMissionMissingLowScorePageComments(missionSections).length) {
-      showFeedback("mission-actions", "error", "Une justification est requise pour chaque titre contenant une note inf?rieure ? 3.");
+      showFeedback("mission-actions", "error", "Une justification est requise pour chaque titre contenant une note inférieure à 3.");
       return;
     }
 
@@ -527,7 +527,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
     }
 
     if (missionReviews.some((mission) => mission.status !== "Transmise")) {
-      showFeedback("finalize", "error", "Chaque mission doit ?tre transmise avant la soumission finale.");
+      showFeedback("finalize", "error", "Chaque mission doit être transmise avant la soumission finale.");
       return;
     }
 
@@ -541,7 +541,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
         selectedManagerRecipient: getSelectedManagerPayload(),
       });
       normalizeLoadedResponse(response);
-      showFeedback("finalize", "success", response.message || "?valuations par mission transmises au manager.");
+      showFeedback("finalize", "success", response.message || "Évaluations par mission transmises au manager.");
     } catch (error) {
       showFeedback("finalize", "error", error.message || "Soumission finale impossible.");
     } finally {
@@ -628,7 +628,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                 />
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-[12px] font-bold text-[#0F3A63]">Date de d?but</label>
+                    <label className="mb-1 block text-[12px] font-bold text-[#0F3A63]">Date de début</label>
                     <input
                       type="date"
                       value={missionStartDate}
@@ -695,7 +695,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                           return (
                             <option key={value} value={value} disabled={isAlreadySelected}>
                               {manager.department} - {getRecipientLabel(manager)}
-                              {isAlreadySelected ? " - d?j? s?lectionn?" : ""}
+                              {isAlreadySelected ? " - déjà sélectionné" : ""}
                             </option>
                           );
                         })}

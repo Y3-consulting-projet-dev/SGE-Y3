@@ -192,7 +192,7 @@ function getMissionFinalScore(missions = []) {
 function sanitizeMissionEvaluation(mission) {
   if (!mission) return mission;
 
-  const recipientDepartment = mission.recipients?.[0]?.department || mission.department || "";
+  const recipientDepartment = mission.department || mission.recipients?.[0]?.department || "";
   return {
     ...mission,
     criteria: (mission.criteria || []).filter((criterion) =>

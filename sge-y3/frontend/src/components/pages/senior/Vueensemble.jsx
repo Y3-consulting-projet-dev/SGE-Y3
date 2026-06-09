@@ -52,20 +52,6 @@ function Vueensemble({ onOpen, onOpenReview, overviewData, isLoading, errorMessa
         </div>
       ) : null}
 
-      {!isLoading && (overviewData?.anonymousComments || []).length > 0 && (
-        <button
-          type="button"
-          onClick={() => onOpen("comments")}
-          className="mb-6 w-full rounded-lg border border-[#C3DFAA] bg-[#F4FAED] px-4 py-3 text-left transition hover:bg-[#EAF5D8]"
-        >
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-sm font-bold text-[#184D2E]">
-              {(overviewData.anonymousComments || []).length} commentaire{(overviewData.anonymousComments || []).length > 1 ? "s" : ""} anonyme{(overviewData.anonymousComments || []).length > 1 ? "s" : ""} reçu{(overviewData.anonymousComments || []).length > 1 ? "s" : ""}
-            </p>
-            <span className="text-xs font-semibold text-[#4E8B1B]">Consulter →</span>
-          </div>
-        </button>
-      )}
 
       <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard

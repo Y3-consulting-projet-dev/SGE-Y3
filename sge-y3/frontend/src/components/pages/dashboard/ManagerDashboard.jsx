@@ -10,7 +10,7 @@ import ProfilePanel from "@/components/profile/ProfilePanel";
 import CommentairesRecus from "@/components/CommentairesRecus";
 import logoY3 from "@/assets/logo-y3.png";
 import { getDisplayName, getInitials } from "@/lib/userPresentation";
-import { getManagerMemberEvaluation, getManagerOverview, getManagerSelfEvaluation } from "@/lib/managerOverview";
+import { createManagerMemberMission, getManagerMemberEvaluation, getManagerOverview, getManagerSelfEvaluation } from "@/lib/managerOverview";
 
 const sidebarSections = [
   {
@@ -23,14 +23,14 @@ const sidebarSections = [
   {
     group: "Equipe",
     items: [
-      { key: "team", label: "Mon Ã©quipe", icon: Users },
-      { key: "team-goals", label: "Objectifs d'Ã©quipe", icon: FolderKanban },
+      { key: "team", label: "Mon équipe", icon: Users },
+      { key: "team-goals", label: "Objectifs d'équipe", icon: FolderKanban },
     ],
   },
   {
     group: "Mon evaluation",
     items: [
-      { key: "self-evaluation", label: "Mon auto-Ã©valuation", icon: BarChart3 },
+      { key: "self-evaluation", label: "Mon auto-évaluation", icon: BarChart3 },
       { key: "calendar", label: "Mon calendrier", icon: CalendarDays },
     ],
   },
@@ -148,10 +148,10 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
     ? "Chargement..."
     : pendingEvaluations.length
       ? pendingEvaluations.slice(0, 2).map((evaluation) => evaluation.grade).join(", ")
-      : "Aucune Ã©valuation globale en attente";
+      : "Aucune évaluation globale en attente";
 
   const relanceMember = (member) => {
-    setRelanceMessage(`Relance envoyÃ©e Ã  ${member.name} pour finaliser son Ã©valuation.`);
+    setRelanceMessage(`Relance envoyée à ${member.name} pour finaliser son évaluation.`);
   };
 
   const openMemberEvaluation = (member) => {
@@ -179,20 +179,6 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
               : "Mon auto-évaluation est en attente."}
         </div>
 
-        {!isLoadingOverview && (overviewData?.anonymousComments || []).length > 0 && (
-          <button
-            type="button"
-            onClick={() => setActiveSection("comments")}
-            className="mb-7 w-full rounded-lg border border-[#C3DFAA] bg-[#F4FAED] px-4 py-3 text-left transition hover:bg-[#EAF5D8]"
-          >
-            <div className="flex items-center justify-between gap-4">
-              <p className="text-sm font-bold text-[#184D2E]">
-                {(overviewData.anonymousComments || []).length} commentaire{(overviewData.anonymousComments || []).length > 1 ? "s" : ""} anonyme{(overviewData.anonymousComments || []).length > 1 ? "s" : ""} reçu{(overviewData.anonymousComments || []).length > 1 ? "s" : ""}
-              </p>
-              <span className="text-xs font-semibold text-[#4E8B1B]">Consulter →</span>
-            </div>
-          </button>
-        )}
 
         <section className="mb-7 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <button
@@ -417,6 +403,8 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
                 emptyAssistantsMessage="Aucun assistant rattaché à ce Manager."
                 exportFileNamePrefix="resultats-mission-assistant-manager"
                 fetchAssistantEvaluation={getManagerMemberEvaluation}
+                assignMission={createManagerMemberMission}
+                assignLabel="Membre de l'équipe"
               />
             )
           ) : activeSection === "reports" ? (

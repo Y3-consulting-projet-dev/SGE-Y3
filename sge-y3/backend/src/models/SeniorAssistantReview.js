@@ -121,3 +121,4 @@ const seniorAssistantReviewSchema = new mongoose.Schema(
 seniorAssistantReviewSchema.index({ cycle_label: 1, senior_id: 1, assistant_id: 1 }, { unique: true });
 
 module.exports = mongoose.model('SeniorAssistantReview', seniorAssistantReviewSchema);
+  

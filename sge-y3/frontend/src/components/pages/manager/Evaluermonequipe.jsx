@@ -611,13 +611,13 @@ function Evaluermonequipe({ member }) {
 
     if (!missionStartDate || !missionEndDate) {
       setFeedbackTone("error");
-      setFeedbackMessage("Renseignez la date de dÃ©but et la date de fin de la mission.");
+      setFeedbackMessage("Renseignez la date de début et la date de fin de la mission.");
       return;
     }
 
     if (missionEndDate < missionStartDate) {
       setFeedbackTone("error");
-      setFeedbackMessage("La date de fin doit Ãªtre postÃ©rieure ou Ã©gale Ã  la date de dÃ©but.");
+      setFeedbackMessage("La date de fin doit être postérieure ou égale à la date de début.");
       return;
     }
 
