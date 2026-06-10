@@ -242,7 +242,6 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
               lockPrimaryClassification
               participantScope="none"
               secondaryParticipantScope="leadership"
-              secondaryUnclassified
               rateEnabled
               showCommitteeMembers={false}
               initialDecisionScope="rh-final"

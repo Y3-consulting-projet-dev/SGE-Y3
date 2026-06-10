@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Bell, CircleHelp, LogOut, UserRound } from "lucide-react";
+import { LogOut, UserRound } from "lucide-react";
 import logoY3 from "@/assets/logo-y3.png";
 import { rhMenuGroups } from "@/components/pages/rh/rhData";
 import TableauRH from "@/components/pages/rh/TableauRH";
@@ -14,7 +14,6 @@ import PopulationRH from "@/components/pages/rh/PopulationRH";
 import RapportsRH from "@/components/pages/rh/RapportsRH";
 import EvaluationAssistanteRH from "@/components/pages/rh/EvaluationAssistanteRH";
 import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
-import DecisionAssociesRH from "@/components/pages/comite/DecisionAssociesRH";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import { saveCommitteeDecision } from "@/lib/committee";
 import { getDisplayName } from "@/lib/userPresentation";
@@ -101,25 +100,15 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
 
     if (activeSection === "committee") {
       return (
-        <div className="space-y-6">
-          <ComiteEvaluation
-            readOnly={assistantMode}
-            primaryUnclassified
-            initialDecisionScope="rh-final"
-            onSubmit={(decisions) => saveCommitteeDecision({ scope: "rh-final", cycle_label: "Cycle 2025-2026", decisions })}
-            submitLabel="Transmettre aux associés"
-            submittedLabel="Transmis aux associés"
-            successMessage="Classement des assistants, seniors et assistants managers transmis aux associés."
-            workflowText="La RH classe les assistants, seniors et assistants managers, puis transmet le classement aux associés pour décision du taux d'augmentation."
-          />
-          <DecisionAssociesRH />
-          <DecisionAssociesRH
-            emptyMessage="Aucune décision support des associés n'a encore été envoyée à la RH."
-            scope="support-final"
-            title="Décisions support reçues"
-            subtitle="La RH visualise ici le classement et les taux d'augmentation du département support envoyés par les associés."
-          />
-        </div>
+        <ComiteEvaluation
+          readOnly={assistantMode}
+          initialDecisionScope="rh-final"
+          onSubmit={(decisions) => saveCommitteeDecision({ scope: "rh-final", cycle_label: "Cycle 2025-2026", decisions })}
+          submitLabel="Transmettre aux associés"
+          submittedLabel="Transmis aux associés"
+          successMessage="Classement des assistants, seniors et assistants managers transmis aux associés."
+          workflowText="La RH classe les assistants, seniors et assistants managers, puis transmet le classement aux associés pour décision du taux d'augmentation."
+        />
       );
     }
 
