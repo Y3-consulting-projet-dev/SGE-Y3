@@ -12,7 +12,7 @@ import CalendrierAssistants from "@/components/pages/collaborator/CalendrierAssi
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import CommentairesRecus from "@/components/CommentairesRecus";
 import { getDisplayName, getInitials } from "@/lib/userPresentation";
-import { getSeniorAssistantEvaluation, getSeniorAssistants, getSeniorCommonMissions, getSeniorOverview } from "@/lib/seniorAssistants";
+import { addSeniorAssistantMission, getSeniorAssistantEvaluation, getSeniorAssistants, getSeniorCommonMissions, getSeniorOverview } from "@/lib/seniorAssistants";
 import { getMySeniorEvaluation } from "@/lib/seniorEvaluation";
 
 function VueSenior({ onLogout, onUserUpdate, user }) {
@@ -272,6 +272,8 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
                 emptyAssistantsMessage="Aucun assistant rattaché à ce Senior."
                 exportFileNamePrefix="resultats-mission-assistant-senior"
                 fetchAssistantEvaluation={getSeniorAssistantEvaluation}
+                assignMission={addSeniorAssistantMission}
+                assignLabel="Assistant"
               />
             )
           ) : activeSection === "comments" ? (

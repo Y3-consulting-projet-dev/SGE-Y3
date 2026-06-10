@@ -159,6 +159,9 @@ function getMissionAssignmentLabel(mission) {
   if (mission?.createdByRole === "senior") {
     return `Mission ajoutée par ${mission?.assignedByName || "le Senior"}`;
   }
+  if (mission?.createdByRole === "manager") {
+    return `Mission ajoutée par ${mission?.assignedByName || "le Manager"}`;
+  }
 
   return "";
 }
@@ -168,7 +171,7 @@ function getMissionEvaluationDepartment(mission) {
 }
 
 function getMissionPrimaryRecipient(mission) {
-  if (mission?.createdByRole === "senior") {
+  if (mission?.createdByRole === "senior" || mission?.createdByRole === "manager") {
     return mission?.assignedByName || "";
   }
 
@@ -190,7 +193,7 @@ function getMissionValidationLabel(mission) {
   const department = getMissionEvaluationDepartment(mission);
   const primaryRecipient = getMissionEvaluatorsLabel(mission) || getMissionPrimaryRecipient(mission);
 
-  if (mission?.createdByRole === "senior") {
+  if (mission?.createdByRole === "senior" || mission?.createdByRole === "manager") {
     return primaryRecipient ? `${department} - Destinataire : ${primaryRecipient}` : department;
   }
 
@@ -1231,7 +1234,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                   >
                     <div>
                       <p className="text-sm font-extrabold text-[#0F3A63]">{item.title}</p>
-                      {item.createdByRole === "senior" ? (
+                      {(item.createdByRole === "senior" || item.createdByRole === "manager") ? (
                         <span className="mt-2 inline-flex rounded-full bg-[#E8F3D6] px-2.5 py-1 text-[10px] font-bold text-[#4E8B1B]">
                           {getMissionAssignmentLabel(item)}
                         </span>
@@ -1267,7 +1270,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                       Information : {getMissionInformationalRecipients(mission).map((recipient) => recipient.name).filter(Boolean).join(", ")}
                     </p>
                   ) : null}
-                  {mission.createdByRole === "senior" ? (
+                  {(mission.createdByRole === "senior" || mission.createdByRole === "manager") ? (
                     <p className="mt-2 text-xs font-semibold text-[#4E8B1B]">Notification : {getMissionAssignmentLabel(mission)}.</p>
                   ) : (
                     <p className="mt-2 text-xs font-semibold text-slate-500">{"Cette mission sera transmise aux \u00E9valuateurs s\u00E9lectionn\u00E9s selon leur grade."}</p>

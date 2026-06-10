@@ -4,15 +4,16 @@ import { CalendarDays, ChevronLeft, ChevronRight, Download, X } from "lucide-rea
 const monthFormatter = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" });
 const dayFormatter = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
 const weekDays = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-const missionColors = [
-  { bg: "#DCECCB", hover: "#CFE6B8", text: "#0F3A63", accent: "#76B82A" },
-  { bg: "#DDEEFF", hover: "#C8E1FA", text: "#0F3A63", accent: "#2AA7D6" },
-  { bg: "#E7EEF5", hover: "#D8E3EC", text: "#0F3A63", accent: "#0F4A72" },
-  { bg: "#E0F2FE", hover: "#C7E8FA", text: "#0C4A6E", accent: "#0284C7" },
-  { bg: "#EEF6E8", hover: "#DCECCB", text: "#184D2E", accent: "#4E8B1B" },
-  { bg: "#F1F5F9", hover: "#E2E8F0", text: "#0F172A", accent: "#64748B" },
-  { bg: "#EAF5DF", hover: "#DCECCB", text: "#0F3A63", accent: "#8BC53F" },
-  { bg: "#EBEFF3", hover: "#D9E3EE", text: "#0E2B4F", accent: "#003B63" },
+const missionColorsByRole = {
+  senior:  { bg: "#D5DBEE", hover: "#BCC5E4", text: "#00114F", accent: "#001871" },
+  manager: { bg: "#EAFAD0", hover: "#D9F5B5", text: "#2A5C08", accent: "#78BE20" },
+  self:    { bg: "#DCEEFA", hover: "#C3E4F6", text: "#1A5272", accent: "#62B5E5" },
+};
+
+const calendarLegend = [
+  { label: "Assignée par Senior", color: missionColorsByRole.senior },
+  { label: "Assignée par Manager", color: missionColorsByRole.manager },
+  { label: "Assistant", color: missionColorsByRole.self },
 ];
 
 function toDate(value) {
@@ -64,8 +65,10 @@ function getMissionAverage(mission) {
   return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
 }
 
-function getMissionColor(index = 0) {
-  return missionColors[index % missionColors.length];
+function getMissionColor(mission) {
+  if (mission?.createdByRole === "senior") return missionColorsByRole.senior;
+  if (mission?.createdByRole === "manager") return missionColorsByRole.manager;
+  return missionColorsByRole.self;
 }
 
 function escapeXml(value = "") {
@@ -208,7 +211,10 @@ function downloadExcelFile(missions = [], managerComments = [], fileName = "resu
 }
 
 function isEvaluatedMission(mission) {
-  return mission?.createdByRole !== "senior" && (mission?.status === "Soumise" || getMissionProgress(mission) === 100);
+  if (mission?.createdByRole === "senior" || mission?.createdByRole === "manager") {
+    return true;
+  }
+  return mission?.status === "Soumise" || getMissionProgress(mission) === 100;
 }
 
 function getCalendarDays(monthDate) {
@@ -235,6 +241,16 @@ function isMissionOnDate(mission, date) {
   return current >= start && current <= end;
 }
 
+function getMissionAssignmentLabel(mission) {
+  if (mission?.createdByRole === "senior") {
+    return `Assignée par ${mission?.assignedByName || "le Senior"}`;
+  }
+  if (mission?.createdByRole === "manager") {
+    return `Assignée par ${mission?.assignedByName || "le Manager"}`;
+  }
+  return null;
+}
+
 function MissionDetailModal({ mission, managerComments = [], exportFileName = "resultats-missions.xls", onClose }) {
   if (!mission) return null;
 
@@ -250,6 +266,11 @@ function MissionDetailModal({ mission, managerComments = [], exportFileName = "r
             <p className="text-xs font-bold uppercase text-slate-400">Détail mission</p>
             <h2 className="mt-1 text-2xl font-black text-[#0F3A63]">{mission.title}</h2>
             <p className="mt-1 text-sm font-semibold text-slate-500">{mission.department || "Département non renseigné"}</p>
+            {getMissionAssignmentLabel(mission) ? (
+              <span className="mt-2 inline-flex rounded-full bg-[#E8F3D6] px-2.5 py-1 text-[11px] font-bold text-[#4E8B1B]">
+                {getMissionAssignmentLabel(mission)}
+              </span>
+            ) : null}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -367,9 +388,9 @@ function Calendrier({
 }) {
   const evaluatedMissions = useMemo(
     () =>
-      missionEvaluations.filter(isEvaluatedMission).map((mission, index) => ({
+      missionEvaluations.filter(isEvaluatedMission).map((mission) => ({
         ...mission,
-        calendarColor: getMissionColor(index),
+        calendarColor: getMissionColor(mission),
       })),
     [missionEvaluations]
   );
@@ -390,6 +411,14 @@ function Calendrier({
           <div>
             <p className="text-xs font-bold uppercase text-slate-400">{eyebrow}</p>
             <h2 className="mt-1 text-2xl font-black text-[#0F3A63]">{title}</h2>
+            <div className="mt-2 flex flex-wrap gap-3">
+              {calendarLegend.map((item) => (
+                <span key={item.label} className="inline-flex items-center gap-1.5">
+                  <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: item.color.accent }} />
+                  <span className="text-[11px] font-semibold text-slate-500">{item.label}</span>
+                </span>
+              ))}
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2">
@@ -489,6 +518,11 @@ function Calendrier({
                       {startDate ? dayFormatter.format(toDate(startDate)) : "--"} - {endDate ? dayFormatter.format(toDate(endDate)) : "--"}
                     </p>
                     <p className="mt-1 text-xs font-bold text-[#0F4A72]">{mission.department || "Département non renseigné"}</p>
+                    {getMissionAssignmentLabel(mission) ? (
+                      <span className="mt-1.5 inline-flex rounded-full bg-[#E8F3D6] px-2 py-0.5 text-[10px] font-bold text-[#4E8B1B]">
+                        {getMissionAssignmentLabel(mission)}
+                      </span>
+                    ) : null}
                   </button>
                 );
               })

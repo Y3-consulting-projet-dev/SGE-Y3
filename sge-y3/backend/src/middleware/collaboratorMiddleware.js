@@ -1,5 +1,15 @@
+function normalizeGrade(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function normalizeCodeCat(value) {
+  return String(value || '').replace(/\s+/g, '').trim().toUpperCase();
+}
+
 function requireAssistant(request, response, next) {
-  if (request.user?.grade !== 'Assistant') {
+  const grade = normalizeGrade(request.user?.grade);
+  const cat = normalizeCodeCat(request.user?.code_categorie);
+  if (grade !== 'assistant' && !cat.startsWith('8')) {
     return response.status(403).json({
       message: 'Cette fonctionnalité est reservée aux Assistants pour le moment.',
     });
@@ -9,7 +19,9 @@ function requireAssistant(request, response, next) {
 }
 
 function requireSenior(request, response, next) {
-  if (request.user?.grade !== 'Senior' && request.user?.grade !== 'Assistant manager') {
+  const grade = normalizeGrade(request.user?.grade);
+  const cat = normalizeCodeCat(request.user?.code_categorie);
+  if (grade !== 'senior' && grade !== 'assistant manager' && cat !== '9A' && cat !== '9B') {
     return response.status(403).json({
       message: 'Cette fonctionnalité est reservée aux Seniors et Assistant managers pour le moment.',
     });
@@ -19,10 +31,15 @@ function requireSenior(request, response, next) {
 }
 
 function requireManager(request, response, next) {
+  const grade = normalizeGrade(request.user?.grade);
+  const cat = normalizeCodeCat(request.user?.code_categorie);
   if (
-    request.user?.grade !== 'Assistant manager' &&
-    request.user?.grade !== 'Manager' &&
-    request.user?.grade !== 'Senior manager'
+    grade !== 'assistant manager' &&
+    grade !== 'manager' &&
+    grade !== 'senior manager' &&
+    cat !== '9B' &&
+    cat !== '10B' &&
+    cat !== '10C'
   ) {
     return response.status(403).json({
       message: 'Cette fonctionnalité est reservée aux Assistant managers, Managers et Senior managers.',
