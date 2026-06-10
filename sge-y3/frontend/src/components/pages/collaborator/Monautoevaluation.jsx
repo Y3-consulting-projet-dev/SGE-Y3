@@ -57,21 +57,6 @@ function getMissionInformationalRecipients(mission) {
   return (mission?.recipients || []).filter((recipient) => recipient?.canEvaluate === false || recipient?.can_evaluate === false);
 }
 
-function getDepartmentAwareInformationalRecipients(allInformationalRecipients = [], selectedRecipients = []) {
-  const selectedDepartments = Array.from(
-    new Set(selectedRecipients.map((recipient) => normalizeDepartment(recipient?.department || "")).filter(Boolean))
-  );
-  const selectedValues = new Set(selectedRecipients.map(getRecipientOptionValue));
-
-  if (!selectedDepartments.length) {
-    return allInformationalRecipients.filter((recipient) => !selectedValues.has(getRecipientOptionValue(recipient)));
-  }
-
-  return allInformationalRecipients.filter((recipient) =>
-    selectedDepartments.includes(normalizeDepartment(recipient?.department || "")) &&
-    !selectedValues.has(getRecipientOptionValue(recipient))
-  );
-}
 
 function getMissionDepartmentFromSelectedRecipients(selectedRecipients = [], fallbackDepartment = "") {
   const selectedDepartments = Array.from(
@@ -500,10 +485,6 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     () => recipientOptions,
     [recipientOptions]
   );
-  const informationalRecipientOptions = useMemo(
-    () => recipientOptions.filter((recipient) => isManagerOrSeniorManagerRecipient(recipient)),
-    [recipientOptions]
-  );
   const sections = useMemo(() => evaluationData?.evaluation?.sections || [], [evaluationData?.evaluation?.sections]);
   const [missionEvaluations, setMissionEvaluations] = useState(() => sanitizeMissionEvaluations(evaluationData?.mission_evaluations || []));
   const [missionId, setMissionId] = useState(null);
@@ -560,10 +541,6 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   const selectedEvaluatorRecipients = useMemo(
     () => evaluatorRecipientOptions.filter((recipient) => selectedRecipientValues.includes(getRecipientOptionValue(recipient))),
     [evaluatorRecipientOptions, selectedRecipientValues]
-  );
-  const selectedInformationalRecipients = useMemo(
-    () => getDepartmentAwareInformationalRecipients(informationalRecipientOptions, selectedEvaluatorRecipients),
-    [informationalRecipientOptions, selectedEvaluatorRecipients]
   );
   const anonymousTargetOptions = useMemo(() => {
     const options = recipientOptions.filter(isSeniorOrManagerFeedbackTarget);
@@ -853,15 +830,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
       canEvaluate: true,
       receivesCopy: false,
     }));
-    const informationalRecipients = selectedInformationalRecipients.map((recipient) => ({
-      id: recipient.id,
-      name: recipient.name,
-      grade: recipient.grade,
-      department: recipient.department,
-      canEvaluate: false,
-      receivesCopy: true,
-    }));
-    const autoRecipients = [...evaluatorRecipients, ...informationalRecipients];
+    const autoRecipients = evaluatorRecipients;
 
     missionCreationCounterRef.current += 1;
 

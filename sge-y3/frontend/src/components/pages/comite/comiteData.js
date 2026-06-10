@@ -2,29 +2,29 @@ export const committeeLevels = [
   {
     key: "CA",
     label: "CA",
-    title: "Maintenu",
-    description: "Niveau attendu a consolider avec un suivi clair.",
+    title: "Insuffisant",
+    description: "Note finale entre 1,00 et 2,00.",
     tone: "bg-[#E7EDF3] text-[#0F4A72] border-[#C9D8E6]",
   },
   {
     key: "CB",
     label: "CB",
     title: "Passable",
-    description: "Bases presentes, progression encore necessaire.",
+    description: "Note finale entre 2,1 et 3,00.",
     tone: "bg-[#E8F0FA] text-[#1F5F8B] border-[#B8D3EA]",
   },
   {
     key: "CC",
     label: "CC",
     title: "Bien",
-    description: "Performance solide et contribution fiable.",
+    description: "Note finale entre 3,1 et 4,00.",
     tone: "bg-[#DDECCF] text-[#4E8B1B] border-[#A8D28A]",
   },
   {
     key: "CD",
     label: "CD",
     title: "Excellent",
-    description: "Performance remarquable, forte autonomie.",
+    description: "Note finale entre 4,1 et 5,00.",
     tone: "bg-[#DDE9FF] text-[#244E9A] border-[#9DB7F0]",
   },
 ];
@@ -46,8 +46,8 @@ export const committeeAssistants = [
     role: "Assistant expertise comptable",
     department: "Expertise comptable",
     manager: "Stephane GNAHOUA",
-    score: "3.2",
-    level: "CB",
+    score: "-",
+    level: null,
   },
   {
     id: "orlane-kone",
@@ -55,8 +55,8 @@ export const committeeAssistants = [
     role: "Assistante expertise comptable",
     department: "Expertise comptable",
     manager: "Stephane GNAHOUA",
-    score: "3.6",
-    level: "CC",
+    score: "-",
+    level: null,
   },
   {
     id: "kader-kone",
@@ -64,8 +64,8 @@ export const committeeAssistants = [
     role: "Assistant expertise comptable",
     department: "Expertise comptable",
     manager: "Stephane GNAHOUA",
-    score: "2.9",
-    level: "CA",
+    score: "-",
+    level: null,
   },
   {
     id: "yves-audit",
@@ -73,8 +73,8 @@ export const committeeAssistants = [
     role: "Assistant audit",
     department: "Audit",
     manager: "Axelle AMANI",
-    score: "3.9",
-    level: "CC",
+    score: "-",
+    level: null,
   },
   {
     id: "moussa-traore",
@@ -82,8 +82,8 @@ export const committeeAssistants = [
     role: "Assistant audit",
     department: "Audit",
     manager: "Stephanie TAKI",
-    score: "4.3",
-    level: "CD",
+    score: "-",
+    level: null,
   },
 ];
 
@@ -95,7 +95,7 @@ export const committeeLeaders = [
     department: "RH",
     manager: "Associés",
     score: "-",
-    level: "CC",
+    level: null,
   },
   {
     id: "revita-oule",
@@ -104,7 +104,7 @@ export const committeeLeaders = [
     department: "Conseil operationnel",
     manager: "Associés",
     score: "-",
-    level: "CC",
+    level: null,
   },
   {
     id: "augustin-kpantche",
@@ -113,7 +113,7 @@ export const committeeLeaders = [
     department: "Conseil financier",
     manager: "Associés",
     score: "-",
-    level: "CC",
+    level: null,
   },
   {
     id: "stephane-gnahoua",
@@ -122,7 +122,7 @@ export const committeeLeaders = [
     department: "Expertise comptable",
     manager: "Associés",
     score: "-",
-    level: "CC",
+    level: null,
   },
   {
     id: "axelle-amani",
@@ -131,7 +131,7 @@ export const committeeLeaders = [
     department: "Audit",
     manager: "Associés",
     score: "-",
-    level: "CD",
+    level: null,
   },
   {
     id: "stephanie-taki",
@@ -140,7 +140,7 @@ export const committeeLeaders = [
     department: "Audit",
     manager: "Associés",
     score: "-",
-    level: "CD",
+    level: null,
   },
 ];
 
@@ -152,7 +152,7 @@ export const committeeSupport = [
     department: "Support",
     manager: "Associés",
     score: "-",
-    level: "CB",
+    level: null,
   },
   {
     id: "support-it",
@@ -161,6 +161,6 @@ export const committeeSupport = [
     department: "Support",
     manager: "Associés",
     score: "-",
-    level: "CB",
+    level: null,
   },
 ];

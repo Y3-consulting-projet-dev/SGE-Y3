@@ -91,6 +91,13 @@ export function saveAssociateManagerEvaluation(managerId, payload) {
   });
 }
 
+export function submitAssociateManagerEvaluationToRh(managerId, payload) {
+  return request(`/associate/manager-evaluations/${managerId}/submit-rh`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getAssociateSupportEvaluations() {
   return request("/associate/support-evaluations");
 }
@@ -102,12 +109,6 @@ export function getAssociateSupportEvaluation(supportId) {
 export function saveAssociateSupportEvaluation(supportId, payload) {
   return request(`/associate/support-evaluations/${supportId}`, {
     method: "PUT",
-    body: JSON.stringify(payload),
-  })}
-    
-export function submitAssociateManagerEvaluationToRh(managerId, payload) {
-  return request(`/associate/manager-evaluations/${managerId}/submit-rh`, {
-    method: "POST",
     body: JSON.stringify(payload),
   })
 }

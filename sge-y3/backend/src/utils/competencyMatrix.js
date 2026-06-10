@@ -120,12 +120,12 @@ function getSourceLabel(sheetName) {
   return sheetName;
 }
 
-function getTemplateSectionKey(sheetName, sectionKey) {
-  return sheetName === 'TRONC COMMUN' ? sectionKey : `${sheetName}::${sectionKey}`;
+function getTemplateSectionKey(_sheetName, sectionKey) {
+  return sectionKey;
 }
 
-function getTemplateSectionTitle(sheetName, sectionTitle) {
-  return sheetName === 'TRONC COMMUN' ? sectionTitle : `${getSourceLabel(sheetName)} - ${sectionTitle}`;
+function getTemplateSectionTitle(_sheetName, sectionTitle) {
+  return sectionTitle;
 }
 
 function createSectionRecord(sectionKey, index, sectionTitle = sectionKey) {

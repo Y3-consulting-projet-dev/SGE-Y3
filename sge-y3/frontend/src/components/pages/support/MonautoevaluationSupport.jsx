@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
-import matrixData from "../../../../../backend/src/data/competencyMatrix.generated.json";
 import {
   getSupportSelfEvaluation,
   saveSupportSelfEvaluation,

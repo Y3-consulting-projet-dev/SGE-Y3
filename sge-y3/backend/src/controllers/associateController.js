@@ -1642,6 +1642,80 @@ module.exports = {
       ...buildAssociateManagerPayload(manager, selfEvaluation, associateReview),
     });
   },
+  async submitAssociateManagerEvaluationToRh(request, response) {
+    const manager = await User.findById(request.params.managerId).select('_id name grade department code_categorie');
+
+    if (!manager || !isAssociateManagerEvaluationTarget(manager)) {
+      return response.status(404).json({ message: 'Manager introuvable.' });
+    }
+
+    const selfEvaluation = await EvaluationInstance.findOne({
+      cycle_label: CURRENT_CYCLE_LABEL,
+      evalue_id: manager._id,
+      template_type: getAssociateManagerSelfTemplateType(manager),
+    }).select('status submitted_at sections mission_evaluations');
+
+    const associateReview = await getOrCreateAssociateManagerReview(request.user, manager, selfEvaluation);
+    const rawMissionReviews = Array.isArray(request.body?.missions) ? request.body.missions : [];
+
+    if (rawMissionReviews.length) {
+      const incomingMissionMap = new Map(normalizeMissionReviews(rawMissionReviews).map((mission) => [mission.mission_id, mission]));
+      const availableMissionIds = new Set(
+        getAssociateManagerAvailableMissions(selfEvaluation, request.user._id).map((mission) => String(mission.mission_id))
+      );
+      associateReview.mission_reviews = normalizeMissionReviews(associateReview.mission_reviews || []).map((mission) =>
+        availableMissionIds.has(mission.mission_id) && incomingMissionMap.has(mission.mission_id)
+          ? incomingMissionMap.get(mission.mission_id)
+          : mission
+      );
+    }
+
+    const missions = normalizeMissionReviews(associateReview.mission_reviews || []);
+    const hasIncompleteMission = missions.some((mission) =>
+      (mission.criteria || []).some((criterion) => typeof criterion.score !== 'number')
+    );
+
+    if (!missions.length) {
+      return response.status(400).json({ message: "Aucune mission manager n'est disponible pour transmission à la RH." });
+    }
+
+    if (hasIncompleteMission) {
+      return response.status(400).json({ message: 'Toutes les notes de la mission manager doivent être renseignées avant transmission à la RH.' });
+    }
+
+    const hasMissingSectionComment = missions.some((mission) => {
+      const commentsBySection = new Map();
+
+      (mission.criteria || []).forEach((criterion) => {
+        const sectionTitle = String(criterion.section_title || 'Mission').trim() || 'Mission';
+        if (!commentsBySection.has(sectionTitle)) {
+          commentsBySection.set(sectionTitle, '');
+        }
+
+        const comment = String(criterion.section_comment || '').trim();
+        if (comment) {
+          commentsBySection.set(sectionTitle, comment);
+        }
+      });
+
+      return Array.from(commentsBySection.values()).some((comment) => comment.length < 3);
+    });
+
+    if (hasMissingSectionComment) {
+      return response.status(400).json({ message: 'Un commentaire est obligatoire pour chaque section avant transmission à la RH.' });
+    }
+
+    associateReview.associate_note = String(request.body?.note || associateReview.associate_note || '').trim();
+    associateReview.status = 'Soumis à RH';
+    associateReview.submitted_at = new Date();
+    associateReview.last_saved_at = new Date();
+    await associateReview.save();
+
+    return response.json({
+      message: "Évaluation du manager transmise à la RH.",
+      ...buildAssociateManagerPayload(manager, selfEvaluation, associateReview),
+    });
+  },
   async getAssociateSupportEvaluations(request, response) {
     const supportUsers = await User.find({
       is_active: true,
@@ -1719,80 +1793,6 @@ module.exports = {
     return response.json({
       message: "Évaluation support enregistrée.",
       ...buildAssociateSupportPayload(supportUser, selfEvaluation),
-    });
-  },
-  async submitAssociateManagerEvaluationToRh(request, response) {
-    const manager = await User.findById(request.params.managerId).select('_id name grade department code_categorie');
-
-    if (!manager || !isAssociateManagerEvaluationTarget(manager)) {
-      return response.status(404).json({ message: 'Manager introuvable.' });
-    }
-
-    const selfEvaluation = await EvaluationInstance.findOne({
-      cycle_label: CURRENT_CYCLE_LABEL,
-      evalue_id: manager._id,
-      template_type: getAssociateManagerSelfTemplateType(manager),
-    }).select('status submitted_at sections mission_evaluations');
-
-    const associateReview = await getOrCreateAssociateManagerReview(request.user, manager, selfEvaluation);
-    const rawMissionReviews = Array.isArray(request.body?.missions) ? request.body.missions : [];
-
-    if (rawMissionReviews.length) {
-      const incomingMissionMap = new Map(normalizeMissionReviews(rawMissionReviews).map((mission) => [mission.mission_id, mission]));
-      const availableMissionIds = new Set(
-        getAssociateManagerAvailableMissions(selfEvaluation, request.user._id).map((mission) => String(mission.mission_id))
-      );
-      associateReview.mission_reviews = normalizeMissionReviews(associateReview.mission_reviews || []).map((mission) =>
-        availableMissionIds.has(mission.mission_id) && incomingMissionMap.has(mission.mission_id)
-          ? incomingMissionMap.get(mission.mission_id)
-          : mission
-      );
-    }
-
-    const missions = normalizeMissionReviews(associateReview.mission_reviews || []);
-    const hasIncompleteMission = missions.some((mission) =>
-      (mission.criteria || []).some((criterion) => typeof criterion.score !== 'number')
-    );
-
-    if (!missions.length) {
-      return response.status(400).json({ message: "Aucune mission manager n'est disponible pour transmission à la RH." });
-    }
-
-    if (hasIncompleteMission) {
-      return response.status(400).json({ message: 'Toutes les notes de la mission manager doivent être renseignées avant transmission à la RH.' });
-    }
-
-    const hasMissingSectionComment = missions.some((mission) => {
-      const commentsBySection = new Map();
-
-      (mission.criteria || []).forEach((criterion) => {
-        const sectionTitle = String(criterion.section_title || 'Mission').trim() || 'Mission';
-        if (!commentsBySection.has(sectionTitle)) {
-          commentsBySection.set(sectionTitle, '');
-        }
-
-        const comment = String(criterion.section_comment || '').trim();
-        if (comment) {
-          commentsBySection.set(sectionTitle, comment);
-        }
-      });
-
-      return Array.from(commentsBySection.values()).some((comment) => comment.length < 3);
-    });
-
-    if (hasMissingSectionComment) {
-      return response.status(400).json({ message: 'Un commentaire est obligatoire pour chaque section avant transmission à la RH.' });
-    }
-
-    associateReview.associate_note = String(request.body?.note || associateReview.associate_note || '').trim();
-    associateReview.status = 'Soumis à RH';
-    associateReview.submitted_at = new Date();
-    associateReview.last_saved_at = new Date();
-    await associateReview.save();
-
-    return response.json({
-      message: "Évaluation du manager transmise à la RH.",
-      ...buildAssociateManagerPayload(manager, selfEvaluation, associateReview),
     });
   },
   async getAssociateSyntheses(_request, response) {

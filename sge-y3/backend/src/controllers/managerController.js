@@ -1238,7 +1238,7 @@ async function getManagerOverview(request, response) {
           evalue_id: { $in: memberIds },
           cycle_label: CURRENT_CYCLE_LABEL,
           template_type: { $in: ['assistant-self-evaluation', 'senior-self-evaluation'] },
-        }).select('evalue_id template_type status submitted_at submitted_to_user_ids sections mission_evaluations'),
+        }).select('evalue_id template_type status submitted_at submitted_to_user_ids sections mission_evaluations chief_comments'),
         ManagerMemberReview.find({
           cycle_label: CURRENT_CYCLE_LABEL,
           manager_id: request.user._id,
