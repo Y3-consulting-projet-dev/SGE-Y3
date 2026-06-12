@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   getMySeniorEvaluation,
   saveMySeniorEvaluation,
@@ -29,6 +29,13 @@ function getRecipientOptionValue(recipient) {
 
 function normalizeDepartment(value = "") {
   return String(value).replace(/\s+/g, " ").trim().toUpperCase();
+}
+
+function normalizeSearchValue(value = "") {
+  return String(value)
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
 }
 
 function getSourceBadgeLabel(page) {
@@ -268,10 +275,14 @@ function MonautoevaluationSenior({ user }) {
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [activeTab, setActiveTab] = useState("synthese");
+  const [missionSearchQuery, setMissionSearchQuery] = useState("");
+  const [isMissionPickerOpen, setIsMissionPickerOpen] = useState(false);
   const missionCreationCounterRef = useRef(0);
   const skipAutoSaveRef = useRef(true);
   const autoSaveTimeoutRef = useRef(null);
   const dirtyMissionRef = useRef(false);
+  const missionPickerRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -344,6 +355,44 @@ function MonautoevaluationSenior({ user }) {
   const submittedMissionsCount = missionEvaluations.filter((mission) => mission.status === "Soumise").length;
   const displayName = getDisplayName(user || evaluationData?.assignee || {});
 
+  const filteredMissionEvaluations = useMemo(() => {
+    const query = normalizeSearchValue(missionSearchQuery.trim());
+    if (!query) return missionEvaluations;
+
+    return missionEvaluations.filter((mission) => {
+      const haystack = [mission.title, ...(mission.recipients || []).map((recipient) => recipient.name)]
+        .map(normalizeSearchValue)
+        .join(" ");
+      return haystack.includes(query);
+    });
+  }, [missionEvaluations, missionSearchQuery]);
+
+  const recentMissionEvaluations = useMemo(() => missionEvaluations.slice(-3).reverse(), [missionEvaluations]);
+
+  useEffect(() => {
+    if (!isMissionPickerOpen) return undefined;
+
+    function handlePointerDown(event) {
+      if (missionPickerRef.current && !missionPickerRef.current.contains(event.target)) {
+        setIsMissionPickerOpen(false);
+      }
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        setIsMissionPickerOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isMissionPickerOpen]);
+
   function clearScopedFeedback(scope) {
     if (scope === "addMission") setAddMissionFeedback(null);
     if (scope === "mission") setMissionFeedback(null);
@@ -371,6 +420,21 @@ function MonautoevaluationSenior({ user }) {
   function removeSelectedRecipient(value) {
     setSelectedRecipientValues((current) => current.filter((item) => item !== value));
     clearScopedFeedback("addMission");
+  }
+
+  function selectMission(mission) {
+    setActiveMissionId(mission.id);
+    setMissionSectionIds((current) => ({
+      ...current,
+      [mission.id]: current[mission.id] || mission.criteria?.[0]?.sectionTitle || "",
+    }));
+    setMissionPageIndexes((current) => ({
+      ...current,
+      [mission.id]: current[mission.id] || 0,
+    }));
+    clearScopedFeedback("mission");
+    setIsMissionPickerOpen(false);
+    setMissionSearchQuery("");
   }
 
   async function persistMissionEvaluations(
@@ -671,14 +735,36 @@ function MonautoevaluationSenior({ user }) {
         Le Senior s'évalue désormais uniquement par mission. Les commentaires de section sont obligatoires.
       </div>
 
+      <div className="rounded-xl bg-white p-4 shadow-sm">
+        <p className="text-xs font-semibold text-slate-400">{evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"}</p>
+        <h2 className="mt-1 text-xl font-extrabold text-[#0F3A63]">{displayName}</h2>
+        <p className="text-sm font-semibold text-slate-500">{user?.grade || evaluationData?.assignee?.grade || "Senior"}</p>
+      </div>
+
+      <div className="flex gap-2 border-b border-[#E3EAF3]">
+        <button
+          type="button"
+          onClick={() => setActiveTab("synthese")}
+          className={`rounded-t-md border border-b-0 px-4 py-2 text-sm font-bold transition ${
+            activeTab === "synthese" ? "border-[#E3EAF3] bg-white text-[#0F3A63]" : "border-transparent text-slate-500 hover:text-[#0F3A63]"
+          }`}
+        >
+          Synthèse et ajout de mission
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("missions")}
+          className={`rounded-t-md border border-b-0 px-4 py-2 text-sm font-bold transition ${
+            activeTab === "missions" ? "border-[#E3EAF3] bg-white text-[#0F3A63]" : "border-transparent text-slate-500 hover:text-[#0F3A63]"
+          }`}
+        >
+          Mes missions
+        </button>
+      </div>
+
+      {activeTab === "synthese" ? (
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.78fr_1.22fr]">
         <article className="space-y-4">
-          <div className="rounded-xl bg-white p-4 shadow-sm">
-            <p className="text-xs font-semibold text-slate-400">{evaluationData?.assignee?.current_cycle || "Cycle 2025-2026"}</p>
-            <h2 className="mt-1 text-xl font-extrabold text-[#0F3A63]">{displayName}</h2>
-            <p className="text-sm font-semibold text-slate-500">{user?.grade || evaluationData?.assignee?.grade || "Senior"}</p>
-          </div>
-
           <div className="rounded-xl bg-white p-4 shadow-sm">
             <h3 className="mb-3 text-[18px] font-bold text-[#0F3A63]">Ajouter une mission</h3>
             <div className="space-y-3">
@@ -785,47 +871,6 @@ function MonautoevaluationSenior({ user }) {
               <InlineFeedback feedback={addMissionFeedback} />
             </div>
           </div>
-
-          <div className="space-y-3">
-            {missionEvaluations.length ? (
-              missionEvaluations.map((mission) => (
-                <button
-                  key={mission.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveMissionId(mission.id);
-                    setMissionSectionIds((current) => ({
-                      ...current,
-                      [mission.id]: current[mission.id] || mission.criteria?.[0]?.sectionTitle || "",
-                    }));
-                    setMissionPageIndexes((current) => ({
-                      ...current,
-                      [mission.id]: current[mission.id] || 0,
-                    }));
-                    clearScopedFeedback("mission");
-                  }}
-                  className={`w-full rounded-xl border p-4 text-left shadow-sm transition ${
-                    mission.id === effectiveMissionId ? "border-[#76B82A] bg-[#F3FAEA]" : "border-transparent bg-white"
-                  }`}
-                >
-                  <p className="text-[18px] font-bold text-[#0F3A63]">{mission.title}</p>
-                  <p className="mt-1 text-[12px] font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
-                  <p className="mt-2 text-[12px] font-semibold text-[#0F3A63]">
-                    {mission.department} - {mission.recipients.map(getRecipientLabel).join(", ")}
-                  </p>
-                  <div className="mt-4 h-2 rounded-full bg-slate-200">
-                    <div className={`h-2 rounded-full ${getProgressBarClass(getMissionProgress(mission))}`} style={{ width: `${clampProgress(getMissionProgress(mission))}%` }} />
-                  </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className={`text-xs font-semibold ${getProgressToneClass(getMissionProgress(mission))}`}>{getMissionProgress(mission)}%</span>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#4E8B1B]">{mission.status || "Brouillon"}</span>
-                  </div>
-                </button>
-              ))
-            ) : (
-              <div className="rounded-md bg-[#EEF2F6] p-4 text-sm font-semibold text-slate-500">Aucune mission ajoutée pour le moment.</div>
-            )}
-          </div>
         </article>
 
         <article className="space-y-4">
@@ -865,8 +910,124 @@ function MonautoevaluationSenior({ user }) {
                 </div>
               </div>
             </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSubmitFinal}
+                disabled={isSaving || isSubmitting}
+                className="rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+              >
+                {isSubmitting ? "Soumission..." : "Finaliser l'évaluation"}
+              </button>
+            </div>
+            <div className="mt-3">
+              <InlineFeedback feedback={finalFeedback} />
+            </div>
+          </div>
+        </article>
+      </section>
+      ) : (
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+        <article className="space-y-4">
+          <div ref={missionPickerRef} className="relative rounded-xl bg-white p-4 shadow-sm">
+            <p className="mb-2 text-[12px] font-bold text-[#0F3A63]">Mission</p>
+            {missionEvaluations.length ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsMissionPickerOpen((current) => !current)}
+                  className="flex w-full items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-left text-[13px] font-bold text-[#0F3A63]"
+                >
+                  <span className="truncate">{activeMission ? activeMission.title : "Sélectionner une mission"}</span>
+                  <ChevronDown size={16} className={`shrink-0 transition ${isMissionPickerOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {isMissionPickerOpen ? (
+                  <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-md border border-[#E3EAF3] bg-white p-2 shadow-lg">
+                    <input
+                      autoFocus
+                      value={missionSearchQuery}
+                      onChange={(event) => setMissionSearchQuery(event.target.value)}
+                      placeholder="Rechercher par nom de mission ou de destinataire..."
+                      className="mb-2 w-full rounded-md bg-slate-100 px-3 py-2 text-[12px] font-semibold text-[#0F3A63] outline-none"
+                    />
+                    <div className="max-h-72 space-y-1 overflow-y-auto">
+                      {filteredMissionEvaluations.length ? (
+                        filteredMissionEvaluations.map((mission) => (
+                          <button
+                            key={mission.id}
+                            type="button"
+                            onClick={() => selectMission(mission)}
+                            className={`block w-full rounded-md px-3 py-2 text-left transition ${
+                              mission.id === effectiveMissionId ? "bg-[#F3FAEA] text-[#0F3A63]" : "text-slate-600 hover:bg-slate-50"
+                            }`}
+                          >
+                            <p className="text-[12px] font-bold">{mission.title}</p>
+                            <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                              {mission.period || "Période non renseignée"} · {mission.recipients.map(getRecipientLabel).join(", ")}
+                            </p>
+                          </button>
+                        ))
+                      ) : (
+                        <p className="px-3 py-2 text-[12px] font-semibold text-slate-500">Aucune mission ne correspond à la recherche.</p>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-sm font-semibold text-slate-500">Aucune mission ajoutée pour le moment.</p>
+            )}
           </div>
 
+          {recentMissionEvaluations.length ? (
+            <div className="space-y-3">
+              <p className="text-[12px] font-bold text-[#0F3A63]">Missions récentes</p>
+              {recentMissionEvaluations.map((mission) => (
+                <button
+                  key={mission.id}
+                  type="button"
+                  onClick={() => selectMission(mission)}
+                  className={`w-full rounded-xl border p-4 text-left shadow-sm transition ${
+                    mission.id === effectiveMissionId ? "border-[#76B82A] bg-[#F3FAEA]" : "border-transparent bg-white"
+                  }`}
+                >
+                  <p className="text-[18px] font-bold text-[#0F3A63]">{mission.title}</p>
+                  <p className="mt-1 text-[12px] font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
+                  <p className="mt-2 text-[12px] font-semibold text-[#0F3A63]">
+                    {mission.department} - {mission.recipients.map(getRecipientLabel).join(", ")}
+                  </p>
+                  <div className="mt-4 h-2 rounded-full bg-slate-200">
+                    <div className={`h-2 rounded-full ${getProgressBarClass(getMissionProgress(mission))}`} style={{ width: `${clampProgress(getMissionProgress(mission))}%` }} />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className={`text-xs font-semibold ${getProgressToneClass(getMissionProgress(mission))}`}>{getMissionProgress(mission)}%</span>
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#4E8B1B]">{mission.status || "Brouillon"}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          <section className="rounded-xl bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-[20px] font-bold text-[#0F3A63]">Aide à la notation</h3>
+            </div>
+            <div className="space-y-2">
+              {gradingHelp.map((item) => (
+                <div key={item.level} className="flex items-center gap-2 text-[12px]">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-200 font-bold text-slate-500">
+                    {item.level}
+                  </span>
+                  <p className={`font-semibold ${item.color}`}>{item.text}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </article>
+
+        <article className="space-y-4">
           {activeMission ? (
             <>
               <section className="rounded-xl bg-white p-4 shadow-sm">
@@ -1047,50 +1208,9 @@ function MonautoevaluationSenior({ user }) {
               Aucune mission ajoutée pour le moment.
             </section>
           )}
-
-          <section className="rounded-xl bg-white p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-[20px] font-bold text-[#0F3A63]">Aide à la notation</h3>
-            </div>
-            <div className="space-y-2">
-              {gradingHelp.map((item) => (
-                <div key={item.level} className="flex items-center gap-2 text-[12px]">
-                  <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-200 font-bold text-slate-500">
-                    {item.level}
-                  </span>
-                  <p className={`font-semibold ${item.color}`}>{item.text}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-5 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() =>
-                  persistMissionEvaluations(missionEvaluations, {
-                    scope: "final",
-                  })
-                }
-                disabled={isSaving || isSubmitting}
-                className="rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600 disabled:opacity-70"
-              >
-                {isSaving ? "Sauvegarde..." : "Enregistrer"}
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmitFinal}
-                disabled={isSaving || isSubmitting}
-                className="rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
-              >
-                {isSubmitting ? "Soumission..." : "Finaliser l'évaluation"}
-              </button>
-            </div>
-            <div className="mt-3">
-              <InlineFeedback feedback={finalFeedback} />
-            </div>
-          </section>
         </article>
       </section>
+      )}
     </section>
   );
 }
