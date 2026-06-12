@@ -814,7 +814,7 @@ async function syncManagerMissionReviews(review, managerUser, selfEvaluationInst
   });
 
   const persistedSubmittedReviews = currentMissionReviews.filter(
-    (mission) => mission.status === 'Soumise ÃƒÂ  la RH' && !submittedMissionIds.has(mission.mission_id)
+    (mission) => mission.status === 'Soumise à la RH' && !submittedMissionIds.has(mission.mission_id)
   );
 
   const pendingManagerAssignedReviews = currentMissionReviews.filter(
@@ -1209,7 +1209,7 @@ function validateMissionReviewCriteria(criteria = []) {
   for (const criterion of criteria) {
     if (criterion.score !== null && criterion.score !== undefined) {
       if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
-        return `La note du critÃƒÂ¨re "${criterion.label}" doit ÃƒÂªtre comprise entre 1 et 5.`;
+        return `La note du critère "${criterion.label}" doit être comprise entre 1 et 5.`;
       }
     }
   }
@@ -1303,14 +1303,14 @@ async function getManagerOverview(request, response) {
         grade: member.grade,
         department: member.department,
         submittedAt: latestMissionSubmittedAt || instance?.submitted_at || null,
-        status: 'Mission ÃƒÂ  ÃƒÂ©valuer',
+        status: 'Mission à évaluer',
         templateType: instance?.template_type || getExpectedTemplateType(member),
         pendingType: 'mission',
         pendingMissionsCount: pendingMissions.length,
       };
     }
 
-    if (review?.status === 'Soumis ÃƒÂ  la RH') {
+    if (review?.status === 'Soumis à la RH') {
       return null;
     }
 
@@ -1466,7 +1466,7 @@ async function getManagerTeamReport(request, response) {
         missionScoreDetails.push(
           buildScoreDetail({
             category: 'mission',
-            source: 'Auto-ÃƒÂ©valuation',
+            source: 'Auto-évaluation',
             evaluatorName: member.name,
             evaluatorGrade: member.grade,
             missionTitle: mission.title,
@@ -1507,7 +1507,7 @@ async function getManagerTeamReport(request, response) {
       }
       for (const missionReview of managerReview.mission_reviews || []) {
         const score = getMissionAverage(missionReview.criteria || []);
-        if (missionReview.status === 'Soumise ÃƒÂ  la RH' && typeof score === 'number') {
+        if (missionReview.status === 'Soumise à la RH' && typeof score === 'number') {
           missionScoreDetails.push(
             buildScoreDetail({
               category: 'mission',
@@ -1529,7 +1529,7 @@ async function getManagerTeamReport(request, response) {
       globalScoreDetails.push(
         buildScoreDetail({
           category: 'global',
-          source: 'Auto-ÃƒÂ©valuation',
+          source: 'Auto-évaluation',
           evaluatorName: member.name,
           evaluatorGrade: member.grade,
           score: selfGlobalScore,
@@ -1713,14 +1713,14 @@ async function addMyManagerMissionEvaluation(request, response) {
   await instance.save();
 
   return response.json({
-    message: 'Mission manager ajoutÃƒÂ©e.',
+    message: 'Mission manager ajoutée.',
     ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers, associateRecipients),
   });
 }
 
 async function addMissionToManagerMember(request, response) {
   const title = String(request.body?.title || '').trim();
-  const period = String(request.body?.period || '').trim() || 'PÃƒÂ©riode non renseignÃƒÂ©e';
+  const period = String(request.body?.period || '').trim() || 'Période non renseignée';
 
   if (!title) {
     return response.status(400).json({
@@ -1732,7 +1732,7 @@ async function addMissionToManagerMember(request, response) {
 
   if (!member) {
     return response.status(404).json({
-      message: "Membre d'ÃƒÂ©quipe introuvable pour ce manager.",
+      message: "Membre d'équipe introuvable pour ce manager.",
     });
   }
 
@@ -1793,7 +1793,7 @@ async function addMissionToManagerMember(request, response) {
   const missionAndScoreData = await buildManagerMissionAndGlobalInputs(request.user, member, selfEvaluationInstance, review);
 
   return response.json({
-    message: `Mission ajoutÃƒÂ©e pour ${member.name}. Le membre la verra dans son auto-ÃƒÂ©valuation par mission.`,
+    message: `Mission ajoutée pour ${member.name}. Le membre la verra dans son auto-évaluation par mission.`,
     ...buildManagerReviewPayload(
       review,
       request.user,
@@ -1814,7 +1814,7 @@ async function saveMyManagerEvaluation(request, response) {
 
   if (!rawSections?.length && !isMissionOnlyEvaluation) {
     return response.status(400).json({
-      message: "Les sections ou les ÃƒÂ©valuations par mission de l'auto-ÃƒÂ©valuation manager sont requises.",
+      message: "Les sections ou les évaluations par mission de l'auto-évaluation manager sont requises.",
     });
   }
 
@@ -1826,7 +1826,7 @@ async function saveMyManagerEvaluation(request, response) {
         if (criterion.score !== null && criterion.score !== undefined) {
           if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
             return response.status(400).json({
-              message: `La note du critÃƒÂ¨re "${criterion.label}" doit ÃƒÂªtre comprise entre 1 et 5.`,
+              message: `La note du critère "${criterion.label}" doit être comprise entre 1 et 5.`,
             });
           }
         }
@@ -1840,7 +1840,7 @@ async function saveMyManagerEvaluation(request, response) {
         if (criterion.score !== null && criterion.score !== undefined) {
           if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
             return response.status(400).json({
-              message: `La note du critÃƒÂ¨re "${criterion.label}" doit ÃƒÂªtre comprise entre 1 et 5.`,
+              message: `La note du critère "${criterion.label}" doit être comprise entre 1 et 5.`,
             });
           }
         }
@@ -1874,7 +1874,7 @@ async function saveMyManagerEvaluation(request, response) {
   await instance.save();
 
   return response.json({
-    message: 'Auto-ÃƒÂ©valuation manager enregistrÃƒÂ©e.',
+    message: 'Auto-évaluation manager enregistrée.',
     ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers, associateRecipients),
   });
 }
@@ -1895,7 +1895,7 @@ async function submitMyManagerEvaluation(request, response) {
 
     if (pendingMissions.length) {
       return response.status(400).json({
-        message: 'Chaque mission doit ÃƒÂªtre soumise ÃƒÂ  la RH et aux associÃƒÂ©s avant la soumission finale.',
+        message: 'Chaque mission doit être soumise à la RH et aux associés avant la soumission finale.',
         pendingMissions: pendingMissions.map((mission) => ({
           missionId: mission.mission_id,
           title: mission.title,
@@ -1903,7 +1903,7 @@ async function submitMyManagerEvaluation(request, response) {
       });
     }
 
-    instance.status = 'Soumis ÃƒÂ  la RH';
+    instance.status = 'Soumis à la RH';
     instance.submitted_to_role = 'rh';
     instance.submitted_to_user_ids = rhRecipients.map((recipient) => recipient._id);
     instance.submitted_to_names = rhRecipients.map((recipient) => recipient.name);
@@ -1912,7 +1912,7 @@ async function submitMyManagerEvaluation(request, response) {
     await instance.save();
 
     return response.json({
-      message: 'Evaluations par mission manager transmises ÃƒÂ  la RH et aux associÃƒÂ©s.',
+      message: 'Evaluations par mission manager transmises à la RH et aux associés.',
       ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers, associateRecipients),
     });
   }
@@ -1921,7 +1921,7 @@ async function submitMyManagerEvaluation(request, response) {
 
   if (missingAnswers.length) {
     return response.status(400).json({
-      message: 'Toutes les questions obligatoires doivent ÃƒÂªtre renseignÃƒÂ©es avant soumission.',
+      message: 'Toutes les questions obligatoires doivent être renseignées avant soumission.',
       missingAnswers,
     });
   }
@@ -1930,13 +1930,13 @@ async function submitMyManagerEvaluation(request, response) {
 
   if (missingSectionComments.length) {
     return response.status(400).json({
-      message: "Un commentaire de section d'au moins 3 caractÃƒÂ¨res est obligatoire pour chaque section avant soumission.",
+      message: "Un commentaire de section d'au moins 3 caractères est obligatoire pour chaque section avant soumission.",
       missingSectionComments,
     });
   }
 
   instance.sections = toPersistenceSections(sections);
-  instance.status = 'Soumis ÃƒÂ  la RH';
+  instance.status = 'Soumis à la RH';
   instance.submitted_to_role = 'rh';
   instance.submitted_to_user_ids = rhRecipients.map((recipient) => recipient._id);
   instance.submitted_to_names = rhRecipients.map((recipient) => recipient.name);
@@ -1945,7 +1945,7 @@ async function submitMyManagerEvaluation(request, response) {
   await instance.save();
 
   return response.json({
-    message: 'Auto-ÃƒÂ©valuation manager soumise ÃƒÂ  la RH.',
+    message: 'Auto-évaluation manager soumise à la RH.',
     ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers, associateRecipients),
   });
 }
@@ -1955,7 +1955,7 @@ async function submitMyManagerMissionEvaluation(request, response) {
 
   if (!missionId) {
     return response.status(400).json({
-      message: 'La mission manager ÃƒÂ  soumettre est requise.',
+      message: 'La mission manager à soumettre est requise.',
     });
   }
 
@@ -1980,7 +1980,7 @@ async function submitMyManagerMissionEvaluation(request, response) {
 
   if (hasIncompleteCriterion) {
     return response.status(400).json({
-      message: 'Toutes les questions de la mission manager doivent ÃƒÂªtre renseignÃƒÂ©es avant soumission.',
+      message: 'Toutes les questions de la mission manager doivent être renseignées avant soumission.',
     });
   }
 
@@ -2036,7 +2036,7 @@ module.exports = {
 
     if (!member) {
       return response.status(404).json({
-        message: "Membre d'ÃƒÂ©quipe introuvable pour ce manager.",
+        message: "Membre d'équipe introuvable pour ce manager.",
       });
     }
 
@@ -2067,7 +2067,7 @@ module.exports = {
 
     if (!rawSections?.length) {
       return response.status(400).json({
-        message: "Les sections de l'ÃƒÂ©valuation manager sont requises.",
+        message: "Les sections de l'évaluation manager sont requises.",
       });
     }
 
@@ -2075,7 +2075,7 @@ module.exports = {
 
     if (!member) {
       return response.status(404).json({
-        message: "Membre d'ÃƒÂ©quipe introuvable pour ce manager.",
+        message: "Membre d'équipe introuvable pour ce manager.",
       });
     }
 
@@ -2084,7 +2084,7 @@ module.exports = {
 
     if (missingPageComments.length) {
       return response.status(400).json({
-        message: "Une justification par titre d'au moins 3 caractÃƒÂ¨res est obligatoire pour toute note inferieure a 3.",
+        message: "Une justification par titre d'au moins 3 caractères est obligatoire pour toute note inferieure a 3.",
         missingPageComments,
       });
     }
@@ -2094,7 +2094,7 @@ module.exports = {
         if (criterion.score !== null && criterion.score !== undefined) {
           if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
             return response.status(400).json({
-              message: `La note du critÃƒÂ¨re "${criterion.label}" doit ÃƒÂªtre comprise entre 1 et 5.`,
+              message: `La note du critère "${criterion.label}" doit être comprise entre 1 et 5.`,
             });
           }
         }
@@ -2116,7 +2116,7 @@ module.exports = {
     await review.save();
 
     return response.json({
-      message: 'Evaluation manager enregistrÃƒÂ©e.',
+      message: 'Evaluation manager enregistrée.',
       ...buildManagerReviewPayload(
         review,
         request.user,
@@ -2132,7 +2132,7 @@ module.exports = {
 
     if (!member) {
       return response.status(404).json({
-        message: "Membre d'ÃƒÂ©quipe introuvable pour ce manager.",
+        message: "Membre d'équipe introuvable pour ce manager.",
       });
     }
 
@@ -2148,7 +2148,7 @@ module.exports = {
 
     if (missingAnswers.length) {
       return response.status(400).json({
-        message: "Toutes les questions obligatoires doivent ÃƒÂªtre renseignÃƒÂ©es avant soumission ÃƒÂ  la RH.",
+        message: "Toutes les questions obligatoires doivent être renseignées avant soumission à la RH.",
         missingAnswers,
       });
     }
@@ -2157,7 +2157,7 @@ module.exports = {
 
     if (missingSectionComments.length) {
       return response.status(400).json({
-        message: "Un commentaire de section d'au moins 3 caractÃƒÂ¨res est obligatoire pour chaque section avant soumission.",
+        message: "Un commentaire de section d'au moins 3 caractères est obligatoire pour chaque section avant soumission.",
         missingSectionComments,
       });
     }
@@ -2166,13 +2166,13 @@ module.exports = {
 
     if (missingPageComments.length) {
       return response.status(400).json({
-        message: "Une justification par titre d'au moins 3 caractÃƒÂ¨res est obligatoire pour toute note inferieure a 3.",
+        message: "Une justification par titre d'au moins 3 caractères est obligatoire pour toute note inferieure a 3.",
         missingPageComments,
       });
     }
 
     review.sections = toPersistenceSections(sections);
-    review.status = 'Soumis ÃƒÂ  la RH';
+    review.status = 'Soumis à la RH';
     review.submitted_to_user_ids = rhRecipients.map((recipient) => recipient._id);
     review.submitted_to_names = rhRecipients.map((recipient) => recipient.name);
     review.rh_validation_selected = true;
@@ -2183,8 +2183,8 @@ module.exports = {
 
     return response.json({
       message: rhRecipients.length
-        ? `Evaluation soumise ÃƒÂ  ${rhRecipients.map((recipient) => recipient.name).join(', ')}.`
-        : 'Evaluation soumise ÃƒÂ  la RH.',
+        ? `Evaluation soumise à ${rhRecipients.map((recipient) => recipient.name).join(', ')}.`
+        : 'Evaluation soumise à la RH.',
       ...buildManagerReviewPayload(
         review,
         request.user,
@@ -2200,7 +2200,7 @@ module.exports = {
 
     if (!rawMissionReviews) {
       return response.status(400).json({
-        message: "Les ÃƒÂ©valuations par mission sont requises.",
+        message: "Les évaluations par mission sont requises.",
       });
     }
 
@@ -2208,7 +2208,7 @@ module.exports = {
 
     if (!member) {
       return response.status(404).json({
-        message: "Membre d'ÃƒÂ©quipe introuvable pour ce manager.",
+        message: "Membre d'équipe introuvable pour ce manager.",
       });
     }
 
@@ -2235,7 +2235,7 @@ module.exports = {
     const missionAndScoreData = await buildManagerMissionAndGlobalInputs(request.user, member, selfEvaluationInstance, review);
 
     return response.json({
-      message: 'Evaluation manager par mission enregistrÃƒÂ©e.',
+      message: 'Evaluation manager par mission enregistrée.',
       ...buildManagerReviewPayload(
         review,
         request.user,
@@ -2251,7 +2251,7 @@ module.exports = {
 
     if (!missionId) {
       return response.status(400).json({
-        message: 'La mission ÃƒÂ  soumettre est requise.',
+        message: 'La mission à soumettre est requise.',
       });
     }
 
@@ -2259,7 +2259,7 @@ module.exports = {
 
     if (!member) {
       return response.status(404).json({
-        message: "Membre d'ÃƒÂ©quipe introuvable pour ce manager.",
+        message: "Membre d'équipe introuvable pour ce manager.",
       });
     }
 
@@ -2274,7 +2274,7 @@ module.exports = {
 
     if (!missionReview) {
       return response.status(404).json({
-        message: 'Mission introuvable dans cette ÃƒÂ©valuation manager.',
+        message: 'Mission introuvable dans cette évaluation manager.',
       });
     }
 
@@ -2284,7 +2284,7 @@ module.exports = {
 
     if (hasIncompleteCriterion) {
       return response.status(400).json({
-        message: 'Toutes les questions de la mission doivent ÃƒÂªtre renseignÃƒÂ©es avant soumission ÃƒÂ  la RH.',
+        message: 'Toutes les questions de la mission doivent être renseignées avant soumission à la RH.',
       });
     }
 
@@ -2292,7 +2292,7 @@ module.exports = {
 
     if (missingSectionComments.length) {
       return response.status(400).json({
-        message: "Un commentaire de section d'au moins 3 caractÃƒÂ¨res est obligatoire pour chaque section avant soumission.",
+        message: "Un commentaire de section d'au moins 3 caractères est obligatoire pour chaque section avant soumission.",
         missingSectionComments,
       });
     }
@@ -2301,14 +2301,14 @@ module.exports = {
 
     if (missingPageComments.length) {
       return response.status(400).json({
-        message: "Une justification par titre d'au moins 3 caractÃƒÂ¨res est obligatoire pour toute note inferieure a 3.",
+        message: "Une justification par titre d'au moins 3 caractères est obligatoire pour toute note inferieure a 3.",
         missingPageComments,
       });
     }
 
-    missionReview.status = 'Soumise ÃƒÂ  la RH';
+    missionReview.status = 'Soumise à la RH';
     missionReview.submitted_at = new Date();
-    review.status = 'Soumis ÃƒÂ  la RH';
+    review.status = 'Soumis à la RH';
     review.submitted_to_user_ids = rhRecipients.map((recipient) => recipient._id);
     review.submitted_to_names = rhRecipients.map((recipient) => recipient.name);
     review.rh_validation_selected = true;
@@ -2320,8 +2320,8 @@ module.exports = {
 
     return response.json({
       message: rhRecipients.length
-        ? `Mission soumise ÃƒÂ  ${rhRecipients.map((recipient) => recipient.name).join(', ')}.`
-        : 'Mission soumise ÃƒÂ  la RH.',
+        ? `Mission soumise à ${rhRecipients.map((recipient) => recipient.name).join(', ')}.`
+        : 'Mission soumise à la RH.',
       ...buildManagerReviewPayload(
         review,
         request.user,
