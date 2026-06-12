@@ -1,7 +1,7 @@
 ﻿
 // export default Monautoevaluation;
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, MessageSquare, ClipboardList } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, MessageSquare, ClipboardList } from "lucide-react";
 import {
   saveMyAssistantEvaluation,
   saveMyChiefComments,
@@ -26,11 +26,6 @@ function getRecipientLabel(recipient) {
 
 function getRecipientOptionValue(recipient) {
   return `${recipient.department}::${recipient.id}`;
-}
-
-function isManagerOrSeniorManagerRecipient(recipient) {
-  const category = String(recipient?.code_categorie || "").trim().toUpperCase();
-  return category === "10B" || category === "10C";
 }
 
 function isSeniorOrManagerFeedbackTarget(recipient) {
@@ -206,6 +201,13 @@ function getMissionValidationLabel(mission) {
 
 function isSameMissionId(left, right) {
   return String(left ?? "") === String(right ?? "");
+}
+
+function normalizeSearchValue(value = "") {
+  return String(value)
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
 }
 
 function buildMissionCriteriaFromSections(sections = [], recipientDepartment = "") {
@@ -501,6 +503,9 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   const [anonymousTargetValue, setAnonymousTargetValue] = useState("");
   const [anonymousFeedback, setAnonymousFeedback] = useState(() => evaluationData?.anonymous_feedback || []);
   const [activeTab, setActiveTab] = useState("missions");
+  const [activeMissionView, setActiveMissionView] = useState("synthese");
+  const [missionSearchQuery, setMissionSearchQuery] = useState("");
+  const [isMissionPickerOpen, setIsMissionPickerOpen] = useState(false);
   const [chiefComments, setChiefComments] = useState(() => evaluationData?.chief_comments || []);
   const [chiefTargetValue, setChiefTargetValue] = useState("");
   const [chiefFeedback, setChiefFeedback] = useState(null);
@@ -515,6 +520,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   const autoSaveTimeoutRef = useRef(null);
   const autoSaveRequestRef = useRef(0);
   const dirtyMissionRef = useRef(false);
+  const missionPickerRef = useRef(null);
 
   const shouldShowSourceLabel = evaluationData?.assignee?.department === "AUDIT & EXPERTISE COMPTABLE";
   const effectiveMissionId =
@@ -575,6 +581,44 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     );
   }, [missionEvaluations]);
 
+  const filteredMissionEvaluations = useMemo(() => {
+    const query = normalizeSearchValue(missionSearchQuery.trim());
+    if (!query) return missionEvaluations;
+
+    return missionEvaluations.filter((item) => {
+      const haystack = [item.title, item.assignedByName, ...(item.recipients || []).map((recipient) => recipient.name)]
+        .map(normalizeSearchValue)
+        .join(" ");
+      return haystack.includes(query);
+    });
+  }, [missionEvaluations, missionSearchQuery]);
+
+  const recentMissionEvaluations = useMemo(() => missionEvaluations.slice(-3).reverse(), [missionEvaluations]);
+
+  useEffect(() => {
+    if (!isMissionPickerOpen) return undefined;
+
+    function handlePointerDown(event) {
+      if (missionPickerRef.current && !missionPickerRef.current.contains(event.target)) {
+        setIsMissionPickerOpen(false);
+      }
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        setIsMissionPickerOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isMissionPickerOpen]);
+
   function addSelectedRecipient() {
     if (!selectedRecipientValue) return;
 
@@ -588,6 +632,20 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   function removeSelectedRecipient(value) {
     setSelectedRecipientValues((current) => current.filter((item) => item !== value));
     clearScopedFeedback("addMission");
+  }
+
+  function selectMission(item) {
+    setMissionId(item.id);
+    setMissionSectionIds((current) => ({
+      ...current,
+      [item.id]: current[item.id] || item.criteria?.[0]?.sectionTitle || "",
+    }));
+    setMissionPageIndexes((current) => ({
+      ...current,
+      [item.id]: current[item.id] || 0,
+    }));
+    setIsMissionPickerOpen(false);
+    setMissionSearchQuery("");
   }
 
   function addAnonymousFeedbackTarget() {
@@ -1082,8 +1140,32 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
       </div>
 
       {activeTab === "missions" && (
-      <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <article className="rounded-md bg-white p-4 shadow-sm">
+      <>
+      <div className="flex gap-2 border-b border-[#E3EAF3]">
+        <button
+          type="button"
+          onClick={() => setActiveMissionView("synthese")}
+          className={`rounded-t-md border border-b-0 px-4 py-2 text-sm font-bold transition ${
+            activeMissionView === "synthese" ? "border-[#E3EAF3] bg-white text-[#0F3A63]" : "border-transparent text-slate-500 hover:text-[#0F3A63]"
+          }`}
+        >
+          Synthèse et ajout de mission
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveMissionView("missions")}
+          className={`rounded-t-md border border-b-0 px-4 py-2 text-sm font-bold transition ${
+            activeMissionView === "missions" ? "border-[#E3EAF3] bg-white text-[#0F3A63]" : "border-transparent text-slate-500 hover:text-[#0F3A63]"
+          }`}
+        >
+          Mes missions
+        </button>
+      </div>
+
+      {activeMissionView === "synthese" ? (
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+        <article className="space-y-4">
+        <div className="rounded-md bg-white p-4 shadow-sm">
           <h3 className="text-lg font-bold text-[#0F3A63]">Mes missions de l'année</h3>
           <p className="mt-1 text-xs font-semibold text-slate-500">
             L'assistant s'évalue désormais uniquement par mission. Le score final sera la moyenne de toutes les missions notées.
@@ -1207,27 +1289,246 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
             </div>
           </div>
 
-          <div className="mt-4 space-y-3">
+        </div>
+        </article>
+
+        <article className="space-y-4">
+          <div className="rounded-md bg-white p-4 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-[22px] font-bold text-[#0F3A63]">Synthèse de l'évaluation</h3>
+                <p className="mt-1 text-[12px] font-semibold text-slate-500">
+                  Score final = somme des scores de mission divisée par le nombre de missions notées.
+                </p>
+              </div>
+              <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">
+                Score final {finalMissionScore} / 5
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <p className="font-semibold text-[#0F3A63]">Progression globale des missions</p>
+                <span className={`font-bold ${getProgressToneClass(missionProgress)}`}>{missionProgress}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-slate-200">
+                <div className={`h-2 rounded-full ${getProgressBarClass(missionProgress)}`} style={{ width: `${clampProgress(missionProgress)}%` }} />
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
+                  <p className="text-[11px] font-semibold text-slate-500">Missions</p>
+                  <p className="mt-1 text-lg font-black text-[#0F3A63]">{missionEvaluations.length}</p>
+                </div>
+                <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
+                  <p className="text-[11px] font-semibold text-slate-500">Missions soumises</p>
+                  <p className="mt-1 text-lg font-black text-[#0F3A63]">{submittedMissionsCount}</p>
+                </div>
+                <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
+                  <p className="text-[11px] font-semibold text-slate-500">Statut</p>
+                  <p className="mt-1 text-sm font-black text-[#0F3A63]">{evaluationData?.evaluation?.status || "En cours"}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Anonymous annotations for managers/seniors ──────────────────────────
+                Scores stored here are NEVER passed to getMissionAverage() or
+                getMissionFinalScore(). They have zero impact on the assistant's score. */}
+            <div className="mt-5 rounded-md border border-[#D9E3EE] bg-[#F8FAFC] p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+
+                <div>
+                  <h4 className="text-sm font-bold text-[#0F3A63]">Annotations anonymes — Seniors &amp; Managers</h4>
+                  <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                    Notez vos supérieurs sur les mêmes critères que vos missions et laissez un commentaire.
+                    Ces notes sont <span className="font-bold text-[#0F3A63]">anonymes</span> et{" "}
+                    <span className="font-bold text-[#0F3A63]">ne sont jamais comptabilisées dans votre score final</span>.
+                  </p>
+                </div>
+                <span className="rounded-full bg-white border border-[#D9E3EE] px-3 py-1 text-[11px] font-bold text-[#0F4A72]">
+                  Anonyme · Hors calcul
+                </span>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <select
+                  value={anonymousTargetValue}
+                  onChange={(event) => setAnonymousTargetValue(event.target.value)}
+                  className="h-10 w-full rounded-md border border-[#D9E3EE] bg-white px-3 text-sm font-semibold text-[#0F3A63] outline-none"
+                >
+                  <option value="">Sélectionner un senior ou manager</option>
+                  {anonymousTargetOptions.map((recipient) => {
+                    const value = getRecipientOptionValue(recipient);
+                    const isAlreadySelected = anonymousFeedback.some((item) => String(item.targetUserId || "") === String(recipient.id));
+
+                    return (
+                      <option key={value} value={value} disabled={isAlreadySelected}>
+                        {recipient.department} - {getRecipientLabel(recipient)}
+                        {isAlreadySelected ? " - déjà ajouté" : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+                <button
+                  type="button"
+                  onClick={addAnonymousFeedbackTarget}
+                  disabled={!anonymousTargetValue}
+                  className="h-10 rounded-md bg-[#0B4C7A] px-4 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Ajouter
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-4">
+                {anonymousFeedback.length ? (
+                  anonymousFeedback.map((item) => (
+                    <AnonymousFeedbackPanel
+                      key={item.targetUserId || item.targetName}
+                      item={item}
+                      onUpdateScore={updateAnonymousFeedbackScore}
+                      onUpdateComment={updateAnonymousFeedbackComment}
+                      onRemove={() => removeAnonymousFeedbackTarget(item.targetUserId)}
+                    />
+                  ))
+                ) : (
+                  <p className="rounded-md bg-white px-3 py-3 text-[12px] font-semibold text-slate-500">
+                    Aucune annotation ajoutée pour le moment.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-sm bg-[#DCECCB] px-3 py-2 text-[10px] font-semibold text-[#5A8A3A]">
+              La soumission finale est possible quand chaque mission a été soumise à son destinataire.
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={
+                  isSaving ||
+                  isSubmitting ||
+                  evaluationData?.evaluation?.status === "Soumis aux Managers" ||
+                  evaluationData?.evaluation?.status === "Soumis à la RH"
+                }
+                className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+              >
+                {isSubmitting ? "Soumission..." : "Finaliser l'évaluation"}
+              </button>
+            </div>
+            <div className="mt-3">
+              <InlineFeedback feedback={finalFeedback} />
+            </div>
+          </div>
+
+          <div className="rounded-md bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-[22px] font-bold text-[#0F3A63]">Missions prêtes</h3>
+            <div className="space-y-3">
+              {missionEvaluations.length ? (
+                missionEvaluations.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between text-[12px]">
+                    <div>
+                      <p className="font-semibold text-[#0F3A63]">{item.title}</p>
+                      <p className="text-[11px] text-slate-500">{item.period}</p>
+                    </div>
+                    <span className={`font-bold ${item.status === "Soumise" ? "text-green-600" : getProgressToneClass(getMissionProgress(item))}`}>
+                      {item.status === "Soumise" ? "Soumise" : `${getMissionProgress(item)}%`}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <p className="rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-slate-500">
+                  Aucune mission ajoutée pour le moment.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* <div className="rounded-md bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">{"Évaluateurs sélectionnés"}</h3>
+            <div className="space-y-2">
+              {selectedRecipientsSummary.length ? (
+                selectedRecipientsSummary.map((recipient) => (
+                  <div key={`${recipient.department}-${recipient.name}`} className="rounded-md bg-[#F8FAFC] px-3 py-3">
+                    <p className="text-[12px] font-bold text-[#0F3A63]">{recipient.name}</p>
+                    <p className="mt-1 text-[11px] text-slate-500">{recipient.department}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-slate-500">
+                  {"Les personnes sélectionnées apparaîtront ici dès qu'une mission sera ajoutée."}
+                </p>
+              )}
+            </div>
+          </div> */}
+        </article>
+      </section>
+      ) : (
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+        <article className="space-y-4">
+          <div ref={missionPickerRef} className="relative rounded-md bg-white p-4 shadow-sm">
+            <p className="mb-2 text-[12px] font-bold text-[#0F3A63]">Mission</p>
             {missionEvaluations.length ? (
-              missionEvaluations.map((item) => {
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsMissionPickerOpen((current) => !current)}
+                  className="flex w-full items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-left text-[13px] font-bold text-[#0F3A63]"
+                >
+                  <span className="truncate">{mission ? mission.title : "Sélectionner une mission"}</span>
+                  <ChevronDown size={16} className={`shrink-0 transition ${isMissionPickerOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {isMissionPickerOpen ? (
+                  <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-md border border-[#E3EAF3] bg-white p-2 shadow-lg">
+                    <input
+                      autoFocus
+                      value={missionSearchQuery}
+                      onChange={(event) => setMissionSearchQuery(event.target.value)}
+                      placeholder="Rechercher par nom de mission ou de destinataire..."
+                      className="mb-2 w-full rounded-md bg-slate-100 px-3 py-2 text-[12px] font-semibold text-[#0F3A63] outline-none"
+                    />
+                    <div className="max-h-72 space-y-1 overflow-y-auto">
+                      {filteredMissionEvaluations.length ? (
+                        filteredMissionEvaluations.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => selectMission(item)}
+                            className={`block w-full rounded-md px-3 py-2 text-left transition ${
+                              isSameMissionId(item.id, effectiveMissionId) ? "bg-[#F3FAEA] text-[#0F3A63]" : "text-slate-600 hover:bg-slate-50"
+                            }`}
+                          >
+                            <p className="text-[12px] font-bold">{item.title}</p>
+                            <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                              {item.period || "Période non renseignée"} · {getMissionValidationLabel(item)}
+                            </p>
+                          </button>
+                        ))
+                      ) : (
+                        <p className="px-3 py-2 text-[12px] font-semibold text-slate-500">Aucune mission ne correspond à la recherche.</p>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-sm font-semibold text-slate-500">Aucune mission ajoutée pour le moment.</p>
+            )}
+          </div>
+
+          {recentMissionEvaluations.length ? (
+            <div className="space-y-3">
+              <p className="text-[12px] font-bold text-[#0F3A63]">Missions récentes</p>
+              {recentMissionEvaluations.map((item) => {
                 const progress = getMissionProgress(item);
-                const isActive = isSameMissionId(missionId, item.id);
+                const isActive = isSameMissionId(item.id, effectiveMissionId);
 
                 return (
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => {
-                      setMissionId(item.id);
-                      setMissionSectionIds((current) => ({
-                        ...current,
-                        [item.id]: current[item.id] || item.criteria[0]?.sectionTitle || "",
-                      }));
-                      setMissionPageIndexes((current) => ({
-                        ...current,
-                        [item.id]: current[item.id] || 0,
-                      }));
-                    }}
+                    onClick={() => selectMission(item)}
                     className={`w-full rounded-md border p-3 text-left transition ${
                       isActive ? "border-[#76B82A] bg-[#EEF6E8]" : "border-slate-100 bg-[#F8FAFC] hover:bg-slate-100"
                     }`}
@@ -1248,16 +1549,27 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                     <p className={`mt-1 text-xs font-bold ${getProgressToneClass(progress)}`}>{progress}% complétée</p>
                   </button>
                 );
-              })
-            ) : (
-              <p className="rounded-md bg-[#EEF2F6] px-3 py-3 text-sm font-semibold text-slate-500">
-                Aucune mission ajoutée pour le moment.
-              </p>
-            )}
+              })}
+            </div>
+          ) : null}
+
+          <div className="rounded-md bg-white p-4 shadow-sm">
+            <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">Aide à la notation</h3>
+            <div className="space-y-2">
+              {gradingHelp.map((item) => (
+                <div key={item.level} className="flex items-center gap-2 text-[12px]">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-200 font-bold text-slate-500">
+                    {item.level}
+                  </span>
+                  <p className={`font-semibold ${item.color}`}>{item.text}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </article>
 
-        <article className="rounded-md bg-white p-4 shadow-sm">
+        <article className="space-y-4">
+          <div className="rounded-md bg-white p-4 shadow-sm">
           {mission ? (
             <>
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -1458,209 +1770,13 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
               Ajoutez une mission pour commencer votre auto-évaluation par mission.
             </div>
           )}
-        </article>
-
-        <div className="space-y-4">
-          <article className="rounded-md bg-white p-4 shadow-sm">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-[22px] font-bold text-[#0F3A63]">Synthèse de l'évaluation</h3>
-                <p className="mt-1 text-[12px] font-semibold text-slate-500">
-                  Score final = somme des scores de mission divisée par le nombre de missions notées.
-                </p>
-              </div>
-              <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">
-                Score final {finalMissionScore} / 5
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <p className="font-semibold text-[#0F3A63]">Progression globale des missions</p>
-                <span className={`font-bold ${getProgressToneClass(missionProgress)}`}>{missionProgress}%</span>
-              </div>
-              <div className="h-2 rounded-full bg-slate-200">
-                <div className={`h-2 rounded-full ${getProgressBarClass(missionProgress)}`} style={{ width: `${clampProgress(missionProgress)}%` }} />
-              </div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
-                  <p className="text-[11px] font-semibold text-slate-500">Missions</p>
-                  <p className="mt-1 text-lg font-black text-[#0F3A63]">{missionEvaluations.length}</p>
-                </div>
-                <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
-                  <p className="text-[11px] font-semibold text-slate-500">Missions soumises</p>
-                  <p className="mt-1 text-lg font-black text-[#0F3A63]">{submittedMissionsCount}</p>
-                </div>
-                <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
-                  <p className="text-[11px] font-semibold text-slate-500">Statut</p>
-                  <p className="mt-1 text-sm font-black text-[#0F3A63]">{evaluationData?.evaluation?.status || "En cours"}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* ── Anonymous annotations for managers/seniors ──────────────────────────
-                Scores stored here are NEVER passed to getMissionAverage() or
-                getMissionFinalScore(). They have zero impact on the assistant's score. */}
-            <div className="mt-5 rounded-md border border-[#D9E3EE] bg-[#F8FAFC] p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                
-                <div>
-                  <h4 className="text-sm font-bold text-[#0F3A63]">Annotations anonymes — Seniors &amp; Managers</h4>
-                  <p className="mt-1 text-[11px] font-semibold text-slate-500">
-                    Notez vos supérieurs sur les mêmes critères que vos missions et laissez un commentaire.
-                    Ces notes sont <span className="font-bold text-[#0F3A63]">anonymes</span> et{" "}
-                    <span className="font-bold text-[#0F3A63]">ne sont jamais comptabilisées dans votre score final</span>.
-                  </p>
-                </div>
-                <span className="rounded-full bg-white border border-[#D9E3EE] px-3 py-1 text-[11px] font-bold text-[#0F4A72]">
-                  Anonyme · Hors calcul
-                </span>
-              </div>
-
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                <select
-                  value={anonymousTargetValue}
-                  onChange={(event) => setAnonymousTargetValue(event.target.value)}
-                  className="h-10 w-full rounded-md border border-[#D9E3EE] bg-white px-3 text-sm font-semibold text-[#0F3A63] outline-none"
-                >
-                  <option value="">Sélectionner un senior ou manager</option>
-                  {anonymousTargetOptions.map((recipient) => {
-                    const value = getRecipientOptionValue(recipient);
-                    const isAlreadySelected = anonymousFeedback.some((item) => String(item.targetUserId || "") === String(recipient.id));
-
-                    return (
-                      <option key={value} value={value} disabled={isAlreadySelected}>
-                        {recipient.department} - {getRecipientLabel(recipient)}
-                        {isAlreadySelected ? " - déjà ajouté" : ""}
-                      </option>
-                    );
-                  })}
-                </select>
-                <button
-                  type="button"
-                  onClick={addAnonymousFeedbackTarget}
-                  disabled={!anonymousTargetValue}
-                  className="h-10 rounded-md bg-[#0B4C7A] px-4 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Ajouter
-                </button>
-              </div>
-
-              <div className="mt-4 space-y-4">
-                {anonymousFeedback.length ? (
-                  anonymousFeedback.map((item) => (
-                    <AnonymousFeedbackPanel
-                      key={item.targetUserId || item.targetName}
-                      item={item}
-                      onUpdateScore={updateAnonymousFeedbackScore}
-                      onUpdateComment={updateAnonymousFeedbackComment}
-                      onRemove={() => removeAnonymousFeedbackTarget(item.targetUserId)}
-                    />
-                  ))
-                ) : (
-                  <p className="rounded-md bg-white px-3 py-3 text-[12px] font-semibold text-slate-500">
-                    Aucune annotation ajoutée pour le moment.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-sm bg-[#DCECCB] px-3 py-2 text-[10px] font-semibold text-[#5A8A3A]">
-              La soumission finale est possible quand chaque mission a été soumise à son destinataire.
-            </div>
-
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    persistMissionEvaluations(missionEvaluations, {
-                      scope: "final",
-                    })
-                  }
-                  disabled={isSaving || isSubmitting}
-                  className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600 disabled:opacity-70"
-                >
-                  {isSaving ? "Sauvegarde..." : "Enregistrer"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={
-                    isSaving ||
-                    isSubmitting ||
-                    evaluationData?.evaluation?.status === "Soumis aux Managers" ||
-                    evaluationData?.evaluation?.status === "Soumis à la RH"
-                  }
-                  className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
-                >
-                  {isSubmitting ? "Soumission..." : "Finaliser l'évaluation"}
-                </button>
-              </div>
-            </div>
-            <div className="mt-3">
-              <InlineFeedback feedback={finalFeedback} />
-            </div>
-          </article>
-
-          <div className="space-y-4">
-            <article className="rounded-md bg-white p-4 shadow-sm">
-              <h3 className="mb-3 text-[22px] font-bold text-[#0F3A63]">Missions prêtes</h3>
-              <div className="space-y-3">
-                {missionEvaluations.length ? (
-                  missionEvaluations.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between text-[12px]">
-                      <div>
-                        <p className="font-semibold text-[#0F3A63]">{item.title}</p>
-                        <p className="text-[11px] text-slate-500">{item.period}</p>
-                      </div>
-                      <span className={`font-bold ${item.status === "Soumise" ? "text-green-600" : getProgressToneClass(getMissionProgress(item))}`}>
-                        {item.status === "Soumise" ? "Soumise" : `${getMissionProgress(item)}%`}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-slate-500">
-                    Aucune mission ajoutée pour le moment.
-                  </p>
-                )}
-              </div>
-            </article>
-
-            <article className="rounded-md bg-white p-4 shadow-sm">
-              <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">{"\u00C9valuateurs s\u00E9lectionn\u00E9s"}</h3>
-              <div className="space-y-2">
-                {selectedRecipientsSummary.length ? (
-                  selectedRecipientsSummary.map((recipient) => (
-                    <div key={`${recipient.department}-${recipient.name}`} className="rounded-md bg-[#F8FAFC] px-3 py-3">
-                      <p className="text-[12px] font-bold text-[#0F3A63]">{recipient.name}</p>
-                      <p className="mt-1 text-[11px] text-slate-500">{recipient.department}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-slate-500">
-                    {"Les personnes s\u00E9lectionn\u00E9es appara\u00EEtront ici d\u00E8s qu'une mission sera ajout\u00E9e."}
-                  </p>
-                )}
-              </div>
-            </article>
-
-            <article className="rounded-md bg-white p-4 shadow-sm">
-              <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">Aide à la notation</h3>
-              <div className="space-y-2">
-                {gradingHelp.map((item) => (
-                  <div key={item.level} className="flex items-center gap-2 text-[12px]">
-                    <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-200 font-bold text-slate-500">
-                      {item.level}
-                    </span>
-                    <p className={`font-semibold ${item.color}`}>{item.text}</p>
-                  </div>
-                ))}
-              </div>
-            </article>
-          </div>
         </div>
+
+          
+        </article>
       </section>
+      )}
+      </>
       )}
 
       {activeTab === "chef-comment" && (

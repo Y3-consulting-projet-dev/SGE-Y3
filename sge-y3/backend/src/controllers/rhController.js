@@ -804,7 +804,7 @@ function buildAssistantWeightedMissionScoreDetails({
           'Soumise a RH',
           'Soumise à la RH',
           'Soumise Ã  la RH',
-          'Soumise ÃƒÂ  la RH',
+          'Soumise à la RH',
         ].includes(item.status) || isManagerMissionSubmittedStatus(item.status))
     );
     const managerScore = weights.manager ? (managerMissionReview ? getMissionAverage(managerMissionReview.criteria || []) : getMissionReviewScoreById(managerReview?.mission_reviews || [], missionId, [
@@ -814,7 +814,7 @@ function buildAssistantWeightedMissionScoreDetails({
       'Soumise a RH',
       'Soumise à la RH',
       'Soumise Ã  la RH',
-      'Soumise ÃƒÂ  la RH',
+      'Soumise à la RH',
     ])) : null;
     const associateScore = getAssociateMissionScore(selfEvaluation, mission);
     const associateSections = getAssociateMissionSections(selfEvaluation, mission);
