@@ -36,7 +36,7 @@ const sideMenu = [
     items: [
       { key: "autoeval-managers", label: "Auto-évaluation Managers", icon: UsersRound },
       { key: "autoeval-associes", label: "Auto-évaluation Associés", icon: UsersRound },
-      { key: "autoeval-support", label: "Auto-évaluation Support", icon: UsersRound },
+      { key: "autoeval-support", label: "Evaluation support", icon: UsersRound },
     ],
   },
   {
@@ -69,7 +69,7 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
     if (activeSection === "committee") return "Comité d'évaluation";
     if (activeSection === "autoeval-managers") return "Auto-évaluation Managers";
     if (activeSection === "autoeval-associes") return "Auto-évaluation Associés";
-    if (activeSection === "autoeval-support") return "Auto-évaluation Support";
+    if (activeSection === "autoeval-support") return "Evaluation support";
     if (activeSection === "profile") return "Mon profil";
     return "Vue cabinet";
   }, [activeSection]);

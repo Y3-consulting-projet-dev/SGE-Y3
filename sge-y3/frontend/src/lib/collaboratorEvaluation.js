@@ -64,3 +64,17 @@ export function submitMyAssistantEvaluation(payload = {}) {
     body: JSON.stringify(payload),
   });
 }
+
+export function saveMyDevelopmentPlan(payload) {
+  return request("/collaborator/development/me", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function submitMyDevelopmentPlan(managerId) {
+  return request("/collaborator/development/me/submit", {
+    method: "POST",
+    body: JSON.stringify({ managerId }),
+  });
+}

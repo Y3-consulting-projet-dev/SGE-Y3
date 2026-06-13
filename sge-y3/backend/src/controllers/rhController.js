@@ -2800,15 +2800,6 @@ async function submitMyAssistantRhSelfEvaluation(request, response) {
     });
   }
 
-  const missingAssistantSectionComments = validateSectionCommentsForSubmit(normalizedSections, 3);
-
-  if (missingAssistantSectionComments.length) {
-    return response.status(400).json({
-      message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
-      missingSectionComments: missingAssistantSectionComments,
-    });
-  }
-
   const rhRecipients = await resolveFullRhRecipients();
 
   if (!rhRecipients.length) {
@@ -3220,6 +3211,83 @@ async function downloadRhReport(request, response) {
   return response.send(file.buffer);
 }
 
+async function getMyAssistantRhEvaluationResult(request, response) {
+  try {
+  const review = await ManagerMemberReview.findOne({
+    member_id: request.user._id,
+    cycle_label: CURRENT_CYCLE_LABEL,
+    template_type: 'rh-assistant-evaluation',
+  }).populate('manager_id', 'name grade department');
+
+  if (!review) {
+    const anyReview = await ManagerMemberReview.findOne({ member_id: request.user._id }).select('template_type cycle_label status');
+    console.log('[getMyAssistantRhEvaluationResult] member_id:', request.user._id, '| no rh-assistant-evaluation review found | other reviews:', anyReview ? JSON.stringify({ template_type: anyReview.template_type, cycle_label: anyReview.cycle_label, status: anyReview.status }) : 'none');
+    return response.json({ result: null });
+  }
+
+  const sections = normalizeSections(review.sections || []);
+
+  const sectionScores = sections.map((section) => ({
+    sectionId: section.id,
+    title: section.title,
+    average: getAverageScore(section),
+    comment: String(section.comment || '').trim(),
+    pages: (section.pages || []).map((page) => ({
+      title: page.title,
+      average: (() => {
+        const scores = (page.themes || []).map((t) => t.score).filter((s) => typeof s === 'number');
+        return scores.length ? Number((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2)) : null;
+      })(),
+    })),
+  }));
+
+  const reviewer = review.manager_id
+    ? { name: review.manager_id.name, grade: review.manager_id.grade, department: review.manager_id.department }
+    : null;
+
+  return response.json({
+    result: {
+      status: review.status,
+      submitted_at: review.submitted_at,
+      last_saved_at: review.last_saved_at,
+      overallAverage: getOverallAverageScore(sections),
+      sectionScores,
+      reviewer,
+    },
+  });
+  } catch (err) {
+    console.error('[getMyAssistantRhEvaluationResult] error:', err);
+    return response.status(500).json({ message: err.message || 'Erreur interne.', result: null });
+  }
+}
+
+async function getRhReceivedChiefComments(request, response) {
+  const userId = String(request.user._id);
+  const instances = await EvaluationInstance.find({
+    cycle_label: CURRENT_CYCLE_LABEL,
+    'chief_comments.target_user_id': request.user._id,
+  }).select('chief_comments');
+
+  const received = [];
+  for (const instance of instances) {
+    for (const comment of instance.chief_comments || []) {
+      if (
+        String(comment.target_user_id) === userId &&
+        comment.submitted_at &&
+        String(comment.comment || '').trim()
+      ) {
+        received.push({
+          comment: String(comment.comment).trim(),
+          submittedAt: comment.submitted_at,
+        });
+      }
+    }
+  }
+
+  received.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+  return response.json({ received });
+}
+
 module.exports = {
   addRhQuestionnaireQuestion,
   buildNonRhDepartmentClause,
@@ -3235,7 +3303,9 @@ module.exports = {
   getMyAssistantRhSelfEvaluation,
   getRhQuestionnaire,
   getMyRhSelfEvaluation,
+  getMyAssistantRhEvaluationResult,
   getRhOverview,
+  getRhReceivedChiefComments,
   getRhPopulation,
   getRhReports,
   getRhSyntheses,

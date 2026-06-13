@@ -209,3 +209,11 @@ export function submitRhSyntheses() {
     method: "POST",
   });
 }
+
+export function getRhReceivedComments() {
+  return request("/rh/received-comments");
+}
+
+export function getAssistantRhEvaluationResult() {
+  return request("/rh/my-evaluation-result");
+}

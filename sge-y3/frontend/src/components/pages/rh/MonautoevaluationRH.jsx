@@ -536,7 +536,7 @@ function MonautoevaluationRH({ assistantMode = false }) {
   }
 
   async function handleSubmit() {
-    if (!hasRequiredSubmissionComment(sections)) {
+    if (!assistantMode && !hasRequiredSubmissionComment(sections)) {
       setFeedbackTone("error");
       setFeedbackMessage("Un commentaire d'au moins 3 caractères est obligatoire pour chaque section avant soumission.");
       return;
@@ -918,7 +918,9 @@ function MonautoevaluationRH({ assistantMode = false }) {
                     isSaving ||
                     isSubmitting ||
                     evaluationData.evaluation.status === "Soumis aux Associés" ||
-                    evaluationData.evaluation.status === "Soumis à la RH"
+                    evaluationData.evaluation.status === "Soumis aux Associes" ||
+                    evaluationData.evaluation.status === "Soumis à la RH" ||
+                    evaluationData.evaluation.status === "Soumis a RH"
                   }
                   className="rounded-md bg-[#79B742] px-8 py-2 text-xs font-semibold text-white disabled:opacity-70"
                 >

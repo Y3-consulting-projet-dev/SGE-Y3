@@ -113,6 +113,48 @@ async function resolveAssociates() {
   }).select('_id name grade department');
 }
 
+async function resolveCommentTargetsForSupport(user) {
+  const userIdStr = String(user._id);
+  const all = await User.find({ is_active: true })
+    .sort({ last_name: 1, first_name: 1 })
+    .select('_id name first_name last_name grade department code_categorie');
+  return all
+    .filter((u) => String(u._id) !== userIdStr)
+    .map((u) => ({
+      id: u._id.toString(),
+      name: u.name,
+      first_name: u.first_name,
+      last_name: u.last_name,
+      grade: u.grade,
+      department: u.department,
+      code_categorie: u.code_categorie,
+    }));
+}
+
+function normalizeChiefComments(items = []) {
+  return items
+    .map((item) => ({
+      target_user_id: item.target_user_id || item.targetUserId || null,
+      target_name: String(item.target_name || item.targetName || '').trim(),
+      target_grade: String(item.target_grade || item.targetGrade || '').trim(),
+      target_department: String(item.target_department || item.targetDepartment || '').trim(),
+      comment: String(item.comment || '').trim(),
+      submitted_at: item.submitted_at || item.submittedAt || null,
+    }))
+    .filter((item) => item.target_name);
+}
+
+function formatChiefComments(items = []) {
+  return normalizeChiefComments(items).map((item) => ({
+    targetUserId: item.target_user_id ? String(item.target_user_id) : '',
+    targetName: item.target_name,
+    targetGrade: item.target_grade,
+    targetDepartment: item.target_department,
+    comment: item.comment,
+    submittedAt: item.submitted_at || null,
+  }));
+}
+
 async function getOrCreateSupportSelfEvaluation(user) {
   let instance = await EvaluationInstance.findOne({
     cycle_label: CURRENT_CYCLE_LABEL,
@@ -142,7 +184,7 @@ async function getOrCreateSupportSelfEvaluation(user) {
   return instance;
 }
 
-function buildSupportSelfPayload(instance, user, recipients = []) {
+function buildSupportSelfPayload(instance, user, recipients = [], commentTargets = []) {
   const sections = normalizeSections(instance.sections || []);
 
   return {
@@ -172,24 +214,28 @@ function buildSupportSelfPayload(instance, user, recipients = []) {
       grade: user.grade,
       department: user.department,
       email: user.email,
+      comment_targets: commentTargets,
     },
+    chief_comments: formatChiefComments(instance.chief_comments || []),
   };
 }
 
 module.exports = {
   async getSupportSelfEvaluation(request, response) {
-    const [instance, recipients] = await Promise.all([
+    const [instance, recipients, commentTargets] = await Promise.all([
       getOrCreateSupportSelfEvaluation(request.user),
       resolveAssociates(),
+      resolveCommentTargetsForSupport(request.user),
     ]);
 
-    return response.json(buildSupportSelfPayload(instance, request.user, recipients));
+    return response.json(buildSupportSelfPayload(instance, request.user, recipients, commentTargets));
   },
 
   async saveSupportSelfEvaluation(request, response) {
-    const [instance, recipients] = await Promise.all([
+    const [instance, recipients, commentTargets] = await Promise.all([
       getOrCreateSupportSelfEvaluation(request.user),
       resolveAssociates(),
+      resolveCommentTargetsForSupport(request.user),
     ]);
 
     const rawSections = Array.isArray(request.body?.sections) ? request.body.sections : [];
@@ -203,8 +249,47 @@ module.exports = {
 
     return response.json({
       message: 'Auto-évaluation support enregistrée.',
-      ...buildSupportSelfPayload(instance, request.user, recipients),
+      ...buildSupportSelfPayload(instance, request.user, recipients, commentTargets),
     });
+  },
+
+  async saveSupportChiefComments(request, response) {
+    const rawItems = Array.isArray(request.body?.chiefComments) ? request.body.chiefComments : [];
+    const instance = await getOrCreateSupportSelfEvaluation(request.user);
+    instance.chief_comments = normalizeChiefComments(rawItems);
+    instance.last_saved_at = new Date();
+    await instance.save();
+    return response.json({
+      message: 'Commentaires enregistrés.',
+      chief_comments: formatChiefComments(instance.chief_comments),
+    });
+  },
+
+  async getReceivedSupportChiefComments(request, response) {
+    const userId = String(request.user._id);
+    const instances = await EvaluationInstance.find({
+      cycle_label: CURRENT_CYCLE_LABEL,
+      'chief_comments.target_user_id': request.user._id,
+    }).select('chief_comments');
+
+    const received = [];
+    for (const instance of instances) {
+      for (const comment of instance.chief_comments || []) {
+        if (
+          String(comment.target_user_id) === userId &&
+          comment.submitted_at &&
+          String(comment.comment || '').trim()
+        ) {
+          received.push({
+            comment: String(comment.comment).trim(),
+            submittedAt: comment.submitted_at,
+          });
+        }
+      }
+    }
+
+    received.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+    return response.json({ received });
   },
 
   async submitSupportSelfEvaluation(request, response) {
