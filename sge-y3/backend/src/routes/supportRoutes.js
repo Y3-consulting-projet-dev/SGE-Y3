@@ -8,17 +8,8 @@ const {
   getReceivedSupportChiefComments,
 } = require('../controllers/supportController');
 const { requireAuth } = require('../middleware/authMiddleware');
-const { normalizeEmail } = require('../utils/userMapping');
-
-const SUPPORT_EMAILS = new Set([
-  'fleur.nguessan@ycubeac.com',
-  'porthela.kakou@ycubeac.com',
-  'aziz.ouattara@ycubeac.com',
-  'adele.creppy@ycubeac.com',
-]);
-
 function requireSupport(request, response, next) {
-  if (SUPPORT_EMAILS.has(normalizeEmail(request.user?.email || ''))) {
+  if (String(request.user?.department || '').toUpperCase() === 'SUPPORT') {
     return next();
   }
 

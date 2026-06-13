@@ -42,7 +42,6 @@ const QUESTIONNAIRE_AUDIENCE_OPTIONS = [
   'Managers et Seniors',
   'RH / Capital Humain',
 ];
-const FULL_RH_EMAILS = ['isabella.beda@ycubeac.com'];
 const RH_DEPARTMENT_REGEX = /^RH$/i;
 const CAPITAL_HUMAIN_DEPARTMENT_REGEX = /^CAPITAL HUMAIN$/i;
 
@@ -370,7 +369,6 @@ async function resolveFullRhRecipients() {
     is_active: true,
     $or: [
       buildRhDepartmentClause(),
-      { email: { $in: FULL_RH_EMAILS } },
       { first_name: /ISABELLA/i, last_name: /BEDA/i },
     ],
   })

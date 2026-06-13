@@ -16,7 +16,6 @@ const {
   validateSectionCommentsForSubmit,
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
-const FULL_RH_EMAILS = ['isabella.beda@ycubeac.com'];
 const RH_DEPARTMENT_REGEX = /^RH$/i;
 const CAPITAL_HUMAIN_DEPARTMENT_REGEX = /^CAPITAL HUMAIN$/i;
 
@@ -269,7 +268,6 @@ async function resolveRhRecipients() {
     $or: [
       { department: RH_DEPARTMENT_REGEX },
       { department: CAPITAL_HUMAIN_DEPARTMENT_REGEX },
-      { email: { $in: FULL_RH_EMAILS } },
       { first_name: /ISABELLA/i, last_name: /BEDA/i },
     ],
   })

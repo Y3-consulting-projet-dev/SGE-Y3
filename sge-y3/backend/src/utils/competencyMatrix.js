@@ -1,14 +1,8 @@
 const matrixData = require('../data/competencyMatrix.generated.json');
-const { normalizeDepartment, normalizeEmail, normalizeText } = require('./userMapping');
+const { normalizeDepartment, normalizeText } = require('./userMapping');
 const { readQuestionnaireConfig } = require('./questionnaireConfig');
 
 const SECTION_ORDER = ['SAVOIR FAIRE', 'SAVOIR ETRE'];
-const SUPPORT_ROLE_BY_EMAIL = {
-  'fleur.nguessan@ycubeac.com': 'Office Manager',
-  'aziz.ouattara@ycubeac.com': 'PMO',
-  'porthela.kakou@ycubeac.com': 'Responsable IT',
-  'adele.creppy@ycubeac.com': 'Comptable Interne Senior',
-};
 
 function getSupportCommonGradeKey(user = {}) {
   const source = normalizeDepartment(`${user.grade || ''} ${user.code_categorie || ''}`);
@@ -101,7 +95,13 @@ function getStatementForGrade(statements = {}, gradeColumnKey) {
     return statements['Associé'] || statements['Associ?'] || '';
   }
 
-  return statements[gradeColumnKey] || '';
+  const lowerKey = String(gradeColumnKey).toLowerCase();
+  const matchingKey = Object.keys(statements).find((k) => k.toLowerCase() === lowerKey);
+  if (matchingKey) {
+    return statements[matchingKey];
+  }
+
+  return '';
 }
 
 function getSourceLabel(sheetName) {
@@ -250,12 +250,12 @@ function applyCustomQuestionnaire(sectionsMap, orderedSectionKeys, sheetNames, g
 }
 
 function buildEvaluationTemplateForUser(user = {}) {
-  const supportRoleKey = SUPPORT_ROLE_BY_EMAIL[normalizeEmail(user.email || '')];
-  const gradeColumnKey = supportRoleKey || getGradeColumnKey(user.grade);
+  const isSupport = String(user.department || '').toUpperCase() === 'SUPPORT';
+  const gradeColumnKey = isSupport ? user.grade : getGradeColumnKey(user.grade);
   const supportCommonGradeKey = getSupportCommonGradeKey(user);
-  const sheetNames = supportRoleKey ? ['TRONC COMMUN', 'SERVICE SUPPORT'] : getSheetNamesForDepartment(user.department);
+  const sheetNames = isSupport ? ['TRONC COMMUN', 'SERVICE SUPPORT'] : getSheetNamesForDepartment(user.department);
   const getGradeColumnKeyForSheet = (sheetName) =>
-    supportRoleKey && sheetName === 'TRONC COMMUN' ? supportCommonGradeKey : gradeColumnKey;
+    isSupport && sheetName === 'TRONC COMMUN' ? supportCommonGradeKey : gradeColumnKey;
   const orderedSectionKeys = [...SECTION_ORDER];
 
   const sectionsMap = new Map(

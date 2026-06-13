@@ -5,12 +5,6 @@ const ManagerMemberReview = require('../models/ManagerMemberReview');
 const SeniorAssistantReview = require('../models/SeniorAssistantReview');
 const { getOverallAverageScore } = require('../utils/evaluationHelpers');
 
-const SUPPORT_COMMITTEE_EMAILS = [
-  'fleur.nguessan@ycubeac.com',
-  'porthela.kakou@ycubeac.com',
-  'aziz.ouattara@ycubeac.com',
-  'adele.creppy@ycubeac.com',
-];
 
 const DEFAULT_CYCLE_LABEL = 'Cycle 2025-2026';
 
@@ -126,7 +120,7 @@ async function listCommitteeParticipants(request, response) {
   } else if (scope === 'support') {
     users = await User.find({
       is_active: true,
-      email: { $in: SUPPORT_COMMITTEE_EMAILS },
+      department: 'SUPPORT',
     })
       .sort({ last_name: 1, first_name: 1 })
       .select('_id name first_name last_name grade department');
