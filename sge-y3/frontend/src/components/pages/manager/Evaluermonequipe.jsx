@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   createManagerMemberMission,
+  decideTrainingRequests,
   getManagerMemberEvaluation,
   saveManagerMemberMissionReviews,
   saveManagerMemberEvaluation,
@@ -280,6 +281,9 @@ function Evaluermonequipe({ member }) {
   const [errorMessage, setErrorMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [trainingDecisionComment, setTrainingDecisionComment] = useState("");
+  const [isDecidingTraining, setIsDecidingTraining] = useState(false);
+  const [trainingDecisionFeedback, setTrainingDecisionFeedback] = useState({ text: "", ok: true });
 
   useEffect(() => {
     let cancelled = false;
@@ -902,7 +906,7 @@ function Evaluermonequipe({ member }) {
             <article className="space-y-4">
               <div className="rounded-md border border-[#D9E3EE] bg-white p-4 shadow-sm">
                 <div className="mb-3">
-                  <p className="text-sm font-bold text-[#0B4C7A]">Nouvelle mission pour ce membre</p>
+                  <p className="text-sm font-bold text-[#0B4C7A]">Assigner une mission</p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
                     Renseignez le titre, la date de début et la date de fin. Le membre la recevra dans son auto-évaluation par mission.
                   </p>
@@ -1641,6 +1645,167 @@ function Evaluermonequipe({ member }) {
           </>
         )}
       </section>
+
+      {(selfEvaluation.development?.wishes || (selfEvaluation.development?.trainingRequests || []).length > 0) && (
+        <div className="rounded-md border border-[#D9E3EE] bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-sm font-bold text-[#0F3A63]">Plan de développement</p>
+            <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${selfEvaluation.development.status === "Soumis au Manager" ? "bg-[#DCECCB] text-[#2A5C08]" : "bg-slate-100 text-slate-500"}`}>
+              {selfEvaluation.development.status === "Soumis au Manager" ? "Soumis au Manager" : "Brouillon"}
+            </span>
+          </div>
+
+          {selfEvaluation.development.wishes ? (
+            <div className="mb-3">
+              <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-500">
+                Souhaits d'évolution
+              </p>
+              <p className="rounded-md bg-[#F8FAFC] p-3 text-sm font-semibold text-[#0F3A63]">
+                {selfEvaluation.development.wishes}
+              </p>
+            </div>
+          ) : null}
+
+          {(selfEvaluation.development.trainingRequests || []).length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                Formations demandées
+              </p>
+              <ul className="mb-4 space-y-1.5">
+                {selfEvaluation.development.trainingRequests.map((item, index) => (
+                  <li
+                    key={index}
+                    className="rounded-md border border-[#D5DBEE] bg-[#F0F3FA] px-3 py-2 text-sm font-semibold text-[#0F3A63]"
+                  >
+                    {item}
+                  </li>
+                ))}
+              </ul>
+
+              {/* Décision du manager */}
+              {selfEvaluation.development.status === "Soumis au Manager" && (() => {
+                const decision = selfEvaluation.development.trainingDecision || "En attente";
+                const alreadyDecided = decision === "Accepté" || decision === "Refusé";
+
+                async function handleDecision(choix) {
+                  setIsDecidingTraining(true);
+                  setTrainingDecisionFeedback({ text: "", ok: true });
+                  try {
+                    await decideTrainingRequests(member.id, choix, trainingDecisionComment);
+                    setReviewData((prev) => ({
+                      ...prev,
+                      self_evaluation: {
+                        ...prev.self_evaluation,
+                        development: {
+                          ...prev.self_evaluation.development,
+                          trainingDecision: choix,
+                          trainingManagerComment: trainingDecisionComment,
+                          trainingDecidedAt: new Date().toISOString(),
+                        },
+                      },
+                    }));
+                    setTrainingDecisionFeedback({
+                      text: choix === "Accepté" ? "Demandes de formation acceptées." : "Demandes de formation refusées.",
+                      ok: true,
+                    });
+                  } catch (err) {
+                    setTrainingDecisionFeedback({ text: err.message || "Erreur lors de la décision.", ok: false });
+                  } finally {
+                    setIsDecidingTraining(false);
+                  }
+                }
+
+                return (
+                  <div className="border-t border-slate-100 pt-3">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                      Décision du manager
+                    </p>
+
+                    {alreadyDecided ? (
+                      <div className="space-y-2">
+                        <span className={`inline-block rounded-full px-3 py-1 text-[11px] font-bold ${decision === "Accepté" ? "bg-[#DCECCB] text-[#2A5C08]" : "bg-red-100 text-red-700"}`}>
+                          {decision}
+                        </span>
+                        {selfEvaluation.development.trainingManagerComment && (
+                          <p className="rounded-md bg-[#F8FAFC] p-2 text-xs font-semibold text-[#0F3A63]">
+                            {selfEvaluation.development.trainingManagerComment}
+                          </p>
+                        )}
+                        {selfEvaluation.development.trainingDecidedAt && (
+                          <p className="text-[11px] text-slate-400">
+                            Décidé le {new Date(selfEvaluation.development.trainingDecidedAt).toLocaleDateString("fr-FR")}
+                          </p>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReviewData((prev) => ({
+                              ...prev,
+                              self_evaluation: {
+                                ...prev.self_evaluation,
+                                development: {
+                                  ...prev.self_evaluation.development,
+                                  trainingDecision: "En attente",
+                                  trainingManagerComment: "",
+                                  trainingDecidedAt: null,
+                                },
+                              },
+                            }));
+                            setTrainingDecisionComment("");
+                            setTrainingDecisionFeedback({ text: "", ok: true });
+                          }}
+                          className="text-[11px] font-semibold text-slate-400 underline hover:text-slate-600"
+                        >
+                          Modifier la décision
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <textarea
+                          rows={2}
+                          value={trainingDecisionComment}
+                          onChange={(e) => setTrainingDecisionComment(e.target.value)}
+                          placeholder="Commentaire optionnel..."
+                          className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[12px] text-[#0F3A63] outline-none focus:ring-1 focus:ring-[#001871]"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            disabled={isDecidingTraining}
+                            onClick={() => handleDecision("Accepté")}
+                            className="rounded-md bg-[#78BE20] px-4 py-2 text-[12px] font-bold text-white hover:opacity-90 disabled:opacity-50"
+                          >
+                            Accepter
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isDecidingTraining}
+                            onClick={() => handleDecision("Refusé")}
+                            className="rounded-md bg-red-600 px-4 py-2 text-[12px] font-bold text-white hover:opacity-90 disabled:opacity-50"
+                          >
+                            Refuser
+                          </button>
+                        </div>
+                        {trainingDecisionFeedback.text && (
+                          <p className={`text-[12px] font-semibold ${trainingDecisionFeedback.ok ? "text-[#76B82A]" : "text-red-600"}`}>
+                            {trainingDecisionFeedback.text}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {selfEvaluation.development.submittedAt && (
+            <p className="mt-3 text-xs text-slate-400">
+              Envoyé le {new Date(selfEvaluation.development.submittedAt).toLocaleDateString("fr-FR")}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

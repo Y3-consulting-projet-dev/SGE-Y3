@@ -12,7 +12,9 @@ const {
   getMyAssistantRhSelfEvaluation,
   getRhQuestionnaire,
   getMyRhSelfEvaluation,
+  getMyAssistantRhEvaluationResult,
   getRhOverview,
+  getRhReceivedChiefComments,
   getRhPopulation,
   getRhReports,
   getRhSyntheses,
@@ -61,5 +63,7 @@ router.get('/validations', requireAuth, requireRh, getRhValidations);
 router.post('/validations/confirm', requireAuth, requireRh, validateRhSelection);
 router.get('/syntheses', requireAuth, requireRh, getRhSyntheses);
 router.post('/syntheses/submit', requireAuth, requireRh, submitRhSyntheses);
+router.get('/my-evaluation-result', requireAuth, requireRh, getMyAssistantRhEvaluationResult);
+router.get('/received-comments', requireAuth, requireRh, getRhReceivedChiefComments);
 
 module.exports = router;

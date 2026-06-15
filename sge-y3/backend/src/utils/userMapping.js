@@ -25,8 +25,6 @@ const CATEGORY_BY_GRADE = {
 };
 
 const ALLOWED_GRADES = Object.keys(CATEGORY_BY_GRADE);
-const ASSISTANT_RH_EMAIL = 'fatoumata.ouattara@ycubeac.com';
-const FULL_RH_EMAILS = ['isabella.beda@ycubeac.com'];
 
 function normalizeText(value = '') {
   return String(value).replace(/\s+/g, ' ').trim();
@@ -67,22 +65,19 @@ function getFullName(user = {}) {
 }
 
 function isFullRh(user = {}) {
-  const email = normalizeEmail(user.email || '');
   const fullName = getFullName(user);
-
-  return FULL_RH_EMAILS.includes(email) || (fullName.includes('ISABELLA') && fullName.includes('BEDA'));
+  return fullName.includes('ISABELLA') && fullName.includes('BEDA');
 }
 
 function getPermissionRole(user = {}) {
   const grade = normalizeText(user.grade || '');
   const department = normalizeDepartment(user.department || '');
-  const email = normalizeEmail(user.email || '');
 
   if (isFullRh(user)) {
     return 'admin';
   }
 
-  if (email === ASSISTANT_RH_EMAIL || ((department === 'RH' || department === 'CAPITAL HUMAIN') && grade === 'Assistant')) {
+  if ((department === 'RH' || department === 'CAPITAL HUMAIN') && grade === 'Assistant') {
     return 'rh_assistant';
   }
 

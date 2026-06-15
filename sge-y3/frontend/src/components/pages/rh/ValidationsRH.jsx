@@ -358,7 +358,7 @@ function ValidationsRH({ readOnly = false, onOpenAssistantEvaluation }) {
                           event.target.checked ? [...current, row.id] : current.filter((id) => id !== row.id)
                         )
                       }
-                      disabled={readOnly || (row.sourceType === "assistant-rh-self-evaluation" && typeof row.managerScore !== "number")}
+                      disabled={readOnly}
                     />
                   </td>
                   <td className="px-4 py-4">
@@ -369,8 +369,13 @@ function ValidationsRH({ readOnly = false, onOpenAssistantEvaluation }) {
                     {row.sourceType === "assistant-rh-self-evaluation" ? (
                       <button
                         type="button"
-                        onClick={() => onOpenAssistantEvaluation?.(row)}
-                        className="mt-2 rounded-full bg-[#0D496A] px-3 py-1 text-[11px] font-bold text-white"
+                        onClick={() => !readOnly && onOpenAssistantEvaluation?.(row)}
+                        disabled={readOnly}
+                        className={`mt-2 rounded-full px-3 py-1 text-[11px] font-bold ${
+                          readOnly
+                            ? "cursor-not-allowed bg-slate-200 text-slate-400"
+                            : "bg-[#0D496A] text-white"
+                        }`}
                       >
                         Evaluer
                       </button>

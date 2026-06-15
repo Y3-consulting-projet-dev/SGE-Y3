@@ -3,6 +3,7 @@ const express = require('express');
 const {
   addMissionToManagerMember,
   addMyManagerMissionEvaluation,
+  decideTrainingRequests,
   getMyManagerEvaluation,
   getManagerMemberEvaluation,
   getManagerOverview,
@@ -33,5 +34,6 @@ router.post('/members/:memberId/evaluation/submit', requireAuth, requireManager,
 router.post('/members/:memberId/evaluation/missions', requireAuth, requireManager, addMissionToManagerMember);
 router.put('/members/:memberId/evaluation/missions', requireAuth, requireManager, saveManagerMemberMissionReviews);
 router.post('/members/:memberId/evaluation/missions/:missionId/submit', requireAuth, requireManager, submitManagerMemberMissionReview);
+router.put('/members/:memberId/training-decision', requireAuth, requireManager, decideTrainingRequests);
 
 module.exports = router;

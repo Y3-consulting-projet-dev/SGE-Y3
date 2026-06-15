@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardCheck, ClipboardList, FileText, LayoutDashboard, Scale, Settings2, Table2, UsersRound } from "lucide-react";
+import { BarChart3, ClipboardCheck, ClipboardList, FileText, LayoutDashboard, MessageSquare, Scale, Settings2, Table2, UsersRound } from "lucide-react";
 
 export const rhMenuGroups = [
   {
@@ -26,6 +26,10 @@ export const rhMenuGroups = [
   {
     title: "Comite",
     items: [{ key: "committee", label: "Comité d'évaluation", icon: UsersRound }],
+  },
+  {
+    title: "Commentaires",
+    items: [{ key: "received-comments", label: "Commentaires reçus", icon: MessageSquare }],
   },
   {
     title: "Compte",

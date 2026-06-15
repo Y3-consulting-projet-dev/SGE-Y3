@@ -42,3 +42,14 @@ export function submitSupportSelfEvaluation() {
     method: "POST",
   });
 }
+
+export function saveSupportChiefComments(chiefComments) {
+  return request("/support/chief-comments", {
+    method: "PUT",
+    body: JSON.stringify({ chiefComments }),
+  });
+}
+
+export function getReceivedSupportChiefComments() {
+  return request("/support/chief-comments/received");
+}

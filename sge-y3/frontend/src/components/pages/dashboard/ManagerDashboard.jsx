@@ -10,7 +10,7 @@ import ProfilePanel from "@/components/profile/ProfilePanel";
 import CommentairesRecus from "@/components/CommentairesRecus";
 import logoY3 from "@/assets/logo-y3.png";
 import { getDisplayName, getInitials } from "@/lib/userPresentation";
-import { createManagerMemberMission, getManagerMemberEvaluation, getManagerOverview, getManagerSelfEvaluation } from "@/lib/managerOverview";
+import { getManagerMemberEvaluation, getManagerOverview, getManagerSelfEvaluation } from "@/lib/managerOverview";
 
 const sidebarSections = [
   {
@@ -280,6 +280,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
             </div>
           </article>
         </section>
+
       </>
     );
   };
@@ -303,7 +304,10 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
                   {section.items.map((item) => {
                     const Icon = item.icon;
                     const isActive = activeSection === item.key;
-                    const badge = item.key === "comments" ? (overviewData?.anonymousComments || []).length : 0;
+                    const badge =
+                      item.key === "comments" ? (overviewData?.anonymousComments || []).length :
+                      item.key === "team" ? (overviewData?.summary?.pendingTrainingCount || 0) :
+                      0;
 
                     return (
                       <button
@@ -387,6 +391,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
               relanceMessage={relanceMessage}
               members={members}
               extraMembers={[]}
+              pendingTrainingIds={new Set((overviewData?.pendingTrainingRequests || []).map((item) => item.memberId))}
             />
           ) : activeSection === "team-goals" ? (
             <Objectifsequipe createSignal={createGoalSignal} />
@@ -408,8 +413,6 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
                 emptyAssistantsMessage="Aucun assistant rattaché à ce Manager."
                 exportFileNamePrefix="resultats-mission-assistant-manager"
                 fetchAssistantEvaluation={getManagerMemberEvaluation}
-                assignMission={createManagerMemberMission}
-                assignLabel="Membre de l'équipe"
               />
             )
           ) : activeSection === "reports" ? (

@@ -6,6 +6,8 @@ const {
   saveMyAssistantEvaluation,
   submitMyAssistantMissionEvaluation,
   submitMyAssistantEvaluation,
+  saveMyDevelopment,
+  submitMyDevelopment,
 } = require('../controllers/collaboratorEvaluationController');
 const { requireAuth } = require('../middleware/authMiddleware');
 const { requireAssistant } = require('../middleware/collaboratorMiddleware');
@@ -17,5 +19,7 @@ router.get('/results/me', requireAuth, requireAssistant, getMyAssistantResults);
 router.put('/evaluation/me', requireAuth, requireAssistant, saveMyAssistantEvaluation);
 router.post('/evaluation/me/missions/submit', requireAuth, requireAssistant, submitMyAssistantMissionEvaluation);
 router.post('/evaluation/me/submit', requireAuth, requireAssistant, submitMyAssistantEvaluation);
+router.put('/development/me', requireAuth, requireAssistant, saveMyDevelopment);
+router.post('/development/me/submit', requireAuth, requireAssistant, submitMyDevelopment);
 
 module.exports = router;
