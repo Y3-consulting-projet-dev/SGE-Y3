@@ -17,11 +17,12 @@ const criterionSchema = new mongoose.Schema(
 const pageThemeSchema = new mongoose.Schema(
   {
     theme_id: { type: String, required: true, trim: true },
-    code: { type: String, required: true, trim: true },
+    code: { type: String, default: '', trim: true },
     label: { type: String, required: true, trim: true },
     statement: { type: String, default: '', trim: true },
     score: { type: Number, default: null, min: 1, max: 5 },
     required: { type: Boolean, default: true },
+    is_custom: { type: Boolean, default: false },
   },
   { _id: false }
 );
@@ -34,6 +35,7 @@ const pageSchema = new mongoose.Schema(
     source_label: { type: String, default: '', trim: true },
     comment: { type: String, default: '', trim: true },
     themes: { type: [pageThemeSchema], default: [] },
+    is_custom: { type: Boolean, default: false },
   },
   { _id: false, id: false }
 );
@@ -64,6 +66,7 @@ const missionCriterionSchema = new mongoose.Schema(
     label: { type: String, required: true, trim: true },
     statement: { type: String, default: '', trim: true },
     score: { type: Number, default: null, min: 1, max: 5 },
+    is_custom: { type: Boolean, default: false },
   },
   { _id: false }
 );

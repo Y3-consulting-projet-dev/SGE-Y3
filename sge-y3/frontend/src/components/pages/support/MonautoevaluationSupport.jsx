@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
 import {
@@ -60,6 +60,19 @@ function getGroupStats(sections = []) {
   };
 }
 
+function InlineFeedback({ feedback }) {
+  if (!feedback?.message) return null;
+  return (
+    <div
+      className={`rounded-md px-3 py-2 text-xs font-semibold ${
+        feedback.tone === "error" ? "bg-[#FDEBEC] text-[#B93840]" : "bg-[#DCECCB] text-[#184D2E]"
+      }`}
+    >
+      {feedback.message}
+    </div>
+  );
+}
+
 function ScoreButtons({ value, onChange }) {
   return (
     <div className="flex overflow-hidden rounded-md border border-slate-200">
@@ -87,6 +100,11 @@ function MonautoevaluationSupport({ user }) {
   const [pageIndexes, setPageIndexes] = useState({});
   const [status, setStatus] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [customTitre, setCustomTitre] = useState("");
+  const [customLabel, setCustomLabel] = useState("");
+  const [customStatement, setCustomStatement] = useState("");
+  const [customCriterionFeedback, setCustomCriterionFeedback] = useState(null);
+  const customCriterionCounterRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -193,6 +211,87 @@ function MonautoevaluationSupport({ user }) {
     const nextSections = groupKey === "domain" ? domainSections : commonSections;
     setActiveEvaluationGroup(groupKey);
     setActiveSectionId(nextSections[0]?.id || "");
+    setStatus("");
+  }
+
+  function addCustomTheme() {
+    const titre = customTitre.trim();
+    const label = customLabel.trim();
+
+    if (!titre || !label) {
+      setCustomCriterionFeedback({ tone: "error", message: "Renseignez un titre et le libellé de la compétence." });
+      return;
+    }
+
+    customCriterionCounterRef.current += 1;
+    const suffix = `${Date.now()}-${customCriterionCounterRef.current}`;
+
+    const newTheme = {
+      theme_id: `custom-theme-${suffix}`,
+      code: "",
+      label,
+      statement: customStatement.trim(),
+      score: null,
+      required: true,
+      is_custom: true,
+    };
+
+    const existingPageIndex = (activeSection.pages || []).findIndex((page) => page.is_custom && page.title === titre);
+
+    setSections((current) =>
+      current.map((section) => {
+        if (section.id !== activeSection.id) return section;
+
+        if (existingPageIndex >= 0) {
+          return {
+            ...section,
+            pages: section.pages.map((page, index) =>
+              index !== existingPageIndex ? page : { ...page, themes: [...(page.themes || []), newTheme] }
+            ),
+          };
+        }
+
+        const newPage = {
+          page_id: `custom-page-${suffix}`,
+          title: titre,
+          source_sheet: "",
+          source_label: "",
+          comment: "",
+          is_custom: true,
+          themes: [newTheme],
+        };
+
+        return { ...section, pages: [...(section.pages || []), newPage] };
+      })
+    );
+
+    const targetPageIndex = existingPageIndex >= 0 ? existingPageIndex : (activeSection.pages || []).length;
+    setActivePageIndex(activeSection.id, targetPageIndex);
+
+    setCustomTitre("");
+    setCustomLabel("");
+    setCustomStatement("");
+    setCustomCriterionFeedback({ tone: "success", message: "Compétence ajoutée." });
+    setStatus("");
+  }
+
+  function removeCustomTheme(pageId, themeId) {
+    setSections((current) =>
+      current.map((section) => {
+        if (section.id !== activeSection.id) return section;
+
+        return {
+          ...section,
+          pages: section.pages
+            .map((page) =>
+              (page.page_id || page.id) !== pageId
+                ? page
+                : { ...page, themes: (page.themes || []).filter((theme) => (theme.theme_id || theme.id) !== themeId) }
+            )
+            .filter((page) => !page.is_custom || (page.themes || []).length > 0),
+        };
+      })
+    );
     setStatus("");
   }
 
@@ -350,7 +449,12 @@ function MonautoevaluationSupport({ user }) {
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs font-bold uppercase text-slate-500">{activeSection.title}</p>
-              <h3 className="mt-1 text-xl font-black text-[#0F3A63]">{activePage.title}</h3>
+              <div className="mt-1 flex items-center gap-2">
+                <h3 className="text-xl font-black text-[#0F3A63]">{activePage.title}</h3>
+                {activePage.is_custom ? (
+                  <span className="rounded-full bg-[#FFF4D6] px-2 py-0.5 text-[10px] font-bold text-[#92660A]">Titre ajouté</span>
+                ) : null}
+              </div>
             </div>
             <span className="rounded-full bg-[#EEF6E8] px-3 py-1 text-xs font-bold text-[#4E8B1B]">
               Titre {activePageIndex + 1} / {activeSection.pages.length}
@@ -369,21 +473,73 @@ function MonautoevaluationSupport({ user }) {
                     : "border-[#D9E3EE] bg-white text-slate-600 hover:bg-slate-50"
                 }`}
               >
-                <p className="text-[11px] font-bold">Titre {index + 1}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-bold">Titre {index + 1}</p>
+                  {page.is_custom ? (
+                    <span className="rounded-full bg-[#FFF4D6] px-1.5 py-0.5 text-[9px] font-bold text-[#92660A]">Ajouté</span>
+                  ) : null}
+                </div>
                 <p className="mt-1 text-[12px] font-semibold">{page.title}</p>
                 <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(getPageProgress(page))}`}>{getPageProgress(page)}%</p>
               </button>
             ))}
           </div>
 
+          <div className="mb-4 rounded-md border border-dashed border-[#D9E3EE] bg-[#F8FBFF] p-3">
+            <p className="text-xs font-extrabold text-[#0F3A63]">Ajouter un titre</p>
+            <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
+              <input
+                type="text"
+                value={customTitre}
+                onChange={(event) => setCustomTitre(event.target.value)}
+                placeholder="Titre du groupe"
+                className="rounded-md border border-slate-200 px-3 py-2 text-xs text-[#0F3A63] outline-none"
+              />
+              <input
+                type="text"
+                value={customLabel}
+                onChange={(event) => setCustomLabel(event.target.value)}
+                placeholder="Libellé de la compétence"
+                className="rounded-md border border-slate-200 px-3 py-2 text-xs text-[#0F3A63] outline-none"
+              />
+            </div>
+            <textarea
+              value={customStatement}
+              onChange={(event) => setCustomStatement(event.target.value)}
+              placeholder="Description (optionnel)"
+              className="mt-2 min-h-[60px] w-full resize-none rounded-md border border-slate-200 px-3 py-2 text-xs text-[#0F3A63] outline-none"
+            />
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <InlineFeedback feedback={customCriterionFeedback} />
+              <button
+                type="button"
+                onClick={addCustomTheme}
+                className="ml-auto rounded-md bg-[#0F3A63] px-3 py-2 text-xs font-bold text-white"
+              >
+                Ajouter le titre
+              </button>
+            </div>
+          </div>
+
           <div className="space-y-4">
             {activePage.themes.map((theme) => (
               <div key={theme.theme_id || theme.id} className="rounded-lg border border-slate-100 bg-[#F8FAFC] p-4">
-                <div className="mb-3">
-                  <p className="text-sm font-bold text-[#0F3A63]">
-                    {theme.code}. {theme.label}
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-slate-600">{theme.statement}</p>
+                <div className="mb-3 flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-bold text-[#0F3A63]">
+                      {theme.code ? `${theme.code}. ` : ""}{theme.label}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">{theme.statement}</p>
+                  </div>
+                  {theme.is_custom ? (
+                    <button
+                      type="button"
+                      onClick={() => removeCustomTheme(activePage.page_id || activePage.id, theme.theme_id || theme.id)}
+                      className="shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500 hover:bg-slate-200"
+                    >
+                      Retirer
+                    </button>
+                  ) : null}
                 </div>
                 <ScoreButtons value={theme.score} onChange={(score) => updateThemeScore(theme.theme_id || theme.id, score)} />
               </div>

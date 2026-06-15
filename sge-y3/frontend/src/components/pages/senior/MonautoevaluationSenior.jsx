@@ -230,13 +230,24 @@ function InlineFeedback({ feedback }) {
   );
 }
 
-function MissionScoreRow({ criterion, onSelect }) {
+function MissionScoreRow({ criterion, onSelect, onRemove }) {
   return (
     <div className="rounded-md border border-[#E3EAF3] bg-[#F8FBFF] p-3">
-      <p className="text-[12px] font-semibold text-[#0F3A63]">
-        {criterion.themeCode ? `${criterion.themeCode}. ` : ""}
-        {criterion.label}
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[12px] font-semibold text-[#0F3A63]">
+          {criterion.themeCode ? `${criterion.themeCode}. ` : ""}
+          {criterion.label}
+        </p>
+        {onRemove ? (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500 hover:bg-slate-200"
+          >
+            Retirer
+          </button>
+        ) : null}
+      </div>
       {criterion.statement ? <p className="mt-1 text-[11px] leading-5 text-slate-600">{criterion.statement}</p> : null}
       <div className="mt-2 flex items-center gap-2">
         {[1, 2, 3, 4, 5].map((score) => (
@@ -278,7 +289,12 @@ function MonautoevaluationSenior({ user }) {
   const [activeTab, setActiveTab] = useState("synthese");
   const [missionSearchQuery, setMissionSearchQuery] = useState("");
   const [isMissionPickerOpen, setIsMissionPickerOpen] = useState(false);
+  const [customTitre, setCustomTitre] = useState("");
+  const [customLabel, setCustomLabel] = useState("");
+  const [customStatement, setCustomStatement] = useState("");
+  const [customCriterionFeedback, setCustomCriterionFeedback] = useState(null);
   const missionCreationCounterRef = useRef(0);
+  const customCriterionCounterRef = useRef(0);
   const skipAutoSaveRef = useRef(true);
   const autoSaveTimeoutRef = useRef(null);
   const dirtyMissionRef = useRef(false);
@@ -600,6 +616,69 @@ function MonautoevaluationSenior({ user }) {
                 criterion.sectionTitle === activeMissionSection?.title ? { ...criterion, sectionComment: comment } : criterion
               ),
             }
+      )
+    );
+  }
+
+  function addCustomMissionCriterion() {
+    if (!activeMission || !activeMissionSection) return;
+
+    const titre = customTitre.trim();
+    const label = customLabel.trim();
+
+    if (!titre || !label) {
+      setCustomCriterionFeedback({ tone: "error", message: "Renseignez un titre et le libellé de la compétence." });
+      return;
+    }
+
+    customCriterionCounterRef.current += 1;
+
+    const newCriterion = {
+      id: `custom-${activeMission.id}-${Date.now()}-${customCriterionCounterRef.current}`,
+      sectionTitle: activeMissionSection.title,
+      sectionComment: activeMissionSection.comment || "",
+      pageTitle: titre,
+      sourceSheet: "",
+      sourceLabel: "",
+      themeCode: "",
+      label,
+      statement: customStatement.trim(),
+      score: null,
+      isCustom: true,
+    };
+
+    const existingGroupIndex = (activeMissionSection.groups || []).findIndex(
+      (group) => group.pageTitle === titre && !group.sourceSheet && !group.sourceLabel
+    );
+    const targetPageIndex = existingGroupIndex >= 0 ? existingGroupIndex : (activeMissionSection.groups || []).length;
+
+    dirtyMissionRef.current = true;
+    clearScopedFeedback("mission");
+    clearScopedFeedback("final");
+    setMissionEvaluations((currentMissions) =>
+      currentMissions.map((mission) =>
+        mission.id !== effectiveMissionId ? mission : { ...mission, criteria: [...mission.criteria, newCriterion] }
+      )
+    );
+    setMissionPageIndexes((current) => ({
+      ...current,
+      [activeMission.id]: targetPageIndex,
+    }));
+    setCustomTitre("");
+    setCustomLabel("");
+    setCustomStatement("");
+    setCustomCriterionFeedback({ tone: "success", message: "Compétence ajoutée." });
+  }
+
+  function removeCustomMissionCriterion(criterionId) {
+    dirtyMissionRef.current = true;
+    clearScopedFeedback("mission");
+    clearScopedFeedback("final");
+    setMissionEvaluations((currentMissions) =>
+      currentMissions.map((mission) =>
+        mission.id !== effectiveMissionId
+          ? mission
+          : { ...mission, criteria: mission.criteria.filter((criterion) => criterion.id !== criterionId) }
       )
     );
   }
@@ -1087,34 +1166,90 @@ function MonautoevaluationSenior({ user }) {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {(activeMissionSection?.groups || []).map((group, index) => (
-                    <button
-                      key={group.key}
-                      type="button"
-                      onClick={() =>
-                        setMissionPageIndexes((current) => ({
-                          ...current,
-                          [activeMission.id]: index,
-                        }))
-                      }
-                      className={`rounded-md border px-3 py-2 text-left transition ${
-                        index === activeMissionPageIndex
-                          ? "border-[#76B82A] bg-[#F3FAEA] text-[#0F3A63]"
-                          : "border-[#D9E3EE] bg-white text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      <p className="text-[11px] font-bold">Titre {index + 1}</p>
-                      <p className="mt-1 text-[12px] font-semibold">{group.pageTitle}</p>
-                      {shouldShowSourceLabel &&
-                      getSourceBadgeLabel({ source_label: group.sourceLabel, source_sheet: group.sourceSheet }) &&
-                      group.sourceSheet !== "TRONC COMMUN" ? (
-                        <span className="mt-2 inline-flex rounded-full bg-[#EEF3F8] px-2 py-0.5 text-[10px] font-semibold text-[#0F3A63]">
-                          {getSourceBadgeLabel({ source_label: group.sourceLabel, source_sheet: group.sourceSheet })}
-                        </span>
-                      ) : null}
-                      <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(getMissionGroupProgress(group))}`}>{getMissionGroupProgress(group)}%</p>
-                    </button>
-                  ))}
+                  {(activeMissionSection?.groups || []).map((group, index) => {
+                    const isCustomGroup = group.criteria.some((item) => item.isCustom);
+
+                    return (
+                      <button
+                        key={group.key}
+                        type="button"
+                        onClick={() =>
+                          setMissionPageIndexes((current) => ({
+                            ...current,
+                            [activeMission.id]: index,
+                          }))
+                        }
+                        className={`rounded-md border px-3 py-2 text-left transition ${
+                          index === activeMissionPageIndex
+                            ? "border-[#76B82A] bg-[#F3FAEA] text-[#0F3A63]"
+                            : "border-[#D9E3EE] bg-white text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-[11px] font-bold">Titre {index + 1}</p>
+                          {isCustomGroup ? (
+                            <span className="rounded-full bg-[#DCECCB] px-1.5 py-0.5 text-[9px] font-bold text-[#4E8B1B]">Ajouté</span>
+                          ) : null}
+                        </div>
+                        <p className="mt-1 text-[12px] font-semibold">{group.pageTitle}</p>
+                        {shouldShowSourceLabel &&
+                        getSourceBadgeLabel({ source_label: group.sourceLabel, source_sheet: group.sourceSheet }) &&
+                        group.sourceSheet !== "TRONC COMMUN" ? (
+                          <span className="mt-2 inline-flex rounded-full bg-[#EEF3F8] px-2 py-0.5 text-[10px] font-semibold text-[#0F3A63]">
+                            {getSourceBadgeLabel({ source_label: group.sourceLabel, source_sheet: group.sourceSheet })}
+                          </span>
+                        ) : null}
+                        <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(getMissionGroupProgress(group))}`}>{getMissionGroupProgress(group)}%</p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-3 rounded-md border border-dashed border-[#C7D6E8] bg-white p-3">
+                  <p className="text-[12px] font-bold text-[#0F3A63]">{`Ajouter un titre à "${activeMissionSection?.title || ""}"`}</p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {"Ce titre s'ajoutera aux autres titres de cette section, avec sa propre progression. Il ne s'applique qu'à cette mission et compte dans la moyenne et la note finale."}
+                  </p>
+                  <div className="mt-2 grid gap-2 md:grid-cols-2">
+                    <input
+                      value={customTitre}
+                      onChange={(event) => {
+                        setCustomTitre(event.target.value);
+                        setCustomCriterionFeedback(null);
+                      }}
+                      placeholder="Titre"
+                      className="h-10 w-full rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-600 outline-none placeholder:text-slate-400"
+                    />
+                    <input
+                      value={customLabel}
+                      onChange={(event) => {
+                        setCustomLabel(event.target.value);
+                        setCustomCriterionFeedback(null);
+                      }}
+                      placeholder="Libellé de la compétence"
+                      className="h-10 w-full rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-600 outline-none placeholder:text-slate-400"
+                    />
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={customStatement}
+                    onChange={(event) => {
+                      setCustomStatement(event.target.value);
+                      setCustomCriterionFeedback(null);
+                    }}
+                    placeholder="Description (optionnel)"
+                    className="mt-2 w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[12px] text-slate-600 outline-none placeholder:text-slate-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomMissionCriterion}
+                    className="mt-2 rounded-md bg-[#76B82A] px-4 py-2 text-xs font-bold text-white"
+                  >
+                    Ajouter le titre
+                  </button>
+                  <div className="mt-2">
+                    <InlineFeedback feedback={customCriterionFeedback} />
+                  </div>
                 </div>
               </section>
 
@@ -1122,7 +1257,14 @@ function MonautoevaluationSenior({ user }) {
                 <section className="rounded-xl bg-white p-4 shadow-sm">
                   <div className="mb-4">
                     <p className="text-[11px] font-bold uppercase text-slate-500">{activeMissionGroup.sectionTitle}</p>
-                    <p className="mt-1 text-[15px] font-bold text-[#0F3A63]">{activeMissionGroup.pageTitle}</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <p className="text-[15px] font-bold text-[#0F3A63]">{activeMissionGroup.pageTitle}</p>
+                      {activeMissionGroup.criteria.some((item) => item.isCustom) ? (
+                        <span className="rounded-full bg-[#DCECCB] px-2 py-0.5 text-[10px] font-bold text-[#4E8B1B]">
+                          Titre ajouté
+                        </span>
+                      ) : null}
+                    </div>
                     {shouldShowSourceLabel &&
                     getSourceBadgeLabel({ source_label: activeMissionGroup.sourceLabel, source_sheet: activeMissionGroup.sourceSheet }) &&
                     activeMissionGroup.sourceSheet !== "TRONC COMMUN" ? (
@@ -1134,7 +1276,12 @@ function MonautoevaluationSenior({ user }) {
 
                   <div className="space-y-3.5">
                     {(activeMissionGroup.criteria || []).map((criterion) => (
-                      <MissionScoreRow key={criterion.id} criterion={criterion} onSelect={(score) => updateMissionScore(criterion.id, score)} />
+                      <MissionScoreRow
+                        key={criterion.id}
+                        criterion={criterion}
+                        onSelect={(score) => updateMissionScore(criterion.id, score)}
+                        onRemove={criterion.isCustom ? () => removeCustomMissionCriterion(criterion.id) : undefined}
+                      />
                     ))}
                   </div>
 

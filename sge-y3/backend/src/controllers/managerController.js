@@ -179,6 +179,7 @@ function normalizeManagerMissionEvaluations(missionEvaluations = []) {
           label: String(criterion.label || '').trim(),
           statement: String(criterion.statement || '').trim(),
           score: criterion.score === null || criterion.score === undefined ? null : Number(criterion.score),
+          is_custom: Boolean(criterion.isCustom || criterion.is_custom),
         }))
       : [],
     comment: String(mission.comment || '').trim(),
@@ -223,6 +224,7 @@ function formatManagerMissionEvaluations(missionEvaluations = []) {
       label: criterion.label,
       statement: criterion.statement,
       score: criterion.score,
+      isCustom: Boolean(criterion.is_custom),
     })),
     comment: mission.comment || '',
     status: mission.status || 'Brouillon',
@@ -1843,6 +1845,12 @@ async function saveMyManagerEvaluation(request, response) {
               message: `La note du critère "${criterion.label}" doit être comprise entre 1 et 5.`,
             });
           }
+        }
+
+        if (criterion.is_custom && !criterion.label) {
+          return response.status(400).json({
+            message: 'Le libellé de la compétence ajoutée est requis.',
+          });
         }
       }
     }
