@@ -22,6 +22,7 @@ function toPersistenceSections(sections = []) {
       source_sheet: page.source_sheet || '',
       source_label: page.source_label || '',
       comment: page.comment || '',
+      is_custom: Boolean(page.is_custom || page.isCustom),
       themes: (page.themes || []).map((theme) => ({
         theme_id: theme.theme_id,
         code: theme.code,
@@ -29,6 +30,7 @@ function toPersistenceSections(sections = []) {
         statement: theme.statement,
         score: theme.score,
         required: theme.required !== false,
+        is_custom: Boolean(theme.is_custom || theme.isCustom),
       })),
     })),
     criteria: (section.criteria || []).map((criterion) => ({
@@ -82,26 +84,42 @@ function mergeSectionsWithTemplate(savedSections = [], templateSections = []) {
 
   return templateSections.map((templateSection) => {
     const savedSection = savedSectionByTitle.get(templateSection.title);
+    const templatePageKeys = new Set((templateSection.pages || []).map((page) => getPageMatchKey(page)));
+    const customPages = (savedSection?.pages || []).filter(
+      (page) => page.is_custom && !templatePageKeys.has(getPageMatchKey(page))
+    );
 
     return {
       ...templateSection,
       comment: savedSection?.comment || templateSection.comment || '',
-      pages: (templateSection.pages || []).map((templatePage) => {
-        const savedPage = savedPageByKey.get(getPageMatchKey(templatePage));
+      pages: [
+        ...(templateSection.pages || []).map((templatePage) => {
+          const savedPage = savedPageByKey.get(getPageMatchKey(templatePage));
+          const templateThemeKeys = new Set(
+            (templatePage.themes || []).map((theme) => getThemeMatchKey(templatePage, theme))
+          );
+          const customThemes = (savedPage?.themes || []).filter(
+            (theme) => theme.is_custom && !templateThemeKeys.has(getThemeMatchKey(templatePage, theme))
+          );
 
-        return {
-          ...templatePage,
-          comment: savedPage?.comment || templatePage.comment || '',
-          themes: (templatePage.themes || []).map((templateTheme) => {
-            const savedTheme = savedThemeByKey.get(getThemeMatchKey(templatePage, templateTheme));
+          return {
+            ...templatePage,
+            comment: savedPage?.comment || templatePage.comment || '',
+            themes: [
+              ...(templatePage.themes || []).map((templateTheme) => {
+                const savedTheme = savedThemeByKey.get(getThemeMatchKey(templatePage, templateTheme));
 
-            return {
-              ...templateTheme,
-              score: typeof savedTheme?.score === 'number' ? savedTheme.score : templateTheme.score,
-            };
-          }),
-        };
-      }),
+                return {
+                  ...templateTheme,
+                  score: typeof savedTheme?.score === 'number' ? savedTheme.score : templateTheme.score,
+                };
+              }),
+              ...customThemes,
+            ],
+          };
+        }),
+        ...customPages,
+      ],
     };
   });
 }
@@ -240,7 +258,21 @@ module.exports = {
 
     const rawSections = Array.isArray(request.body?.sections) ? request.body.sections : [];
     if (rawSections.length) {
-      instance.sections = toPersistenceSections(normalizeSections(rawSections));
+      const sections = normalizeSections(rawSections);
+
+      for (const section of sections) {
+        for (const page of section.pages || []) {
+          for (const theme of page.themes || []) {
+            if ((theme.is_custom || page.is_custom) && !theme.label) {
+              return response.status(400).json({
+                message: 'Le libellé de la compétence ajoutée est requis.',
+              });
+            }
+          }
+        }
+      }
+
+      instance.sections = toPersistenceSections(sections);
     }
 
     instance.status = instance.status === 'Soumis aux Associes' ? instance.status : 'En cours';

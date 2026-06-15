@@ -340,13 +340,24 @@ function InlineFeedback({ feedback }) {
   );
 }
 
-function MissionScoreRow({ themeCode, label, statement, selected, onSelect }) {
+function MissionScoreRow({ themeCode, label, statement, selected, onSelect, onRemove }) {
   return (
     <div className="rounded-md border border-[#E3EAF3] bg-[#F8FBFF] p-3">
-      <p className="text-[12px] font-semibold text-[#0F3A63]">
-        {themeCode ? `${themeCode}. ` : ""}
-        {label}
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[12px] font-semibold text-[#0F3A63]">
+          {themeCode ? `${themeCode}. ` : ""}
+          {label}
+        </p>
+        {onRemove ? (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500 hover:bg-slate-200"
+          >
+            Retirer
+          </button>
+        ) : null}
+      </div>
       {statement ? <p className="mt-1 text-[11px] leading-5 text-slate-600">{statement}</p> : null}
       <div className="mt-2 flex items-center gap-2">
         {[1, 2, 3, 4, 5].map((score) => (
@@ -498,7 +509,12 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   const [addMissionFeedback, setAddMissionFeedback] = useState(null);
   const [missionFeedback, setMissionFeedback] = useState(null);
   const [finalFeedback, setFinalFeedback] = useState(null);
+  const [customTitre, setCustomTitre] = useState("");
+  const [customLabel, setCustomLabel] = useState("");
+  const [customStatement, setCustomStatement] = useState("");
+  const [customCriterionFeedback, setCustomCriterionFeedback] = useState(null);
   const missionCreationCounterRef = useRef(0);
+  const customCriterionCounterRef = useRef(0);
   const skipAutoSaveRef = useRef(true);
   const autoSaveTimeoutRef = useRef(null);
   const autoSaveRequestRef = useRef(0);
@@ -523,7 +539,8 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   }, [mission]);
   const missionSections = useMemo(() => getMissionSections(filteredMissionCriteriaGroups), [filteredMissionCriteriaGroups]);
   const missionSectionId = missionSectionIds[effectiveMissionId] || missionSections[0]?.id || "";
-  const missionSection = missionSections.find((section) => section.id === missionSectionId) || missionSections[0] || null;
+  const missionSection =
+    missionSections.find((section) => section.id === missionSectionId) || missionSections[0] || null;
   const missionSectionIndex = missionSections.findIndex((section) => section.id === missionSection?.id);
   const missionPageIndex = Math.min(
     missionPageIndexes[effectiveMissionId] || 0,
@@ -960,6 +977,69 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                 criterion.sectionTitle === missionSection?.title ? { ...criterion, sectionComment: comment } : criterion
               ),
             }
+      )
+    );
+  }
+
+  function addCustomMissionCriterion() {
+    if (!mission || !missionSection) return;
+
+    const titre = customTitre.trim();
+    const label = customLabel.trim();
+
+    if (!titre || !label) {
+      setCustomCriterionFeedback({ tone: "error", message: "Renseignez un titre et le libellé de la compétence." });
+      return;
+    }
+
+    customCriterionCounterRef.current += 1;
+
+    const newCriterion = {
+      id: `custom-${mission.id}-${Date.now()}-${customCriterionCounterRef.current}`,
+      sectionTitle: missionSection.title,
+      sectionComment: missionSection.comment || "",
+      pageTitle: titre,
+      sourceSheet: "",
+      sourceLabel: "",
+      themeCode: "",
+      label,
+      statement: customStatement.trim(),
+      score: null,
+      isCustom: true,
+    };
+
+    const existingGroupIndex = (missionSection.groups || []).findIndex(
+      (group) => group.pageTitle === titre && !group.sourceSheet && !group.sourceLabel
+    );
+    const targetPageIndex = existingGroupIndex >= 0 ? existingGroupIndex : (missionSection.groups || []).length;
+
+    dirtyMissionRef.current = true;
+    clearScopedFeedback("mission");
+    clearScopedFeedback("final");
+    setMissionEvaluations((missions) =>
+      missions.map((item) =>
+        !isSameMissionId(item.id, effectiveMissionId) ? item : { ...item, criteria: [...item.criteria, newCriterion] }
+      )
+    );
+    setMissionPageIndexes((current) => ({
+      ...current,
+      [mission.id]: targetPageIndex,
+    }));
+    setCustomTitre("");
+    setCustomLabel("");
+    setCustomStatement("");
+    setCustomCriterionFeedback({ tone: "success", message: "Compétence ajoutée." });
+  }
+
+  function removeCustomMissionCriterion(criterionId) {
+    dirtyMissionRef.current = true;
+    clearScopedFeedback("mission");
+    clearScopedFeedback("final");
+    setMissionEvaluations((missions) =>
+      missions.map((item) =>
+        !isSameMissionId(item.id, effectiveMissionId)
+          ? item
+          : { ...item, criteria: item.criteria.filter((criterion) => criterion.id !== criterionId) }
       )
     );
   }
@@ -1568,6 +1648,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                 <div className="flex flex-wrap gap-2">
                   {(missionSection?.groups || []).map((group, index) => {
                     const isActive = index === missionPageIndex;
+                    const isCustomGroup = group.criteria.some((item) => item.isCustom);
                     const progress = getMissionGroupProgress(group);
 
                     return (
@@ -1584,7 +1665,12 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                           isActive ? "border-[#76B82A] bg-[#F3FAEA] text-[#0F3A63]" : "border-[#D9E3EE] bg-white text-slate-600 hover:bg-slate-50"
                         }`}
                       >
-                        <p className="text-[11px] font-bold">Titre {index + 1}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-[11px] font-bold">Titre {index + 1}</p>
+                          {isCustomGroup ? (
+                            <span className="rounded-full bg-[#DCECCB] px-1.5 py-0.5 text-[9px] font-bold text-[#4E8B1B]">Ajouté</span>
+                          ) : null}
+                        </div>
                         <p className="mt-1 text-[12px] font-semibold">{group.pageTitle}</p>
                         {shouldShowSourceLabel &&
                         group.sourceSheet !== "TRONC COMMUN" &&
@@ -1598,13 +1684,67 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                     );
                   })}
                 </div>
+
+                <div className="mt-3 rounded-md border border-dashed border-[#C7D6E8] bg-white p-3">
+                  <p className="text-[12px] font-bold text-[#0F3A63]">{`Ajouter un titre à "${missionSection?.title || ""}"`}</p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {"Ce titre s'ajoutera aux autres titres de cette section, avec sa propre progression. Il ne s'applique qu'à cette mission et compte dans la moyenne et la note finale."}
+                  </p>
+                  <div className="mt-2 grid gap-2 md:grid-cols-2">
+                    <input
+                      value={customTitre}
+                      onChange={(event) => {
+                        setCustomTitre(event.target.value);
+                        setCustomCriterionFeedback(null);
+                      }}
+                      placeholder="Titre"
+                      className="h-10 w-full rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-600 outline-none placeholder:text-slate-400"
+                    />
+                    <input
+                      value={customLabel}
+                      onChange={(event) => {
+                        setCustomLabel(event.target.value);
+                        setCustomCriterionFeedback(null);
+                      }}
+                      placeholder="Libellé de la compétence"
+                      className="h-10 w-full rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-600 outline-none placeholder:text-slate-400"
+                    />
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={customStatement}
+                    onChange={(event) => {
+                      setCustomStatement(event.target.value);
+                      setCustomCriterionFeedback(null);
+                    }}
+                    placeholder="Description (optionnel)"
+                    className="mt-2 w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[12px] text-slate-600 outline-none placeholder:text-slate-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomMissionCriterion}
+                    className="mt-2 rounded-md bg-[#76B82A] px-4 py-2 text-xs font-bold text-white"
+                  >
+                    Ajouter le titre
+                  </button>
+                  <div className="mt-2">
+                    <InlineFeedback feedback={customCriterionFeedback} />
+                  </div>
+                </div>
               </section>
 
               {missionGroup ? (
                 <div className="space-y-3.5">
                   <div>
                     <p className="text-[11px] font-bold uppercase text-slate-500">{missionGroup.sectionTitle}</p>
-                    <p className="mt-1 text-[15px] font-bold text-[#0F3A63]">{missionGroup.pageTitle}</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <p className="text-[15px] font-bold text-[#0F3A63]">{missionGroup.pageTitle}</p>
+                      {missionGroup.criteria.some((item) => item.isCustom) ? (
+                        <span className="rounded-full bg-[#DCECCB] px-2 py-0.5 text-[10px] font-bold text-[#4E8B1B]">
+                          Titre ajouté
+                        </span>
+                      ) : null}
+                    </div>
                     {shouldShowSourceLabel &&
                     missionGroup.sourceSheet !== "TRONC COMMUN" &&
                     (missionGroup.sourceLabel || getSourceBadgeLabel({ source_sheet: missionGroup.sourceSheet })) ? (
@@ -1622,6 +1762,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
                       statement={item.statement}
                       selected={item.score}
                       onSelect={(score) => updateMissionScore(item.id, score)}
+                      onRemove={item.isCustom ? () => removeCustomMissionCriterion(item.id) : undefined}
                     />
                   ))}
                 </div>

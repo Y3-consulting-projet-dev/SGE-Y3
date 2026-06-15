@@ -236,6 +236,20 @@ function ScoreSelector({ selected, onSelect }) {
   );
 }
 
+function InlineFeedback({ feedback }) {
+  if (!feedback?.message) return null;
+
+  return (
+    <div
+      className={`rounded-md px-3 py-2 text-xs font-semibold ${
+        feedback.tone === "error" ? "bg-[#FDEBEC] text-[#B93840]" : "bg-[#DCECCB] text-[#184D2E]"
+      }`}
+    >
+      {feedback.message}
+    </div>
+  );
+}
+
 function SectionBadge({ progress }) {
   if (progress === 100) {
     return (
@@ -278,6 +292,11 @@ function Monautoevaluation() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [customTitre, setCustomTitre] = useState("");
+  const [customLabel, setCustomLabel] = useState("");
+  const [customStatement, setCustomStatement] = useState("");
+  const [customCriterionFeedback, setCustomCriterionFeedback] = useState(null);
+  const customCriterionCounterRef = useRef(0);
   const missionPickerRef = useRef(null);
 
   useEffect(() => {
@@ -516,6 +535,70 @@ function Monautoevaluation() {
       )
     );
 
+    setFeedbackMessage("");
+  }
+
+  function addCustomMissionCriterion() {
+    if (!activeMission || !activeMissionSection) return;
+
+    const titre = customTitre.trim();
+    const label = customLabel.trim();
+
+    if (!titre || !label) {
+      setCustomCriterionFeedback({ tone: "error", message: "Renseignez un titre et le libellé de la compétence." });
+      return;
+    }
+
+    customCriterionCounterRef.current += 1;
+
+    const newCriterion = {
+      id: `custom-${activeMission.id}-${Date.now()}-${customCriterionCounterRef.current}`,
+      sectionTitle: activeMissionSection.title,
+      pageTitle: titre,
+      sourceSheet: "",
+      sourceLabel: "",
+      themeCode: "",
+      label,
+      statement: customStatement.trim(),
+      score: null,
+      isCustom: true,
+    };
+
+    const existingGroupIndex = (activeMissionSection.groups || []).findIndex(
+      (group) => group.pageTitle === titre && !group.sourceSheet && !group.sourceLabel
+    );
+    const targetPageIndex = existingGroupIndex >= 0 ? existingGroupIndex : (activeMissionSection.groups || []).length;
+
+    setMissionEvaluations((currentMissions) =>
+      currentMissions.map((mission) =>
+        mission.id !== activeMissionId
+          ? mission
+          : {
+              ...mission,
+              status: mission.status === "Soumise" ? mission.status : "En cours",
+              criteria: [...(mission.criteria || []), newCriterion],
+            }
+      )
+    );
+    setMissionPageIndexes((current) => ({
+      ...current,
+      [activeMission.id]: targetPageIndex,
+    }));
+    setCustomTitre("");
+    setCustomLabel("");
+    setCustomStatement("");
+    setCustomCriterionFeedback({ tone: "success", message: "Compétence ajoutée." });
+    setFeedbackMessage("");
+  }
+
+  function removeCustomMissionCriterion(criterionId) {
+    setMissionEvaluations((currentMissions) =>
+      currentMissions.map((mission) =>
+        mission.id !== activeMissionId
+          ? mission
+          : { ...mission, criteria: (mission.criteria || []).filter((criterion) => criterion.id !== criterionId) }
+      )
+    );
     setFeedbackMessage("");
   }
 
@@ -1407,6 +1490,7 @@ function Monautoevaluation() {
                                 ((group.criteria || []).length || 1)) *
                                 100
                             );
+                            const isCustomGroup = group.criteria.some((item) => item.isCustom);
 
                             return (
                               <button
@@ -1424,12 +1508,64 @@ function Monautoevaluation() {
                                     : "border-[#D9E3EE] bg-white text-slate-600 hover:bg-slate-50"
                                 }`}
                               >
-                                <p className="text-[11px] font-bold">Titre {index + 1}</p>
+                                <div className="flex items-center gap-1.5">
+                                  <p className="text-[11px] font-bold">Titre {index + 1}</p>
+                                  {isCustomGroup ? (
+                                    <span className="rounded-full bg-[#DCECCB] px-1.5 py-0.5 text-[9px] font-bold text-[#4E8B1B]">Ajouté</span>
+                                  ) : null}
+                                </div>
                                 <p className="mt-1 text-[12px] font-semibold">{group.pageTitle}</p>
                                 <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(groupProgress)}`}>{groupProgress}%</p>
                               </button>
                             );
                           })}
+                        </div>
+
+                        <div className="mt-3 rounded-md border border-dashed border-[#C7D6E8] bg-white p-3">
+                          <p className="text-[12px] font-bold text-[#0F3A63]">{`Ajouter un titre à "${activeMissionSection?.title || ""}"`}</p>
+                          <p className="mt-1 text-[11px] text-slate-500">
+                            {"Ce titre s'ajoutera aux autres titres de cette section, avec sa propre progression. Il ne s'applique qu'à cette mission et compte dans la moyenne et la note finale."}
+                          </p>
+                          <div className="mt-2 grid gap-2 md:grid-cols-2">
+                            <input
+                              value={customTitre}
+                              onChange={(event) => {
+                                setCustomTitre(event.target.value);
+                                setCustomCriterionFeedback(null);
+                              }}
+                              placeholder="Titre"
+                              className="h-10 w-full rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-600 outline-none placeholder:text-slate-400"
+                            />
+                            <input
+                              value={customLabel}
+                              onChange={(event) => {
+                                setCustomLabel(event.target.value);
+                                setCustomCriterionFeedback(null);
+                              }}
+                              placeholder="Libellé de la compétence"
+                              className="h-10 w-full rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-600 outline-none placeholder:text-slate-400"
+                            />
+                          </div>
+                          <textarea
+                            rows={2}
+                            value={customStatement}
+                            onChange={(event) => {
+                              setCustomStatement(event.target.value);
+                              setCustomCriterionFeedback(null);
+                            }}
+                            placeholder="Description (optionnel)"
+                            className="mt-2 w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[12px] text-slate-600 outline-none placeholder:text-slate-400"
+                          />
+                          <button
+                            type="button"
+                            onClick={addCustomMissionCriterion}
+                            className="mt-2 rounded-md bg-[#79B742] px-4 py-2 text-xs font-bold text-white"
+                          >
+                            Ajouter le titre
+                          </button>
+                          <div className="mt-2">
+                            <InlineFeedback feedback={customCriterionFeedback} />
+                          </div>
                         </div>
                       </div>
 
@@ -1463,14 +1599,33 @@ function Monautoevaluation() {
                         <div className="space-y-4">
                           <div>
                             <p className="text-[11px] font-bold uppercase text-slate-500">{activeMissionGroup.sectionTitle}</p>
-                            <p className="mt-1 text-[15px] font-bold text-[#0F3A63]">{activeMissionGroup.pageTitle}</p>
+                            <div className="mt-1 flex items-center gap-2">
+                              <p className="text-[15px] font-bold text-[#0F3A63]">{activeMissionGroup.pageTitle}</p>
+                              {activeMissionGroup.criteria.some((item) => item.isCustom) ? (
+                                <span className="rounded-full bg-[#DCECCB] px-2 py-0.5 text-[10px] font-bold text-[#4E8B1B]">
+                                  Titre ajouté
+                                </span>
+                              ) : null}
+                            </div>
                           </div>
 
                           {(activeMissionGroup.criteria || []).map((criterion) => (
                             <div key={criterion.id} className="space-y-2">
-                              <p className="text-xs font-semibold text-[#0F3A63]">
-                                {criterion.themeCode}. {criterion.label}
-                              </p>
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-xs font-semibold text-[#0F3A63]">
+                                  {criterion.themeCode ? `${criterion.themeCode}. ` : ""}
+                                  {criterion.label}
+                                </p>
+                                {criterion.isCustom ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeCustomMissionCriterion(criterion.id)}
+                                    className="shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500 hover:bg-slate-200"
+                                  >
+                                    Retirer
+                                  </button>
+                                ) : null}
+                              </div>
                               <p className="text-xs text-slate-500">{criterion.statement}</p>
                               <ScoreSelector selected={criterion.score} onSelect={(score) => updateMissionScore(criterion.id, score)} />
                             </div>

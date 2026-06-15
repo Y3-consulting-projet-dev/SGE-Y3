@@ -6,13 +6,14 @@ function getSectionCriteria(section = {}) {
   return (section.pages || []).flatMap((page) =>
     (page.themes || []).map((theme) => ({
       criterion_id: theme.theme_id || '',
-      label: `${theme.code}. ${theme.label}`,
+      label: theme.code ? `${theme.code}. ${theme.label}` : theme.label,
       statement: theme.statement || '',
       page_id: page.page_id || '',
       page_title: page.title || '',
       theme_code: theme.code || '',
       score: theme.score === null || theme.score === undefined ? null : Number(theme.score),
       required: theme.required !== false,
+      is_custom: Boolean(theme.is_custom || page.is_custom),
     }))
   );
 }
@@ -69,6 +70,7 @@ function normalizeSections(sections = []) {
       source_sheet: String(page.source_sheet || ''),
       source_label: String(page.source_label || ''),
       comment: String(page.comment || ''),
+      is_custom: Boolean(page.is_custom || page.isCustom),
       themes: (page.themes || []).map((theme) => ({
         theme_id: String(theme.theme_id || ''),
         code: String(theme.code || ''),
@@ -76,6 +78,7 @@ function normalizeSections(sections = []) {
         statement: String(theme.statement || ''),
         score: theme.score === null || theme.score === undefined ? null : Number(theme.score),
         required: theme.required !== false,
+        is_custom: Boolean(theme.is_custom || theme.isCustom),
       })),
     }));
 
@@ -83,7 +86,7 @@ function normalizeSections(sections = []) {
       ? normalizedPages.flatMap((page) =>
           page.themes.map((theme) => ({
             criterion_id: theme.theme_id,
-            label: `${theme.code}. ${theme.label}`,
+            label: theme.code ? `${theme.code}. ${theme.label}` : theme.label,
             statement: theme.statement,
             page_id: page.page_id,
             page_title: page.title,
@@ -92,6 +95,7 @@ function normalizeSections(sections = []) {
             theme_code: theme.code,
             score: theme.score,
             required: theme.required,
+            is_custom: Boolean(theme.is_custom || page.is_custom),
           }))
         )
       : (section.criteria || []).map((criterion) => ({
@@ -105,6 +109,7 @@ function normalizeSections(sections = []) {
           theme_code: String(criterion.theme_code || ''),
           score: criterion.score === null || criterion.score === undefined ? null : Number(criterion.score),
           required: criterion.required !== false,
+          is_custom: Boolean(criterion.is_custom || criterion.isCustom),
         }));
 
     const normalizedSection = {
