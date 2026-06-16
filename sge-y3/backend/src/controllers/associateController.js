@@ -16,13 +16,20 @@ const {
 } = require('../utils/evaluationHelpers');
 const {
   buildNonRhDepartmentClause,
-  CURRENT_CYCLE_LABEL,
   formatDepartmentLabel,
   loadAssistantRhSelfDataset,
   loadRhReviewDataset,
   RH_RELEVANT_STATUSES,
   resolveRhQueueUserIds,
 } = require('./rhController');
+const { getCurrentCycleLabel } = require('../utils/activeCycle');
+const {
+  buildCyclesForInstances,
+  buildPeerReviewComments,
+  resolveTemplateTypeForUser,
+} = require('../utils/evaluationHistory');
+const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
+const { fetchAssociateCommentsForManager } = require('./managerController');
 
 function getInitials(name = '') {
   return String(name || '')
@@ -281,7 +288,7 @@ function getReceivedEvaluationScore(instance) {
 
 async function getOrCreateAssociateSelfEvaluation(user) {
   let instance = await EvaluationInstance.findOne({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     evalue_id: user._id,
     template_type: 'associate-self-evaluation',
   });
@@ -290,7 +297,7 @@ async function getOrCreateAssociateSelfEvaluation(user) {
 
   if (!instance) {
     instance = await EvaluationInstance.create({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       evalue_id: user._id,
       status: 'En cours',
       template_type: 'associate-self-evaluation',
@@ -509,11 +516,11 @@ async function buildAssociateMissionResults(instance, submitter, associateUserId
 
   const [seniorReviews, managerReviews] = await Promise.all([
     SeniorAssistantReview.find({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       assistant_id: submitter._id,
     }).select('senior_id mission_reviews submitted_at'),
     ManagerMemberReview.find({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       member_id: submitter._id,
     }).select('manager_id mission_reviews submitted_at'),
   ]);
@@ -724,7 +731,7 @@ function toAssociateMissionCriteria(criteria = []) {
 
 async function getOrCreateAssociateManagerReview(associateUser, managerUser, managerSelfEvaluation) {
   let review = await AssociateManagerReview.findOne({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     associate_id: associateUser._id,
     manager_id: managerUser._id,
   });
@@ -743,7 +750,7 @@ async function getOrCreateAssociateManagerReview(associateUser, managerUser, man
 
   if (!review) {
     review = await AssociateManagerReview.create({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       associate_id: associateUser._id,
       manager_id: managerUser._id,
       manager_department: managerUser.department || '',
@@ -796,7 +803,7 @@ function buildAssociateManagerPayload(manager, selfEvaluation, associateReview) 
   const reviewMissionReviews = formatMissionReviews(normalizeMissionReviews(associateReview.mission_reviews || []));
 
   return {
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     manager: {
       id: manager._id.toString(),
       name: manager.name,
@@ -993,7 +1000,7 @@ function buildAssociateSupportPayload(supportUser, selfEvaluation) {
   const reviewSections = getAssociateSupportReviewSections(selfEvaluation, supportUser);
 
   return {
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     support: {
       id: supportUser._id.toString(),
       name: supportUser.name,
@@ -1133,9 +1140,9 @@ async function getAssociateOverview(_request, response) {
         code_categorie: { $in: ['8C', '9A', '9B', '10B', '10C'] },
         ...buildNonRhDepartmentClause(),
       }).select('_id'),
-      CommitteeDecision.findOne({ scope: 'associate-final', cycle_label: CURRENT_CYCLE_LABEL }).sort({ submitted_at: -1 }),
+      CommitteeDecision.findOne({ scope: 'associate-final', cycle_label: getCurrentCycleLabel() }).sort({ submitted_at: -1 }),
       EvaluationInstance.find({
-        cycle_label: CURRENT_CYCLE_LABEL,
+        cycle_label: getCurrentCycleLabel(),
         template_type: { $in: ['manager-self-evaluation', 'rh-self-evaluation'] },
         status: { $in: ['Soumis à RH', 'Validé RH', 'Clôture'] },
         submitted_at: { $ne: null },
@@ -1228,7 +1235,7 @@ async function getAssociateOverview(_request, response) {
   const totalDecisionsTaken = decisionSplit.reduce((total, item) => total + item.count, 0);
 
   return response.json({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     stats: [
       {
         title: 'Collaborateurs évalués',
@@ -1261,7 +1268,108 @@ async function getAssociateOverview(_request, response) {
   });
 }
 
+const CABINET_CODE_CATEGORIES = ['8C', '9A', '9B', '10B', '10C'];
+
+async function getCabinetMemberForAssociate(memberId) {
+  const member = await User.findOne({
+    _id: memberId,
+    is_active: true,
+  }).select('_id name first_name last_name grade department code_categorie email');
+
+  if (!member) {
+    return null;
+  }
+
+  const isSupport = isSupportEvaluationTarget(member);
+  const isCabinetRole = CABINET_CODE_CATEGORIES.includes(String(member.code_categorie || '').trim());
+
+  return isSupport || isCabinetRole ? member : null;
+}
+
+async function listCabinetMembers(request, response) {
+  const members = await User.find({
+    is_active: true,
+    $or: [
+      { code_categorie: { $in: CABINET_CODE_CATEGORIES } },
+      { email: { $in: SUPPORT_EMAILS } },
+    ],
+  })
+    .sort({ last_name: 1, first_name: 1 })
+    .select('_id name first_name last_name grade department code_categorie email');
+
+  return response.json({
+    cycle_label: getCurrentCycleLabel(),
+    members: members.map((member) => ({
+      id: member._id.toString(),
+      name: member.name,
+      grade: isSupportEvaluationTarget(member) ? getSupportRoleLabel(member) : member.grade,
+      department: member.department,
+      code_categorie: member.code_categorie,
+    })),
+  });
+}
+
+async function getCabinetMemberHistory(request, response) {
+  const member = await getCabinetMemberForAssociate(request.params.memberId);
+
+  if (!member) {
+    return response.status(404).json({
+      message: 'Membre introuvable pour le cabinet.',
+    });
+  }
+
+  const resolved = resolveTemplateTypeForUser(member, { supportEmails: SUPPORT_EMAILS });
+
+  if (!resolved) {
+    return response.status(404).json({
+      message: 'Historique indisponible pour ce membre.',
+    });
+  }
+
+  const { templateType, kind } = resolved;
+
+  const instances = await EvaluationInstance.find({
+    evalue_id: member._id,
+    template_type: templateType,
+    cycle_label: { $ne: getCurrentCycleLabel() },
+  }).sort({ cycle_label: -1 });
+
+  const getComments = templateType === 'manager-self-evaluation'
+    ? (cycleLabel) => fetchAssociateCommentsForManager(cycleLabel, member._id)
+    : templateType === 'support-self-evaluation'
+      ? (_cycleLabel, instance) => buildPeerReviewComments(instance)
+      : (cycleLabel) => fetchManagerCommentsForMember(cycleLabel, member._id);
+
+  const cycles = await buildCyclesForInstances(instances, kind, getComments);
+
+  return response.json({
+    cycles,
+    member: {
+      id: member._id.toString(),
+      name: member.name,
+      grade: isSupportEvaluationTarget(member) ? getSupportRoleLabel(member) : member.grade,
+    },
+  });
+}
+
+async function getMyAssociateEvaluationHistory(request, response) {
+  const instances = await EvaluationInstance.find({
+    evalue_id: request.user._id,
+    template_type: 'associate-self-evaluation',
+    cycle_label: { $ne: getCurrentCycleLabel() },
+  }).sort({ cycle_label: -1 });
+
+  const cycles = await buildCyclesForInstances(instances, 'sections', (_cycleLabel, instance) =>
+    buildPeerReviewComments(instance)
+  );
+
+  return response.json({ cycles });
+}
+
 module.exports = {
+  getCabinetMemberHistory,
+  getMyAssociateEvaluationHistory,
+  listCabinetMembers,
   async getAssociateSelfEvaluation(request, response) {
     const [instance, recipients] = await Promise.all([
       getOrCreateAssociateSelfEvaluation(request.user),
@@ -1343,7 +1451,7 @@ module.exports = {
       ],
     };
     const instances = await EvaluationInstance.find({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       template_type: { $in: ['associate-self-evaluation', 'assistant-self-evaluation', 'senior-self-evaluation'] },
       evalue_id: { $ne: request.user._id },
       ...(scope === 'direct-collaborators' ? directAccessClause : { submitted_to_user_ids: request.user._id }),
@@ -1358,7 +1466,7 @@ module.exports = {
     const submitterById = new Map(submitters.map((user) => [String(user._id), user]));
 
     return response.json({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       items: instances
         .filter((instance) => {
           const submitter = submitterById.get(String(instance.evalue_id));
@@ -1388,7 +1496,7 @@ module.exports = {
   async getReceivedAssociateEvaluation(request, response) {
     const instance = await EvaluationInstance.findOne({
       _id: request.params.evaluationId,
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       template_type: { $in: ['associate-self-evaluation', 'assistant-self-evaluation', 'senior-self-evaluation'] },
       evalue_id: { $ne: request.user._id },
       $or: [
@@ -1414,7 +1522,7 @@ module.exports = {
   async saveReceivedAssociateEvaluationComment(request, response) {
     const instance = await EvaluationInstance.findOne({
       _id: request.params.evaluationId,
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       template_type: { $in: ['associate-self-evaluation', 'assistant-self-evaluation', 'senior-self-evaluation'] },
       evalue_id: { $ne: request.user._id },
       $or: [
@@ -1460,7 +1568,7 @@ module.exports = {
   async submitReceivedAssociateEvaluationToRh(request, response) {
     const instance = await EvaluationInstance.findOne({
       _id: request.params.evaluationId,
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       template_type: { $in: ['assistant-self-evaluation', 'senior-self-evaluation'] },
       evalue_id: { $ne: request.user._id },
       $or: [
@@ -1548,7 +1656,7 @@ module.exports = {
     const managersById = new Map(managers.map((manager) => [String(manager._id), manager]));
     const managerIds = managers.map((manager) => manager._id);
     const managerSelfEvaluations = await EvaluationInstance.find({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       evalue_id: { $in: managerIds },
       template_type: { $in: ['manager-self-evaluation', 'rh-self-evaluation'] },
     }).select('_id evalue_id template_type status submitted_at sections mission_evaluations');
@@ -1560,7 +1668,7 @@ module.exports = {
     );
     const associateReviews = managerIds.length
       ? await AssociateManagerReview.find({
-          cycle_label: CURRENT_CYCLE_LABEL,
+          cycle_label: getCurrentCycleLabel(),
           associate_id: request.user._id,
           manager_id: { $in: managerIds },
         }).select('associate_id manager_id sections mission_reviews associate_note last_saved_at')
@@ -1578,7 +1686,7 @@ module.exports = {
       .sort((left, right) => String(left.name || '').localeCompare(String(right.name || ''), 'fr', { sensitivity: 'base' }));
 
     return response.json({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       items,
     });
   },
@@ -1590,7 +1698,7 @@ module.exports = {
     }
 
     const selfEvaluation = await EvaluationInstance.findOne({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       evalue_id: manager._id,
       template_type: getAssociateManagerSelfTemplateType(manager),
     }).select('status submitted_at sections mission_evaluations');
@@ -1607,7 +1715,7 @@ module.exports = {
     }
 
     const selfEvaluation = await EvaluationInstance.findOne({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       evalue_id: manager._id,
       template_type: getAssociateManagerSelfTemplateType(manager),
     }).select('status submitted_at sections mission_evaluations');
@@ -1650,7 +1758,7 @@ module.exports = {
     }
 
     const selfEvaluation = await EvaluationInstance.findOne({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       evalue_id: manager._id,
       template_type: getAssociateManagerSelfTemplateType(manager),
     }).select('status submitted_at sections mission_evaluations');
@@ -1724,7 +1832,7 @@ module.exports = {
     const supportIds = supportUsers.map((user) => user._id);
     const selfEvaluations = supportIds.length
       ? await EvaluationInstance.find({
-          cycle_label: CURRENT_CYCLE_LABEL,
+          cycle_label: getCurrentCycleLabel(),
           evalue_id: { $in: supportIds },
           template_type: 'support-self-evaluation',
         }).select('_id evalue_id status submitted_at sections peer_review_sections peer_review_comment peer_review_comment_saved_at')
@@ -1732,7 +1840,7 @@ module.exports = {
     const selfEvaluationByUserId = new Map(selfEvaluations.map((instance) => [String(instance.evalue_id), instance]));
 
     return response.json({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       items: supportUsers
         .map((supportUser) => buildAssociateSupportListItem(supportUser, selfEvaluationByUserId.get(String(supportUser._id))))
         .sort((left, right) => String(left.name || '').localeCompare(String(right.name || ''), 'fr', { sensitivity: 'base' })),
@@ -1748,7 +1856,7 @@ module.exports = {
     }
 
     let selfEvaluation = await EvaluationInstance.findOne({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       evalue_id: supportUser._id,
       template_type: 'support-self-evaluation',
     }).select('_id evalue_id status submitted_at sections peer_review_sections peer_review_comment peer_review_comment_saved_at');
@@ -1767,7 +1875,7 @@ module.exports = {
     }
 
     const selfEvaluation = await EvaluationInstance.findOne({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       evalue_id: supportUser._id,
       template_type: 'support-self-evaluation',
     }).select('_id evalue_id status submitted_at sections peer_review_sections peer_review_comment peer_review_comment_saved_at');
@@ -1821,7 +1929,7 @@ module.exports = {
       });
 
     return response.json({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       items,
     });
   },

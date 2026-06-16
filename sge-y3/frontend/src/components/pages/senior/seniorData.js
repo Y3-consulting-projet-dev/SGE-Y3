@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, ClipboardCheck, FileText, LayoutDashboard, MessageSquare, Settings2, Target, Users } from "lucide-react";
+import { BarChart3, CalendarDays, ClipboardCheck, FileText, History, LayoutDashboard, MessageSquare, Settings2, Target, Users } from "lucide-react";
 
 export const menuGroups = [
   {
@@ -14,6 +14,7 @@ export const menuGroups = [
       { key: "assistants", label: "Mes assistants", icon: Users },
       { key: "goals", label: "Missions communes", icon: Target },
       { key: "reviews", label: "Evaluer par mission", icon: ClipboardCheck },
+      { key: "assistants-history", label: "Historique assistants", icon: History },
     ],
   },
   {
@@ -25,6 +26,7 @@ export const menuGroups = [
     items: [
       { key: "self-evaluation", label: "Mon auto-évaluation", icon: BarChart3 },
       { key: "calendar", label: "Mon calendrier", icon: CalendarDays },
+      { key: "history", label: "Historique", icon: History },
     ],
   },
   {

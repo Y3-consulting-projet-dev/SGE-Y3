@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 
 const connectDB = require('./config/db');
+const { loadActiveCycle } = require('./utils/activeCycle');
 const authRoutes = require('./routes/authRoutes');
 const collaboratorRoutes = require('./routes/collaboratorRoutes');
 const seniorRoutes = require('./routes/seniorRoutes');
@@ -54,6 +55,7 @@ app.use((error, _request, response, _next) => {
 
 const startServer = async () => {
   await connectDB();
+  await loadActiveCycle();
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Serveur backend démarre sur le port ${PORT}`);
   });

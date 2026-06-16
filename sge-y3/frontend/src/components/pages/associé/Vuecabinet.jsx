@@ -3,6 +3,7 @@ import {
   Bell,
   CircleHelp,
   FileStack,
+  History,
   LayoutDashboard,
   LogOut,
   Settings2,
@@ -12,6 +13,8 @@ import SyntheseRH from "@/components/pages/associé/SynthèseRH";
 import Autoevamanager from "@/components/pages/associé/autoevamanager";
 import AutoevaluationAssocie from "@/components/pages/associé/AutoevaluationAssocie";
 import AutoevaluationSupport from "@/components/pages/associé/AutoevaluationSupport";
+import Monhistorique from "@/components/pages/associé/Monhistorique";
+import HistoriqueCabinet from "@/components/pages/associé/HistoriqueCabinet";
 import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import logoY3 from "@/assets/logo-y3.png";
@@ -37,6 +40,13 @@ const sideMenu = [
       { key: "autoeval-managers", label: "Auto-évaluation Managers", icon: UsersRound },
       { key: "autoeval-associes", label: "Auto-évaluation Associés", icon: UsersRound },
       { key: "autoeval-support", label: "Auto-évaluation Support", icon: UsersRound },
+    ],
+  },
+  {
+    title: "Historique",
+    items: [
+      { key: "history", label: "Mon historique", icon: History },
+      { key: "cabinet-history", label: "Historique cabinet", icon: History },
     ],
   },
   {
@@ -70,6 +80,8 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
     if (activeSection === "autoeval-managers") return "Auto-évaluation Managers";
     if (activeSection === "autoeval-associes") return "Auto-évaluation Associés";
     if (activeSection === "autoeval-support") return "Auto-évaluation Support";
+    if (activeSection === "history") return "Mon historique";
+    if (activeSection === "cabinet-history") return "Historique cabinet";
     if (activeSection === "profile") return "Mon profil";
     return "Vue cabinet";
   }, [activeSection]);
@@ -258,6 +270,10 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
             <AutoevaluationAssocie />
           ) : activeSection === "autoeval-support" ? (
             <AutoevaluationSupport />
+          ) : activeSection === "history" ? (
+            <Monhistorique />
+          ) : activeSection === "cabinet-history" ? (
+            <HistoriqueCabinet />
           ) : activeSection === "profile" ? (
             <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />
           ) : (

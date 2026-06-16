@@ -33,6 +33,10 @@ export function getMySeniorEvaluation() {
   return request("/senior/evaluation/me");
 }
 
+export function getMySeniorEvaluationHistory() {
+  return request("/senior/evaluation/history");
+}
+
 export function saveMySeniorEvaluation(payload) {
   return request("/senior/evaluation/me", {
     method: "PUT",

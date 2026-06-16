@@ -12,8 +12,8 @@ const {
   validateSectionCommentsForSubmit,
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
-
-const CURRENT_CYCLE_LABEL = 'Cycle 2025-2026';
+const { buildMissionResultsPayload } = require('../utils/evaluationHistory');
+const { getCurrentCycleLabel } = require('../utils/activeCycle');
 
 function normalizeText(value = '') {
   return String(value || '').replace(/\s+/g, ' ').trim().toUpperCase();
@@ -639,6 +639,43 @@ function buildManagerCommentText(review) {
   return combined.join(' ');
 }
 
+async function fetchManagerCommentsForMember(cycleLabel, memberId) {
+  const managerReviews = await ManagerMemberReview.find({
+    cycle_label: cycleLabel,
+    member_id: memberId,
+    status: { $in: ['Valide RH', `Transmis à l'associé`, 'Clôture'] },
+  }).select('manager_id submitted_at sections mission_reviews status');
+
+  const managerIds = managerReviews.map((review) => review.manager_id).filter(Boolean);
+  const managerUsers = managerIds.length
+    ? await User.find({ _id: { $in: managerIds } }).select('_id name grade')
+    : [];
+  const managerById = new Map(managerUsers.map((manager) => [String(manager._id), manager]));
+
+  return managerReviews
+    .map((review) => {
+      const comment = buildManagerCommentText(review);
+      if (!comment) {
+        return null;
+      }
+
+      const manager = managerById.get(String(review.manager_id));
+      return {
+        managerId: String(review.manager_id || ''),
+        comment,
+        authorName: manager?.name || 'Manager',
+        authorGrade: manager?.grade || 'Manager',
+        submittedAt: review.submitted_at || null,
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => {
+      const leftDate = left.submittedAt ? new Date(left.submittedAt).getTime() : 0;
+      const rightDate = right.submittedAt ? new Date(right.submittedAt).getTime() : 0;
+      return rightDate - leftDate;
+    });
+}
+
 async function buildEvaluationPayload(instance, user) {
   const sections = normalizeSections(instance.sections);
   const missionEvaluations = formatMissionEvaluations(instance.mission_evaluations || []);
@@ -675,7 +712,7 @@ async function buildEvaluationPayload(instance, user) {
       last_name: user.last_name,
       grade: user.grade,
       department: user.department,
-      current_cycle: CURRENT_CYCLE_LABEL,
+      current_cycle: getCurrentCycleLabel(),
       submitted_to: submittedTo,
       submitted_to_users: managers.map((manager) => ({
         id: manager._id.toString(),
@@ -750,7 +787,7 @@ async function getOrCreateSeniorEvaluation(user) {
 async function getOrCreateSelfEvaluation(user, templateType, cloneTemplate) {
   let instance = await EvaluationInstance.findOne({
     evalue_id: user._id,
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     template_type: templateType,
   });
 
@@ -758,7 +795,7 @@ async function getOrCreateSelfEvaluation(user, templateType, cloneTemplate) {
 
   if (!instance) {
     instance = await EvaluationInstance.create({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       evalue_id: user._id,
       status: 'En cours',
       template_type: templateType,
@@ -1135,12 +1172,11 @@ async function getMySeniorEvaluation(request, response) {
   return response.json(await buildEvaluationPayload(instance, request.user));
 }
 
-async function getMyAssistantResults(request, response) {
-  const instance = await getOrCreateAssistantEvaluation(request.user);
+async function buildResultsPayloadForInstance(instance, request, { includeDepartmentComparison = false } = {}) {
   const missionEvaluations = normalizeMissionEvaluations(instance.mission_evaluations || []);
   const scoreFinal = getAverageFromMissionEvaluations(missionEvaluations);
   const managerReviews = await ManagerMemberReview.find({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: instance.cycle_label,
     member_id: request.user._id,
     status: { $in: ['Valide RH', `Transmis à l'associé`, 'Clôture'] },
   }).select('manager_id submitted_at sections mission_reviews status');
@@ -1172,42 +1208,8 @@ async function getMyAssistantResults(request, response) {
       return rightDate - leftDate;
     });
 
-  const departmentScope = getManagerDepartmentsForDepartment(request.user.department);
-  const assistantUsers = await User.find({
-    grade: 'Assistant',
-    is_active: true,
-    ...(departmentScope.length ? { department: { $in: departmentScope } } : { department: request.user.department }),
-  }).select('_id');
-
-  const otherIds = assistantUsers.map((user) => user._id);
-  const otherInstances = otherIds.length
-    ? await EvaluationInstance.find({
-        evalue_id: { $in: otherIds },
-        cycle_label: CURRENT_CYCLE_LABEL,
-        template_type: 'assistant-self-evaluation',
-      })
-    : [];
-
-  const departmentScores = otherInstances
-    .map((otherInstance) => getAverageFromMissionEvaluations(normalizeMissionEvaluations(otherInstance.mission_evaluations || [])))
-    .filter((score) => typeof score === 'number');
-  const evaluatedDepartmentAssistantsCount = departmentScores.length;
-
-  const departmentAverage = departmentScores.length
-    ? Number((departmentScores.reduce((total, score) => total + score, 0) / departmentScores.length).toFixed(1))
-    : scoreFinal;
-
-  const departmentDelta =
-    typeof scoreFinal === 'number' && typeof departmentAverage === 'number'
-      ? Number((scoreFinal - departmentAverage).toFixed(1))
-      : 0;
-
-  const departmentAverageSubtitle = evaluatedDepartmentAssistantsCount
-    ? `${evaluatedDepartmentAssistantsCount} assistant(s) évalué(s) - ${request.user.department || 'Département non renseigné'}`
-    : `Aucune moyenne disponible - ${request.user.department || 'Département non renseigné'}`;
-
-  return response.json({
-    cycle_label: CURRENT_CYCLE_LABEL,
+  const payload = {
+    cycle_label: instance.cycle_label,
     status: instance.status,
     missionScores: missionEvaluations.map((mission) => {
       const score = getMissionAverageScore(mission.criteria || []);
@@ -1227,6 +1229,46 @@ async function getMyAssistantResults(request, response) {
     kpis: {
       scoreFinal: scoreFinal || 0,
       scoreFinalPercent: Math.round(((scoreFinal || 0) / 5) * 100),
+    },
+    managerComments,
+  };
+
+  if (includeDepartmentComparison) {
+    const departmentScope = getManagerDepartmentsForDepartment(request.user.department);
+    const assistantUsers = await User.find({
+      grade: 'Assistant',
+      is_active: true,
+      ...(departmentScope.length ? { department: { $in: departmentScope } } : { department: request.user.department }),
+    }).select('_id');
+
+    const otherIds = assistantUsers.map((user) => user._id);
+    const otherInstances = otherIds.length
+      ? await EvaluationInstance.find({
+          evalue_id: { $in: otherIds },
+          cycle_label: instance.cycle_label,
+          template_type: 'assistant-self-evaluation',
+        })
+      : [];
+
+    const departmentScores = otherInstances
+      .map((otherInstance) => getAverageFromMissionEvaluations(normalizeMissionEvaluations(otherInstance.mission_evaluations || [])))
+      .filter((score) => typeof score === 'number');
+    const evaluatedDepartmentAssistantsCount = departmentScores.length;
+
+    const departmentAverage = departmentScores.length
+      ? Number((departmentScores.reduce((total, score) => total + score, 0) / departmentScores.length).toFixed(1))
+      : scoreFinal;
+
+    const departmentDelta =
+      typeof scoreFinal === 'number' && typeof departmentAverage === 'number'
+        ? Number((scoreFinal - departmentAverage).toFixed(1))
+        : 0;
+
+    const departmentAverageSubtitle = evaluatedDepartmentAssistantsCount
+      ? `${evaluatedDepartmentAssistantsCount} assistant(s) évalué(s) - ${request.user.department || 'Département non renseigné'}`
+      : `Aucune moyenne disponible - ${request.user.department || 'Département non renseigné'}`;
+
+    Object.assign(payload.kpis, {
       comparaisonEquipe: departmentDelta,
       comparaisonEquipeLabel: `${(departmentAverage || 0).toFixed(1)}/5`,
       comparaisonEquipeSubtitle: departmentAverageSubtitle,
@@ -1236,15 +1278,59 @@ async function getMyAssistantResults(request, response) {
       moyenneDepartementSubtitle: departmentAverageSubtitle,
       assistantsEvalues: evaluatedDepartmentAssistantsCount,
       assistantsDepartementEvalues: evaluatedDepartmentAssistantsCount,
-    },
-    managerComments,
-  });
+    });
+  }
+
+  return payload;
+}
+
+async function getMyAssistantResults(request, response) {
+  const instance = await getOrCreateAssistantEvaluation(request.user);
+  return response.json(await buildResultsPayloadForInstance(instance, request, { includeDepartmentComparison: true }));
+}
+
+async function getMyAssistantEvaluationHistory(request, response) {
+  const instances = await EvaluationInstance.find({
+    evalue_id: request.user._id,
+    template_type: 'assistant-self-evaluation',
+    cycle_label: { $ne: getCurrentCycleLabel() },
+  }).sort({ cycle_label: -1 });
+
+  const cycles = await Promise.all(
+    instances.map(async (instance) => {
+      const comments = await fetchManagerCommentsForMember(instance.cycle_label, request.user._id);
+      return buildMissionResultsPayload(instance, comments);
+    })
+  );
+
+  return response.json({ cycles });
+}
+
+async function getMySeniorEvaluationHistory(request, response) {
+  const instances = await EvaluationInstance.find({
+    evalue_id: request.user._id,
+    template_type: 'senior-self-evaluation',
+    cycle_label: { $ne: getCurrentCycleLabel() },
+  }).sort({ cycle_label: -1 });
+
+  const cycles = await Promise.all(
+    instances.map(async (instance) => {
+      const comments = await fetchManagerCommentsForMember(instance.cycle_label, request.user._id);
+      return buildMissionResultsPayload(instance, comments);
+    })
+  );
+
+  return response.json({ cycles });
 }
 
 module.exports = {
+  buildManagerCommentText,
+  fetchManagerCommentsForMember,
   getMyAssistantEvaluation,
+  getMyAssistantEvaluationHistory,
   getMyAssistantResults,
   getMySeniorEvaluation,
+  getMySeniorEvaluationHistory,
   saveMyAssistantEvaluation,
   saveMySeniorEvaluation,
   submitMyAssistantMissionEvaluation,

@@ -13,6 +13,9 @@ import EvaluationsDepartementRH from "@/components/pages/rh/EvaluationsDeparteme
 import PopulationRH from "@/components/pages/rh/PopulationRH";
 import RapportsRH from "@/components/pages/rh/RapportsRH";
 import EvaluationAssistanteRH from "@/components/pages/rh/EvaluationAssistanteRH";
+import Monhistorique from "@/components/pages/rh/Monhistorique";
+import HistoriqueEquipe from "@/components/pages/rh/HistoriqueEquipe";
+import GestionCycles from "@/components/pages/rh/GestionCycles";
 import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import { saveCommitteeDecision } from "@/lib/committee";
@@ -33,8 +36,11 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
     if (activeSection === "calibration") return "CALIBRATION";
     if (activeSection === "department-evaluations") return "ÉVALUATIONS PAR DÉPARTEMENT";
     if (activeSection === "population") return "ÉQUIPE";
+    if (activeSection === "history") return "MON HISTORIQUE";
+    if (activeSection === "team-history") return "HISTORIQUE COLLABORATEURS";
     if (activeSection === "reports") return "RAPPORTS RH";
     if (activeSection === "committee") return "COMITÉ D'ÉVALUATION";
+    if (activeSection === "cycles") return "GESTION DES CYCLES";
     if (activeSection === "profile") return "MON PROFIL";
     return "TABLEAU DE BORD RH";
   }, [activeSection, assistantMode]);
@@ -80,6 +86,14 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
       return <PopulationRH readOnly={assistantMode} />;
     }
 
+    if (activeSection === "history") {
+      return <Monhistorique />;
+    }
+
+    if (activeSection === "team-history") {
+      return <HistoriqueEquipe />;
+    }
+
     if (activeSection === "reports") {
       return <RapportsRH readOnly={false} />;
     }
@@ -92,6 +106,10 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
           onSubmitted={() => setActiveSection("validations")}
         />
       );
+    }
+
+    if (activeSection === "cycles") {
+      return <GestionCycles />;
     }
 
     if (activeSection === "profile") {

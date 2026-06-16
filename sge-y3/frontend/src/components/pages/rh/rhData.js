@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardCheck, ClipboardList, FileText, LayoutDashboard, Scale, Settings2, Table2, UsersRound } from "lucide-react";
+import { BarChart3, CalendarRange, ClipboardCheck, ClipboardList, FileText, History, LayoutDashboard, Scale, Settings2, Table2, UsersRound } from "lucide-react";
 
 export const rhMenuGroups = [
   {
@@ -10,6 +10,7 @@ export const rhMenuGroups = [
     items: [
       { key: "validations", label: "Validations RH", icon: ClipboardCheck },
       { key: "self-evaluation-rh", label: "Mon auto-évaluation", icon: ClipboardList },
+      { key: "history", label: "Mon historique", icon: History },
       { key: "questionnaire", label: "Sections & questions", icon: ClipboardList },
       { key: "syntheses", label: "Synthèses à transmettre", icon: FileText },
       { key: "calibration", label: "Calibration", icon: Scale },
@@ -20,12 +21,17 @@ export const rhMenuGroups = [
     items: [
       { key: "department-evaluations", label: "Évaluations par département", icon: Table2 },
       { key: "population", label: "Équipe", icon: UsersRound },
+      { key: "team-history", label: "Historique collaborateurs", icon: History },
       { key: "reports", label: "Rapports", icon: BarChart3 },
     ],
   },
   {
     title: "Comite",
     items: [{ key: "committee", label: "Comité d'évaluation", icon: UsersRound }],
+  },
+  {
+    title: "Administration",
+    items: [{ key: "cycles", label: "Gestion des cycles", icon: CalendarRange }],
   },
   {
     title: "Compte",

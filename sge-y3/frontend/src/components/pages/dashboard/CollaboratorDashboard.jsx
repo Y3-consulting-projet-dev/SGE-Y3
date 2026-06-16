@@ -3,6 +3,7 @@ import {
   CalendarDays,
   ChevronsLeft,
   ClipboardList,
+  History,
   LayoutDashboard,
   LineChart,
   LogOut,
@@ -15,6 +16,7 @@ import logoY3 from "@/assets/logo-y3.png";
 import MonTableauDeBord from "@/components/pages/collaborator/Collaboratordashboard";
 import Monautoevaluation from "@/components/pages/collaborator/Monautoevaluation";
 import Mesresultats from "@/components/pages/collaborator/Mesresultats";
+import Monhistorique from "@/components/pages/collaborator/Monhistorique";
 import Mondeveloppement from "@/components/pages/collaborator/Mondeveloppement";
 import Calendrier from "@/components/pages/collaborator/Calendrier";
 import ProfilePanel from "@/components/profile/ProfilePanel";
@@ -32,6 +34,7 @@ const menuGroups = [
       { key: "self-evaluation", label: "Mon auto-évaluation", icon: ClipboardList },
       { key: "calendar", label: "Calendrier", icon: CalendarDays },
       { key: "results", label: "Mes résultats", icon: LineChart },
+      { key: "history", label: "Historique", icon: History },
     ],
   },
   {
@@ -139,6 +142,7 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
     if (activeSection === "self-evaluation") return "MON AUTO-ÉVALUATION";
     if (activeSection === "calendar") return "CALENDRIER";
     if (activeSection === "results") return "MES RÉSULTATS";
+    if (activeSection === "history") return "HISTORIQUE";
     if (activeSection === "development") return "MON DÉVELOPPEMENT";
     if (activeSection === "profile") return "MON PROFIL";
     return "ESPACE COLLABORATEUR";
@@ -202,6 +206,10 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
 
     if (activeSection === "calendar") {
       return <Calendrier missionEvaluations={missionEvaluations} resultsData={resultsData} />;
+    }
+
+    if (activeSection === "history") {
+      return <Monhistorique />;
     }
 
     if (activeSection === "development") {

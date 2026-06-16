@@ -54,6 +54,18 @@ export function submitAssociateSelfEvaluation() {
   });
 }
 
+export function getMyAssociateEvaluationHistory() {
+  return request("/associate/self-evaluation/history");
+}
+
+export function getCabinetMembers() {
+  return request("/associate/cabinet-members");
+}
+
+export function getCabinetMemberHistory(memberId) {
+  return request(`/associate/cabinet-members/${memberId}/history`);
+}
+
 export function getReceivedAssociateEvaluations(scope = "") {
   const query = scope ? `?scope=${encodeURIComponent(scope)}` : "";
   return request(`/associate/received-evaluations${query}`);

@@ -2,6 +2,7 @@ const User = require('../models/User');
 const EvaluationInstance = require('../models/EvaluationInstance');
 const ManagerMemberReview = require('../models/ManagerMemberReview');
 const SeniorAssistantReview = require('../models/SeniorAssistantReview');
+const AssociateManagerReview = require('../models/AssociateManagerReview');
 const CommitteeDecision = require('../models/CommitteeDecision');
 const { buildEvaluationTemplateForUser } = require('../utils/competencyMatrix');
 const {
@@ -16,11 +17,12 @@ const {
   validateSectionCommentsForSubmit,
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
+const { buildCyclesForInstances, resolveTemplateTypeForUser } = require('../utils/evaluationHistory');
+const { getCurrentCycleLabel } = require('../utils/activeCycle');
+const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
 const FULL_RH_EMAILS = ['isabella.beda@ycubeac.com'];
 const RH_DEPARTMENT_REGEX = /^RH$/i;
 const CAPITAL_HUMAIN_DEPARTMENT_REGEX = /^CAPITAL HUMAIN$/i;
-
-const CURRENT_CYCLE_LABEL = 'Cycle 2025-2026';
 
 function normalizeText(value = '') {
   return String(value || '').replace(/\s+/g, ' ').trim().toUpperCase();
@@ -341,7 +343,7 @@ async function getMemberForManager(managerUser, memberId) {
 async function getSelfEvaluationInstanceForMember(member) {
   return EvaluationInstance.findOne({
     evalue_id: member._id,
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     template_type: getExpectedTemplateType(member),
   }).select('status submitted_at sections submitted_to_user_ids mission_evaluations anonymous_feedback chief_comments');
 }
@@ -402,7 +404,7 @@ function formatSentChiefCommentsForUser(feedbackItems = [], targetUser) {
 async function getOrCreateManagerSelfEvaluation(user) {
   let instance = await EvaluationInstance.findOne({
     evalue_id: user._id,
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     template_type: 'manager-self-evaluation',
   });
 
@@ -410,7 +412,7 @@ async function getOrCreateManagerSelfEvaluation(user) {
 
   if (!instance) {
     instance = await EvaluationInstance.create({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       evalue_id: user._id,
       status: 'En cours',
       template_type: 'manager-self-evaluation',
@@ -839,7 +841,7 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
   const seniorReviews =
     member.code_categorie === '8C'
       ? await SeniorAssistantReview.find({
-          cycle_label: CURRENT_CYCLE_LABEL,
+          cycle_label: getCurrentCycleLabel(),
           assistant_id: member._id,
           submitted_to_user_ids: managerUser._id,
         }).select('senior_id sections mission_reviews submitted_at status')
@@ -962,7 +964,7 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
 
 async function getOrCreateManagerMemberReview(managerUser, member) {
   let review = await ManagerMemberReview.findOne({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     manager_id: managerUser._id,
     member_id: member._id,
   });
@@ -972,7 +974,7 @@ async function getOrCreateManagerMemberReview(managerUser, member) {
 
   if (!review) {
     review = await ManagerMemberReview.create({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       manager_id: managerUser._id,
       member_id: member._id,
       member_department: evaluationDepartment,
@@ -1238,11 +1240,11 @@ async function getManagerOverview(request, response) {
     ? await Promise.all([
         EvaluationInstance.find({
           evalue_id: { $in: memberIds },
-          cycle_label: CURRENT_CYCLE_LABEL,
+          cycle_label: getCurrentCycleLabel(),
           template_type: { $in: ['assistant-self-evaluation', 'senior-self-evaluation'] },
         }).select('evalue_id template_type status submitted_at submitted_to_user_ids sections mission_evaluations chief_comments'),
         ManagerMemberReview.find({
-          cycle_label: CURRENT_CYCLE_LABEL,
+          cycle_label: getCurrentCycleLabel(),
           manager_id: request.user._id,
           member_id: { $in: memberIds },
         }).select('member_id status submitted_at sections mission_reviews'),
@@ -1334,7 +1336,7 @@ async function getManagerOverview(request, response) {
   const receivedCount = receivedEvaluations.length;
 
   const chiefCommentInstances = await EvaluationInstance.find({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     'chief_comments.target_user_id': request.user._id,
   }).select('chief_comments');
 
@@ -1347,20 +1349,20 @@ async function getManagerOverview(request, response) {
 
   let selfEvaluationInstance = await EvaluationInstance.findOne({
     evalue_id: request.user._id,
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     template_type: 'manager-self-evaluation',
   }).select('status submitted_at');
 
   if (!selfEvaluationInstance) {
     selfEvaluationInstance = await EvaluationInstance.findOne({
       evalue_id: request.user._id,
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       template_type: 'senior-self-evaluation',
     }).select('status submitted_at');
   }
 
   return response.json({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     summary: {
       totalMembers,
       assistantsCount,
@@ -1404,24 +1406,24 @@ async function getManagerTeamReport(request, response) {
     memberIds.length
       ? await Promise.all([
           ManagerMemberReview.find({
-            cycle_label: CURRENT_CYCLE_LABEL,
+            cycle_label: getCurrentCycleLabel(),
             manager_id: request.user._id,
             member_id: { $in: memberIds },
           }).select('member_id status submitted_at sections'),
           ManagerMemberReview.find({
-            cycle_label: CURRENT_CYCLE_LABEL,
+            cycle_label: getCurrentCycleLabel(),
             member_id: { $in: memberIds },
           }).select('member_id manager_id status submitted_at sections mission_reviews'),
           SeniorAssistantReview.find({
-            cycle_label: CURRENT_CYCLE_LABEL,
+            cycle_label: getCurrentCycleLabel(),
             assistant_id: { $in: memberIds },
           }).select('assistant_id senior_id status submitted_at sections mission_reviews'),
           EvaluationInstance.find({
-            cycle_label: CURRENT_CYCLE_LABEL,
+            cycle_label: getCurrentCycleLabel(),
             evalue_id: { $in: memberIds },
             template_type: { $in: ['assistant-self-evaluation', 'senior-self-evaluation'] },
           }).select('evalue_id template_type status submitted_at sections mission_evaluations'),
-          CommitteeDecision.findOne({ scope: 'associate-final', cycle_label: CURRENT_CYCLE_LABEL }).sort({ submitted_at: -1 }),
+          CommitteeDecision.findOne({ scope: 'associate-final', cycle_label: getCurrentCycleLabel() }).sort({ submitted_at: -1 }),
           User.find({ is_active: true }).select('_id name grade department'),
         ])
       : [[], [], [], [], null, []];
@@ -1624,7 +1626,7 @@ async function getManagerTeamReport(request, response) {
   const completionRate = rows.length ? Math.round((completedRows.length / rows.length) * 100) : 0;
 
   return response.json({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     kpis: {
       missionTeamAverage,
       globalTeamAverage,
@@ -1646,6 +1648,101 @@ async function getMyManagerEvaluation(request, response) {
   ]);
 
   return response.json(buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers, associateRecipients));
+}
+
+async function fetchAssociateCommentsForManager(cycleLabel, managerId) {
+  const associateReviews = await AssociateManagerReview.find({
+    cycle_label: cycleLabel,
+    manager_id: managerId,
+    status: { $ne: 'En cours' },
+  }).select('associate_id submitted_at sections status');
+
+  const associateIds = associateReviews.map((review) => review.associate_id).filter(Boolean);
+  const associateUsers = associateIds.length
+    ? await User.find({ _id: { $in: associateIds } }).select('_id name grade')
+    : [];
+  const associateById = new Map(associateUsers.map((associate) => [String(associate._id), associate]));
+
+  return associateReviews
+    .map((review) => {
+      const comment = normalizeSections(review.sections || [])
+        .map((section) => String(section.comment || '').trim())
+        .filter(Boolean)
+        .join(' ');
+
+      if (!comment) {
+        return null;
+      }
+
+      const associate = associateById.get(String(review.associate_id));
+      return {
+        comment,
+        authorName: associate?.name || 'Associé',
+        authorGrade: associate?.grade || 'Associé',
+        submittedAt: review.submitted_at || null,
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => {
+      const leftDate = left.submittedAt ? new Date(left.submittedAt).getTime() : 0;
+      const rightDate = right.submittedAt ? new Date(right.submittedAt).getTime() : 0;
+      return rightDate - leftDate;
+    });
+}
+
+async function getMyManagerEvaluationHistory(request, response) {
+  const instances = await EvaluationInstance.find({
+    evalue_id: request.user._id,
+    template_type: 'manager-self-evaluation',
+    cycle_label: { $ne: getCurrentCycleLabel() },
+  }).sort({ cycle_label: -1 });
+
+  const cycles = await buildCyclesForInstances(instances, 'sections', (cycleLabel) =>
+    fetchAssociateCommentsForManager(cycleLabel, request.user._id)
+  );
+
+  return response.json({ cycles });
+}
+
+async function getTeamMemberHistoryForManager(request, response) {
+  const member = await getMemberForManager(request.user, request.params.memberId);
+
+  if (!member) {
+    return response.status(404).json({
+      message: "Membre d'équipe introuvable pour ce manager.",
+    });
+  }
+
+  const resolved = resolveTemplateTypeForUser(member);
+
+  if (!resolved) {
+    return response.status(404).json({
+      message: "Historique indisponible pour ce membre.",
+    });
+  }
+
+  const { templateType, kind } = resolved;
+
+  const instances = await EvaluationInstance.find({
+    evalue_id: member._id,
+    template_type: templateType,
+    cycle_label: { $ne: getCurrentCycleLabel() },
+  }).sort({ cycle_label: -1 });
+
+  const getComments = templateType === 'manager-self-evaluation'
+    ? (cycleLabel) => fetchAssociateCommentsForManager(cycleLabel, member._id)
+    : (cycleLabel) => fetchManagerCommentsForMember(cycleLabel, member._id);
+
+  const cycles = await buildCyclesForInstances(instances, kind, getComments);
+
+  return response.json({
+    cycles,
+    member: {
+      id: member._id.toString(),
+      name: member.name,
+      grade: member.grade,
+    },
+  });
 }
 
 async function addMyManagerMissionEvaluation(request, response) {
@@ -2037,7 +2134,10 @@ async function submitMyManagerMissionEvaluation(request, response) {
 module.exports = {
   addMissionToManagerMember,
   addMyManagerMissionEvaluation,
+  fetchAssociateCommentsForManager,
   getMyManagerEvaluation,
+  getMyManagerEvaluationHistory,
+  getTeamMemberHistoryForManager,
   getManagerTeamReport,
   async getManagerMemberEvaluation(request, response) {
     const member = await getMemberForManager(request.user, request.params.memberId);

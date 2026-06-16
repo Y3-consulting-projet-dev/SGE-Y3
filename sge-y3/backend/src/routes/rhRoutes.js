@@ -2,21 +2,25 @@ const express = require('express');
 
 const {
   addRhQuestionnaireQuestion,
-  addRhSelfMissionEvaluation,
+  createRhCycle,
   createRhQuestionnaireSection,
   downloadRhReport,
   getRhCalibration,
+  getRhCycles,
   getRhDepartmentEvaluationDetail,
   getRhDepartmentEvaluations,
   getAssistantRhEvaluation,
   getMyAssistantRhSelfEvaluation,
+  getMyRhEvaluationHistory,
   getRhQuestionnaire,
   getMyRhSelfEvaluation,
   getRhOverview,
   getRhPopulation,
   getRhReports,
   getRhSyntheses,
+  getRhTeamMemberHistory,
   getRhValidations,
+  listAllMembersForRh,
   saveMyAssistantRhSelfEvaluation,
   saveAssistantRhEvaluation,
   saveMyRhSelfEvaluation,
@@ -24,7 +28,6 @@ const {
   submitMyAssistantRhSelfEvaluation,
   submitAssistantRhEvaluation,
   submitRhSyntheses,
-  submitMyRhSelfMissionEvaluation,
   submitMyRhSelfEvaluation,
   updateRhUserCareer,
   validateRhSelection,
@@ -42,10 +45,11 @@ router.get('/assistant-evaluations/:memberId', requireAuth, requireRh, getAssist
 router.put('/assistant-evaluations/:memberId', requireAuth, requireRh, saveAssistantRhEvaluation);
 router.post('/assistant-evaluations/:memberId/submit', requireAuth, requireRh, submitAssistantRhEvaluation);
 router.get('/self-evaluation', requireAuth, requireRh, getMyRhSelfEvaluation);
-router.post('/self-evaluation/missions', requireAuth, requireRh, addRhSelfMissionEvaluation);
-router.post('/self-evaluation/missions/submit', requireAuth, requireRh, submitMyRhSelfMissionEvaluation);
 router.put('/self-evaluation', requireAuth, requireRh, saveMyRhSelfEvaluation);
 router.post('/self-evaluation/submit', requireAuth, requireRh, submitMyRhSelfEvaluation);
+router.get('/evaluation/history', requireAuth, requireRh, getMyRhEvaluationHistory);
+router.get('/team/members', requireAuth, requireRh, listAllMembersForRh);
+router.get('/team/:memberId/history', requireAuth, requireRh, getRhTeamMemberHistory);
 router.get('/questionnaire', requireAuth, requireRh, getRhQuestionnaire);
 router.post('/questionnaire/sections', requireAuth, requireRh, createRhQuestionnaireSection);
 router.post('/questionnaire/questions', requireAuth, requireRh, addRhQuestionnaireQuestion);
@@ -61,5 +65,7 @@ router.get('/validations', requireAuth, requireRh, getRhValidations);
 router.post('/validations/confirm', requireAuth, requireRh, validateRhSelection);
 router.get('/syntheses', requireAuth, requireRh, getRhSyntheses);
 router.post('/syntheses/submit', requireAuth, requireRh, submitRhSyntheses);
+router.get('/cycles', requireAuth, requireRh, getRhCycles);
+router.post('/cycles', requireAuth, requireRh, createRhCycle);
 
 module.exports = router;

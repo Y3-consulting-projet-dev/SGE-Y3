@@ -1,9 +1,11 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { BarChart3, CalendarDays, FileBarChart2, FolderKanban, LayoutDashboard, LogOut, MessageSquare, Settings2, Users, X } from "lucide-react";
+import { BarChart3, CalendarDays, FileBarChart2, FolderKanban, History, LayoutDashboard, LogOut, MessageSquare, Settings2, Users, X } from "lucide-react";
 import Monequipe from "@/components/pages/manager/Monequipe";
 import Evaluermonequipe from "@/components/pages/manager/Evaluermonequipe";
 import Objectifsequipe from "@/components/pages/manager/Objectifsequipe";
 import Monautoevaluation from "@/components/pages/manager/Monautoevaluation";
+import Monhistorique from "@/components/pages/manager/Monhistorique";
+import HistoriqueEquipe from "@/components/pages/manager/HistoriqueEquipe";
 import Rapportsequipe from "@/components/pages/manager/Rapportsequipe";
 import CalendrierAssistants from "@/components/pages/collaborator/CalendrierAssistants";
 import ProfilePanel from "@/components/profile/ProfilePanel";
@@ -25,6 +27,7 @@ const sidebarSections = [
     items: [
       { key: "team", label: "Mon équipe", icon: Users },
       { key: "team-goals", label: "Objectifs d'équipe", icon: FolderKanban },
+      { key: "team-history", label: "Historique équipe", icon: History },
     ],
   },
   {
@@ -32,6 +35,7 @@ const sidebarSections = [
     items: [
       { key: "self-evaluation", label: "Mon auto-évaluation", icon: BarChart3 },
       { key: "calendar", label: "Mon calendrier", icon: CalendarDays },
+      { key: "history", label: "Historique", icon: History },
     ],
   },
   { group: "Reporting", items: [{ key: "reports", label: "Rapports", icon: FileBarChart2 }] },
@@ -64,8 +68,10 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
     if (activeSection === "overview") return "VUE D'ENSEMBLE";
     if (activeSection === "team") return "MON EQUIPE";
     if (activeSection === "team-goals") return "OBJECTIFS D'EQUIPE";
+    if (activeSection === "team-history") return "HISTORIQUE EQUIPE";
     if (activeSection === "self-evaluation") return "MON AUTO-EVALUATION";
     if (activeSection === "calendar") return "MON CALENDRIER";
+    if (activeSection === "history") return "HISTORIQUE";
     if (activeSection === "reports") return "RAPPORTS";
     if (activeSection === "profile") return "MON PROFIL";
     if (activeSection === "comments") return "COMMENTAIRES RECUS";
@@ -390,8 +396,12 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
             />
           ) : activeSection === "team-goals" ? (
             <Objectifsequipe createSignal={createGoalSignal} />
+          ) : activeSection === "team-history" ? (
+            <HistoriqueEquipe members={members} isLoading={isLoadingOverview} errorMessage={overviewError} />
           ) : activeSection === "self-evaluation" ? (
             <Monautoevaluation />
+          ) : activeSection === "history" ? (
+            <Monhistorique />
           ) : activeSection === "calendar" ? (
             isLoadingSelfEvaluation ? (
               <section className="rounded-lg bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement de mon calendrier...</section>

@@ -2,6 +2,7 @@ const express = require('express');
 
 const {
   getSupportSelfEvaluation,
+  getMySupportEvaluationHistory,
   saveSupportSelfEvaluation,
   submitSupportSelfEvaluation,
 } = require('../controllers/supportController');
@@ -28,6 +29,7 @@ function requireSupport(request, response, next) {
 const router = express.Router();
 
 router.get('/self-evaluation', requireAuth, requireSupport, getSupportSelfEvaluation);
+router.get('/self-evaluation/history', requireAuth, requireSupport, getMySupportEvaluationHistory);
 router.put('/self-evaluation', requireAuth, requireSupport, saveSupportSelfEvaluation);
 router.post('/self-evaluation/submit', requireAuth, requireSupport, submitSupportSelfEvaluation);
 

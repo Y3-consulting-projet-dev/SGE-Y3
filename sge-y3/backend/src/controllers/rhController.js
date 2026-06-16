@@ -3,12 +3,14 @@ const EvaluationInstance = require('../models/EvaluationInstance');
 const ManagerMemberReview = require('../models/ManagerMemberReview');
 const SeniorAssistantReview = require('../models/SeniorAssistantReview');
 const AssociateManagerReview = require('../models/AssociateManagerReview');
+const Cycle = require('../models/Cycle');
 const matrixData = require('../data/competencyMatrix.generated.json');
 const { buildEvaluationTemplateForUser } = require('../utils/competencyMatrix');
 const {
   ALLOWED_GRADES,
   getCategoryFromGrade,
   normalizeDepartment: normalizeUserDepartment,
+  normalizeEmail,
   normalizeText: normalizeUserText,
 } = require('../utils/userMapping');
 const {
@@ -27,9 +29,27 @@ const {
   validateSectionCommentsForSubmit,
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
+const {
+  buildCyclesForInstances,
+  buildPeerReviewComments,
+  resolveTemplateTypeForUser,
+} = require('../utils/evaluationHistory');
+const { activateCycle, getCurrentCycleLabel } = require('../utils/activeCycle');
+const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
+const { fetchAssociateCommentsForManager } = require('./managerController');
 
-const CURRENT_CYCLE_LABEL = 'Cycle 2025-2026';
 const RH_RELEVANT_STATUSES = ['Soumis a RH', 'Valide RH', 'Transmis a l associe', 'Cloture'];
+const SUPPORT_ROLE_BY_EMAIL = {
+  'fleur.nguessan@ycubeac.com': 'Office Manager',
+  'aziz.ouattara@ycubeac.com': 'PMO',
+  'porthela.kakou@ycubeac.com': 'Responsable IT',
+  'adele.creppy@ycubeac.com': 'Comptable interne senior',
+};
+const SUPPORT_EMAILS = Object.keys(SUPPORT_ROLE_BY_EMAIL);
+
+function getSupportRoleLabel(user) {
+  return SUPPORT_ROLE_BY_EMAIL[normalizeEmail(user?.email || '')] || user?.grade || 'Service support';
+}
 const QUESTIONNAIRE_SECTION_OPTIONS = [
   { value: 'SAVOIR FAIRE', label: 'SAVOIR FAIRE' },
   { value: 'SAVOIR ETRE', label: 'SAVOIR ETRE' },
@@ -224,105 +244,6 @@ function toPersistenceSections(sections = []) {
   }));
 }
 
-function buildRhMissionCriteria(sections = []) {
-  return sections.flatMap((section) =>
-    (section.pages || []).flatMap((page) =>
-      (page.themes || []).map((theme) => ({
-        criterion_id: `${page.page_id}-${theme.theme_id}`,
-        section_title: section.title,
-        page_title: page.title,
-        source_sheet: page.source_sheet || '',
-        source_label: page.source_label || '',
-        theme_code: theme.code,
-        label: theme.label,
-        statement: theme.statement || '',
-        score: null,
-      }))
-    )
-  );
-}
-
-function normalizeRhMissionEvaluations(missionEvaluations = []) {
-  return missionEvaluations.map((mission) => ({
-    mission_id: String(mission.id || mission.mission_id || '').trim(),
-    title: String(mission.title || '').trim(),
-    period: String(mission.period || '').trim(),
-    department: String(mission.department || '').trim(),
-    created_by_role: String(mission.created_by_role || mission.createdByRole || 'self').trim() || 'self',
-    assigned_by_user_id: mission.assigned_by_user_id || mission.assignedByUserId || null,
-    assigned_by_name: String(mission.assigned_by_name || mission.assignedByName || '').trim(),
-    assigned_by_grade: String(mission.assigned_by_grade || mission.assignedByGrade || '').trim(),
-    assigned_at: mission.assigned_at || mission.assignedAt || null,
-    primary_recipient_user_id: mission.primary_recipient_user_id || mission.primaryRecipientUserId || null,
-    primary_recipient_name: String(mission.primary_recipient_name || mission.primaryRecipientName || '').trim(),
-    primary_recipient_grade: String(mission.primary_recipient_grade || mission.primaryRecipientGrade || '').trim(),
-    primary_recipient_department: String(
-      mission.primary_recipient_department || mission.primaryRecipientDepartment || ''
-    ).trim(),
-    recipients: Array.isArray(mission.recipients)
-      ? mission.recipients
-          .filter((recipient) => (recipient?.id || recipient?.user_id) && recipient?.name)
-          .map((recipient) => ({
-            user_id: recipient.id || recipient.user_id,
-            name: String(recipient.name || '').trim(),
-            grade: String(recipient.grade || '').trim(),
-            department: String(recipient.department || '').trim(),
-          }))
-      : [],
-    criteria: Array.isArray(mission.criteria)
-      ? mission.criteria.map((criterion) => ({
-          criterion_id: String(criterion.id || criterion.criterion_id || '').trim(),
-          section_title: String(criterion.sectionTitle || criterion.section_title || '').trim(),
-          page_title: String(criterion.pageTitle || criterion.page_title || '').trim(),
-          source_sheet: String(criterion.sourceSheet || criterion.source_sheet || '').trim(),
-          source_label: String(criterion.sourceLabel || criterion.source_label || '').trim(),
-          theme_code: String(criterion.themeCode || criterion.theme_code || '').trim(),
-          label: String(criterion.label || '').trim(),
-          statement: String(criterion.statement || '').trim(),
-          score: criterion.score === null || criterion.score === undefined ? null : Number(criterion.score),
-        }))
-      : [],
-    comment: String(mission.comment || '').trim(),
-    status: String(mission.status || 'Brouillon').trim(),
-    submitted_at: mission.submitted_at || mission.submittedAt || null,
-  }));
-}
-
-function formatRhMissionEvaluations(missionEvaluations = []) {
-  return missionEvaluations.map((mission) => ({
-    id: mission.mission_id,
-    title: mission.title,
-    period: mission.period,
-    department: mission.department,
-    createdByRole: mission.created_by_role || 'self',
-    primaryRecipientUserId:
-      mission.primary_recipient_user_id?.toString?.() || String(mission.primary_recipient_user_id || ''),
-    primaryRecipientName: mission.primary_recipient_name || '',
-    primaryRecipientGrade: mission.primary_recipient_grade || '',
-    primaryRecipientDepartment: mission.primary_recipient_department || '',
-    recipients: (mission.recipients || []).map((recipient) => ({
-      id: recipient.user_id?.toString?.() || String(recipient.user_id || ''),
-      name: recipient.name,
-      grade: recipient.grade,
-      department: recipient.department,
-    })),
-    criteria: (mission.criteria || []).map((criterion) => ({
-      id: criterion.criterion_id,
-      sectionTitle: criterion.section_title,
-      pageTitle: criterion.page_title,
-      sourceSheet: criterion.source_sheet,
-      sourceLabel: criterion.source_label,
-      themeCode: criterion.theme_code,
-      label: criterion.label,
-      statement: criterion.statement,
-      score: criterion.score,
-    })),
-    comment: mission.comment || '',
-    status: mission.status || 'Brouillon',
-    submittedAt: mission.submitted_at || null,
-  }));
-}
-
 function shouldResetToCurrentTemplate(instance, templateSections) {
   const currentSections = normalizeSections(instance.sections || []);
 
@@ -388,7 +309,7 @@ async function getOrCreateRhSelfEvaluation(user, options = {}) {
   const submittedToRole = options.submittedToRole || 'associate';
   let instance = await EvaluationInstance.findOne({
     evalue_id: user._id,
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     template_type: templateType,
   });
 
@@ -396,7 +317,7 @@ async function getOrCreateRhSelfEvaluation(user, options = {}) {
 
   if (!instance) {
     instance = await EvaluationInstance.create({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       evalue_id: user._id,
       status: 'En cours',
       template_type: templateType,
@@ -416,7 +337,6 @@ async function getOrCreateRhSelfEvaluation(user, options = {}) {
 function buildRhSelfEvaluationPayload(instance, user, recipients = [], workflow = {}) {
   const sections = normalizeSections(instance.sections || []);
   const activeSection = sections.find((section) => section.status !== 'Complete') || sections[0] || null;
-  const missionEvaluations = formatRhMissionEvaluations(normalizeRhMissionEvaluations(instance.mission_evaluations || []));
 
   return {
     evaluation: {
@@ -428,7 +348,6 @@ function buildRhSelfEvaluationPayload(instance, user, recipients = [], workflow 
       sections,
       activeSectionId: activeSection?.id || 1,
     },
-    mission_evaluations: missionEvaluations,
     summary: {
       ...getEvaluationSummary(sections),
       overallAverage: getOverallAverageScore(sections),
@@ -1258,7 +1177,7 @@ function buildSectionBreakdown(sections = [], source = '', evaluatorName = '', e
 async function loadRhReviewDataset(rhUserIds) {
   const recipientIds = Array.isArray(rhUserIds) ? rhUserIds.filter(Boolean) : [rhUserIds].filter(Boolean);
   const reviews = await ManagerMemberReview.find({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     submitted_to_user_ids: { $in: recipientIds },
   }).select(
     'member_id manager_id member_department status submitted_at sections mission_reviews rh_validation_selected rh_validation_selected_at rh_validated_at'
@@ -1268,7 +1187,7 @@ async function loadRhReviewDataset(rhUserIds) {
   const managerIds = reviews.map((review) => review.manager_id).filter(Boolean);
   const seniorReviews = memberIds.length
     ? await SeniorAssistantReview.find({
-        cycle_label: CURRENT_CYCLE_LABEL,
+        cycle_label: getCurrentCycleLabel(),
         assistant_id: { $in: memberIds },
       }).select('assistant_id senior_id submitted_at sections mission_reviews')
     : [];
@@ -1294,7 +1213,7 @@ async function loadRhReviewDataset(rhUserIds) {
     .filter((user) => memberIds.some((memberId) => String(memberId) === String(user._id)))
     .map((member) => ({
       evalue_id: member._id,
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       template_type: getExpectedTemplateType(member),
     }));
 
@@ -1551,7 +1470,7 @@ async function loadRhReviewDataset(rhUserIds) {
 async function loadAssistantRhSelfDataset(rhUserIds) {
   const recipientIds = Array.isArray(rhUserIds) ? rhUserIds.filter(Boolean) : [rhUserIds].filter(Boolean);
   const instances = await EvaluationInstance.find({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     template_type: { $in: ['rh-assistant-self-evaluation', 'assistant-self-evaluation', 'senior-self-evaluation'] },
     submitted_to_user_ids: { $in: recipientIds },
   }).select(
@@ -1565,7 +1484,7 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
       : [],
     userIds.length
       ? ManagerMemberReview.find({
-          cycle_label: CURRENT_CYCLE_LABEL,
+          cycle_label: getCurrentCycleLabel(),
           member_id: { $in: userIds },
           template_type: 'rh-assistant-evaluation',
         }).select('member_id manager_id status submitted_at sections mission_reviews rh_validation_selected rh_validation_selected_at rh_validated_at')
@@ -1575,13 +1494,13 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
   const [seniorReviews, missionManagerReviews] = await Promise.all([
     userIds.length
       ? SeniorAssistantReview.find({
-          cycle_label: CURRENT_CYCLE_LABEL,
+          cycle_label: getCurrentCycleLabel(),
           assistant_id: { $in: userIds },
         }).select('assistant_id senior_id submitted_at sections mission_reviews')
       : [],
     userIds.length
       ? ManagerMemberReview.find({
-          cycle_label: CURRENT_CYCLE_LABEL,
+          cycle_label: getCurrentCycleLabel(),
           member_id: { $in: userIds },
           template_type: { $ne: 'rh-assistant-evaluation' },
         }).select('member_id manager_id status submitted_at sections mission_reviews')
@@ -1782,7 +1701,7 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
 async function loadManagerRhSelfDataset(rhUserIds) {
   const recipientIds = Array.isArray(rhUserIds) ? rhUserIds.filter(Boolean) : [rhUserIds].filter(Boolean);
   const instances = await EvaluationInstance.find({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     template_type: 'manager-self-evaluation',
     submitted_to_user_ids: { $in: recipientIds },
   }).select(
@@ -1795,7 +1714,7 @@ async function loadManagerRhSelfDataset(rhUserIds) {
       : [],
     managerIds.length
       ? AssociateManagerReview.find({
-          cycle_label: CURRENT_CYCLE_LABEL,
+          cycle_label: getCurrentCycleLabel(),
           manager_id: { $in: managerIds },
         }).select('associate_id manager_id sections mission_reviews associate_note last_saved_at')
       : [],
@@ -1949,7 +1868,7 @@ async function getRhOverview(request, response) {
 
   const [managerSelfEvaluations, evaluatedPopulation, reviewRows, assistantRhRows, managerRhRows] = await Promise.all([
     EvaluationInstance.find({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       template_type: 'manager-self-evaluation',
       submitted_to_user_ids: { $in: rhUserIds },
     }).select('evalue_id status submitted_at sections'),
@@ -2013,14 +1932,14 @@ async function getRhOverview(request, response) {
     .sort((left, right) => right.average - left.average);
 
   return response.json({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     stats: [
       {
         title: 'Évaluations reçues',
         value: `${receivedCount}/${totalEvaluatedPopulation}`,
         subtitle: totalEvaluatedPopulation
-          ? `${Math.round((receivedCount / totalEvaluatedPopulation) * 100)}% du cycle ${CURRENT_CYCLE_LABEL.replace('Cycle ', '')}`
-          : `0% du cycle ${CURRENT_CYCLE_LABEL.replace('Cycle ', '')}`,
+          ? `${Math.round((receivedCount / totalEvaluatedPopulation) * 100)}% du cycle ${getCurrentCycleLabel().replace('Cycle ', '')}`
+          : `0% du cycle ${getCurrentCycleLabel().replace('Cycle ', '')}`,
       },
       {
         title: 'À valider RH',
@@ -2053,7 +1972,7 @@ async function getRhDepartmentEvaluations(request, response) {
   const groups = buildDepartmentGroups(dedupeRhRowsByMember([...rows, ...assistantRhRows, ...managerRhRows]));
 
   return response.json({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     departments: groups,
   });
 }
@@ -2081,7 +2000,7 @@ async function selectRhDepartmentEvaluation(request, response) {
   const rhUserIds = await resolveRhQueueUserIds();
   const review = await ManagerMemberReview.findOne({
     _id: request.params.reviewId,
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     submitted_to_user_ids: { $in: rhUserIds },
   });
 
@@ -2110,7 +2029,7 @@ async function getRhValidations(request, response) {
   const items = dedupeRhRowsByMember([...rows, ...assistantRhRows, ...managerRhRows].filter(isRhValidationQueueItem));
 
   return response.json({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     items,
   });
 }
@@ -2137,25 +2056,25 @@ async function validateRhSelection(request, response) {
 
   const reviews = await ManagerMemberReview.find({
     _id: { $in: managerReviewIds },
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     submitted_to_user_ids: { $in: rhUserIds },
   });
   const assistantInstances = await EvaluationInstance.find({
     _id: { $in: assistantReviewIds },
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     template_type: { $in: ['rh-assistant-self-evaluation', 'assistant-self-evaluation', 'senior-self-evaluation'] },
     submitted_to_user_ids: { $in: rhUserIds },
   });
   const managerInstances = await EvaluationInstance.find({
     _id: { $in: managerSelfIds },
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     template_type: 'manager-self-evaluation',
     submitted_to_user_ids: { $in: rhUserIds },
   });
   const assistantReviewMemberIds = assistantInstances.map((instance) => instance.evalue_id).filter(Boolean);
   const assistantReviews = assistantReviewMemberIds.length
     ? await ManagerMemberReview.find({
-        cycle_label: CURRENT_CYCLE_LABEL,
+        cycle_label: getCurrentCycleLabel(),
         member_id: { $in: assistantReviewMemberIds },
         submitted_to_user_ids: { $in: rhUserIds },
       })
@@ -2207,7 +2126,7 @@ async function getRhSyntheses(request, response) {
   const items = dedupeRhRowsByMember([...rows, ...assistantRhRows, ...managerRhRows]).filter((row) => row.status === 'Valide RH' || row.status === 'Cloture');
 
   return response.json({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     items,
   });
 }
@@ -2225,7 +2144,7 @@ async function submitRhSyntheses(request, response) {
   if (!readyRows.length) {
     return response.json({
       message: "Aucune synthese RH n'est disponible pour transmission a l'associe.",
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       items: [],
     });
   }
@@ -2266,7 +2185,7 @@ async function submitRhSyntheses(request, response) {
 
   return response.json({
     message: 'Les syntheses ont bien ete transmises a l associe.',
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     items: [],
   });
 }
@@ -2411,7 +2330,7 @@ function getAssistantRhWorkflowConfig() {
 async function getAssistantRhMemberForRh(rhUser, memberId) {
   const selfEvaluation = await EvaluationInstance.findOne({
     evalue_id: memberId,
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     template_type: 'rh-assistant-self-evaluation',
     submitted_to_user_ids: rhUser._id,
   }).select('evalue_id status submitted_at sections');
@@ -2435,7 +2354,7 @@ async function getAssistantRhMemberForRh(rhUser, memberId) {
 
 async function getOrCreateAssistantRhReview(rhUser, member) {
   let review = await ManagerMemberReview.findOne({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     manager_id: rhUser._id,
     member_id: member._id,
     template_type: 'rh-assistant-evaluation',
@@ -2445,7 +2364,7 @@ async function getOrCreateAssistantRhReview(rhUser, member) {
 
   if (!review) {
     review = await ManagerMemberReview.create({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       manager_id: rhUser._id,
       member_id: member._id,
       member_department: member.department || 'CAPITAL HUMAIN',
@@ -2557,66 +2476,15 @@ async function getAssistantRhEvaluation(request, response) {
   return response.json(buildAssistantRhReviewPayload(review, request.user, context.member, context.selfEvaluation, associateRecipients));
 }
 
-async function addRhSelfMissionEvaluation(request, response) {
-  const title = String(request.body?.title || '').trim();
-  const period = String(request.body?.period || '').trim();
-
-  if (!title) {
-    return response.status(400).json({
-      message: 'Le titre de la mission est requis.',
-    });
-  }
-
-  const instance = await getOrCreateRhSelfEvaluation(request.user);
-  const templateSections = cloneRhSelfTemplate(request.user);
-  const missionEvaluations = normalizeRhMissionEvaluations(instance.mission_evaluations || []);
-
-  missionEvaluations.push({
-    mission_id: `rh-mission-${request.user._id}-${Date.now()}`,
-    title,
-    period,
-    department: request.user.department || 'RH',
-    created_by_role: 'self',
-    assigned_by_user_id: null,
-    assigned_by_name: '',
-    assigned_by_grade: '',
-    assigned_at: null,
-    primary_recipient_user_id: null,
-    primary_recipient_name: '',
-    primary_recipient_grade: '',
-    primary_recipient_department: '',
-    recipients: [],
-    criteria: buildRhMissionCriteria(templateSections),
-    comment: '',
-    status: 'Brouillon',
-    submitted_at: null,
-  });
-
-  instance.mission_evaluations = missionEvaluations;
-  instance.last_saved_at = new Date();
-  await instance.save();
-
-  const associateRecipients = await resolveAssociateRecipients();
-
-  return response.json({
-    message: 'Mission RH ajoutee.',
-    ...buildRhSelfEvaluationPayload(instance, request.user, associateRecipients),
-  });
-}
-
 async function saveMyRhSelfEvaluation(request, response) {
   const instance = await getOrCreateRhSelfEvaluation(request.user);
   const normalizedIncomingSections = normalizeSections(request.body?.sections || []);
-  const missionEvaluations = Array.isArray(request.body?.missionEvaluations)
-    ? normalizeRhMissionEvaluations(request.body.missionEvaluations)
-    : normalizeRhMissionEvaluations(instance.mission_evaluations || []);
 
   if (!normalizedIncomingSections.length) {
     return response.status(400).json({ message: "Aucune section RH a sauvegarder." });
   }
 
   instance.sections = toPersistenceSections(normalizedIncomingSections);
-  instance.mission_evaluations = missionEvaluations;
   instance.status = instance.status === 'Soumis aux Associes' ? instance.status : 'En cours';
   instance.last_saved_at = new Date();
   await instance.save();
@@ -2721,66 +2589,6 @@ async function submitMyRhSelfEvaluation(request, response) {
 
   return response.json({
     message: "Auto-evaluation RH soumise aux associes.",
-    ...buildRhSelfEvaluationPayload(instance, request.user, associateRecipients),
-  });
-}
-
-async function submitMyRhSelfMissionEvaluation(request, response) {
-  const missionId = String(request.body?.missionId || '').trim();
-
-  if (!missionId) {
-    return response.status(400).json({
-      message: 'La mission RH a soumettre est requise.',
-    });
-  }
-
-  const instance = await getOrCreateRhSelfEvaluation(request.user);
-  const missionEvaluations = normalizeRhMissionEvaluations(instance.mission_evaluations || []);
-  const mission = missionEvaluations.find((item) => item.mission_id === missionId);
-
-  if (!mission) {
-    return response.status(404).json({
-      message: 'Mission RH introuvable.',
-    });
-  }
-
-  const hasIncompleteCriterion = (mission.criteria || []).some(
-    (criterion) => criterion.score === null || criterion.score === undefined
-  );
-
-  if (hasIncompleteCriterion) {
-    return response.status(400).json({
-      message: 'Toutes les questions de la mission RH doivent etre renseignees avant soumission aux associes.',
-    });
-  }
-
-  const associateRecipients = await resolveAssociateRecipients();
-
-  if (!associateRecipients.length) {
-    return response.status(400).json({
-      message: "Aucun associe actif n'est disponible pour recevoir cette mission RH.",
-    });
-  }
-
-  mission.primary_recipient_user_id = associateRecipients[0]?._id || null;
-  mission.primary_recipient_name = associateRecipients[0]?.name || '';
-  mission.primary_recipient_grade = associateRecipients[0]?.grade || '';
-  mission.primary_recipient_department = associateRecipients[0]?.department || '';
-  mission.recipients = associateRecipients.map((recipient) => ({
-    user_id: recipient._id,
-    name: recipient.name,
-    grade: recipient.grade,
-    department: recipient.department,
-  }));
-  mission.status = 'Soumise';
-  mission.submitted_at = new Date();
-
-  instance.mission_evaluations = missionEvaluations;
-  instance.last_saved_at = new Date();
-  await instance.save();
-
-  return response.json({
-    message: `Mission RH soumise a ${associateRecipients.map((recipient) => recipient.name).join(', ')}.`,
     ...buildRhSelfEvaluationPayload(instance, request.user, associateRecipients),
   });
 }
@@ -2903,7 +2711,7 @@ async function getRhCalibration(request, response) {
   });
 
   return response.json({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     items,
   });
 }
@@ -2962,7 +2770,7 @@ async function getRhPopulation(request, response) {
   });
 
   return response.json({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     groups,
   });
 }
@@ -3167,7 +2975,7 @@ async function getRhReports(request, response) {
   ]);
 
   return response.json({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     exports: [
       {
         id: 'rh-synthese-validee',
@@ -3220,26 +3028,160 @@ async function downloadRhReport(request, response) {
   return response.send(file.buffer);
 }
 
+async function getMyRhEvaluationHistory(request, response) {
+  const resolved = resolveTemplateTypeForUser(request.user, { supportEmails: SUPPORT_EMAILS });
+
+  if (!resolved) {
+    return response.json({ cycles: [] });
+  }
+
+  const instances = await EvaluationInstance.find({
+    evalue_id: request.user._id,
+    template_type: resolved.templateType,
+    cycle_label: { $ne: getCurrentCycleLabel() },
+  }).sort({ cycle_label: -1 });
+
+  const cycles = await buildCyclesForInstances(instances, resolved.kind, () => Promise.resolve([]));
+
+  return response.json({ cycles });
+}
+
+async function listAllMembersForRh(request, response) {
+  const members = await User.find({
+    is_active: true,
+    _id: { $ne: request.user._id },
+  })
+    .sort({ last_name: 1, first_name: 1 })
+    .select('_id name first_name last_name grade department code_categorie email');
+
+  return response.json({
+    cycle_label: getCurrentCycleLabel(),
+    members: members.map((member) => ({
+      id: member._id.toString(),
+      name: member.name,
+      grade: SUPPORT_EMAILS.includes(normalizeEmail(member.email || '')) ? getSupportRoleLabel(member) : member.grade,
+      department: member.department,
+      code_categorie: member.code_categorie,
+    })),
+  });
+}
+
+async function getRhTeamMemberHistory(request, response) {
+  const member = await User.findOne({ _id: request.params.memberId, is_active: true })
+    .select('_id name grade email code_categorie department');
+
+  if (!member) {
+    return response.status(404).json({ message: 'Membre introuvable.' });
+  }
+
+  const resolved = resolveTemplateTypeForUser(member, { supportEmails: SUPPORT_EMAILS });
+
+  if (!resolved) {
+    return response.status(404).json({ message: 'Historique indisponible pour ce membre.' });
+  }
+
+  const { templateType, kind } = resolved;
+
+  const instances = await EvaluationInstance.find({
+    evalue_id: member._id,
+    template_type: templateType,
+    cycle_label: { $ne: getCurrentCycleLabel() },
+  }).sort({ cycle_label: -1 });
+
+  const getComments = templateType === 'manager-self-evaluation'
+    ? (cycleLabel) => fetchAssociateCommentsForManager(cycleLabel, member._id)
+    : templateType === 'support-self-evaluation' || templateType === 'associate-self-evaluation'
+      ? (_cycleLabel, instance) => Promise.resolve(buildPeerReviewComments(instance))
+      : templateType === 'rh-self-evaluation' || templateType === 'rh-assistant-self-evaluation'
+        ? () => Promise.resolve([])
+        : (cycleLabel) => fetchManagerCommentsForMember(cycleLabel, member._id);
+
+  const cycles = await buildCyclesForInstances(instances, kind, getComments);
+
+  return response.json({
+    cycles,
+    member: {
+      id: member._id.toString(),
+      name: member.name,
+      grade: SUPPORT_EMAILS.includes(normalizeEmail(member.email || '')) ? getSupportRoleLabel(member) : member.grade,
+    },
+  });
+}
+
+function serializeCycle(cycle) {
+  return {
+    id: cycle._id.toString(),
+    label: cycle.label,
+    start_date: cycle.start_date,
+    end_date: cycle.end_date,
+    is_active: cycle.is_active,
+  };
+}
+
+async function getRhCycles(_request, response) {
+  const cycles = await Cycle.find().sort({ start_date: -1 });
+
+  return response.json({ cycles: cycles.map(serializeCycle) });
+}
+
+async function createRhCycle(request, response) {
+  const startDate = new Date(request.body?.start_date);
+  const endDate = new Date(request.body?.end_date);
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return response.status(400).json({ message: 'Veuillez renseigner une date de début et une date de fin valides.' });
+  }
+
+  if (startDate >= endDate) {
+    return response.status(400).json({ message: 'La date de début doit être antérieure à la date de fin.' });
+  }
+
+  const label = `Cycle ${startDate.getFullYear()}-${endDate.getFullYear()}`;
+
+  try {
+    await Cycle.updateMany({ is_active: true }, { is_active: false });
+    const cycle = await Cycle.create({
+      label,
+      start_date: startDate,
+      end_date: endDate,
+      is_active: true,
+    });
+
+    activateCycle(cycle);
+
+    return response.status(201).json({ cycle: serializeCycle(cycle) });
+  } catch (error) {
+    if (error?.code === 11000) {
+      return response.status(409).json({ message: 'Un cycle avec ce libellé existe déjà.' });
+    }
+
+    throw error;
+  }
+}
+
 module.exports = {
   addRhQuestionnaireQuestion,
   buildNonRhDepartmentClause,
+  createRhCycle,
   createRhQuestionnaireSection,
-  CURRENT_CYCLE_LABEL,
   downloadRhReport,
-  addRhSelfMissionEvaluation,
   formatDepartmentLabel,
   getAssistantRhEvaluation,
   getRhCalibration,
+  getRhCycles,
   getRhDepartmentEvaluationDetail,
   getRhDepartmentEvaluations,
   getMyAssistantRhSelfEvaluation,
+  getMyRhEvaluationHistory,
   getRhQuestionnaire,
   getMyRhSelfEvaluation,
   getRhOverview,
   getRhPopulation,
   getRhReports,
   getRhSyntheses,
+  getRhTeamMemberHistory,
   getRhValidations,
+  listAllMembersForRh,
   loadAssistantRhSelfDataset,
   loadRhReviewDataset,
   RH_RELEVANT_STATUSES,
@@ -3250,7 +3192,6 @@ module.exports = {
   selectRhDepartmentEvaluation,
   submitAssistantRhEvaluation,
   submitMyAssistantRhSelfEvaluation,
-  submitMyRhSelfMissionEvaluation,
   submitMyRhSelfEvaluation,
   submitRhSyntheses,
   updateRhUserCareer,

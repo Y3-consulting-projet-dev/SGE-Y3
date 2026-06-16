@@ -37,13 +37,6 @@ export function getRhSelfEvaluation() {
   return request("/rh/self-evaluation");
 }
 
-export function createRhSelfMissionEvaluation(payload) {
-  return request("/rh/self-evaluation/missions", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
 export function getAssistantRhEvaluation(memberId) {
   return request(`/rh/assistant-evaluations/${memberId}`);
 }
@@ -76,13 +69,6 @@ export function saveAssistantRhSelfEvaluation(payload) {
 export function submitRhSelfEvaluation() {
   return request("/rh/self-evaluation/submit", {
     method: "POST",
-  });
-}
-
-export function submitRhSelfMissionEvaluation(missionId) {
-  return request("/rh/self-evaluation/missions/submit", {
-    method: "POST",
-    body: JSON.stringify({ missionId }),
   });
 }
 
@@ -207,5 +193,28 @@ export function getRhSyntheses() {
 export function submitRhSyntheses() {
   return request("/rh/syntheses/submit", {
     method: "POST",
+  });
+}
+
+export function getMyRhEvaluationHistory() {
+  return request("/rh/evaluation/history");
+}
+
+export function getRhTeamMembers() {
+  return request("/rh/team/members");
+}
+
+export function getRhTeamMemberHistory(memberId) {
+  return request(`/rh/team/${memberId}/history`);
+}
+
+export function getRhCycles() {
+  return request("/rh/cycles");
+}
+
+export function createRhCycle(payload) {
+  return request("/rh/cycles", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }

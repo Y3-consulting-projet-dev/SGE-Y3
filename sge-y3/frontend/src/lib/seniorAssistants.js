@@ -49,6 +49,10 @@ export function getSeniorAssistantEvaluation(assistantId) {
   return request(`/senior/assistants/${assistantId}/evaluation`);
 }
 
+export function getSeniorAssistantHistory(assistantId) {
+  return request(`/senior/assistants/${assistantId}/history`);
+}
+
 export function addSeniorAssistantMission(assistantId, payload) {
   return request(`/senior/assistants/${assistantId}/evaluation/missions`, {
     method: "POST",

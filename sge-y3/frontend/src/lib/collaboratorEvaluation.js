@@ -37,6 +37,10 @@ export function getMyAssistantResults() {
   return request("/collaborator/results/me");
 }
 
+export function getMyAssistantEvaluationHistory() {
+  return request("/collaborator/evaluation/history");
+}
+
 export function saveMyAssistantEvaluation(payload) {
   return request("/collaborator/evaluation/me", {
     method: "PUT",

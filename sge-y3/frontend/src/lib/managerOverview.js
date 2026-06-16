@@ -41,6 +41,10 @@ export function getManagerSelfEvaluation() {
   return request("/manager/self-evaluation");
 }
 
+export function getManagerSelfEvaluationHistory() {
+  return request("/manager/self-evaluation/history");
+}
+
 export function createManagerMissionEvaluation(payload) {
   return request("/manager/self-evaluation/missions", {
     method: "POST",
@@ -70,6 +74,10 @@ export function submitManagerMissionEvaluation(missionId, payload = {}) {
 
 export function getManagerMemberEvaluation(memberId) {
   return request(`/manager/members/${memberId}/evaluation`);
+}
+
+export function getManagerMemberHistory(memberId) {
+  return request(`/manager/members/${memberId}/history`);
 }
 
 export function createManagerMemberMission(memberId, payload) {

@@ -1,13 +1,15 @@
 import { useMemo, useState } from "react";
-import { ClipboardList, LayoutDashboard, LogOut, Settings2 } from "lucide-react";
+import { ClipboardList, History, LayoutDashboard, LogOut, Settings2 } from "lucide-react";
 import logoY3 from "@/assets/logo-y3.png";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import MonautoevaluationSupport from "@/components/pages/support/MonautoevaluationSupport";
+import Monhistorique from "@/components/pages/support/Monhistorique";
 import { getDisplayName } from "@/lib/userPresentation";
 
 const supportMenu = [
   { key: "overview", label: "Vue support", icon: LayoutDashboard },
   { key: "self-evaluation", label: "Mon auto-évaluation", icon: ClipboardList },
+  { key: "history", label: "Historique", icon: History },
   { key: "profile", label: "Profil", icon: Settings2 },
 ];
 
@@ -18,6 +20,7 @@ function VueSupport({ onLogout, onUserUpdate, user }) {
 
   const pageTitle = useMemo(() => {
     if (activeSection === "self-evaluation") return "MON AUTO-ÉVALUATION SUPPORT";
+    if (activeSection === "history") return "HISTORIQUE";
     if (activeSection === "profile") return "MON PROFIL";
     return "DEPARTEMENT SUPPORT";
   }, [activeSection]);
@@ -25,6 +28,10 @@ function VueSupport({ onLogout, onUserUpdate, user }) {
   const renderContent = () => {
     if (activeSection === "self-evaluation") {
       return <MonautoevaluationSupport user={user} />;
+    }
+
+    if (activeSection === "history") {
+      return <Monhistorique />;
     }
 
     if (activeSection === "profile") {

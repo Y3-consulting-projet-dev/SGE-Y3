@@ -7,7 +7,8 @@ const {
   normalizeSections,
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
-const { CURRENT_CYCLE_LABEL } = require('./rhController');
+const { getCurrentCycleLabel } = require('../utils/activeCycle');
+const { buildCyclesForInstances, buildPeerReviewComments } = require('../utils/evaluationHistory');
 
 function toPersistenceSections(sections = []) {
   return sections.map((section) => ({
@@ -133,7 +134,7 @@ async function resolveAssociates() {
 
 async function getOrCreateSupportSelfEvaluation(user) {
   let instance = await EvaluationInstance.findOne({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     evalue_id: user._id,
     template_type: 'support-self-evaluation',
   });
@@ -142,7 +143,7 @@ async function getOrCreateSupportSelfEvaluation(user) {
 
   if (!instance) {
     instance = await EvaluationInstance.create({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       evalue_id: user._id,
       status: 'En cours',
       template_type: 'support-self-evaluation',
@@ -164,7 +165,7 @@ function buildSupportSelfPayload(instance, user, recipients = []) {
   const sections = normalizeSections(instance.sections || []);
 
   return {
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     evaluation: {
       id: instance._id.toString(),
       status: instance.status,
@@ -270,5 +271,19 @@ module.exports = {
       message: 'Auto-évaluation support soumise aux associés.',
       ...buildSupportSelfPayload(instance, request.user, recipients),
     });
+  },
+
+  async getMySupportEvaluationHistory(request, response) {
+    const instances = await EvaluationInstance.find({
+      evalue_id: request.user._id,
+      template_type: 'support-self-evaluation',
+      cycle_label: { $ne: getCurrentCycleLabel() },
+    }).sort({ cycle_label: -1 });
+
+    const cycles = await buildCyclesForInstances(instances, 'sections', (_cycleLabel, instance) =>
+      Promise.resolve(buildPeerReviewComments(instance))
+    );
+
+    return response.json({ cycles });
   },
 };

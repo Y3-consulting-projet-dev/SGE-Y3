@@ -103,11 +103,13 @@ function getPermissionRole(user = {}) {
 
 module.exports = {
   ALLOWED_GRADES,
+  ASSISTANT_RH_EMAIL,
   CATEGORY_BY_GRADE,
   getCategoryFromGrade,
   getGradeFromCategory,
   getPermissionRole,
   getRoleFromGrade,
+  isFullRh,
   normalizeCategory,
   normalizeDepartment,
   normalizeEmail,

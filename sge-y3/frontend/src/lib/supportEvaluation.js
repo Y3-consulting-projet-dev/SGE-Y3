@@ -42,3 +42,7 @@ export function submitSupportSelfEvaluation() {
     method: "POST",
   });
 }
+
+export function getMySupportEvaluationHistory() {
+  return request("/support/self-evaluation/history");
+}

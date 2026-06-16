@@ -12,8 +12,9 @@ const {
   validateSectionCommentsForSubmit,
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
-
-const CURRENT_CYCLE_LABEL = 'Cycle 2025-2026';
+const { buildMissionResultsPayload } = require('../utils/evaluationHistory');
+const { getCurrentCycleLabel } = require('../utils/activeCycle');
+const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
 
 function normalizeText(value = '') {
   return String(value || '').replace(/\s+/g, ' ').trim().toUpperCase();
@@ -535,7 +536,7 @@ function isAssistantMissionVisibleToSupervisor(mission, user) {
 async function getAssistantSubmittedMissionsForSenior(assistantId, seniorUser) {
   const instance = await EvaluationInstance.findOne({
     evalue_id: assistantId,
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     template_type: 'assistant-self-evaluation',
   }).select('mission_evaluations');
 
@@ -621,7 +622,7 @@ async function getAssistantForSenior(seniorUser, assistantId) {
 
 async function getOrCreateSeniorAssistantReview(seniorUser, assistant) {
   let review = await SeniorAssistantReview.findOne({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     senior_id: seniorUser._id,
     assistant_id: assistant._id,
   });
@@ -631,7 +632,7 @@ async function getOrCreateSeniorAssistantReview(seniorUser, assistant) {
 
   if (!review) {
     review = await SeniorAssistantReview.create({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       senior_id: seniorUser._id,
       assistant_id: assistant._id,
       assistant_department: evaluationDepartment,
@@ -654,7 +655,7 @@ async function getOrCreateSeniorAssistantReview(seniorUser, assistant) {
 async function getOrCreateAssistantEvaluationInstance(assistant) {
   let instance = await EvaluationInstance.findOne({
     evalue_id: assistant._id,
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     template_type: 'assistant-self-evaluation',
   });
 
@@ -662,7 +663,7 @@ async function getOrCreateAssistantEvaluationInstance(assistant) {
 
   if (!instance) {
     instance = await EvaluationInstance.create({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       evalue_id: assistant._id,
       status: 'En cours',
       template_type: 'assistant-self-evaluation',
@@ -817,7 +818,7 @@ async function listMyAssistants(request, response) {
 
   const reviews = assistants.length
     ? await SeniorAssistantReview.find({
-        cycle_label: CURRENT_CYCLE_LABEL,
+        cycle_label: getCurrentCycleLabel(),
         senior_id: request.user._id,
         assistant_id: { $in: assistants.map((assistant) => assistant._id) },
       }).select('assistant_id status last_saved_at submitted_at')
@@ -826,7 +827,7 @@ async function listMyAssistants(request, response) {
   const reviewByAssistantId = new Map(reviews.map((review) => [String(review.assistant_id), review]));
 
   return response.json({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     assistants: assistants.map((assistant) => {
       const review = reviewByAssistantId.get(String(assistant._id));
 
@@ -850,7 +851,7 @@ async function listMyCommonMissions(request, response) {
   const { missions } = await buildSeniorOverviewMetrics(request.user);
 
   return response.json({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     missions,
   });
 }
@@ -989,7 +990,7 @@ async function listMyTransmittedSummaries(request, response) {
 
   const evaluationInstances = assistants.length
     ? await EvaluationInstance.find({
-        cycle_label: CURRENT_CYCLE_LABEL,
+        cycle_label: getCurrentCycleLabel(),
         template_type: 'assistant-self-evaluation',
         evalue_id: { $in: assistants.map((assistant) => assistant._id) },
       }).select('evalue_id mission_evaluations')
@@ -1049,7 +1050,7 @@ async function listMyTransmittedSummaries(request, response) {
     .sort((left, right) => left.assistant.name.localeCompare(right.assistant.name, 'fr', { sensitivity: 'base' }));
 
   return response.json({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     totalAssistants: rows.length,
     totalMissions: rows.reduce((total, row) => total + row.missions.length, 0),
     rows,
@@ -1122,7 +1123,7 @@ async function buildSeniorOverviewMetrics(user) {
   const instances = assistantIds.length
     ? await EvaluationInstance.find({
         evalue_id: { $in: assistantIds },
-        cycle_label: CURRENT_CYCLE_LABEL,
+        cycle_label: getCurrentCycleLabel(),
         template_type: 'assistant-self-evaluation',
       }).select('evalue_id mission_evaluations chief_comments')
     : [];
@@ -1150,7 +1151,7 @@ async function buildSeniorOverviewMetrics(user) {
 
   const reviews = assistants.length
     ? await SeniorAssistantReview.find({
-        cycle_label: CURRENT_CYCLE_LABEL,
+        cycle_label: getCurrentCycleLabel(),
         senior_id: user._id,
         assistant_id: { $in: assistants.map((assistant) => assistant._id) },
       }).select('assistant_id status mission_reviews')
@@ -1198,7 +1199,7 @@ async function buildSeniorOverviewMetrics(user) {
     }));
 
   const chiefCommentInstances = await EvaluationInstance.find({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     'chief_comments.target_user_id': user._id,
   }).select('chief_comments');
 
@@ -1210,7 +1211,7 @@ async function buildSeniorOverviewMetrics(user) {
   const anonymousCommentsCount = anonymousComments.length;
 
   return {
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     missions,
     summary: {
       assistantsEncadresCount: assistantRows.length,
@@ -1254,6 +1255,38 @@ async function getMyAssistantEvaluation(request, response) {
   payload.self_evaluation = buildAssistantSelfEvaluationPayload(selfEvaluationInstance, request.user);
 
   return response.json(payload);
+}
+
+async function getAssistantHistoryForSenior(request, response) {
+  const assistant = await getAssistantForSenior(request.user, request.params.assistantId);
+
+  if (!assistant) {
+    return response.status(404).json({
+      message: "Assistant introuvable pour ce Senior.",
+    });
+  }
+
+  const instances = await EvaluationInstance.find({
+    evalue_id: assistant._id,
+    template_type: 'assistant-self-evaluation',
+    cycle_label: { $ne: getCurrentCycleLabel() },
+  }).sort({ cycle_label: -1 });
+
+  const cycles = await Promise.all(
+    instances.map(async (instance) => {
+      const comments = await fetchManagerCommentsForMember(instance.cycle_label, assistant._id);
+      return buildMissionResultsPayload(instance, comments);
+    })
+  );
+
+  return response.json({
+    cycles,
+    member: {
+      id: assistant._id.toString(),
+      name: assistant.name,
+      grade: assistant.grade,
+    },
+  });
 }
 
 async function saveMyAssistantEvaluation(request, response) {
@@ -1585,6 +1618,7 @@ async function submitMyAssistantEvaluation(request, response) {
 
 module.exports = {
   addMissionToAssistant,
+  getAssistantHistoryForSenior,
   getMySeniorOverview,
   listMyAssistants,
   listMyCommonMissions,

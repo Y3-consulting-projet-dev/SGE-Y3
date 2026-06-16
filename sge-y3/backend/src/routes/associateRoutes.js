@@ -2,6 +2,7 @@ const express = require('express');
 
 const {
   getAssociateSelfEvaluation,
+  getMyAssociateEvaluationHistory,
   saveAssociateSelfEvaluation,
   submitAssociateSelfEvaluation,
   getReceivedAssociateEvaluations,
@@ -14,6 +15,8 @@ const {
   getAssociateSyntheses,
   getAssociateSupportEvaluation,
   getAssociateSupportEvaluations,
+  getCabinetMemberHistory,
+  listCabinetMembers,
   saveAssociateManagerEvaluation,
   submitAssociateManagerEvaluationToRh,
   saveAssociateSupportEvaluation,
@@ -26,8 +29,11 @@ const router = express.Router();
 router.get('/overview', requireAuth, requireAssociate, getAssociateOverview);
 router.get('/syntheses', requireAuth, requireAssociate, getAssociateSyntheses);
 router.get('/self-evaluation', requireAuth, requireAssociate, getAssociateSelfEvaluation);
+router.get('/self-evaluation/history', requireAuth, requireAssociate, getMyAssociateEvaluationHistory);
 router.put('/self-evaluation', requireAuth, requireAssociate, saveAssociateSelfEvaluation);
 router.post('/self-evaluation/submit', requireAuth, requireAssociate, submitAssociateSelfEvaluation);
+router.get('/cabinet-members', requireAuth, requireAssociate, listCabinetMembers);
+router.get('/cabinet-members/:memberId/history', requireAuth, requireAssociate, getCabinetMemberHistory);
 router.get('/received-evaluations', requireAuth, requireAssociate, getReceivedAssociateEvaluations);
 router.get('/received-evaluations/:evaluationId', requireAuth, requireAssociate, getReceivedAssociateEvaluation);
 router.put('/received-evaluations/:evaluationId/comment', requireAuth, requireAssociate, saveReceivedAssociateEvaluationComment);

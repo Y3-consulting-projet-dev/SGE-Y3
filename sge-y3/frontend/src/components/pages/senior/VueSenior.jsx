@@ -8,6 +8,8 @@ import Evaluerassistants from "@/components/pages/senior/Evaluerassistants";
 import MesresultatsSenior from "@/components/pages/senior/MesresultatsSenior";
 import MesobjectifsSenior from "@/components/pages/senior/MesobjectifsSenior";
 import MonautoevaluationSenior from "@/components/pages/senior/MonautoevaluationSenior";
+import Monhistorique from "@/components/pages/senior/Monhistorique";
+import HistoriqueAssistants from "@/components/pages/senior/HistoriqueAssistants";
 import CalendrierAssistants from "@/components/pages/collaborator/CalendrierAssistants";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import CommentairesRecus from "@/components/CommentairesRecus";
@@ -142,6 +144,8 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
     if (activeSection === "goals") return "MISSIONS COMMUNES";
     if (activeSection === "self-evaluation") return "MON AUTO-EVALUATION";
     if (activeSection === "calendar") return "MON CALENDRIER";
+    if (activeSection === "history") return "HISTORIQUE";
+    if (activeSection === "assistants-history") return "HISTORIQUE ASSISTANTS";
     if (activeSection === "profile") return "MON PROFIL";
     if (activeSection === "comments") return "COMMENTAIRES RECUS";
     return "TABLEAU DE BORD SENIOR";
@@ -276,6 +280,14 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
                 assignLabel="Assistant"
               />
             )
+          ) : activeSection === "history" ? (
+            <Monhistorique />
+          ) : activeSection === "assistants-history" ? (
+            <HistoriqueAssistants
+              assistants={assistants}
+              isLoading={isLoadingAssistants}
+              errorMessage={assistantsError}
+            />
           ) : activeSection === "comments" ? (
             <CommentairesRecus
               comments={overviewData?.anonymousComments || []}
