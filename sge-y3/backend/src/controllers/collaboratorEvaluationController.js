@@ -71,6 +71,46 @@ async function resolveMissionRecipientsForAssistant(user) {
     .select('_id name first_name last_name grade department code_categorie');
 }
 
+async function resolveCommentTargetsForUser(user) {
+  const targetDepartments = getManagerDepartmentsForDepartment(user.department);
+  const userIdStr = String(user._id);
+
+  const [departmentMembers, rhMembers] = await Promise.all([
+    targetDepartments.length
+      ? User.find({
+          is_active: true,
+          department: { $in: targetDepartments },
+        })
+          .sort({ last_name: 1, first_name: 1 })
+          .select('_id name first_name last_name grade department code_categorie')
+      : Promise.resolve([]),
+    User.find({
+      is_active: true,
+      department: { $in: ['RH', 'CAPITAL HUMAIN'] },
+    })
+      .sort({ last_name: 1, first_name: 1 })
+      .select('_id name first_name last_name grade department code_categorie'),
+  ]);
+
+  const seen = new Set();
+  const all = [...departmentMembers, ...rhMembers].filter((u) => {
+    const id = String(u._id);
+    if (id === userIdStr || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+
+  return all.map((u) => ({
+    id: u._id.toString(),
+    name: u.name,
+    first_name: u.first_name,
+    last_name: u.last_name,
+    grade: u.grade,
+    department: u.department,
+    code_categorie: u.code_categorie,
+  }));
+}
+
 async function resolveManagersForSenior(user) {
   const targetDepartments = getManagerDepartmentsForDepartment(user.department);
 
@@ -680,7 +720,10 @@ async function buildEvaluationPayload(instance, user) {
   const sections = normalizeSections(instance.sections);
   const missionEvaluations = formatMissionEvaluations(instance.mission_evaluations || []);
   const activeSection = sections.find((section) => section.status !== 'Complete') || sections[0] || null;
-  const managers = await resolveRecipientsForInstance(instance, user);
+  const [managers, commentTargets] = await Promise.all([
+    resolveRecipientsForInstance(instance, user),
+    resolveCommentTargetsForUser(user),
+  ]);
   const missionRecipients =
     instance?.template_type === 'assistant-self-evaluation'
       ? await resolveMissionRecipientsForAssistant(user)
@@ -725,10 +768,21 @@ async function buildEvaluationPayload(instance, user) {
       })),
       recipient_options: buildRecipientOptions(missionRecipients, user),
       submitted_to_managers: instance.submitted_to_managers || [],
+      comment_targets: commentTargets,
     },
     mission_evaluations: missionEvaluations,
-    anonymous_feedback: formatAnonymousFeedback(instance.anonymous_feedback || []),
     chief_comments: formatChiefComments(instance.chief_comments || []),
+    development: {
+      wishes: instance.development_wishes || '',
+      trainingRequests: instance.development_training_requests || [],
+      status: instance.development_status || 'Brouillon',
+      submittedAt: instance.development_submitted_at || null,
+      submittedToUserId: instance.development_submitted_to_user_id ? String(instance.development_submitted_to_user_id) : null,
+      submittedToName: instance.development_submitted_to_name || '',
+      trainingDecision: instance.development_training_decision || 'En attente',
+      trainingManagerComment: instance.development_training_manager_comment || '',
+      trainingDecidedAt: instance.development_training_decided_at || null,
+    },
   };
 }
 
@@ -828,7 +882,6 @@ async function saveMySeniorEvaluation(request, response) {
 async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
   const rawSections = Array.isArray(request.body?.sections) ? request.body.sections : null;
   const rawMissionEvaluations = Array.isArray(request.body?.missionEvaluations) ? request.body.missionEvaluations : null;
-  const rawAnonymousFeedback = Array.isArray(request.body?.anonymousFeedback) ? request.body.anonymousFeedback : null;
   const rawChiefComments = Array.isArray(request.body?.chiefComments) ? request.body.chiefComments : null;
   const instance = await getOrCreateEvaluation(request.user);
   const isAssistantEvaluation = instance.template_type === 'assistant-self-evaluation';
@@ -951,7 +1004,6 @@ async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
   await persistEvaluationInstance(instance, {
     ...(rawSections?.length || !isMissionOnlySelfEvaluation ? { sections: toPersistenceSections(sections) } : {}),
     ...(missionEvaluations ? { mission_evaluations: missionEvaluations } : {}),
-    ...(rawAnonymousFeedback ? { anonymous_feedback: normalizeAnonymousFeedback(rawAnonymousFeedback) } : {}),
     ...(rawChiefComments ? { chief_comments: normalizeChiefComments(rawChiefComments) } : {}),
     status: newStatus,
     last_saved_at: new Date(),
@@ -1037,12 +1089,6 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
   const isAssistantEvaluation = instance.template_type === 'assistant-self-evaluation';
   const isSeniorEvaluation = instance.template_type === 'senior-self-evaluation';
   const isMissionOnlySelfEvaluation = isAssistantEvaluation || isSeniorEvaluation;
-  const submittedAnonymousFeedback = Array.isArray(request.body?.anonymousFeedback)
-    ? normalizeAnonymousFeedback(request.body.anonymousFeedback).map((item) => ({
-        ...item,
-        submitted_at: item.submitted_at || new Date(),
-      }))
-    : null;
   const managerRecipients =
     allowExplicitRecipients && Array.isArray(request.body?.managerRecipients)
       ? request.body.managerRecipients
@@ -1115,7 +1161,6 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
       submitted_to_managers: mergedMissionRecipients,
       submitted_to_user_ids: submittedRecipientUsers.map((recipient) => recipient._id),
       submitted_to_names: mergedMissionRecipients.map((recipient) => recipient.manager),
-      ...(submittedAnonymousFeedback ? { anonymous_feedback: submittedAnonymousFeedback } : {}),
       submitted_at: new Date(),
       last_saved_at: new Date(),
     });
@@ -1323,6 +1368,98 @@ async function getMySeniorEvaluationHistory(request, response) {
   return response.json({ cycles });
 }
 
+async function saveMyDevelopment(request, response) {
+  const wishes = String(request.body?.wishes || '').trim();
+  const rawRequests = request.body?.trainingRequests;
+  const trainingRequests = Array.isArray(rawRequests)
+    ? rawRequests.map((item) => String(item || '').trim()).filter(Boolean)
+    : [];
+  const managerId = String(request.body?.managerId || '').trim();
+
+  const instance = await getOrCreateAssistantEvaluation(request.user);
+
+  let updates;
+  if (instance.development_status === 'Soumis au Manager') {
+    // After submission: only training list and manager can be updated
+    updates = { development_training_requests: trainingRequests };
+    if (managerId) {
+      const manager = await User.findOne({ _id: managerId, is_active: true, code_categorie: { $in: ['10B', '10C'] } })
+        .select('_id name');
+      if (manager) {
+        updates.development_submitted_to_user_id = manager._id;
+        updates.development_submitted_to_name = manager.name;
+      }
+    }
+  } else {
+    updates = { development_wishes: wishes, development_training_requests: trainingRequests };
+  }
+
+  await persistEvaluationInstance(instance, updates);
+
+  return response.json({
+    message: 'Plan de développement enregistré.',
+    development: {
+      wishes: instance.development_wishes,
+      trainingRequests: instance.development_training_requests,
+      status: instance.development_status,
+      submittedAt: instance.development_submitted_at,
+      submittedToUserId: instance.development_submitted_to_user_id ? String(instance.development_submitted_to_user_id) : null,
+      submittedToName: instance.development_submitted_to_name || '',
+    },
+  });
+}
+
+async function submitMyDevelopment(request, response) {
+  const managerId = String(request.body?.managerId || '').trim();
+
+  if (!managerId) {
+    return response.status(400).json({ message: 'Veuillez sélectionner un Manager avant d\'envoyer.' });
+  }
+
+  const manager = await User.findOne({ _id: managerId, is_active: true, code_categorie: { $in: ['10B', '10C'] } })
+    .select('_id name grade department');
+
+  if (!manager) {
+    return response.status(400).json({ message: 'Manager introuvable ou non autorisé.' });
+  }
+
+  const instance = await getOrCreateAssistantEvaluation(request.user);
+
+  if (instance.development_status === 'Soumis au Manager') {
+    return response.status(400).json({ message: 'Le plan de développement a déjà été envoyé au Manager.' });
+  }
+
+  const hasContent =
+    String(instance.development_wishes || '').trim().length > 0 ||
+    (instance.development_training_requests || []).length > 0;
+
+  if (!hasContent) {
+    return response.status(400).json({
+      message: "Veuillez renseigner vos souhaits d'évolution ou ajouter au moins une formation avant d'envoyer.",
+    });
+  }
+
+  const now = new Date();
+  await persistEvaluationInstance(instance, {
+    development_status: 'Soumis au Manager',
+    development_submitted_at: now,
+    development_submitted_to_user_id: manager._id,
+    development_submitted_to_name: manager.name,
+  });
+
+  return response.json({
+    message: `Plan de développement envoyé à ${manager.name}.`,
+    development: {
+      wishes: instance.development_wishes,
+      trainingRequests: instance.development_training_requests,
+      status: 'Soumis au Manager',
+      submittedAt: now,
+      submittedToUserId: String(manager._id),
+      submittedToName: manager.name,
+    },
+  });
+}
+
 module.exports = {
   buildManagerCommentText,
   fetchManagerCommentsForMember,
@@ -1337,4 +1474,6 @@ module.exports = {
   submitMyAssistantEvaluation,
   submitMySeniorMissionEvaluation,
   submitMySeniorEvaluation,
+  saveMyDevelopment,
+  submitMyDevelopment,
 };

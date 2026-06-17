@@ -5,9 +5,9 @@ const monthFormatter = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "
 const dayFormatter = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
 const weekDays = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const missionColorsByRole = {
-  senior:  { bg: "#D5DBEE", hover: "#BCC5E4", text: "#00114F", accent: "#001871" },
-  manager: { bg: "#EAFAD0", hover: "#D9F5B5", text: "#2A5C08", accent: "#78BE20" },
-  self:    { bg: "#DCEEFA", hover: "#C3E4F6", text: "#1A5272", accent: "#62B5E5" },
+  senior:  { bg: "#001871", hover: "#00205B", text: "#FFFFFF", accent: "#001871" },
+  manager: { bg: "#78BE20", hover: "#6EAD1A", text: "#FFFFFF", accent: "#78BE20" },
+  self:    { bg: "#62B5E5", hover: "#4DA8DF", text: "#FFFFFF", accent: "#62B5E5" },
 };
 
 const calendarLegend = [
@@ -65,9 +65,18 @@ function getMissionAverage(mission) {
   return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
 }
 
+function getMissionRole(mission) {
+  const role = String(mission?.createdByRole || "");
+  const origin = String(mission?.origin || "");
+  if (role === "senior" || origin === "senior-assigned") return "senior";
+  if (role === "manager" || origin === "manager-assigned") return "manager";
+  return "self";
+}
+
 function getMissionColor(mission) {
-  if (mission?.createdByRole === "senior") return missionColorsByRole.senior;
-  if (mission?.createdByRole === "manager") return missionColorsByRole.manager;
+  const role = getMissionRole(mission);
+  if (role === "senior") return missionColorsByRole.senior;
+  if (role === "manager") return missionColorsByRole.manager;
   return missionColorsByRole.self;
 }
 
@@ -211,7 +220,8 @@ function downloadExcelFile(missions = [], managerComments = [], fileName = "resu
 }
 
 function isEvaluatedMission(mission) {
-  if (mission?.createdByRole === "senior" || mission?.createdByRole === "manager") {
+  const role = getMissionRole(mission);
+  if (role === "senior" || role === "manager") {
     return true;
   }
   return mission?.status === "Soumise" || getMissionProgress(mission) === 100;
@@ -242,11 +252,13 @@ function isMissionOnDate(mission, date) {
 }
 
 function getMissionAssignmentLabel(mission) {
-  if (mission?.createdByRole === "senior") {
-    return `Assignée par ${mission?.assignedByName || "le Senior"}`;
+  const role = getMissionRole(mission);
+  const assignedByName = mission?.assignedByName || mission?.assigned_by_name || "";
+  if (role === "senior") {
+    return `Assignée par ${assignedByName || "le Senior"}`;
   }
-  if (mission?.createdByRole === "manager") {
-    return `Assignée par ${mission?.assignedByName || "le Manager"}`;
+  if (role === "manager") {
+    return `Assignée par ${assignedByName || "le Manager"}`;
   }
   return null;
 }

@@ -62,7 +62,6 @@ const QUESTIONNAIRE_AUDIENCE_OPTIONS = [
   'Managers et Seniors',
   'RH / Capital Humain',
 ];
-const FULL_RH_EMAILS = ['isabella.beda@ycubeac.com'];
 const RH_DEPARTMENT_REGEX = /^RH$/i;
 const CAPITAL_HUMAIN_DEPARTMENT_REGEX = /^CAPITAL HUMAIN$/i;
 
@@ -291,7 +290,6 @@ async function resolveFullRhRecipients() {
     is_active: true,
     $or: [
       buildRhDepartmentClause(),
-      { email: { $in: FULL_RH_EMAILS } },
       { first_name: /ISABELLA/i, last_name: /BEDA/i },
     ],
   })
@@ -2593,6 +2591,66 @@ async function submitMyRhSelfEvaluation(request, response) {
   });
 }
 
+async function submitMyRhSelfMissionEvaluation(request, response) {
+  const missionId = String(request.body?.missionId || '').trim();
+
+  if (!missionId) {
+    return response.status(400).json({
+      message: 'La mission RH a soumettre est requise.',
+    });
+  }
+
+  const instance = await getOrCreateRhSelfEvaluation(request.user);
+  const missionEvaluations = normalizeRhMissionEvaluations(instance.mission_evaluations || []);
+  const mission = missionEvaluations.find((item) => item.mission_id === missionId);
+
+  if (!mission) {
+    return response.status(404).json({
+      message: 'Mission RH introuvable.',
+    });
+  }
+
+  const hasIncompleteCriterion = (mission.criteria || []).some(
+    (criterion) => criterion.score === null || criterion.score === undefined
+  );
+
+  if (hasIncompleteCriterion) {
+    return response.status(400).json({
+      message: 'Toutes les questions de la mission RH doivent etre renseignees avant soumission aux associes.',
+    });
+  }
+
+  const associateRecipients = await resolveAssociateRecipients();
+
+  if (!associateRecipients.length) {
+    return response.status(400).json({
+      message: "Aucun associe actif n'est disponible pour recevoir cette mission RH.",
+    });
+  }
+
+  mission.primary_recipient_user_id = associateRecipients[0]?._id || null;
+  mission.primary_recipient_name = associateRecipients[0]?.name || '';
+  mission.primary_recipient_grade = associateRecipients[0]?.grade || '';
+  mission.primary_recipient_department = associateRecipients[0]?.department || '';
+  mission.recipients = associateRecipients.map((recipient) => ({
+    user_id: recipient._id,
+    name: recipient.name,
+    grade: recipient.grade,
+    department: recipient.department,
+  }));
+  mission.status = 'Soumise';
+  mission.submitted_at = new Date();
+
+  instance.mission_evaluations = missionEvaluations;
+  instance.last_saved_at = new Date();
+  await instance.save();
+
+  return response.json({
+    message: `Mission RH soumise a ${associateRecipients.map((recipient) => recipient.name).join(', ')}.`,
+    ...buildRhSelfEvaluationPayload(instance, request.user, associateRecipients),
+  });
+}
+
 async function submitMyAssistantRhSelfEvaluation(request, response) {
   const instance = await getOrCreateRhSelfEvaluation(request.user, {
     templateType: 'rh-assistant-self-evaluation',
@@ -2605,15 +2663,6 @@ async function submitMyAssistantRhSelfEvaluation(request, response) {
     return response.status(400).json({
       message: 'Toutes les questions Assistante RH doivent etre renseignees avant soumission a la RH.',
       missingAnswers,
-    });
-  }
-
-  const missingAssistantSectionComments = validateSectionCommentsForSubmit(normalizedSections, 3);
-
-  if (missingAssistantSectionComments.length) {
-    return response.status(400).json({
-      message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
-      missingSectionComments: missingAssistantSectionComments,
     });
   }
 
@@ -3159,6 +3208,83 @@ async function createRhCycle(request, response) {
   }
 }
 
+async function getMyAssistantRhEvaluationResult(request, response) {
+  try {
+  const review = await ManagerMemberReview.findOne({
+    member_id: request.user._id,
+    cycle_label: getCurrentCycleLabel(),
+    template_type: 'rh-assistant-evaluation',
+  }).populate('manager_id', 'name grade department');
+
+  if (!review) {
+    const anyReview = await ManagerMemberReview.findOne({ member_id: request.user._id }).select('template_type cycle_label status');
+    console.log('[getMyAssistantRhEvaluationResult] member_id:', request.user._id, '| no rh-assistant-evaluation review found | other reviews:', anyReview ? JSON.stringify({ template_type: anyReview.template_type, cycle_label: anyReview.cycle_label, status: anyReview.status }) : 'none');
+    return response.json({ result: null });
+  }
+
+  const sections = normalizeSections(review.sections || []);
+
+  const sectionScores = sections.map((section) => ({
+    sectionId: section.id,
+    title: section.title,
+    average: getAverageScore(section),
+    comment: String(section.comment || '').trim(),
+    pages: (section.pages || []).map((page) => ({
+      title: page.title,
+      average: (() => {
+        const scores = (page.themes || []).map((t) => t.score).filter((s) => typeof s === 'number');
+        return scores.length ? Number((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2)) : null;
+      })(),
+    })),
+  }));
+
+  const reviewer = review.manager_id
+    ? { name: review.manager_id.name, grade: review.manager_id.grade, department: review.manager_id.department }
+    : null;
+
+  return response.json({
+    result: {
+      status: review.status,
+      submitted_at: review.submitted_at,
+      last_saved_at: review.last_saved_at,
+      overallAverage: getOverallAverageScore(sections),
+      sectionScores,
+      reviewer,
+    },
+  });
+  } catch (err) {
+    console.error('[getMyAssistantRhEvaluationResult] error:', err);
+    return response.status(500).json({ message: err.message || 'Erreur interne.', result: null });
+  }
+}
+
+async function getRhReceivedChiefComments(request, response) {
+  const userId = String(request.user._id);
+  const instances = await EvaluationInstance.find({
+    cycle_label: getCurrentCycleLabel(),
+    'chief_comments.target_user_id': request.user._id,
+  }).select('chief_comments');
+
+  const received = [];
+  for (const instance of instances) {
+    for (const comment of instance.chief_comments || []) {
+      if (
+        String(comment.target_user_id) === userId &&
+        comment.submitted_at &&
+        String(comment.comment || '').trim()
+      ) {
+        received.push({
+          comment: String(comment.comment).trim(),
+          submittedAt: comment.submitted_at,
+        });
+      }
+    }
+  }
+
+  received.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+  return response.json({ received });
+}
+
 module.exports = {
   addRhQuestionnaireQuestion,
   buildNonRhDepartmentClause,
@@ -3175,7 +3301,9 @@ module.exports = {
   getMyRhEvaluationHistory,
   getRhQuestionnaire,
   getMyRhSelfEvaluation,
+  getMyAssistantRhEvaluationResult,
   getRhOverview,
+  getRhReceivedChiefComments,
   getRhPopulation,
   getRhReports,
   getRhSyntheses,
@@ -3192,6 +3320,7 @@ module.exports = {
   selectRhDepartmentEvaluation,
   submitAssistantRhEvaluation,
   submitMyAssistantRhSelfEvaluation,
+  submitMyRhSelfMissionEvaluation,
   submitMyRhSelfEvaluation,
   submitRhSyntheses,
   updateRhUserCareer,

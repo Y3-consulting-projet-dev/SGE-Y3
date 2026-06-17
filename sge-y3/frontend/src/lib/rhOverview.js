@@ -218,3 +218,11 @@ export function createRhCycle(payload) {
     body: JSON.stringify(payload),
   });
 }
+
+export function getRhReceivedComments() {
+  return request("/rh/received-comments");
+}
+
+export function getAssistantRhEvaluationResult() {
+  return request("/rh/my-evaluation-result");
+}

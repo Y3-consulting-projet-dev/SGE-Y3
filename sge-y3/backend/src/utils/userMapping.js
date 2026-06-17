@@ -69,7 +69,6 @@ function getFullName(user = {}) {
 function isFullRh(user = {}) {
   const email = normalizeEmail(user.email || '');
   const fullName = getFullName(user);
-
   return FULL_RH_EMAILS.includes(email) || (fullName.includes('ISABELLA') && fullName.includes('BEDA'));
 }
 

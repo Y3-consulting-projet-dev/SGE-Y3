@@ -90,6 +90,21 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
     refreshAssistantResults();
   }
 
+  function handleDevelopmentChange(nextDevelopment) {
+    setEvaluationData((prev) => prev ? { ...prev, development: nextDevelopment } : prev);
+  }
+
+  // Stale-data guard: if evaluationData loaded from an old server response lacks the development field, re-fetch.
+  useEffect(() => {
+    if (activeSection === "development" && evaluationData && !evaluationData.development && !isLoadingEvaluation) {
+      let cancelled = false;
+      getMyAssistantEvaluation()
+        .then((fresh) => { if (!cancelled) handleEvaluationUpdate(fresh); })
+        .catch(() => {});
+      return () => { cancelled = true; };
+    }
+  }, [activeSection, evaluationData, isLoadingEvaluation]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     let cancelled = false;
 
@@ -213,7 +228,21 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
     }
 
     if (activeSection === "development") {
-      return <Mondeveloppement />;
+      if (isLoadingEvaluation) {
+        return <section className="rounded-lg bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement du plan de développement...</section>;
+      }
+      if (evaluationError) {
+        return <section className="rounded-lg bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">{evaluationError}</section>;
+      }
+      if (evaluationData && !evaluationData.development) {
+        return <section className="rounded-lg bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement du plan de développement...</section>;
+      }
+      return (
+        <Mondeveloppement
+          evaluationData={evaluationData}
+          onDevelopmentChange={handleDevelopmentChange}
+        />
+      );
     }
 
     return <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />;

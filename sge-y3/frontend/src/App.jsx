@@ -9,21 +9,8 @@ const Vuecabinet = lazy(() => import("@/components/pages/associé/Vuecabinet"));
 const VueRH = lazy(() => import("@/components/pages/rh/VueRH"));
 const VueSupport = lazy(() => import("@/components/pages/support/VueSupport"));
 
-const ASSISTANT_RH_EMAIL = "fatoumata.ouattara@ycubeac.com";
-const FULL_RH_EMAILS = ["isabella.beda@ycubeac.com"];
-const SUPPORT_EMAILS = [
-  "fleur.nguessan@ycubeac.com",
-  "porthela.kakou@ycubeac.com",
-  "aziz.ouattara@ycubeac.com",
-  "adele.creppy@ycubeac.com",
-];
-
 function normalizeDepartment(value = "") {
   return String(value).replace(/\s+/g, " ").trim().toUpperCase();
-}
-
-function normalizeEmail(value = "") {
-  return String(value).replace(/\s+/g, " ").trim().toLowerCase();
 }
 
 function isRhDepartment(value = "") {
@@ -32,7 +19,8 @@ function isRhDepartment(value = "") {
 }
 
 function isSupportUser(user) {
-  return SUPPORT_EMAILS.includes(normalizeEmail(user?.email));
+  const dept = normalizeDepartment(user?.department);
+  return dept === "SUPPORT" || dept === "SERVICE SUPPORT";
 }
 
 function getFullName(user) {
@@ -40,14 +28,11 @@ function getFullName(user) {
 }
 
 function isFullRh(user) {
-  const email = normalizeEmail(user?.email);
   const fullName = getFullName(user);
-
-  return FULL_RH_EMAILS.includes(email) || (fullName.includes("ISABELLA") && fullName.includes("BEDA"));
+  return fullName.includes("ISABELLA") && fullName.includes("BEDA");
 }
 
 function isAssistantRh(user) {
-  const email = normalizeEmail(user?.email);
   const grade = normalizeDepartment(user?.grade);
   const role = normalizeDepartment(user?.role);
   const permissionRole = normalizeDepartment(user?.permission_role);
@@ -57,9 +42,8 @@ function isAssistantRh(user) {
   }
 
   return (
-    email === ASSISTANT_RH_EMAIL ||
-    (isRhDepartment(user?.department) &&
-      (role === "RH-ASSISTANT" || role === "ASSISTANTE RH" || permissionRole === "RH_ASSISTANT" || grade.includes("ASSISTANT")))
+    isRhDepartment(user?.department) &&
+    (role === "RH-ASSISTANT" || role === "ASSISTANTE RH" || permissionRole === "RH_ASSISTANT" || grade.includes("ASSISTANT"))
   );
 }
 

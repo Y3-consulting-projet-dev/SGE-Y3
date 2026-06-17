@@ -1,4 +1,4 @@
-import { BarChart3, CalendarRange, ClipboardCheck, ClipboardList, FileText, History, LayoutDashboard, Scale, Settings2, Table2, UsersRound } from "lucide-react";
+import { BarChart3, CalendarRange, ClipboardCheck, ClipboardList, FileText, History, LayoutDashboard, MessageSquare, Scale, Settings2, Table2, UsersRound } from "lucide-react";
 
 export const rhMenuGroups = [
   {
@@ -32,6 +32,10 @@ export const rhMenuGroups = [
   {
     title: "Administration",
     items: [{ key: "cycles", label: "Gestion des cycles", icon: CalendarRange }],
+  },
+  {
+    title: "Commentaires",
+    items: [{ key: "received-comments", label: "Commentaires reçus", icon: MessageSquare }],
   },
   {
     title: "Compte",

@@ -113,3 +113,10 @@ export function submitManagerMemberMissionReview(memberId, missionId) {
     body: JSON.stringify({ missionId }),
   });
 }
+
+export function decideTrainingRequests(memberId, decision, comment = "") {
+  return request(`/manager/members/${memberId}/training-decision`, {
+    method: "PUT",
+    body: JSON.stringify({ decision, comment }),
+  });
+}

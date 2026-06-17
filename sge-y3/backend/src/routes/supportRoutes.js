@@ -5,19 +5,13 @@ const {
   getMySupportEvaluationHistory,
   saveSupportSelfEvaluation,
   submitSupportSelfEvaluation,
+  saveSupportChiefComments,
+  getReceivedSupportChiefComments,
 } = require('../controllers/supportController');
 const { requireAuth } = require('../middleware/authMiddleware');
-const { normalizeEmail } = require('../utils/userMapping');
-
-const SUPPORT_EMAILS = new Set([
-  'fleur.nguessan@ycubeac.com',
-  'porthela.kakou@ycubeac.com',
-  'aziz.ouattara@ycubeac.com',
-  'adele.creppy@ycubeac.com',
-]);
-
 function requireSupport(request, response, next) {
-  if (SUPPORT_EMAILS.has(normalizeEmail(request.user?.email || ''))) {
+  const dept = String(request.user?.department || '').toUpperCase();
+  if (dept === 'SUPPORT' || dept === 'SERVICE SUPPORT') {
     return next();
   }
 
@@ -32,5 +26,7 @@ router.get('/self-evaluation', requireAuth, requireSupport, getSupportSelfEvalua
 router.get('/self-evaluation/history', requireAuth, requireSupport, getMySupportEvaluationHistory);
 router.put('/self-evaluation', requireAuth, requireSupport, saveSupportSelfEvaluation);
 router.post('/self-evaluation/submit', requireAuth, requireSupport, submitSupportSelfEvaluation);
+router.put('/chief-comments', requireAuth, requireSupport, saveSupportChiefComments);
+router.get('/chief-comments/received', requireAuth, requireSupport, getReceivedSupportChiefComments);
 
 module.exports = router;

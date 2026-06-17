@@ -91,7 +91,7 @@ async function updateProfile(request, response) {
     });
   }
 
-  if (!ALLOWED_GRADES.includes(grade)) {
+  if (canEditCareerInfo && !ALLOWED_GRADES.includes(grade)) {
     return response.status(400).json({
       message: 'Grade invalide.',
     });

@@ -14,7 +14,9 @@ const {
   getMyRhEvaluationHistory,
   getRhQuestionnaire,
   getMyRhSelfEvaluation,
+  getMyAssistantRhEvaluationResult,
   getRhOverview,
+  getRhReceivedChiefComments,
   getRhPopulation,
   getRhReports,
   getRhSyntheses,
@@ -67,5 +69,7 @@ router.get('/syntheses', requireAuth, requireRh, getRhSyntheses);
 router.post('/syntheses/submit', requireAuth, requireRh, submitRhSyntheses);
 router.get('/cycles', requireAuth, requireRh, getRhCycles);
 router.post('/cycles', requireAuth, requireRh, createRhCycle);
+router.get('/my-evaluation-result', requireAuth, requireRh, getMyAssistantRhEvaluationResult);
+router.get('/received-comments', requireAuth, requireRh, getRhReceivedChiefComments);
 
 module.exports = router;

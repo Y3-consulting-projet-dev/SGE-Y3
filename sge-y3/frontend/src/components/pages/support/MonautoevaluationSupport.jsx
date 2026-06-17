@@ -7,16 +7,8 @@ import {
   submitSupportSelfEvaluation,
 } from "@/lib/supportEvaluation";
 
-const SUPPORT_ROLE_BY_EMAIL = {
-  "fleur.nguessan@ycubeac.com": "Office Manager",
-  "aziz.ouattara@ycubeac.com": "PMO",
-  "porthela.kakou@ycubeac.com": "Responsable IT",
-  "adele.creppy@ycubeac.com": "Comptable interne senior",
-};
-
 function getSupportRoleKey(user) {
-  const email = String(user?.email || "").trim().toLowerCase();
-  return SUPPORT_ROLE_BY_EMAIL[email] || user?.grade || "Service support";
+  return user?.grade || "Service support";
 }
 
 function getSectionProgress(section) {
@@ -335,6 +327,7 @@ function MonautoevaluationSupport({ user }) {
     return (
       <section className="rounded-xl bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">
         Aucune matrice support disponible pour ce profil.
+        {status && <p className="mt-2 text-xs font-bold text-[#B93840]">{status}</p>}
       </section>
     );
   }

@@ -12,7 +12,7 @@ function getMemberAction() {
   return { label: "Voir", actionTarget: "team" };
 }
 
-function Monequipe({ searchTerm, onSearchChange, onEvaluate, relanceMessage, members = [], extraMembers = [] }) {
+function Monequipe({ searchTerm, onSearchChange, onEvaluate, relanceMessage, members = [], extraMembers = [], pendingTrainingIds = new Set() }) {
   const allMembers = [
     ...members.map((member) => {
       const action = getMemberAction();
@@ -87,7 +87,16 @@ function Monequipe({ searchTerm, onSearchChange, onEvaluate, relanceMessage, mem
                 onClick={() => onEvaluate(member)}
                 className="cursor-pointer border-b border-slate-100 text-[#0F3A63] transition hover:bg-slate-50 last:border-0"
               >
-                <td className="px-4 py-4 font-semibold">{member.name}</td>
+                <td className="px-4 py-4 font-semibold">
+                  <span className="flex items-center gap-2">
+                    {member.name}
+                    {pendingTrainingIds.has(member.id) && (
+                      <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-white">
+                        Formation
+                      </span>
+                    )}
+                  </span>
+                </td>
                 <td className="px-4 py-4">{member.role}</td>
                 <td className="px-4 py-4">
                   <span

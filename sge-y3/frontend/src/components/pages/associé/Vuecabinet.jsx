@@ -39,7 +39,7 @@ const sideMenu = [
     items: [
       { key: "autoeval-managers", label: "Auto-évaluation Managers", icon: UsersRound },
       { key: "autoeval-associes", label: "Auto-évaluation Associés", icon: UsersRound },
-      { key: "autoeval-support", label: "Auto-évaluation Support", icon: UsersRound },
+      { key: "autoeval-support", label: "Evaluation support", icon: UsersRound },
     ],
   },
   {

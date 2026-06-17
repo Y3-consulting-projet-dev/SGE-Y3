@@ -273,7 +273,6 @@ async function resolveRhRecipients() {
     $or: [
       { department: RH_DEPARTMENT_REGEX },
       { department: CAPITAL_HUMAIN_DEPARTMENT_REGEX },
-      { email: { $in: FULL_RH_EMAILS } },
       { first_name: /ISABELLA/i, last_name: /BEDA/i },
     ],
   })
@@ -345,7 +344,7 @@ async function getSelfEvaluationInstanceForMember(member) {
     evalue_id: member._id,
     cycle_label: getCurrentCycleLabel(),
     template_type: getExpectedTemplateType(member),
-  }).select('status submitted_at sections submitted_to_user_ids mission_evaluations anonymous_feedback chief_comments');
+  }).select('status submitted_at sections submitted_to_user_ids mission_evaluations anonymous_feedback chief_comments development_wishes development_training_requests development_status development_submitted_at development_submitted_to_user_id development_submitted_to_name development_training_decision development_training_manager_comment development_training_decided_at');
 }
 
 function buildSelfEvaluationPayload(instance) {
@@ -373,6 +372,17 @@ function buildSelfEvaluationPayload(instance) {
     missionEvaluations,
     anonymous_feedback: instance?.anonymous_feedback || [],
     chief_comments: instance?.chief_comments || [],
+    development: {
+      wishes: instance?.development_wishes || '',
+      trainingRequests: instance?.development_training_requests || [],
+      status: instance?.development_status || 'Brouillon',
+      submittedAt: instance?.development_submitted_at || null,
+      submittedToUserId: instance?.development_submitted_to_user_id ? String(instance.development_submitted_to_user_id) : null,
+      submittedToName: instance?.development_submitted_to_name || '',
+      trainingDecision: instance?.development_training_decision || 'En attente',
+      trainingManagerComment: instance?.development_training_manager_comment || '',
+      trainingDecidedAt: instance?.development_training_decided_at || null,
+    },
   };
 }
 
@@ -995,7 +1005,7 @@ async function getOrCreateManagerMemberReview(managerUser, member) {
 function buildManagerReviewPayload(review, managerUser, member, selfEvaluation, rhRecipients = [], missionAndScoreData = {}) {
   const sections = normalizeSections(review.sections);
   const activeSection = sections.find((section) => section.status !== 'Complete') || sections[0] || null;
-  const { anonymous_feedback: anonymousFeedbackSource = [], chief_comments: chiefCommentsSource = [], ...publicSelfEvaluation } = selfEvaluation || {};
+  const { chief_comments: chiefCommentsSource = [], ...publicSelfEvaluation } = selfEvaluation || {};
 
   return {
     review: {
@@ -1031,7 +1041,6 @@ function buildManagerReviewPayload(review, managerUser, member, selfEvaluation, 
     },
     self_evaluation: {
       ...publicSelfEvaluation,
-      anonymousFeedback: formatAnonymousFeedbackForUser(anonymousFeedbackSource, managerUser),
       chiefComments: formatSentChiefCommentsForUser(chiefCommentsSource, managerUser),
     },
     received_global_scores: missionAndScoreData.globalScores || [],
@@ -1242,7 +1251,7 @@ async function getManagerOverview(request, response) {
           evalue_id: { $in: memberIds },
           cycle_label: getCurrentCycleLabel(),
           template_type: { $in: ['assistant-self-evaluation', 'senior-self-evaluation'] },
-        }).select('evalue_id template_type status submitted_at submitted_to_user_ids sections mission_evaluations chief_comments'),
+        }).select('evalue_id template_type status submitted_at submitted_to_user_ids sections mission_evaluations chief_comments development_status development_training_requests development_submitted_to_user_id development_training_decision'),
         ManagerMemberReview.find({
           cycle_label: getCurrentCycleLabel(),
           manager_id: request.user._id,
@@ -1347,6 +1356,25 @@ async function getManagerOverview(request, response) {
   );
   const anonymousCommentsCount = anonymousComments.length;
 
+  const pendingTrainingRequests = members
+    .map((member) => {
+      const instance = relevantInstancesByMemberId.get(String(member._id));
+      if (!instance) return null;
+      if (instance.development_status !== 'Soumis au Manager') return null;
+      if (String(instance.development_submitted_to_user_id) !== String(request.user._id)) return null;
+      if (!(instance.development_training_requests || []).length) return null;
+      const decision = instance.development_training_decision || 'En attente';
+      if (decision !== 'En attente') return null;
+      return {
+        memberId: String(member._id),
+        memberName: member.name,
+        memberGrade: member.grade,
+        trainingCount: instance.development_training_requests.length,
+      };
+    })
+    .filter(Boolean);
+  const pendingTrainingCount = pendingTrainingRequests.length;
+
   let selfEvaluationInstance = await EvaluationInstance.findOne({
     evalue_id: request.user._id,
     cycle_label: getCurrentCycleLabel(),
@@ -1374,6 +1402,7 @@ async function getManagerOverview(request, response) {
       selfEvaluationStatus: selfEvaluationInstance?.status || 'En attente',
       selfEvaluationSubmittedAt: selfEvaluationInstance?.submitted_at || null,
       anonymousCommentsCount,
+      pendingTrainingCount,
     },
     members: members.map((member) =>
       formatMember(
@@ -1384,6 +1413,7 @@ async function getManagerOverview(request, response) {
     ),
     pendingEvaluations,
     anonymousComments,
+    pendingTrainingRequests,
   });
 }
 
@@ -2131,6 +2161,54 @@ async function submitMyManagerMissionEvaluation(request, response) {
   });
 }
 
+async function decideTrainingRequests(request, response) {
+  const decision = String(request.body?.decision || '').trim();
+  const comment = String(request.body?.comment || '').trim();
+
+  if (!['Accepté', 'Refusé'].includes(decision)) {
+    return response.status(400).json({ message: "La décision doit être 'Accepté' ou 'Refusé'." });
+  }
+
+  const member = await getMemberForManager(request.user, request.params.memberId);
+  if (!member) {
+    return response.status(404).json({ message: "Membre d'équipe introuvable pour ce manager." });
+  }
+
+  const instance = await EvaluationInstance.findOne({
+    evalue_id: member._id,
+    cycle_label: getCurrentCycleLabel(),
+    template_type: { $in: ['assistant-self-evaluation', 'senior-self-evaluation'] },
+  });
+
+  if (!instance) {
+    return response.status(404).json({ message: "Aucune auto-évaluation trouvée pour ce collaborateur." });
+  }
+
+  if (instance.development_status !== 'Soumis au Manager') {
+    return response.status(400).json({ message: "Le plan de développement n'a pas encore été soumis par le collaborateur." });
+  }
+
+  if ((instance.development_training_requests || []).length === 0) {
+    return response.status(400).json({ message: "Ce collaborateur n'a aucune demande de formation à valider." });
+  }
+
+  instance.development_training_decision = decision;
+  instance.development_training_manager_comment = comment;
+  instance.development_training_decided_at = new Date();
+  await instance.save();
+
+  return response.json({
+    message: decision === 'Accepté'
+      ? 'Demandes de formation acceptées.'
+      : 'Demandes de formation refusées.',
+    development: {
+      trainingDecision: instance.development_training_decision,
+      trainingManagerComment: instance.development_training_manager_comment,
+      trainingDecidedAt: instance.development_training_decided_at,
+    },
+  });
+}
+
 module.exports = {
   addMissionToManagerMember,
   addMyManagerMissionEvaluation,
@@ -2440,6 +2518,7 @@ module.exports = {
       ),
     });
   },
+  decideTrainingRequests,
   getManagerOverview,
   saveMyManagerEvaluation,
   submitMyManagerMissionEvaluation,

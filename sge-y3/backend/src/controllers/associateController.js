@@ -861,25 +861,12 @@ const ASSOCIATE_DASHBOARD_DEPARTMENTS = [
   'Service support',
 ];
 
-const SUPPORT_ROLE_BY_EMAIL = {
-  'fleur.nguessan@ycubeac.com': 'Office Manager',
-  'aziz.ouattara@ycubeac.com': 'PMO',
-  'porthela.kakou@ycubeac.com': 'Responsable IT',
-  'adele.creppy@ycubeac.com': 'Comptable interne senior',
-};
-
-const SUPPORT_EMAILS = Object.keys(SUPPORT_ROLE_BY_EMAIL);
-
-function normalizeEmail(value = '') {
-  return String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
-}
-
 function isSupportEvaluationTarget(user) {
-  return SUPPORT_EMAILS.includes(normalizeEmail(user?.email || ''));
+  return String(user?.department || '').toUpperCase() === 'SUPPORT';
 }
 
 function getSupportRoleLabel(user) {
-  return SUPPORT_ROLE_BY_EMAIL[normalizeEmail(user?.email || '')] || user?.grade || 'Service support';
+  return user?.grade || 'Service support';
 }
 
 function cloneSectionsForSupport(user) {

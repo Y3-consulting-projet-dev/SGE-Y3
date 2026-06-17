@@ -801,7 +801,6 @@ function buildAssistantSelfEvaluationPayload(instance, targetUser = null) {
     titleJustifications: getPageJustifications(selfSections),
     missionEvaluations,
     missionSummary,
-    anonymousFeedback: targetUser ? formatAnonymousFeedbackForUser(instance?.anonymous_feedback || [], targetUser) : [],
     chiefComments: targetUser ? formatSentChiefCommentsForUser(instance?.chief_comments || [], targetUser) : [],
   };
 }
