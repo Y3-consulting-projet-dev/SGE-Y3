@@ -21,6 +21,7 @@ const {
   loadRhReviewDataset,
   RH_RELEVANT_STATUSES,
   resolveRhQueueUserIds,
+  SUPPORT_EMAILS,
 } = require('./rhController');
 const { getCurrentCycleLabel } = require('../utils/activeCycle');
 const {

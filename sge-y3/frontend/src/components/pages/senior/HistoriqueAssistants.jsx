@@ -1,6 +1,6 @@
 import { useState } from "react";
 import HistoriqueEvaluation from "@/components/historique/HistoriqueEvaluation";
-import MemberPicker from "@/components/historique/MemberPicker";
+import MemberSearchSelect from "@/components/historique/MemberSearchSelect";
 import { getSeniorAssistantHistory } from "@/lib/seniorAssistants";
 
 function HistoriqueAssistants({ assistants = [], isLoading, errorMessage }) {
@@ -25,7 +25,7 @@ function HistoriqueAssistants({ assistants = [], isLoading, errorMessage }) {
 
   return (
     <div className="space-y-4">
-      <MemberPicker members={members} selectedId={currentId} onSelect={setSelectedId} />
+      <MemberSearchSelect members={members} selectedId={currentId} onSelect={setSelectedId} />
       {currentId ? (
         <HistoriqueEvaluation key={currentId} fetchHistory={() => getSeniorAssistantHistory(currentId)} />
       ) : null}

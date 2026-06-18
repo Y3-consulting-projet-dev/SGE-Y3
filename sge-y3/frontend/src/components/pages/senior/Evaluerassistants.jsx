@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   addSeniorAssistantMission,
   getSeniorAssistantEvaluation,
@@ -134,6 +134,13 @@ function getMissionAverage(criteria = []) {
   return Number((scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1));
 }
 
+function normalizeSearchValue(value = "") {
+  return String(value)
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
 function getMissionFinalScore(missions = []) {
   const missionScores = missions
     .map((mission) => getMissionAverage(mission.criteria || []))
@@ -206,6 +213,10 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
   const [reviewError, setReviewError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeSeniorMissionView, setActiveSeniorMissionView] = useState("synthese");
+  const [isMissionPickerOpen, setIsMissionPickerOpen] = useState(false);
+  const [missionSearchQuery, setMissionSearchQuery] = useState("");
+  const missionPickerRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -290,6 +301,51 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
   const isLastMissionStep =
     activeMissionSectionIndex === missionSections.length - 1 &&
     activeMissionPageIndex === Math.max((activeMissionSection?.groups?.length || 1) - 1, 0);
+  const filteredMissionReviews = useMemo(() => {
+    const query = normalizeSearchValue(missionSearchQuery.trim());
+    if (!query) return missionReviews;
+    return missionReviews.filter((mission) => {
+      const haystack = [mission.title, mission.period, mission.recipientName]
+        .map((v) => normalizeSearchValue(v || ""))
+        .join(" ");
+      return haystack.includes(query);
+    });
+  }, [missionReviews, missionSearchQuery]);
+  const recentMissionReviews = useMemo(() => missionReviews.slice(-3).reverse(), [missionReviews]);
+
+  useEffect(() => {
+    if (!isMissionPickerOpen) return undefined;
+
+    function handlePointerDown(event) {
+      if (missionPickerRef.current && !missionPickerRef.current.contains(event.target)) {
+        setIsMissionPickerOpen(false);
+      }
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") setIsMissionPickerOpen(false);
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isMissionPickerOpen]);
+
+  function selectMission(mission) {
+    setActiveMissionId(mission.id);
+    setMissionSectionIds((current) => ({
+      ...current,
+      [mission.id]: current[mission.id] || mission.criteria?.[0]?.sectionTitle || "",
+    }));
+    setMissionPageIndexes((current) => ({ ...current, [mission.id]: current[mission.id] || 0 }));
+    setIsMissionPickerOpen(false);
+    setMissionSearchQuery("");
+    setFeedbackMessage("");
+  }
 
   function normalizeLoadedResponse(response) {
     setReviewData(response);
@@ -606,152 +662,200 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
         </div>
       </article>
 
-      <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.9fr_1.4fr]">
-        <article className="space-y-5">
-          <article className="rounded-xl bg-white p-5 shadow-sm">
-            <h2 className="text-[30px] font-black text-[#0F3A63]">{selectedAssistant.name}</h2>
-            <p className="mt-2 text-sm font-semibold text-slate-500">
-              Le Senior évalue désormais uniquement par mission. Les commentaires de section sont obligatoires et toute note inférieure à 3 doit être justifiée.
-            </p>
+      <div className="flex gap-2 border-b border-[#E3EAF3]">
+        <button
+          type="button"
+          onClick={() => setActiveSeniorMissionView("synthese")}
+          className={`rounded-t-md border border-b-0 px-4 py-2 text-sm font-bold transition ${
+            activeSeniorMissionView === "synthese" ? "border-[#E3EAF3] bg-white text-[#0F3A63]" : "border-transparent text-slate-500 hover:text-[#0F3A63]"
+          }`}
+        >
+          Synthèse et ajout de mission
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSeniorMissionView("missions")}
+          className={`rounded-t-md border border-b-0 px-4 py-2 text-sm font-bold transition ${
+            activeSeniorMissionView === "missions" ? "border-[#E3EAF3] bg-white text-[#0F3A63]" : "border-transparent text-slate-500 hover:text-[#0F3A63]"
+          }`}
+        >
+          Missions de l'assistant
+        </button>
+      </div>
 
-            <div className="mt-5 rounded-lg border border-[#D9E3EE] bg-[#F8FAFC] p-4">
-              <p className="text-xs font-bold uppercase text-slate-500">Nouvelle mission partagée</p>
-              <p className="mt-1 text-sm font-semibold text-[#0F3A63]">
-                L'assistant recevra cette mission dans son auto-évaluation et notera la mission de son côté.
+      {activeSeniorMissionView === "synthese" && (
+        <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+          <article className="space-y-4">
+            <div className="rounded-xl bg-white p-5 shadow-sm">
+              <h2 className="text-[30px] font-black text-[#0F3A63]">{selectedAssistant.name}</h2>
+              <p className="mt-2 text-sm font-semibold text-slate-500">
+                Le Senior évalue désormais uniquement par mission. Les commentaires de section sont obligatoires et toute note inférieure à 3 doit être justifiée.
               </p>
-              <div className="mt-3 space-y-3">
-                <input
-                  type="text"
-                  value={missionTitle}
-                  onChange={(event) => setMissionTitle(event.target.value)}
-                  placeholder="Nom ou type de mission"
-                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0F3A63] outline-none"
-                />
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-[12px] font-bold text-[#0F3A63]">Date de d?but</label>
-                    <input
-                      type="date"
-                      value={missionStartDate}
-                      onChange={(event) => setMissionStartDate(event.target.value)}
-                      className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0F3A63] outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-[12px] font-bold text-[#0F3A63]">Date de fin</label>
-                    <input
-                      type="date"
-                      min={missionStartDate || undefined}
-                      value={missionEndDate}
-                      onChange={(event) => setMissionEndDate(event.target.value)}
-                      className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0F3A63] outline-none"
-                    />
-                  </div>
-                </div>
-                <div className="rounded-md bg-white p-3">
-                  <p className="text-[12px] font-bold text-[#0F3A63]">Managers sélectionnés</p>
-                  {selectedMissionManagers.length ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {selectedMissionManagers.map((manager) => {
-                        const value = getRecipientOptionValue(manager);
-                        return (
-                          <span
-                            key={value}
-                            className="inline-flex max-w-full items-center gap-2 rounded-full bg-[#EEF6E8] px-3 py-1.5 text-[11px] font-semibold text-[#0F3A63]"
-                          >
-                            <span className="truncate">
-                              {manager.department} - {getRecipientLabel(manager)}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => removeSelectedMissionManager(value)}
-                              className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-[13px] font-bold text-[#0F3A63]"
-                              aria-label={`Retirer ${getRecipientLabel(manager)}`}
-                            >
-                              x
-                            </button>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-[11px] font-semibold text-slate-500">Aucun manager sélectionné pour le moment.</p>
-                  )}
-                  {managerRecipients.length ? (
-                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                      <select
-                        value={selectedMissionManagerValue}
-                        onChange={(event) => {
-                          setSelectedMissionManagerValue(event.target.value);
-                          setFeedbackMessage("");
-                        setFeedbackAnchor("");
-                        }}
-                        className="h-10 flex-1 rounded-md border border-slate-200 bg-white px-3 text-[12px] font-semibold text-[#0F3A63] outline-none"
-                      >
-                        <option value="">Sélectionner un manager</option>
-                        {managerRecipients.map((manager) => {
-                          const value = getRecipientOptionValue(manager);
-                          const isAlreadySelected = selectedMissionManagerValues.includes(value);
 
+              <div className="mt-5 rounded-lg border border-[#D9E3EE] bg-[#F8FAFC] p-4">
+                <p className="text-xs font-bold uppercase text-slate-500">Nouvelle mission partagée</p>
+                <p className="mt-1 text-sm font-semibold text-[#0F3A63]">
+                  L'assistant recevra cette mission dans son auto-évaluation et notera la mission de son côté.
+                </p>
+                <div className="mt-3 space-y-3">
+                  <input
+                    type="text"
+                    value={missionTitle}
+                    onChange={(event) => setMissionTitle(event.target.value)}
+                    placeholder="Nom ou type de mission"
+                    className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0F3A63] outline-none"
+                  />
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-[12px] font-bold text-[#0F3A63]">Date de début</label>
+                      <input
+                        type="date"
+                        value={missionStartDate}
+                        onChange={(event) => setMissionStartDate(event.target.value)}
+                        className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0F3A63] outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[12px] font-bold text-[#0F3A63]">Date de fin</label>
+                      <input
+                        type="date"
+                        min={missionStartDate || undefined}
+                        value={missionEndDate}
+                        onChange={(event) => setMissionEndDate(event.target.value)}
+                        className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0F3A63] outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="rounded-md bg-white p-3">
+                    <p className="text-[12px] font-bold text-[#0F3A63]">Managers sélectionnés</p>
+                    {selectedMissionManagers.length ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {selectedMissionManagers.map((manager) => {
+                          const value = getRecipientOptionValue(manager);
                           return (
-                            <option key={value} value={value} disabled={isAlreadySelected}>
-                              {manager.department} - {getRecipientLabel(manager)}
-                              {isAlreadySelected ? " - d?j? s?lectionn?" : ""}
-                            </option>
+                            <span
+                              key={value}
+                              className="inline-flex max-w-full items-center gap-2 rounded-full bg-[#EEF6E8] px-3 py-1.5 text-[11px] font-semibold text-[#0F3A63]"
+                            >
+                              <span className="truncate">
+                                {manager.department} - {getRecipientLabel(manager)}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => removeSelectedMissionManager(value)}
+                                className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-[13px] font-bold text-[#0F3A63]"
+                                aria-label={`Retirer ${getRecipientLabel(manager)}`}
+                              >
+                                x
+                              </button>
+                            </span>
                           );
                         })}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={addSelectedMissionManager}
-                        disabled={!selectedMissionManagerValue}
-                        className="h-10 rounded-md bg-[#0B4C7A] px-4 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Ajouter
-                      </button>
-                    </div>
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-[11px] font-semibold text-slate-500">Aucun manager sélectionné pour le moment.</p>
+                    )}
+                    {managerRecipients.length ? (
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                        <select
+                          value={selectedMissionManagerValue}
+                          onChange={(event) => {
+                            setSelectedMissionManagerValue(event.target.value);
+                            setFeedbackMessage("");
+                            setFeedbackAnchor("");
+                          }}
+                          className="h-10 flex-1 rounded-md border border-slate-200 bg-white px-3 text-[12px] font-semibold text-[#0F3A63] outline-none"
+                        >
+                          <option value="">Sélectionner un manager</option>
+                          {managerRecipients.map((manager) => {
+                            const value = getRecipientOptionValue(manager);
+                            const isAlreadySelected = selectedMissionManagerValues.includes(value);
+                            return (
+                              <option key={value} value={value} disabled={isAlreadySelected}>
+                                {manager.department} - {getRecipientLabel(manager)}
+                                {isAlreadySelected ? " - déjà sélectionné" : ""}
+                              </option>
+                            );
+                          })}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={addSelectedMissionManager}
+                          disabled={!selectedMissionManagerValue}
+                          className="h-10 rounded-md bg-[#0B4C7A] px-4 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Ajouter
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddMission}
+                    disabled={isSaving || isSubmitting}
+                    className="inline-flex rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                  >
+                    {isSaving ? "Ajout…" : "Ajouter la mission"}
+                  </button>
+                  {feedbackAnchor === "mission-form" && feedbackMessage ? (
+                    <p className={`mt-2 text-[11px] font-semibold ${feedbackTone === "error" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>
+                      {feedbackMessage}
+                    </p>
                   ) : null}
                 </div>
-                <button
-                  type="button"
-                  onClick={handleAddMission}
-                  disabled={isSaving || isSubmitting}
-                  className="inline-flex rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
-                >
-                  {isSaving ? "Ajout…" : "Ajouter la mission"}
-                </button>
-                {feedbackAnchor === "mission-form" && feedbackMessage ? (
-                  <p className={`mt-2 text-[11px] font-semibold ${feedbackTone === "error" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>
-                    {feedbackMessage}
-                  </p>
-                ) : null}
               </div>
             </div>
+          </article>
 
-            <div className="mt-5 rounded-xl bg-[#F8FAFC] p-4">
+          <article className="space-y-4">
+            <div className="rounded-xl bg-white p-5 shadow-sm">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="text-[20px] font-bold text-[#0F3A63]">Synthèse des missions</h3>
-                <span className={`rounded-full bg-white px-3 py-1 text-[12px] font-bold ${getProgressToneClass(missionProgress)}`}>{missionProgress}%</span>
+                <div>
+                  <h3 className="text-[22px] font-bold text-[#0F3A63]">Synthèse des missions</h3>
+                  <p className="mt-1 text-[12px] font-semibold text-slate-500">
+                    Score final = somme des scores de mission divisée par le nombre de missions notées.
+                  </p>
+                </div>
+                <span className={`rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]`}>
+                  Score final {finalMissionScore} / 5
+                </span>
               </div>
-              <p className="text-sm font-semibold text-slate-500">
-                Score final = somme des scores de mission divisée par le nombre de missions notées.
-              </p>
-              <div className="mt-4 h-2 rounded-full bg-slate-200">
+              <div className="h-2 rounded-full bg-slate-200">
                 <div className={`h-2 rounded-full ${getProgressBarClass(missionProgress)}`} style={{ width: `${clampProgress(missionProgress)}%` }} />
               </div>
               <div className="mt-4 grid grid-cols-3 gap-3">
-                <div className="rounded-lg bg-white p-3">
+                <div className="rounded-lg bg-[#F8FAFC] p-3">
                   <p className="text-xs font-semibold text-slate-500">Missions</p>
                   <p className="mt-1 text-lg font-black text-[#0F3A63]">{missionReviews.length}</p>
                 </div>
-                <div className="rounded-lg bg-white p-3">
+                <div className="rounded-lg bg-[#F8FAFC] p-3">
                   <p className="text-xs font-semibold text-slate-500">Transmises</p>
                   <p className="mt-1 text-lg font-black text-[#0F3A63]">{submittedMissionsCount}</p>
                 </div>
-                <div className="rounded-lg bg-white p-3">
-                  <p className="text-xs font-semibold text-slate-500">Score final</p>
-                  <p className="mt-1 text-lg font-black text-[#76B82A]">{finalMissionScore}</p>
+                <div className="rounded-lg bg-[#F8FAFC] p-3">
+                  <p className="text-xs font-semibold text-slate-500">Progression</p>
+                  <p className={`mt-1 text-lg font-black ${getProgressToneClass(missionProgress)}`}>{missionProgress}%</p>
                 </div>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                {missionReviews.length ? (
+                  missionReviews.map((mission) => (
+                    <div key={mission.id} className="flex items-center justify-between text-[12px]">
+                      <div>
+                        <p className="font-semibold text-[#0F3A63]">{mission.title}</p>
+                        <p className="text-[11px] text-slate-500">{mission.period || "Période non renseignée"}</p>
+                      </div>
+                      <span className={`font-bold ${mission.status === "Transmise" ? "text-green-600" : getProgressToneClass(getMissionProgress(mission))}`}>
+                        {mission.status === "Transmise" ? "Transmise" : `${getMissionProgress(mission)}%`}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="rounded-md bg-slate-100 px-3 py-3 text-[12px] font-semibold text-slate-500">
+                    Aucune mission ajoutée pour le moment.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -796,8 +900,102 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                 </div>
               </article>
             )}
+          </article>
+        </section>
+      )}
 
-            <article className="rounded-xl bg-white p-4 shadow-sm">
+      {activeSeniorMissionView === "missions" && (
+        <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+          <article className="space-y-4">
+            <div ref={missionPickerRef} className="relative rounded-xl bg-white p-4 shadow-sm">
+              <p className="mb-2 text-[12px] font-bold text-[#0F3A63]">Mission</p>
+              {missionReviews.length ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setIsMissionPickerOpen((current) => !current)}
+                    className="flex w-full items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-left text-[13px] font-bold text-[#0F3A63]"
+                  >
+                    <span className="truncate">{activeMission ? activeMission.title : "Sélectionner une mission"}</span>
+                    <ChevronDown size={16} className={`shrink-0 transition ${isMissionPickerOpen ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {isMissionPickerOpen ? (
+                    <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-md border border-[#E3EAF3] bg-white p-2 shadow-lg">
+                      <input
+                        autoFocus
+                        value={missionSearchQuery}
+                        onChange={(event) => setMissionSearchQuery(event.target.value)}
+                        placeholder="Rechercher une mission…"
+                        className="mb-2 w-full rounded-md bg-slate-100 px-3 py-2 text-[12px] font-semibold text-[#0F3A63] outline-none"
+                      />
+                      <div className="max-h-72 space-y-1 overflow-y-auto">
+                        {filteredMissionReviews.length ? (
+                          filteredMissionReviews.map((mission) => (
+                            <button
+                              key={mission.id}
+                              type="button"
+                              onClick={() => selectMission(mission)}
+                              className={`block w-full rounded-md px-3 py-2 text-left transition ${
+                                mission.id === effectiveMissionId ? "bg-[#F3FAEA] text-[#0F3A63]" : "text-slate-600 hover:bg-slate-50"
+                              }`}
+                            >
+                              <p className="text-[12px] font-bold">{mission.title}</p>
+                              <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                                {mission.period || "Période non renseignée"} · Destinataire : {mission.recipientName || "Manager"}
+                              </p>
+                            </button>
+                          ))
+                        ) : (
+                          <p className="px-3 py-2 text-[12px] font-semibold text-slate-500">Aucune mission ne correspond à la recherche.</p>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <p className="text-sm font-semibold text-slate-500">Aucune mission partagée avec cet assistant pour le moment.</p>
+              )}
+            </div>
+
+            {recentMissionReviews.length ? (
+              <div className="space-y-3">
+                <p className="text-[12px] font-bold text-[#0F3A63]">Missions récentes</p>
+                {recentMissionReviews.map((mission) => {
+                  const isActive = mission.id === effectiveMissionId;
+                  const progress = getMissionProgress(mission);
+
+                  return (
+                    <button
+                      key={mission.id}
+                      type="button"
+                      onClick={() => selectMission(mission)}
+                      className={`w-full rounded-md border p-3 text-left transition ${
+                        isActive ? "border-[#76B82A] bg-[#EEF6E8]" : "border-slate-100 bg-[#F8FAFC] hover:bg-slate-100"
+                      }`}
+                    >
+                      <div className="mb-1 flex items-start justify-between gap-3">
+                        <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
+                        <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-[#4E8B1B]">{mission.status || "Brouillon"}</span>
+                      </div>
+                      {mission.origin === "senior-assigned" ? (
+                        <span className="mb-1 inline-flex rounded-full bg-[#E8F3D6] px-2.5 py-1 text-[10px] font-bold text-[#4E8B1B]">
+                          Mission ajoutée par le Senior
+                        </span>
+                      ) : null}
+                      <p className="text-xs font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
+                      <p className="mt-0.5 text-xs font-semibold text-[#0F4A72]">Destinataire : {mission.recipientName || "Manager"}</p>
+                      <div className="mt-3 h-1.5 rounded-full bg-slate-200">
+                        <div className={`h-1.5 rounded-full ${getProgressBarClass(progress)}`} style={{ width: `${clampProgress(progress)}%` }} />
+                      </div>
+                      <p className={`mt-1 text-xs font-bold ${getProgressToneClass(progress)}`}>{progress}% complétée</p>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            <div className="rounded-xl bg-white p-4 shadow-sm">
               <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">Aide à la notation</h3>
               <div className="space-y-2">
                 {gradingHelp.map((item) => (
@@ -807,280 +1005,228 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                   </div>
                 ))}
               </div>
-            </article>
-          </article>
-
-          <article className="rounded-xl bg-white p-5 shadow-sm">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h3 className="text-[20px] font-bold text-[#0F3A63]">Missions de l'assistant</h3>
-              <button
-                type="button"
-                onClick={() => persistReview(missionReviews)}
-                className="text-[12px] font-bold text-[#76B82A] hover:underline"
-              >
-                {isSaving ? "Sauvegarde…" : "Enregistrer"}
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {missionReviews.length ? (
-                missionReviews.map((mission) => {
-                  const isActive = mission.id === effectiveMissionId;
-                  const progress = getMissionProgress(mission);
-
-                  return (
-                    <button
-                      key={mission.id}
-                      type="button"
-                      onClick={() => {
-                        setActiveMissionId(mission.id);
-                        setMissionSectionIds((current) => ({
-                          ...current,
-                          [mission.id]: current[mission.id] || mission.criteria?.[0]?.sectionTitle || "",
-                        }));
-                        setMissionPageIndexes((current) => ({ ...current, [mission.id]: current[mission.id] || 0 }));
-                        setFeedbackMessage("");
-                      }}
-                      className={`w-full rounded-lg p-4 text-left transition ${
-                        isActive ? "border border-[#76B82A] bg-[#F3FAEA]" : "border border-transparent bg-slate-50 hover:bg-slate-100"
-                      }`}
-                    >
-                      <div className="mb-2 flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
-                          {mission.origin === "senior-assigned" ? (
-                            <span className="mt-2 inline-flex rounded-full bg-[#E8F3D6] px-2.5 py-1 text-[10px] font-bold text-[#4E8B1B]">
-                              Mission ajoutée par le Senior
-                            </span>
-                          ) : null}
-                        </div>
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#4E8B1B]">{mission.status || "Brouillon"}</span>
-                      </div>
-                      <p className="text-xs font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
-                      <p className="mt-1 text-xs font-semibold text-[#0F3A63]">Destinataire : {mission.recipientName || "Manager"}</p>
-                      <p className={`mt-1 text-xs font-bold ${getProgressToneClass(progress)}`}>{progress}%</p>
-                    </button>
-                  );
-                })
-              ) : (
-                <p className="rounded-md bg-[#EEF2F6] p-4 text-sm font-semibold text-slate-500">
-                  Aucune mission partagée avec cet assistant pour le moment.
-                </p>
-              )}
             </div>
           </article>
-        </article>
 
-        <article className="rounded-xl bg-white p-5 shadow-sm">
-          {activeMission ? (
-            <>
-              <div className="mb-4">
-                <p className="text-xs font-semibold text-slate-400">Évaluation selon la mission réalisée ensemble</p>
-                <h2 className="text-xl font-extrabold text-[#0F3A63]">{activeMission.title}</h2>
-                <p className="mt-1 text-sm font-semibold text-slate-500">{activeMission.period || "Période non renseignée"}</p>
-              </div>
-
-              {managerRecipients.length ? (
-                <section className="mb-4 rounded-md bg-white p-4 shadow-sm ring-1 ring-[#E6EDF5]">
-                  <label htmlFor="manager-select-mission" className="mb-2 block text-[12px] font-bold text-[#0F3A63]">
-                    Manager destinataire
-                  </label>
-                  <select
-                    id="manager-select-mission"
-                    value={effectiveManagerValue}
-                    onChange={(event) => {
-                      setSelectedManagerValue(event.target.value);
-                      setFeedbackMessage("");
-                    }}
-                    className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-[#0F3A63] outline-none"
-                  >
-                    {managerRecipients.map((manager) => (
-                      <option key={getRecipientOptionValue(manager)} value={getRecipientOptionValue(manager)}>
-                        {manager.department} - {manager.name} ({manager.grade})
-                      </option>
-                    ))}
-                  </select>
-                </section>
-              ) : null}
-
-              <section className="mb-4 rounded-md bg-[#F8FAFC] p-4">
-                <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {missionSections.map((section) => {
-                    const isActive = section.id === activeMissionSection?.id;
-                    const progress = getMissionSectionProgress(section);
-                    const done = progress === 100;
-
-                    return (
-                      <button
-                        key={section.id}
-                        type="button"
-                        onClick={() => {
-                          setMissionSectionIds((current) => ({ ...current, [activeMission.id]: section.id }));
-                          setMissionPageIndexes((current) => ({ ...current, [activeMission.id]: 0 }));
-                        }}
-                        className={`rounded-md border px-3 py-3 text-left text-white transition ${
-                          isActive ? "border-[#76B82A] bg-[#003B63] shadow-[0_0_0_1px_#76B82A]" : "border-transparent bg-[#003B63] hover:bg-[#0B4C7A]"
-                        }`}
-                      >
-                        <div className="mb-2 flex items-center justify-between">
-                          <h4 className="text-[13px] font-bold">{section.title}</h4>
-                          {done ? <Check size={14} className="text-white" /> : null}
-                        </div>
-                        <p className="text-[12px] font-semibold">{section.groups.length} titre(s)</p>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[12px] font-semibold text-slate-500">Pagination dans la mission</p>
-                    <h4 className="text-[16px] font-bold text-[#0F3A63]">{activeMissionSection?.title}</h4>
-                  </div>
-                  <span className="text-[12px] font-semibold text-[#0F3A63]">
-                    Titre {activeMissionPageIndex + 1} / {activeMissionSection?.groups?.length || 1}
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {(activeMissionSection?.groups || []).map((group, index) => {
-                    const progress = getMissionGroupProgress(group);
-
-                    return (
-                      <button
-                        key={group.key}
-                        type="button"
-                        onClick={() => setMissionPageIndexes((current) => ({ ...current, [activeMission.id]: index }))}
-                        className={`rounded-md border px-3 py-2 text-left transition ${
-                          index === activeMissionPageIndex ? "border-[#76B82A] bg-[#F3FAEA] text-[#0F3A63]" : "border-[#D9E3EE] bg-white text-slate-600 hover:bg-slate-50"
-                        }`}
-                      >
-                        <p className="text-[11px] font-bold">Titre {index + 1}</p>
-                        <p className="mt-1 text-[12px] font-semibold">{group.pageTitle}</p>
-                        <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(progress)}`}>{progress}%</p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-
-              {activeMissionGroup ? (
-                <div className="space-y-3.5">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase text-slate-500">{activeMissionGroup.sectionTitle}</p>
-                    <p className="mt-1 text-[15px] font-bold text-[#0F3A63]">{activeMissionGroup.pageTitle}</p>
+          <article className="space-y-4">
+            <div className="rounded-xl bg-white p-5 shadow-sm">
+              {activeMission ? (
+                <>
+                  <div className="mb-4">
+                    <p className="text-xs font-semibold text-slate-400">Évaluation selon la mission réalisée ensemble</p>
+                    <h2 className="text-xl font-extrabold text-[#0F3A63]">{activeMission.title}</h2>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">{activeMission.period || "Période non renseignée"}</p>
                   </div>
 
-                  {activeMissionGroup.criteria.map((criterion) => (
-                    <MissionScoreRow key={criterion.id} criterion={criterion} onSelect={(score) => updateMissionScore(criterion.id, score)} />
-                  ))}
-
-                  {hasLowScoreOnActiveMissionPage ? (
-                    <div className="rounded-md border border-[#F0C7C7] bg-[#FFF7F7] p-3">
-                      <label className="text-[12px] font-bold text-[#A4252F]">
-                        Justification de l'écart pour ce titre <span className="text-[11px] text-slate-500">(minimum 3 caractères)</span>
+                  {managerRecipients.length ? (
+                    <section className="mb-4 rounded-md bg-white p-4 shadow-sm ring-1 ring-[#E6EDF5]">
+                      <label htmlFor="manager-select-mission" className="mb-2 block text-[12px] font-bold text-[#0F3A63]">
+                        Manager destinataire
                       </label>
-                      <textarea
-                        value={activeMissionGroup.pageComment || ""}
-                        onChange={(event) => updateMissionPageComment(event.target.value)}
-                        rows={3}
-                        placeholder="Expliquez la note inférieure à 3 pour ce titre…"
-                        className="mt-2 w-full resize-none rounded-md bg-white px-3 py-2 text-[12px] text-[#0F3A63] outline-none ring-1 ring-[#F0C7C7] focus:ring-[#A4252F]"
-                      />
+                      <select
+                        id="manager-select-mission"
+                        value={effectiveManagerValue}
+                        onChange={(event) => {
+                          setSelectedManagerValue(event.target.value);
+                          setFeedbackMessage("");
+                        }}
+                        className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-semibold text-[#0F3A63] outline-none"
+                      >
+                        {managerRecipients.map((manager) => (
+                          <option key={getRecipientOptionValue(manager)} value={getRecipientOptionValue(manager)}>
+                            {manager.department} - {manager.name} ({manager.grade})
+                          </option>
+                        ))}
+                      </select>
+                    </section>
+                  ) : null}
+
+                  <section className="mb-4 rounded-md bg-[#F8FAFC] p-4">
+                    <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                      {missionSections.map((section) => {
+                        const isActive = section.id === activeMissionSection?.id;
+                        const progress = getMissionSectionProgress(section);
+                        const done = progress === 100;
+
+                        return (
+                          <button
+                            key={section.id}
+                            type="button"
+                            onClick={() => {
+                              setMissionSectionIds((current) => ({ ...current, [activeMission.id]: section.id }));
+                              setMissionPageIndexes((current) => ({ ...current, [activeMission.id]: 0 }));
+                            }}
+                            className={`rounded-md border px-3 py-3 text-left text-white transition ${
+                              isActive ? "border-[#76B82A] bg-[#003B63] shadow-[0_0_0_1px_#76B82A]" : "border-transparent bg-[#003B63] hover:bg-[#0B4C7A]"
+                            }`}
+                          >
+                            <div className="mb-2 flex items-center justify-between">
+                              <h4 className="text-[13px] font-bold">{section.title}</h4>
+                              {done ? <Check size={14} className="text-white" /> : null}
+                            </div>
+                            <p className="text-[12px] font-semibold">{section.groups.length} titre(s)</p>
+                            <div className="mt-3 h-1.5 rounded-full bg-slate-200">
+                              <div className={`h-1.5 rounded-full ${getProgressBarClass(progress)}`} style={{ width: `${clampProgress(progress)}%` }} />
+                            </div>
+                            <p className="mt-1.5 text-[10px] font-semibold text-slate-200">
+                              {done ? "Complétée" : progress ? `En cours - ${progress}%` : "À faire"}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[12px] font-semibold text-slate-500">Pagination dans la mission</p>
+                        <h4 className="text-[16px] font-bold text-[#0F3A63]">{activeMissionSection?.title}</h4>
+                      </div>
+                      <span className="text-[12px] font-semibold text-[#0F3A63]">
+                        Titre {activeMissionPageIndex + 1} / {activeMissionSection?.groups?.length || 1}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {(activeMissionSection?.groups || []).map((group, index) => {
+                        const progress = getMissionGroupProgress(group);
+
+                        return (
+                          <button
+                            key={group.key}
+                            type="button"
+                            onClick={() => setMissionPageIndexes((current) => ({ ...current, [activeMission.id]: index }))}
+                            className={`rounded-md border px-3 py-2 text-left transition ${
+                              index === activeMissionPageIndex ? "border-[#76B82A] bg-[#F3FAEA] text-[#0F3A63]" : "border-[#D9E3EE] bg-white text-slate-600 hover:bg-slate-50"
+                            }`}
+                          >
+                            <p className="text-[11px] font-bold">Titre {index + 1}</p>
+                            <p className="mt-1 text-[12px] font-semibold">{group.pageTitle}</p>
+                            <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(progress)}`}>{progress}%</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+
+                  {activeMissionGroup ? (
+                    <div className="space-y-3.5">
+                      <div>
+                        <p className="text-[11px] font-bold uppercase text-slate-500">{activeMissionGroup.sectionTitle}</p>
+                        <p className="mt-1 text-[15px] font-bold text-[#0F3A63]">{activeMissionGroup.pageTitle}</p>
+                      </div>
+
+                      {activeMissionGroup.criteria.map((criterion) => (
+                        <MissionScoreRow key={criterion.id} criterion={criterion} onSelect={(score) => updateMissionScore(criterion.id, score)} />
+                      ))}
+
+                      {hasLowScoreOnActiveMissionPage ? (
+                        <div className="rounded-md border border-[#F0C7C7] bg-[#FFF7F7] p-3">
+                          <label className="text-[12px] font-bold text-[#A4252F]">
+                            Justification de l'écart pour ce titre <span className="text-[11px] text-slate-500">(minimum 3 caractères)</span>
+                          </label>
+                          <textarea
+                            value={activeMissionGroup.pageComment || ""}
+                            onChange={(event) => updateMissionPageComment(event.target.value)}
+                            rows={3}
+                            placeholder="Expliquez la note inférieure à 3 pour ce titre…"
+                            className="mt-2 w-full resize-none rounded-md bg-white px-3 py-2 text-[12px] text-[#0F3A63] outline-none ring-1 ring-[#F0C7C7] focus:ring-[#A4252F]"
+                          />
+                        </div>
+                      ) : null}
+
+                      <div className="rounded-md bg-[#F8FAFC] p-3">
+                        <label className="text-[12px] font-bold text-[#0F3A63]">
+                          Commentaire de section obligatoire <span className="text-[11px] text-slate-500">(minimum 3 caractères)</span>
+                        </label>
+                        <textarea
+                          value={activeMissionSection?.comment || ""}
+                          onChange={(event) => updateMissionSectionComment(event.target.value)}
+                          rows={3}
+                          placeholder="Synthèse globale de la section pour cette mission…"
+                          className="mt-2 w-full resize-none rounded-md bg-white px-3 py-2 text-[12px] text-[#0F3A63] outline-none ring-1 ring-[#D9E3EE] focus:ring-[#76B82A]"
+                        />
+                      </div>
                     </div>
                   ) : null}
 
-                  <div className="rounded-md bg-[#F8FAFC] p-3">
-                    <label className="text-[12px] font-bold text-[#0F3A63]">
-                      Commentaire de section obligatoire <span className="text-[11px] text-slate-500">(minimum 3 caractères)</span>
-                    </label>
-                    <textarea
-                      value={activeMissionSection?.comment || ""}
-                      onChange={(event) => updateMissionSectionComment(event.target.value)}
-                      rows={3}
-                      placeholder="Synthèse globale de la section pour cette mission…"
-                      className="mt-2 w-full resize-none rounded-md bg-white px-3 py-2 text-[12px] text-[#0F3A63] outline-none ring-1 ring-[#D9E3EE] focus:ring-[#76B82A]"
-                    />
+                  <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => goToMissionStep(-1)}
+                      disabled={activeMissionSectionIndex === 0 && activeMissionPageIndex === 0}
+                      className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <ChevronLeft size={14} />
+                      Précédent
+                    </button>
+
+                    {!isLastMissionStep ? (
+                      <button
+                        type="button"
+                        onClick={handleSaveMissionAndContinue}
+                        className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
+                      >
+                        Sauvegarder et continuer
+                        <ChevronRight size={14} />
+                      </button>
+                    ) : (
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={handleSubmitMission}
+                          disabled={isSaving || isSubmitting}
+                          className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                        >
+                          {isSubmitting ? "Transmission…" : activeMission.status === "Transmise" ? "Retransmettre la mission" : "Transmettre la mission"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => persistReview(missionReviews)}
+                          className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
+                        >
+                          Enregistrer la mission
+                        </button>
+                      </div>
+                    )}
                   </div>
+                  {feedbackAnchor === "mission-actions" && feedbackMessage ? (
+                    <p className={`mt-2 text-right text-[11px] font-semibold ${feedbackTone === "error" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>
+                      {feedbackMessage}
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <div className="rounded-md bg-[#EEF2F6] p-5 text-sm font-semibold text-slate-500">
+                  Aucune mission commune disponible pour cet assistant.
                 </div>
-              ) : null}
+              )}
+            </div>
 
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => goToMissionStep(-1)}
-                  disabled={activeMissionSectionIndex === 0 && activeMissionPageIndex === 0}
-                  className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <ChevronLeft size={14} />
-                  Précédent
-                </button>
-
-                {!isLastMissionStep ? (
-                  <button
-                    type="button"
-                    onClick={handleSaveMissionAndContinue}
-                    className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
-                  >
-                    Sauvegarder et continuer
-                    <ChevronRight size={14} />
-                  </button>
-                ) : (
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={handleSubmitMission}
-                      disabled={isSaving || isSubmitting}
-                      className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
-                    >
-                      {isSubmitting ? "Transmission…" : activeMission.status === "Transmise" ? "Retransmettre la mission" : "Transmettre la mission"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => persistReview(missionReviews)}
-                      className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white"
-                    >
-                      Enregistrer la mission
-                    </button>
-                  </div>
-                )}
+            <div className="rounded-xl bg-[#F8FAFC] p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="text-[18px] font-bold text-[#0F3A63]">Finalisation</h3>
+                <span className="text-[12px] font-bold text-[#76B82A]">{submittedMissionsCount} / {missionReviews.length || 0}</span>
               </div>
-              {feedbackAnchor === "mission-actions" && feedbackMessage ? (
-                <p className={`mt-2 text-right text-[11px] font-semibold ${feedbackTone === "error" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>
+              <p className="text-sm font-semibold text-slate-500">
+                La soumission finale n'est possible que lorsque toutes les missions ont déjà été transmises individuellement.
+              </p>
+              <button
+                type="button"
+                onClick={handleFinalizeReview}
+                disabled={isSaving || isSubmitting || !missionReviews.length}
+                className="mt-4 inline-flex rounded-md bg-[#003B63] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+              >
+                {isSubmitting ? "Soumission…" : "Finaliser l'évaluation"}
+              </button>
+              {feedbackAnchor === "finalize" && feedbackMessage ? (
+                <p className={`mt-2 text-[11px] font-semibold ${feedbackTone === "error" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>
                   {feedbackMessage}
                 </p>
               ) : null}
-            </>
-          ) : (
-            <div className="rounded-md bg-[#EEF2F6] p-5 text-sm font-semibold text-slate-500">
-              Aucune mission commune disponible pour cet assistant.
             </div>
-          )}
-
-          <div className="mt-6 rounded-xl bg-[#F8FAFC] p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h3 className="text-[18px] font-bold text-[#0F3A63]">Finalisation</h3>
-              <span className="text-[12px] font-bold text-[#76B82A]">{submittedMissionsCount} / {missionReviews.length || 0}</span>
-            </div>
-            <p className="text-sm font-semibold text-slate-500">
-              La soumission finale n'est possible que lorsque toutes les missions ont déjà été transmises individuellement.
-            </p>
-            <button
-              type="button"
-              onClick={handleFinalizeReview}
-              disabled={isSaving || isSubmitting || !missionReviews.length}
-              className="mt-4 inline-flex rounded-md bg-[#003B63] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
-            >
-              {isSubmitting ? "Soumission…" : "Finaliser l'évaluation"}
-            </button>
-            {feedbackAnchor === "finalize" && feedbackMessage ? (
-              <p className={`mt-2 text-[11px] font-semibold ${feedbackTone === "error" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>
-                {feedbackMessage}
-              </p>
-            ) : null}
-          </div>
-        </article>
-      </section>
+          </article>
+        </section>
+      )}
 
       {!feedbackAnchor && feedbackMessage ? (
         <p className={`text-right text-[11px] font-semibold ${feedbackTone === "error" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>

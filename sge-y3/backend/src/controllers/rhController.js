@@ -3318,6 +3318,7 @@ module.exports = {
   saveMyAssistantRhSelfEvaluation,
   saveMyRhSelfEvaluation,
   selectRhDepartmentEvaluation,
+  SUPPORT_EMAILS,
   submitAssistantRhEvaluation,
   submitMyAssistantRhSelfEvaluation,
   submitMyRhSelfMissionEvaluation,

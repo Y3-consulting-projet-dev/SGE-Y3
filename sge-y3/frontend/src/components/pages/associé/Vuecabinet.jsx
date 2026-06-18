@@ -37,7 +37,7 @@ const sideMenu = [
   {
     title: "Managers",
     items: [
-      { key: "autoeval-managers", label: "Auto-évaluation Managers", icon: UsersRound },
+      { key: "autoeval-managers", label: "Evaluation Managers", icon: UsersRound },
       { key: "autoeval-associes", label: "Auto-évaluation Associés", icon: UsersRound },
       { key: "autoeval-support", label: "Evaluation support", icon: UsersRound },
     ],
@@ -77,9 +77,9 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
   const pageTitle = useMemo(() => {
     if (activeSection === "syntheses-rh") return "Synthèses validées RH";
     if (activeSection === "committee") return "Comité d'évaluation";
-    if (activeSection === "autoeval-managers") return "Auto-évaluation Managers";
+    if (activeSection === "autoeval-managers") return "Evaluation Managers";
     if (activeSection === "autoeval-associes") return "Auto-évaluation Associés";
-    if (activeSection === "autoeval-support") return "Auto-évaluation Support";
+    if (activeSection === "autoeval-support") return "Evaluation Support";
     if (activeSection === "history") return "Mon historique";
     if (activeSection === "cabinet-history") return "Historique cabinet";
     if (activeSection === "profile") return "Mon profil";
