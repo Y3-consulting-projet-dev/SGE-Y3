@@ -16,6 +16,7 @@ import EvaluationAssistanteRH from "@/components/pages/rh/EvaluationAssistanteRH
 import Monhistorique from "@/components/pages/rh/Monhistorique";
 import HistoriqueEquipe from "@/components/pages/rh/HistoriqueEquipe";
 import GestionCycles from "@/components/pages/rh/GestionCycles";
+import GestionCollaborateurs from "@/components/pages/rh/GestionCollaborateurs";
 import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import { saveCommitteeDecision } from "@/lib/committee";
@@ -65,6 +66,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
     if (activeSection === "team-history") return "HISTORIQUE COLLABORATEURS";
     if (activeSection === "reports") return "RAPPORTS RH";
     if (activeSection === "committee") return "COMITÉ D'ÉVALUATION";
+    if (activeSection === "collaborators") return "GESTION DES COLLABORATEURS";
     if (activeSection === "cycles") return "GESTION DES CYCLES";
     if (activeSection === "received-comments") return "COMMENTAIRES REÇUS";
     if (activeSection === "my-results") return "MES RÉSULTATS";
@@ -137,6 +139,10 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
 
     if (activeSection === "cycles") {
       return <GestionCycles />;
+    }
+
+    if (activeSection === "collaborators") {
+      return <GestionCollaborateurs />;
     }
 
     if (activeSection === "my-results") {

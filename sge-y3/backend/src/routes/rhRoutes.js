@@ -1,6 +1,12 @@
 const express = require('express');
 
 const {
+  createCollaborator,
+  listCollaborators,
+  setCollaboratorActiveStatus,
+  updateCollaborator,
+} = require('../controllers/rhCollaboratorController');
+const {
   addRhQuestionnaireQuestion,
   createRhCycle,
   createRhQuestionnaireSection,
@@ -60,6 +66,10 @@ router.get('/department-evaluations', requireAuth, requireRh, getRhDepartmentEva
 router.get('/department-evaluations/:reviewId', requireAuth, requireRh, getRhDepartmentEvaluationDetail);
 router.get('/population', requireAuth, requireRh, getRhPopulation);
 router.put('/population/:memberId/career', requireAuth, requireRh, updateRhUserCareer);
+router.get('/collaborators', requireAuth, requireRh, listCollaborators);
+router.post('/collaborators', requireAuth, requireRh, createCollaborator);
+router.put('/collaborators/:userId', requireAuth, requireRh, updateCollaborator);
+router.patch('/collaborators/:userId/status', requireAuth, requireRh, setCollaboratorActiveStatus);
 router.get('/reports', requireAuth, requireRh, getRhReports);
 router.get('/reports/:reportId/download', requireAuth, requireRh, downloadRhReport);
 router.post('/department-evaluations/:reviewId/select', requireAuth, requireRh, selectRhDepartmentEvaluation);

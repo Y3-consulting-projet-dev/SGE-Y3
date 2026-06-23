@@ -31,7 +31,10 @@ export const rhMenuGroups = [
   },
   {
     title: "Administration",
-    items: [{ key: "cycles", label: "Gestion des cycles", icon: CalendarRange }],
+    items: [
+      { key: "collaborators", label: "Gestion des collaborateurs", icon: UsersRound },
+      { key: "cycles", label: "Gestion des cycles", icon: CalendarRange },
+    ],
   },
   {
     title: "Commentaires",

@@ -125,6 +125,34 @@ export function updateRhUserCareer(memberId, payload) {
   });
 }
 
+export function getRhCollaborators(params = {}) {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== "")
+  ).toString();
+  return request(`/rh/collaborators${query ? `?${query}` : ""}`);
+}
+
+export function createRhCollaborator(payload) {
+  return request("/rh/collaborators", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateRhCollaborator(userId, payload) {
+  return request(`/rh/collaborators/${userId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function setRhCollaboratorStatus(userId, isActive) {
+  return request(`/rh/collaborators/${userId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ is_active: isActive }),
+  });
+}
+
 export function getRhReports() {
   return request("/rh/reports");
 }
