@@ -20,6 +20,7 @@ const {
 const { buildCyclesForInstances, resolveTemplateTypeForUser } = require('../utils/evaluationHistory');
 const { getCurrentCycleLabel } = require('../utils/activeCycle');
 const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
+const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
 const FULL_RH_EMAILS = ['isabella.beda@ycubeac.com'];
 const RH_DEPARTMENT_REGEX = /^RH$/i;
 const CAPITAL_HUMAIN_DEPARTMENT_REGEX = /^CAPITAL HUMAIN$/i;
@@ -2046,6 +2047,14 @@ async function submitMyManagerEvaluation(request, response) {
     instance.last_saved_at = new Date();
     await instance.save();
 
+    notifySubmissionRecipients({
+      recipientIds: instance.submitted_to_user_ids,
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: 'son auto-évaluation manager',
+      cycleLabel: getCurrentCycleLabel(),
+    });
+
     return response.json({
       message: 'Evaluations par mission manager transmises à la RH et aux associés.',
       ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers, associateRecipients),
@@ -2078,6 +2087,14 @@ async function submitMyManagerEvaluation(request, response) {
   instance.submitted_at = new Date();
   instance.last_saved_at = new Date();
   await instance.save();
+
+  notifySubmissionRecipients({
+    recipientIds: instance.submitted_to_user_ids,
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: 'son auto-évaluation manager',
+    cycleLabel: getCurrentCycleLabel(),
+  });
 
   return response.json({
     message: 'Auto-évaluation manager soumise à la RH.',
@@ -2154,6 +2171,14 @@ async function submitMyManagerMissionEvaluation(request, response) {
   instance.mission_evaluations = missionEvaluations;
   instance.last_saved_at = new Date();
   await instance.save();
+
+  notifySubmissionRecipients({
+    recipientIds: allRecipients.map((recipient) => recipient._id),
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: `la mission manager "${mission.title}"`,
+    cycleLabel: getCurrentCycleLabel(),
+  });
 
   return response.json({
     message: `Mission manager soumise a la RH et aux associes (${selectedAssociateRecipients.map((recipient) => recipient.name).join(', ')}).`,
@@ -2367,6 +2392,14 @@ module.exports = {
     review.last_saved_at = new Date();
     await review.save();
 
+    notifySubmissionRecipients({
+      recipientIds: review.submitted_to_user_ids,
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: `l'évaluation de ${member.name}`,
+      cycleLabel: getCurrentCycleLabel(),
+    });
+
     return response.json({
       message: rhRecipients.length
         ? `Evaluation soumise à ${rhRecipients.map((recipient) => recipient.name).join(', ')}.`
@@ -2501,6 +2534,14 @@ module.exports = {
     review.rh_validation_selected_at = new Date();
     review.last_saved_at = new Date();
     await review.save();
+
+    notifySubmissionRecipients({
+      recipientIds: review.submitted_to_user_ids,
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: `la mission de ${member.name}`,
+      cycleLabel: getCurrentCycleLabel(),
+    });
 
     const missionAndScoreData = await buildManagerMissionAndGlobalInputs(request.user, member, selfEvaluationInstance, review);
 

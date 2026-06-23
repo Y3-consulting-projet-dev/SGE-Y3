@@ -408,6 +408,24 @@ function AutoevaluationAssocie() {
     }));
   }
 
+  function handleSelfNextStep() {
+    if (String(activeSection?.comment || "").trim().length < 3) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
+      return;
+    }
+    goToStep(1);
+  }
+
+  function handlePeerNextStep() {
+    if (String(peerActiveSection?.comment || "").trim().length < 3) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
+      return;
+    }
+    goToPeerStep(1);
+  }
+
   function goToPeerStep(direction) {
     if (!peerActiveSection) return;
     const nextPageIndex = peerActivePageIndex + direction;
@@ -595,7 +613,9 @@ function AutoevaluationAssocie() {
                   ))}
 
                   <div>
-                    <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire de section</p>
+                    <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">
+                      Commentaire de section obligatoire <span className="text-red-600">*</span>
+                    </p>
                     <textarea
                       rows={4}
                       value={activeSection.comment || ""}
@@ -635,7 +655,7 @@ function AutoevaluationAssocie() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => goToStep(1)}
+                      onClick={handleSelfNextStep}
                       disabled={
                         Number(activeSectionId) === Number(sections[sections.length - 1]?.id) &&
                         activePageIndex === (activeSection.pages?.length || 1) - 1
@@ -828,7 +848,9 @@ function AutoevaluationAssocie() {
                         ))}
 
                         <div>
-                          <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire de section obligatoire</p>
+                          <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">
+                            Commentaire de section obligatoire <span className="text-red-600">*</span>
+                          </p>
                           <textarea
                             rows={4}
                             value={peerActiveSection.comment || ""}
@@ -851,7 +873,7 @@ function AutoevaluationAssocie() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => goToPeerStep(1)}
+                          onClick={handlePeerNextStep}
                           disabled={
                             Number(peerActiveSectionId) === Number(peerSections[peerSections.length - 1]?.id) &&
                             peerActivePageIndex === (peerActiveSection.pages?.length || 1) - 1

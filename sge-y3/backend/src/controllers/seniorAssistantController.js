@@ -15,6 +15,7 @@ const {
 const { buildMissionResultsPayload } = require('../utils/evaluationHistory');
 const { getCurrentCycleLabel } = require('../utils/activeCycle');
 const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
+const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
 
 function normalizeText(value = '') {
   return String(value || '').replace(/\s+/g, ' ').trim().toUpperCase();
@@ -1519,6 +1520,14 @@ async function submitMyAssistantMissionReview(request, response) {
   review.last_saved_at = new Date();
   await review.save();
 
+  notifySubmissionRecipients({
+    recipientIds: review.submitted_to_user_ids,
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: `la mission de ${assistant.name}`,
+    cycleLabel: getCurrentCycleLabel(),
+  });
+
   return response.json({
     message: selectedManager
       ? `Mission transmise à ${selectedManager.name}.`
@@ -1601,6 +1610,14 @@ async function submitMyAssistantEvaluation(request, response) {
   review.submitted_at = new Date();
   review.last_saved_at = new Date();
   await review.save();
+
+  notifySubmissionRecipients({
+    recipientIds: review.submitted_to_user_ids,
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: `l'évaluation de ${assistant.name}`,
+    cycleLabel: getCurrentCycleLabel(),
+  });
 
   return response.json({
     message: selectedManager

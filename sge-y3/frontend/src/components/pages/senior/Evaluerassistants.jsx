@@ -531,6 +531,11 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
       return;
     }
 
+    if (String(activeMissionSection?.comment || "").trim().length < 3) {
+      showFeedback("mission-actions", "error", "Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
+      return;
+    }
+
     const response = await persistReview(missionReviews, "mission-actions");
     if (response) goToMissionStep(1);
   }
@@ -1136,7 +1141,8 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
 
                       <div className="rounded-md bg-[#F8FAFC] p-3">
                         <label className="text-[12px] font-bold text-[#0F3A63]">
-                          Commentaire de section obligatoire <span className="text-[11px] text-slate-500">(minimum 3 caractères)</span>
+                          Commentaire de section obligatoire <span className="text-red-600">*</span>{" "}
+                          <span className="text-[11px] text-slate-500">(minimum 3 caractères)</span>
                         </label>
                         <textarea
                           value={activeMissionSection?.comment || ""}

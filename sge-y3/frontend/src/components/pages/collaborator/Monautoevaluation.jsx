@@ -1161,12 +1161,18 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     missionPageIndex === Math.max((missionSection?.groups?.length || 1) - 1, 0);
 
   async function handleSaveAndContinue() {
+    if (String(missionSection?.comment || "").trim().length < 3) {
+      setScopedFeedback("mission", "error", "Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
+      return;
+    }
+
     const response = await persistMissionEvaluations(missionEvaluations, {
       scope: "mission",
       showSuccess: false,
     });
 
     if (response) {
+      clearScopedFeedback("mission");
       goToMissionStep(1);
     }
   }
@@ -1769,7 +1775,9 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
               ) : null}
 
               <div className="mt-4">
-                <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire de section obligatoire</p>
+                <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">
+                  Commentaire de section obligatoire <span className="text-red-600">*</span>
+                </p>
                 <textarea
                   rows={4}
                   value={missionSection?.comment || ""}

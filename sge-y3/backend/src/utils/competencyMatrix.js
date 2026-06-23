@@ -1,5 +1,5 @@
 const matrixData = require('../data/competencyMatrix.generated.json');
-const { normalizeDepartment, normalizeText } = require('./userMapping');
+const { normalizeDepartment, normalizeText, getSupportRoleLabel } = require('./userMapping');
 const { readQuestionnaireConfig } = require('./questionnaireConfig');
 
 const SECTION_ORDER = ['SAVOIR FAIRE', 'SAVOIR ETRE'];
@@ -252,7 +252,7 @@ function applyCustomQuestionnaire(sectionsMap, orderedSectionKeys, sheetNames, g
 function buildEvaluationTemplateForUser(user = {}) {
   const deptUp = String(user.department || '').toUpperCase();
   const isSupport = deptUp === 'SUPPORT' || deptUp === 'SERVICE SUPPORT';
-  const gradeColumnKey = isSupport ? user.grade : getGradeColumnKey(user.grade);
+  const gradeColumnKey = isSupport ? getSupportRoleLabel(user) : getGradeColumnKey(user.grade);
   const supportCommonGradeKey = getSupportCommonGradeKey(user);
   const sheetNames = isSupport ? ['TRONC COMMUN', 'SERVICE SUPPORT'] : getSheetNamesForDepartment(user.department);
   const getGradeColumnKeyForSheet = (sheetName) =>

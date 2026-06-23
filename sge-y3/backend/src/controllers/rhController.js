@@ -8,7 +8,9 @@ const matrixData = require('../data/competencyMatrix.generated.json');
 const { buildEvaluationTemplateForUser } = require('../utils/competencyMatrix');
 const {
   ALLOWED_GRADES,
+  SUPPORT_EMAILS,
   getCategoryFromGrade,
+  getSupportRoleLabel,
   normalizeDepartment: normalizeUserDepartment,
   normalizeEmail,
   normalizeText: normalizeUserText,
@@ -37,19 +39,9 @@ const {
 const { activateCycle, getCurrentCycleLabel } = require('../utils/activeCycle');
 const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
 const { fetchAssociateCommentsForManager } = require('./managerController');
+const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
 
 const RH_RELEVANT_STATUSES = ['Soumis a RH', 'Valide RH', 'Transmis a l associe', 'Cloture'];
-const SUPPORT_ROLE_BY_EMAIL = {
-  'fleur.nguessan@ycubeac.com': 'Office Manager',
-  'aziz.ouattara@ycubeac.com': 'PMO',
-  'porthela.kakou@ycubeac.com': 'Responsable IT',
-  'adele.creppy@ycubeac.com': 'Comptable interne senior',
-};
-const SUPPORT_EMAILS = Object.keys(SUPPORT_ROLE_BY_EMAIL);
-
-function getSupportRoleLabel(user) {
-  return SUPPORT_ROLE_BY_EMAIL[normalizeEmail(user?.email || '')] || user?.grade || 'Service support';
-}
 const QUESTIONNAIRE_SECTION_OPTIONS = [
   { value: 'SAVOIR FAIRE', label: 'SAVOIR FAIRE' },
   { value: 'SAVOIR ETRE', label: 'SAVOIR ETRE' },
@@ -2181,6 +2173,15 @@ async function submitRhSyntheses(request, response) {
       : Promise.resolve(),
   ]);
 
+  const associateRecipients = await resolveAssociateRecipients();
+  notifySubmissionRecipients({
+    recipientIds: associateRecipients.map((recipient) => recipient._id),
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: 'de nouvelles synthèses RH',
+    cycleLabel: getCurrentCycleLabel(),
+  });
+
   return response.json({
     message: 'Les syntheses ont bien ete transmises a l associe.',
     cycle_label: getCurrentCycleLabel(),
@@ -2585,6 +2586,14 @@ async function submitMyRhSelfEvaluation(request, response) {
   instance.last_saved_at = new Date();
   await instance.save();
 
+  notifySubmissionRecipients({
+    recipientIds: instance.submitted_to_user_ids,
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: 'son auto-évaluation RH',
+    cycleLabel: getCurrentCycleLabel(),
+  });
+
   return response.json({
     message: "Auto-evaluation RH soumise aux associes.",
     ...buildRhSelfEvaluationPayload(instance, request.user, associateRecipients),
@@ -2645,6 +2654,14 @@ async function submitMyRhSelfMissionEvaluation(request, response) {
   instance.last_saved_at = new Date();
   await instance.save();
 
+  notifySubmissionRecipients({
+    recipientIds: associateRecipients.map((recipient) => recipient._id),
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: `la mission RH "${mission.title}"`,
+    cycleLabel: getCurrentCycleLabel(),
+  });
+
   return response.json({
     message: `Mission RH soumise a ${associateRecipients.map((recipient) => recipient.name).join(', ')}.`,
     ...buildRhSelfEvaluationPayload(instance, request.user, associateRecipients),
@@ -2666,6 +2683,15 @@ async function submitMyAssistantRhSelfEvaluation(request, response) {
     });
   }
 
+  const missingSectionComments = validateSectionCommentsForSubmit(normalizedSections, 3);
+
+  if (missingSectionComments.length) {
+    return response.status(400).json({
+      message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
+      missingSectionComments,
+    });
+  }
+
   const rhRecipients = await resolveFullRhRecipients();
 
   if (!rhRecipients.length) {
@@ -2683,6 +2709,14 @@ async function submitMyAssistantRhSelfEvaluation(request, response) {
   instance.submitted_at = new Date();
   instance.last_saved_at = new Date();
   await instance.save();
+
+  notifySubmissionRecipients({
+    recipientIds: instance.submitted_to_user_ids,
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: 'son auto-évaluation Assistante RH',
+    cycleLabel: getCurrentCycleLabel(),
+  });
 
   return response.json({
     message: 'Auto-evaluation Assistante RH soumise a la RH.',

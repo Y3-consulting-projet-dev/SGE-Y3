@@ -720,6 +720,12 @@ function Autoevamanager() {
   const continueReceivedEvaluation = async () => {
     if (!receivedSection) return;
 
+    if (String(receivedSection?.comment || "").trim().length < 3) {
+      setReceivedActionMessage("Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
+      setReceivedActionType("error");
+      return;
+    }
+
     if (!isLastReceivedPage) {
       await goToReceivedPage(Math.min(receivedPagesCount - 1, receivedPageIndex + 1));
       return;
@@ -1086,7 +1092,9 @@ function Autoevamanager() {
                       </div>
 
                       <div className="mt-4 rounded-xl bg-[#F7FAFC] p-4">
-                        <p className="mb-2 text-sm font-bold text-[#0F4A72]">Commentaire de section associé</p>
+                        <p className="mb-2 text-sm font-bold text-[#0F4A72]">
+                          Commentaire de section associé obligatoire <span className="text-red-600">*</span>
+                        </p>
                         <textarea
                           value={currentManagerSectionComment}
                           onChange={(event) => {
@@ -1433,11 +1441,14 @@ function Autoevamanager() {
                     ))}
                   </div>
 
+                  <p className="mt-4 text-sm font-bold text-[#0F4A72]">
+                    Commentaire de section de l'associé obligatoire <span className="text-red-600">*</span>
+                  </p>
                   <textarea
                     value={receivedSection?.comment || ""}
                     onChange={(event) => setReceivedSectionComment(event.target.value)}
                     placeholder="Commentaire de section de l'associé obligatoire..."
-                    className="mt-4 min-h-[100px] w-full resize-none rounded-lg bg-white px-3 py-3 text-sm text-slate-700 outline-none"
+                    className="mt-2 min-h-[100px] w-full resize-none rounded-lg bg-white px-3 py-3 text-sm text-slate-700 outline-none"
                   />
                   <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
                     <button

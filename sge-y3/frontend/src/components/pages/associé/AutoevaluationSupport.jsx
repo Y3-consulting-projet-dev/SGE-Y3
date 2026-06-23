@@ -31,24 +31,6 @@ function getOverallAverage(sections = []) {
   return getAverage(sections.flatMap((section) => (section.criteria || []).map((criterion) => criterion.score)));
 }
 
-function getEvaluationGroupKey(section) {
-  const hasDomainPage = (section?.pages || []).some((page) => page.source_sheet && page.source_sheet !== "TRONC COMMUN");
-  return hasDomainPage ? "domain" : "common";
-}
-
-function getGroupStats(sections = []) {
-  const criteria = sections.flatMap((section) => section.criteria || []);
-  const answered = criteria.filter((criterion) => typeof criterion.score === "number").length;
-  const progress = criteria.length ? Math.round((answered / criteria.length) * 100) : 0;
-
-  return {
-    answered,
-    total: criteria.length,
-    progress,
-    average: getOverallAverage(sections),
-  };
-}
-
 function buildSectionsPayload(sections = []) {
   return sections.map((section) => ({
     ...section,
@@ -101,7 +83,6 @@ function AutoevaluationSupport() {
   const [detailData, setDetailData] = useState(null);
   const [selectedSupportId, setSelectedSupportId] = useState("");
   const [associateSections, setAssociateSections] = useState([]);
-  const [activeEvaluationGroup, setActiveEvaluationGroup] = useState("common");
   const [note, setNote] = useState("");
   const [selectedSectionId, setSelectedSectionId] = useState(1);
   const [selectedPageId, setSelectedPageId] = useState("");
@@ -150,13 +131,12 @@ function AutoevaluationSupport() {
         setErrorMessage("");
         const response = await getAssociateSupportEvaluation(selectedSupportId);
         const nextSections = buildSectionsPayload(response?.associate_review?.sections || []);
-        const firstSection = nextSections.find((section) => getEvaluationGroupKey(section) === "common") || nextSections[0];
+        const firstSection = nextSections[0];
         const firstPage = getSectionPages(firstSection)[0];
 
         if (cancelled) return;
         setDetailData(response);
         setAssociateSections(nextSections);
-        setActiveEvaluationGroup("common");
         setNote(response?.associate_review?.note || "");
         setSelectedSectionId(firstSection?.id || firstSection?.section_id || 1);
         setSelectedPageId(firstPage?.id || "");
@@ -176,19 +156,12 @@ function AutoevaluationSupport() {
   const items = listData?.items || [];
   const selectedSupport = items.find((item) => item.id === selectedSupportId) || null;
   const selfSections = detailData?.self_evaluation?.sections || [];
-  const commonSections = useMemo(() => associateSections.filter((section) => getEvaluationGroupKey(section) === "common"), [associateSections]);
-  const domainSections = useMemo(() => associateSections.filter((section) => getEvaluationGroupKey(section) === "domain"), [associateSections]);
-  const visibleSections = activeEvaluationGroup === "domain" ? domainSections : commonSections;
-  const visibleSelfSections = useMemo(
-    () => selfSections.filter((section) => getEvaluationGroupKey(section) === activeEvaluationGroup),
-    [selfSections, activeEvaluationGroup]
-  );
   const currentSectionIndex = Math.max(
     0,
-    visibleSections.findIndex((section) => Number(section.id || section.section_id) === Number(selectedSectionId))
+    associateSections.findIndex((section) => Number(section.id || section.section_id) === Number(selectedSectionId))
   );
-  const currentSection = visibleSections[currentSectionIndex] || null;
-  const currentSelfSection = visibleSelfSections[currentSectionIndex] || null;
+  const currentSection = associateSections[currentSectionIndex] || null;
+  const currentSelfSection = selfSections[currentSectionIndex] || null;
   const sectionPages = useMemo(() => getSectionPages(currentSection), [currentSection]);
 
   useEffect(() => {
@@ -210,8 +183,6 @@ function AutoevaluationSupport() {
     selectedPage ? String(criterion.page_id || criterion.pageId || "") === String(selectedPage.id) : true
   );
   const associateAverage = useMemo(() => getOverallAverage(associateSections), [associateSections]);
-  const commonStats = useMemo(() => getGroupStats(commonSections), [commonSections]);
-  const domainStats = useMemo(() => getGroupStats(domainSections), [domainSections]);
 
   const kpis = useMemo(() => {
     const total = items.length;
@@ -238,17 +209,6 @@ function AutoevaluationSupport() {
         ),
       }))
     );
-    setStatus("");
-  };
-
-  const selectEvaluationGroup = (groupKey) => {
-    const nextSections = groupKey === "domain" ? domainSections : commonSections;
-    const firstSection = nextSections[0];
-    const firstPage = getSectionPages(firstSection)[0];
-
-    setActiveEvaluationGroup(groupKey);
-    setSelectedSectionId(firstSection?.id || firstSection?.section_id || 1);
-    setSelectedPageId(firstPage?.id || "");
     setStatus("");
   };
 
@@ -392,58 +352,6 @@ function AutoevaluationSupport() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {[
-                    {
-                      key: "common",
-                      title: "Évaluation du tronc commun",
-                      subtitle: "Questions communes aux autres profils",
-                      stats: commonStats,
-                    },
-                    {
-                      key: "domain",
-                      title: `Évaluation ${detailData?.support?.role || selectedSupport?.role || "du domaine"}`,
-                      subtitle: "Questions du domaine depuis la matrice JSON",
-                      stats: domainStats,
-                    },
-                  ].map((item) => (
-                    <button
-                      key={item.key}
-                      type="button"
-                      onClick={() => selectEvaluationGroup(item.key)}
-                      className={`rounded-xl border p-4 text-left transition ${
-                        activeEvaluationGroup === item.key
-                          ? "border-[#76B82A] bg-[#EEF6E8]"
-                          : "border-slate-200 bg-[#F8FAFC] hover:bg-white"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-black text-[#0F3A63]">{item.title}</p>
-                          <p className="mt-1 text-xs font-semibold text-slate-500">{item.subtitle}</p>
-                        </div>
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-[#0F4A72]">
-                          {item.stats.progress}%
-                        </span>
-                      </div>
-                      <div className="mt-4 grid grid-cols-2 gap-3">
-                        <div className="rounded-lg bg-white p-3">
-                          <p className="text-[11px] font-bold text-slate-500">Questions notées</p>
-                          <p className="mt-1 text-lg font-black text-[#0F3A63]">
-                            {item.stats.answered}/{item.stats.total}
-                          </p>
-                        </div>
-                        <div className="rounded-lg bg-white p-3">
-                          <p className="text-[11px] font-bold text-slate-500">Moyenne associé</p>
-                          <p className={`mt-1 text-lg font-black ${scoreTone(item.stats.average)}`}>
-                            {formatScore(item.stats.average)}
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
                 {currentSection ? (
                   <>
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -457,22 +365,22 @@ function AutoevaluationSupport() {
 
                       <div className="flex items-center gap-2 rounded-full bg-[#F4F7FB] px-3 py-2 text-sm font-bold text-[#0F4A72]">
                         <button
-                          onClick={() => setSelectedSectionId(visibleSections[Math.max(currentSectionIndex - 1, 0)]?.id || selectedSectionId)}
+                          onClick={() => setSelectedSectionId(associateSections[Math.max(currentSectionIndex - 1, 0)]?.id || selectedSectionId)}
                           disabled={currentSectionIndex === 0}
                           className="rounded-full p-1 disabled:opacity-30"
                         >
                           <ChevronLeft size={16} />
                         </button>
                         <span>
-                          Section {currentSectionIndex + 1} / {visibleSections.length}
+                          Section {currentSectionIndex + 1} / {associateSections.length}
                         </span>
                         <button
                           onClick={() =>
                             setSelectedSectionId(
-                              visibleSections[Math.min(currentSectionIndex + 1, visibleSections.length - 1)]?.id || selectedSectionId
+                              associateSections[Math.min(currentSectionIndex + 1, associateSections.length - 1)]?.id || selectedSectionId
                             )
                           }
-                          disabled={currentSectionIndex >= visibleSections.length - 1}
+                          disabled={currentSectionIndex >= associateSections.length - 1}
                           className="rounded-full p-1 disabled:opacity-30"
                         >
                           <ChevronRight size={16} />

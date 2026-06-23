@@ -5,6 +5,7 @@ const {
   getEvaluationSummary,
   getOverallAverageScore,
   normalizeSections,
+  validateSectionCommentsForSubmit,
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
 const { getCurrentCycleLabel } = require('../utils/activeCycle');
@@ -341,6 +342,14 @@ module.exports = {
       return response.status(400).json({
         message: 'Toutes les questions doivent être renseignées avant la soumission.',
         missingAnswers,
+      });
+    }
+
+    const missingSectionComments = validateSectionCommentsForSubmit(sections, 3);
+    if (missingSectionComments.length) {
+      return response.status(400).json({
+        message: "Un commentaire d'au moins 3 caractères est obligatoire pour chaque section avant la soumission.",
+        missingSectionComments,
       });
     }
 

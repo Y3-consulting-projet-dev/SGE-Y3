@@ -764,11 +764,23 @@ function Monautoevaluation() {
   }
 
   async function handleSaveAndContinue() {
+    if (String(activeSection?.comment || "").trim().length < 3) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
+      return;
+    }
+
     await persistSections(sections, "Auto-évaluation manager enregistrée.");
     goToStep(1);
   }
 
   async function handleSaveMissionAndContinue() {
+    if (String(activeMission?.comment || "").trim().length < 3) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Le commentaire sur la mission d'au moins 3 caractères est obligatoire avant de continuer.");
+      return;
+    }
+
     await persistMissionEvaluations(missionEvaluations, "Mission manager enregistrée.");
     goToMissionStep(1);
   }
@@ -819,6 +831,12 @@ function Monautoevaluation() {
     if (hasIncompleteCriterion) {
       setFeedbackTone("error");
       setFeedbackMessage("Toutes les questions de la mission manager doivent être renseignées avant soumission.");
+      return;
+    }
+
+    if (String(activeMission?.comment || "").trim().length < 3) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Le commentaire sur la mission d'au moins 3 caractères est obligatoire avant soumission.");
       return;
     }
 
@@ -1102,7 +1120,9 @@ function Monautoevaluation() {
                 </div>
 
                 <div className="mt-4">
-                  <p className="mb-2 text-xs font-semibold text-[#79B742]">Commentaire de section</p>
+                  <p className="mb-2 text-xs font-semibold text-[#79B742]">
+                    Commentaire de section obligatoire <span className="text-red-600">*</span>
+                  </p>
                   <textarea
                     rows={3}
                     value={activeSection.comment || ""}
@@ -1634,7 +1654,9 @@ function Monautoevaluation() {
                       ) : null}
 
                       <div className="mt-4">
-                        <p className="mb-2 text-xs font-semibold text-[#79B742]">Commentaire sur la mission</p>
+                        <p className="mb-2 text-xs font-semibold text-[#79B742]">
+                          Commentaire sur la mission obligatoire <span className="text-red-600">*</span>
+                        </p>
                         <textarea
                           rows={3}
                           value={activeMission.comment || ""}

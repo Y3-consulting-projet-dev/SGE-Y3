@@ -14,6 +14,7 @@ const {
 } = require('../utils/evaluationHelpers');
 const { buildMissionResultsPayload } = require('../utils/evaluationHistory');
 const { getCurrentCycleLabel } = require('../utils/activeCycle');
+const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
 
 function normalizeText(value = '') {
   return String(value || '').replace(/\s+/g, ' ').trim().toUpperCase();
@@ -1072,6 +1073,14 @@ async function submitMySelfMissionEvaluation(request, response, getOrCreateEvalu
     last_saved_at: new Date(),
   });
 
+  notifySubmissionRecipients({
+    recipientIds: mission.recipients.map((recipient) => recipient.user_id),
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: `la mission "${mission.title}"`,
+    cycleLabel: getCurrentCycleLabel(),
+  });
+
   return response.json({
     message: `Mission soumise à ${mission.recipients.map((recipient) => recipient.name).join(', ')}.`,
     ...(await buildEvaluationPayload(instance, request.user)),
@@ -1163,6 +1172,14 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
       submitted_to_names: mergedMissionRecipients.map((recipient) => recipient.manager),
       submitted_at: new Date(),
       last_saved_at: new Date(),
+    });
+
+    notifySubmissionRecipients({
+      recipientIds: submittedRecipientUsers.map((recipient) => recipient._id),
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: 'son auto-évaluation',
+      cycleLabel: getCurrentCycleLabel(),
     });
 
     return response.json({
@@ -1445,6 +1462,14 @@ async function submitMyDevelopment(request, response) {
     development_submitted_at: now,
     development_submitted_to_user_id: manager._id,
     development_submitted_to_name: manager.name,
+  });
+
+  notifySubmissionRecipients({
+    recipientIds: [manager._id],
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: 'son plan de développement',
+    cycleLabel: getCurrentCycleLabel(),
   });
 
   return response.json({

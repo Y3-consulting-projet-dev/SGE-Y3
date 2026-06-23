@@ -273,6 +273,12 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
   }
 
   async function handleSaveAndContinue() {
+    if (String(activeSection?.comment || "").trim().length < 3) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
+      return;
+    }
+
     await persistSections(sections);
     goToStep(1);
   }
@@ -498,7 +504,9 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
             </div>
 
             <div className="mt-4">
-              <p className="mb-2 text-xs font-semibold text-[#79B742]">Commentaire de section</p>
+              <p className="mb-2 text-xs font-semibold text-[#79B742]">
+                Commentaire de section obligatoire <span className="text-red-600">*</span>
+              </p>
               <textarea
                 rows={3}
                 value={activeSection.comment || ""}

@@ -23,6 +23,7 @@ const {
   resolveRhQueueUserIds,
   SUPPORT_EMAILS,
 } = require('./rhController');
+const { getSupportRoleLabel } = require('../utils/userMapping');
 const { getCurrentCycleLabel } = require('../utils/activeCycle');
 const {
   buildCyclesForInstances,
@@ -31,6 +32,7 @@ const {
 } = require('../utils/evaluationHistory');
 const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
 const { fetchAssociateCommentsForManager } = require('./managerController');
+const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
 
 function getInitials(name = '') {
   return String(name || '')
@@ -866,10 +868,6 @@ function isSupportEvaluationTarget(user) {
   return String(user?.department || '').toUpperCase() === 'SUPPORT';
 }
 
-function getSupportRoleLabel(user) {
-  return user?.grade || 'Service support';
-}
-
 function cloneSectionsForSupport(user) {
   return buildEvaluationTemplateForUser({
     email: user?.email || '',
@@ -1425,6 +1423,14 @@ module.exports = {
     instance.last_saved_at = new Date();
     await instance.save();
 
+    notifySubmissionRecipients({
+      recipientIds: [recipient._id],
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: 'son auto-évaluation associé',
+      cycleLabel: getCurrentCycleLabel(),
+    });
+
     return response.json({
       message: `Auto-évaluation associé soumise à ${recipient.name}.`,
       ...buildAssociateSelfEvaluationPayload(instance, request.user, recipients),
@@ -1627,6 +1633,14 @@ module.exports = {
     const submitter = await User.findById(instance.evalue_id).select('_id name first_name last_name grade department');
     const missionResults = await buildAssociateMissionResults(instance, submitter, request.user._id);
 
+    notifySubmissionRecipients({
+      recipientIds: rhUsers.map((user) => user._id),
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: `l'évaluation de ${submitter?.name || 'un collaborateur'}`,
+      cycleLabel: getCurrentCycleLabel(),
+    });
+
     return response.json({
       message: `Évaluation transmise à la RH (${rhUsers.map((user) => user.name).join(', ')}).`,
       ...buildAssociateIncomingEvaluationPayload(instance, submitter, request.user._id, missionResults),
@@ -1806,6 +1820,15 @@ module.exports = {
     associateReview.submitted_at = new Date();
     associateReview.last_saved_at = new Date();
     await associateReview.save();
+
+    const rhRecipientIds = await resolveRhQueueUserIds();
+    notifySubmissionRecipients({
+      recipientIds: rhRecipientIds,
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: `l'évaluation du manager ${manager.name}`,
+      cycleLabel: getCurrentCycleLabel(),
+    });
 
     return response.json({
       message: "Évaluation du manager transmise à la RH.",

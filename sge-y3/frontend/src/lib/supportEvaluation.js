@@ -22,6 +22,8 @@ async function request(path, options = {}) {
   if (!response.ok) {
     throw new Error(data.message || "Opération impossible.");
   }
+  console.log(Error);
+  
 
   return data;
 }

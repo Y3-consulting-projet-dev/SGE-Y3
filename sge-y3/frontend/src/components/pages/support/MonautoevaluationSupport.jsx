@@ -34,24 +34,6 @@ function getAverageScore(sections = []) {
   return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
 }
 
-function getEvaluationGroupKey(section) {
-  const hasDomainPage = (section?.pages || []).some((page) => page.source_sheet && page.source_sheet !== "TRONC COMMUN");
-  return hasDomainPage ? "domain" : "common";
-}
-
-function getGroupStats(sections = []) {
-  const themes = sections.flatMap((section) => section.pages || []).flatMap((page) => page.themes || []);
-  const answered = themes.filter((theme) => Number.isFinite(theme.score)).length;
-  const progress = themes.length ? Math.round((answered / themes.length) * 100) : 0;
-
-  return {
-    answered,
-    total: themes.length,
-    progress,
-    average: getAverageScore(sections),
-  };
-}
-
 function InlineFeedback({ feedback }) {
   if (!feedback?.message) return null;
   return (
@@ -88,7 +70,6 @@ function MonautoevaluationSupport({ user }) {
   const roleKey = getSupportRoleKey(user);
   const [sections, setSections] = useState([]);
   const [activeSectionId, setActiveSectionId] = useState("");
-  const [activeEvaluationGroup, setActiveEvaluationGroup] = useState("common");
   const [pageIndexes, setPageIndexes] = useState({});
   const [status, setStatus] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -109,8 +90,7 @@ function MonautoevaluationSupport({ user }) {
 
         if (cancelled) return;
         setSections(nextSections);
-        const firstCommonSection = nextSections.find((section) => getEvaluationGroupKey(section) === "common");
-        setActiveSectionId(firstCommonSection?.id || nextSections[0]?.id || "");
+        setActiveSectionId(nextSections[0]?.id || "");
       } catch (error) {
         if (!cancelled) setStatus(error.message || "Chargement impossible.");
       } finally {
@@ -124,10 +104,7 @@ function MonautoevaluationSupport({ user }) {
     };
   }, []);
 
-  const commonSections = useMemo(() => sections.filter((section) => getEvaluationGroupKey(section) === "common"), [sections]);
-  const domainSections = useMemo(() => sections.filter((section) => getEvaluationGroupKey(section) === "domain"), [sections]);
-  const visibleSections = activeEvaluationGroup === "domain" ? domainSections : commonSections;
-  const activeSection = visibleSections.find((section) => section.id === activeSectionId) || visibleSections[0] || sections[0];
+  const activeSection = sections.find((section) => section.id === activeSectionId) || sections[0];
   const activePageIndex = pageIndexes[activeSection?.id] || 0;
   const activePage = activeSection?.pages?.[activePageIndex] || activeSection?.pages?.[0];
   const totalQuestions = sections.flatMap((section) => section.pages || []).flatMap((page) => page.themes || []).length;
@@ -137,12 +114,10 @@ function MonautoevaluationSupport({ user }) {
     .filter((theme) => Number.isFinite(theme.score)).length;
   const progress = totalQuestions ? Math.round((answeredQuestions / totalQuestions) * 100) : 0;
   const average = useMemo(() => getAverageScore(sections), [sections]);
-  const commonStats = useMemo(() => getGroupStats(commonSections), [commonSections]);
-  const domainStats = useMemo(() => getGroupStats(domainSections), [domainSections]);
 
-  const activeSectionIndex = visibleSections.findIndex((section) => section.id === activeSection?.id);
+  const activeSectionIndex = sections.findIndex((section) => section.id === activeSection?.id);
   const isFirstPage = activeSectionIndex === 0 && activePageIndex === 0;
-  const isLastPage = activeSectionIndex === visibleSections.length - 1 && activePageIndex === (activeSection?.pages?.length || 1) - 1;
+  const isLastPage = activeSectionIndex === sections.length - 1 && activePageIndex === (activeSection?.pages?.length || 1) - 1;
 
   function setActivePageIndex(sectionId, index) {
     setPageIndexes((current) => ({ ...current, [sectionId]: index }));
@@ -171,39 +146,30 @@ function MonautoevaluationSupport({ user }) {
     setStatus("");
   }
 
-  function updatePageComment(comment) {
+  function updateSectionComment(comment) {
     setSections((current) =>
-      current.map((section) =>
-        section.id !== activeSection.id
-          ? section
-          : {
-              ...section,
-              pages: section.pages.map((page, pageIndex) => (pageIndex === activePageIndex ? { ...page, comment } : page)),
-            }
-      )
+      current.map((section) => (section.id !== activeSection.id ? section : { ...section, comment }))
     );
     setStatus("");
   }
 
   function goToPage(direction) {
+    if (direction > 0 && String(activeSection?.comment || "").trim().length < 3) {
+      setStatus("Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
+      return;
+    }
+
     const nextPageIndex = activePageIndex + direction;
     if (nextPageIndex >= 0 && nextPageIndex < activeSection.pages.length) {
       setActivePageIndex(activeSection.id, nextPageIndex);
       return;
     }
 
-    const nextSection = visibleSections[activeSectionIndex + direction];
+    const nextSection = sections[activeSectionIndex + direction];
     if (!nextSection) return;
 
     setActiveSectionId(nextSection.id);
     setActivePageIndex(nextSection.id, direction > 0 ? 0 : nextSection.pages.length - 1);
-  }
-
-  function selectEvaluationGroup(groupKey) {
-    const nextSections = groupKey === "domain" ? domainSections : commonSections;
-    setActiveEvaluationGroup(groupKey);
-    setActiveSectionId(nextSections[0]?.id || "");
-    setStatus("");
   }
 
   function addCustomTheme() {
@@ -304,6 +270,13 @@ function MonautoevaluationSupport({ user }) {
       return;
     }
 
+    const hasSectionWithoutComment = sections.some((section) => String(section.comment || "").trim().length < 3);
+
+    if (hasSectionWithoutComment) {
+      setStatus("Un commentaire d'au moins 3 caractères est obligatoire pour chaque section avant la soumission.");
+      return;
+    }
+
     try {
       await saveSupportSelfEvaluation({ sections });
       const response = await submitSupportSelfEvaluation();
@@ -358,58 +331,10 @@ function MonautoevaluationSupport({ user }) {
         </div>
       </article>
 
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {[
-          {
-            key: "common",
-            title: "Évaluation du tronc commun",
-            subtitle: "Questions communes aux autres profils",
-            stats: commonStats,
-          },
-          {
-            key: "domain",
-            title: `Évaluation ${roleKey}`,
-            subtitle: "Questions propres au domaine",
-            stats: domainStats,
-          },
-        ].map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => selectEvaluationGroup(item.key)}
-            className={`rounded-xl border p-4 text-left shadow-sm transition ${
-              activeEvaluationGroup === item.key ? "border-[#76B82A] bg-[#EEF6E8]" : "border-white bg-white hover:border-[#D9E3EE]"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-black text-[#0F3A63]">{item.title}</p>
-                <p className="mt-1 text-xs font-semibold text-slate-500">{item.subtitle}</p>
-              </div>
-              <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-[#0F4A72]">
-                {item.stats.progress}%
-              </span>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-lg bg-white p-3">
-                <p className="text-[11px] font-bold text-slate-500">Questions</p>
-                <p className="mt-1 text-lg font-black text-[#0F3A63]">
-                  {item.stats.answered}/{item.stats.total}
-                </p>
-              </div>
-              <div className="rounded-lg bg-white p-3">
-                <p className="text-[11px] font-bold text-slate-500">Moyenne</p>
-                <p className="mt-1 text-lg font-black text-[#76B82A]">{item.stats.average}/5</p>
-              </div>
-            </div>
-          </button>
-        ))}
-      </section>
-
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.8fr_1.6fr]">
         <aside className="space-y-3 rounded-xl bg-white p-4 shadow-sm">
           <p className="text-sm font-extrabold text-[#0F4A72]">Sections</p>
-          {visibleSections.map((section) => {
+          {sections.map((section) => {
             const isActive = activeSection.id === section.id;
             const sectionProgress = getSectionProgress(section);
 
@@ -539,11 +464,14 @@ function MonautoevaluationSupport({ user }) {
             ))}
           </div>
 
+          <p className="mt-4 text-xs font-bold text-[#0F3A63]">
+            Commentaire de section obligatoire <span className="text-red-600">*</span>
+          </p>
           <textarea
-            value={activePage.comment || ""}
-            onChange={(event) => updatePageComment(event.target.value)}
-            placeholder="Commentaire sur ce titre..."
-            className="mt-4 min-h-[90px] w-full resize-none rounded-md border border-slate-200 px-3 py-2 text-sm text-[#0F3A63] outline-none"
+            value={activeSection.comment || ""}
+            onChange={(event) => updateSectionComment(event.target.value)}
+            placeholder="Commentaire de section..."
+            className="mt-2 min-h-[90px] w-full resize-none rounded-md border border-slate-200 px-3 py-2 text-sm text-[#0F3A63] outline-none"
           />
 
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3">

@@ -742,6 +742,12 @@ function Evaluermonequipe({ member }) {
       return;
     }
 
+    if (String(activeMissionSection?.comment || "").trim().length < 3) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
+      return;
+    }
+
     goToMissionStep(1);
   }
 
@@ -772,6 +778,12 @@ function Evaluermonequipe({ member }) {
     if (!hasRequiredJustification) {
       setFeedbackTone("error");
       setFeedbackMessage("Une justification est requise pour toute note inférieure à 3.");
+      return;
+    }
+
+    if (String(activeSection?.comment || "").trim().length < 3) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
       return;
     }
 
@@ -846,59 +858,7 @@ function Evaluermonequipe({ member }) {
           {reviewData.review.status}
         </div>
       </div>
-
-      <section className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-        <button
-          type="button"
-          onClick={() => setActiveView("mission")}
-          className={`rounded-xl border px-5 py-4 text-left shadow-sm transition ${
-            activeView === "mission"
-              ? "border-[#7FB1D6] bg-[#F6FAFD]"
-              : "border-[#D9E3EE] bg-white hover:bg-[#F8FBFE]"
-          }`}
-        >
-          <div className="mb-3 inline-flex rounded-full bg-[#0B4C7A] px-3 py-1 text-[11px] font-bold uppercase text-white">
-            Parcours 1
-          </div>
-          <h2 className="text-lg font-black text-[#0F3A63]">Évaluations par mission</h2>
-          <p className="mt-1 text-sm font-semibold text-slate-500">
-            {submittedMissions.length} mission(s) soumise(s)
-          </p>
-          <p className="mt-2 text-xs font-semibold text-[#0B4C7A]">
-            Consultez les scores finaux déjà transmis pour chaque mission.
-          </p>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveView("global")}
-          className={`hidden rounded-xl border px-5 py-4 text-left shadow-sm transition ${
-            activeView === "global"
-              ? "border-[#B7D39E] bg-[#FBFEF7]"
-              : "border-[#D9E3EE] bg-white hover:bg-[#FCFEF8]"
-          }`}
-        >
-          <div className="mb-3 inline-flex rounded-full bg-[#DCECCB] px-3 py-1 text-[11px] font-bold uppercase text-[#4E8B1B]">
-            Parcours 2
-          </div>
-          <h2 className="text-lg font-black text-[#0F3A63]">Évaluation globale du cycle</h2>
-          <p className="mt-1 text-sm font-semibold text-slate-500">
-            {reviewData.review.cycle_label || "Cycle 2025-2026"} - {globalProgress}%
-          </p>
-          <p className="mt-2 text-xs font-semibold text-[#4E8B1B]">
-            Notez la matrice globale du membre puis soumettez à la RH.
-          </p>
-        </button>
-      </section>
-
-      {feedbackMessage ? (
-        <div
-          className={`rounded-md px-4 py-3 text-sm font-semibold ${
-            feedbackTone === "error" ? "bg-[#FDEBEC] text-[#B93840]" : "bg-[#DCECCB] text-[#184D2E]"
-          }`}
-        >
-          {feedbackMessage}
-        </div>
-      ) : null}
+      
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.9fr_1.35fr]">
         {activeView === "mission" ? (
@@ -1234,7 +1194,8 @@ function Evaluermonequipe({ member }) {
                             ) : null}
                             <div className="rounded-md bg-[#F8FAFC] p-3">
                               <label className="text-[12px] font-bold text-[#0F3A63]">
-                                Commentaire global de la section <span className="text-[11px] text-slate-500">(minimum 3 caractères)</span>
+                                Commentaire global de la section <span className="text-red-600">*</span>{" "}
+                                <span className="text-[11px] text-slate-500">(minimum 3 caractères)</span>
                               </label>
                               <textarea
                                 value={activeMissionSection?.comment || ""}
@@ -1245,6 +1206,17 @@ function Evaluermonequipe({ member }) {
                               />
                             </div>
                           </div>
+                        </div>
+                      ) : null}
+
+
+                      {feedbackMessage ? (
+                        <div
+                          className={`rounded-md px-4 py-3 text-sm font-semibold ${
+                            feedbackTone === "error" ? "bg-[#FDEBEC] text-[#B93840]" : "bg-[#DCECCB] text-[#184D2E]"
+                          }`}
+                        >
+                          {feedbackMessage}
                         </div>
                       ) : null}
 
@@ -1271,17 +1243,6 @@ function Evaluermonequipe({ member }) {
                           Titre suivant
                           <ChevronRight size={14} />
                         </button>
-                      </div>
-
-                      <div>
-                        <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire manager sur la mission</p>
-                        <textarea
-                          rows={4}
-                          value={activeMissionReview.comment || ""}
-                          onChange={(event) => updateMissionReviewComment(event.target.value)}
-                          placeholder="Analyse manager, écarts constates, faits marquants..."
-                          className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
-                        />
                       </div>
 
                       <div className="flex flex-wrap justify-end gap-3">
@@ -1570,7 +1531,7 @@ function Evaluermonequipe({ member }) {
 
             <div className="mt-4">
               <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">
-                Commentaire de section
+                Commentaire de section obligatoire <span className="text-red-600">*</span>
               </p>
               <textarea
                 rows={4}
