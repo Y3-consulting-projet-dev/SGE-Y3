@@ -44,6 +44,13 @@ export function saveMySeniorEvaluation(payload) {
   });
 }
 
+export function saveMySeniorChiefComments(chiefComments) {
+  return request("/senior/evaluation/me", {
+    method: "PUT",
+    body: JSON.stringify({ chiefComments }),
+  });
+}
+
 export function submitMySeniorMissionEvaluation(missionId) {
   return request("/senior/evaluation/me/missions/submit", {
     method: "POST",

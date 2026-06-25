@@ -15,6 +15,7 @@ const {
 const { buildMissionResultsPayload } = require('../utils/evaluationHistory');
 const { getCurrentCycleLabel } = require('../utils/activeCycle');
 const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
+const { SUPPORT_EMAILS } = require('../utils/userMapping');
 
 function normalizeText(value = '') {
   return String(value || '').replace(/\s+/g, ' ').trim().toUpperCase();
@@ -72,19 +73,48 @@ async function resolveMissionRecipientsForAssistant(user) {
     .select('_id name first_name last_name grade department code_categorie');
 }
 
+function getCommentSuperiorCategories(user) {
+  const category = String(user?.code_categorie || '').replace(/\s+/g, '').toUpperCase();
+
+  if (category.startsWith('8')) {
+    return ['9A', '9B', '10B', '10C'];
+  }
+
+  if (category === '9A') {
+    return ['9B', '10B', '10C'];
+  }
+
+  if (category === '9B') {
+    return ['10B', '10C'];
+  }
+
+  return [];
+}
+
 async function resolveCommentTargetsForUser(user) {
   const targetDepartments = getManagerDepartmentsForDepartment(user.department);
+  const superiorCategories = getCommentSuperiorCategories(user);
   const userIdStr = String(user._id);
 
-  const [departmentMembers, rhMembers] = await Promise.all([
-    targetDepartments.length
+  const [superiorMembers, supportMembers, rhMembers] = await Promise.all([
+    targetDepartments.length && superiorCategories.length
       ? User.find({
           is_active: true,
+          code_categorie: { $in: superiorCategories },
           department: { $in: targetDepartments },
         })
           .sort({ last_name: 1, first_name: 1 })
           .select('_id name first_name last_name grade department code_categorie')
       : Promise.resolve([]),
+    User.find({
+      is_active: true,
+      $or: [
+        { department: { $in: ['SUPPORT', 'SERVICE SUPPORT'] } },
+        { email: { $in: SUPPORT_EMAILS } },
+      ],
+    })
+      .sort({ last_name: 1, first_name: 1 })
+      .select('_id name first_name last_name grade department code_categorie'),
     User.find({
       is_active: true,
       department: { $in: ['RH', 'CAPITAL HUMAIN'] },
@@ -94,7 +124,7 @@ async function resolveCommentTargetsForUser(user) {
   ]);
 
   const seen = new Set();
-  const all = [...departmentMembers, ...rhMembers].filter((u) => {
+  const all = [...superiorMembers, ...supportMembers, ...rhMembers].filter((u) => {
     const id = String(u._id);
     if (id === userIdStr || seen.has(id)) return false;
     seen.add(id);

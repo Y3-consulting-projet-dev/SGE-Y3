@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, MessageSquare } from "lucide-react";
 import {
   getMySeniorEvaluation,
+  saveMySeniorChiefComments,
   saveMySeniorEvaluation,
   submitMySeniorEvaluation,
   submitMySeniorMissionEvaluation,
@@ -282,6 +283,10 @@ function MonautoevaluationSenior({ user }) {
   const [addMissionFeedback, setAddMissionFeedback] = useState(null);
   const [missionFeedback, setMissionFeedback] = useState(null);
   const [finalFeedback, setFinalFeedback] = useState(null);
+  const [chiefComments, setChiefComments] = useState([]);
+  const [chiefTargetValue, setChiefTargetValue] = useState("");
+  const [chiefFeedback, setChiefFeedback] = useState(null);
+  const [isSavingChief, setIsSavingChief] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -315,6 +320,7 @@ function MonautoevaluationSenior({ user }) {
         setSections(response.evaluation.sections || []);
         setMissionEvaluations(sanitizeMissionEvaluations(response.mission_evaluations || []));
         setActiveMissionId(response.mission_evaluations?.[0]?.id || null);
+        setChiefComments(response.chief_comments || []);
       } catch (error) {
         if (!cancelled) {
           setErrorMessage(error.message || "Chargement de l'auto-évaluation impossible.");
@@ -340,6 +346,14 @@ function MonautoevaluationSenior({ user }) {
       department: recipient.department || item.department,
     }))
   );
+  const chiefCommentTargetOptions = useMemo(() => {
+    const raw = evaluationData?.assignee?.comment_targets || [];
+    return raw.filter(
+      (recipient, index, list) =>
+        recipient.name &&
+        list.findIndex((item) => item.id === recipient.id) === index
+    );
+  }, [evaluationData?.assignee?.comment_targets]);
   const selectedRecipients = useMemo(
     () => recipientOptions.filter((recipient) => selectedRecipientValues.includes(getRecipientOptionValue(recipient))),
     [recipientOptions, selectedRecipientValues]
@@ -436,6 +450,64 @@ function MonautoevaluationSenior({ user }) {
   function removeSelectedRecipient(value) {
     setSelectedRecipientValues((current) => current.filter((item) => item !== value));
     clearScopedFeedback("addMission");
+  }
+
+  function addChiefComment() {
+    const recipient = chiefCommentTargetOptions.find((item) => item.id === chiefTargetValue);
+    if (!recipient) return;
+    const targetUserId = recipient.id;
+    setChiefComments((current) =>
+      current.some((item) => String(item.targetUserId || "") === String(targetUserId))
+        ? current
+        : [
+            ...current,
+            {
+              targetUserId,
+              targetName: recipient.name,
+              targetGrade: recipient.grade,
+              targetDepartment: recipient.department,
+              comment: "",
+            },
+          ]
+    );
+    setChiefTargetValue("");
+    setChiefFeedback(null);
+  }
+
+  function updateChiefComment(targetUserId, comment) {
+    setChiefComments((current) =>
+      current.map((item) => (String(item.targetUserId || "") === String(targetUserId) ? { ...item, comment } : item))
+    );
+    setChiefFeedback(null);
+  }
+
+  function removeChiefComment(targetUserId) {
+    setChiefComments((current) => current.filter((item) => String(item.targetUserId || "") !== String(targetUserId)));
+    setChiefFeedback(null);
+  }
+
+  async function handleSendChiefComments() {
+    const hasCommentToSend = chiefComments.some((item) => String(item.comment || "").trim() && !item.submittedAt);
+    if (!hasCommentToSend) {
+      setChiefFeedback({ tone: "error", message: "Rédigez au moins un commentaire avant d'envoyer." });
+      return;
+    }
+
+    setIsSavingChief(true);
+    setChiefFeedback(null);
+    const now = new Date().toISOString();
+    const toSend = chiefComments.map((item) =>
+      String(item.comment || "").trim() && !item.submittedAt ? { ...item, submittedAt: now } : item
+    );
+    try {
+      await saveMySeniorChiefComments(toSend);
+      setChiefComments(toSend);
+      setChiefFeedback({ tone: "success", message: "Commentaire(s) envoyé(s) avec succès." });
+    } catch (error) {
+      setChiefFeedback({ tone: "error", message: error.message || "Envoi impossible." });
+    } finally {
+      setIsSavingChief(false);
+    }
   }
 
   function selectMission(mission) {
@@ -845,9 +917,24 @@ function MonautoevaluationSenior({ user }) {
         >
           Mes missions
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("chef-comment")}
+          className={`inline-flex items-center gap-2 rounded-t-md border border-b-0 px-4 py-2 text-sm font-bold transition ${
+            activeTab === "chef-comment" ? "border-[#E3EAF3] bg-white text-[#0F3A63]" : "border-transparent text-slate-500 hover:text-[#0F3A63]"
+          }`}
+        >
+          <MessageSquare size={14} />
+          Commentaire anonyme
+          {chiefComments.length > 0 && (
+            <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[#0B4C7A] text-[9px] font-bold text-white">
+              {chiefComments.length}
+            </span>
+          )}
+        </button>
       </div>
 
-      {activeTab === "synthese" ? (
+      {activeTab === "synthese" && (
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.78fr_1.22fr]">
         <article className="space-y-4">
           <div className="rounded-xl bg-white p-4 shadow-sm">
@@ -1012,7 +1099,9 @@ function MonautoevaluationSenior({ user }) {
           </div>
         </article>
       </section>
-      ) : (
+      )}
+
+      {activeTab === "missions" && (
       <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.78fr_1.22fr]">
         <article className="space-y-4">
           <div ref={missionPickerRef} className="relative rounded-xl bg-white p-4 shadow-sm">
@@ -1364,6 +1453,144 @@ function MonautoevaluationSenior({ user }) {
           )}
         </article>
       </section>
+      )}
+
+      {activeTab === "chef-comment" && (
+        <section className="space-y-4">
+          <article className="rounded-md bg-white p-5 shadow-sm">
+            <div className="mb-1 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-[22px] font-bold text-[#0F3A63]">Commentaire anonyme</h3>
+                <p className="mt-1 text-[12px] font-semibold text-slate-500">
+                  Choisissez un supérieur et rédigez un commentaire. Cliquez sur{" "}
+                  <span className="font-bold text-[#0F3A63]">Envoyer</span> pour le transmettre — il apparaîtra
+                  directement chez votre supérieur. Un commentaire envoyé ne peut plus être modifié.
+                </p>
+              </div>
+              <span className="rounded-full border border-[#D9E3EE] bg-white px-3 py-1 text-[11px] font-bold text-[#0F4A72]">
+                Anonyme · Visible par le destinataire
+              </span>
+            </div>
+
+            {chiefCommentTargetOptions.some(
+              (recipient) => !chiefComments.some((item) => String(item.targetUserId || "") === String(recipient.id))
+            ) && (
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <select
+                  value={chiefTargetValue}
+                  onChange={(event) => setChiefTargetValue(event.target.value)}
+                  className="h-10 w-full rounded-md border border-[#D9E3EE] bg-white px-3 text-sm font-semibold text-[#0F3A63] outline-none"
+                >
+                  <option value="">Sélectionner une personne</option>
+                  {chiefCommentTargetOptions.map((recipient) => {
+                    const alreadyAdded = chiefComments.some((item) => String(item.targetUserId || "") === String(recipient.id));
+                    return (
+                      <option key={recipient.id} value={recipient.id} disabled={alreadyAdded}>
+                        {recipient.department} — {recipient.name} ({recipient.grade})
+                        {alreadyAdded ? " · déjà ajouté" : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+                <button
+                  type="button"
+                  onClick={addChiefComment}
+                  disabled={!chiefTargetValue}
+                  className="h-10 rounded-md bg-[#0B4C7A] px-5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Ajouter
+                </button>
+              </div>
+            )}
+
+            <div className="mt-5 space-y-4">
+              {chiefComments.length ? (
+                chiefComments.map((item) => {
+                  const isSent = Boolean(item.submittedAt);
+                  return (
+                    <div
+                      key={item.targetUserId || item.targetName}
+                      className={`rounded-md border p-4 ${isSent ? "border-[#C3DFAA] bg-[#F4FAED]" : "border-[#E3EAF3] bg-[#F8FBFF]"}`}
+                    >
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[13px] font-bold text-[#0F3A63]">{item.targetName}</p>
+                          <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                            {item.targetDepartment} — {item.targetGrade}
+                          </p>
+                        </div>
+                        {isSent ? (
+                          <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-[10px] font-bold text-[#4E8B1B]">
+                            Envoyé
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => removeChiefComment(item.targetUserId)}
+                            className="rounded-md bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-500 hover:bg-slate-200"
+                          >
+                            Retirer
+                          </button>
+                        )}
+                      </div>
+                      {isSent ? (
+                        <p className="rounded-md bg-white px-3 py-2 text-[12px] text-slate-700 ring-1 ring-[#C3DFAA]">
+                          {item.comment || "—"}
+                        </p>
+                      ) : (
+                        <textarea
+                          rows={4}
+                          value={item.comment || ""}
+                          onChange={(event) => updateChiefComment(item.targetUserId, event.target.value)}
+                          placeholder={`Votre commentaire pour ${item.targetName}…`}
+                          className="w-full resize-none rounded-md bg-white px-3 py-2 text-[12px] text-slate-700 outline-none ring-1 ring-[#D9E3EE] focus:ring-[#0B4C7A]"
+                        />
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="rounded-md bg-[#EEF2F6] px-4 py-4 text-sm font-semibold text-slate-500">
+                  Aucun supérieur sélectionné pour le moment.
+                </p>
+              )}
+            </div>
+
+            {chiefComments.some((item) => !item.submittedAt && String(item.comment || "").trim()) && (
+              <div className="mt-5 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleSendChiefComments}
+                  disabled={isSavingChief}
+                  className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-5 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                >
+                  {isSavingChief ? "Envoi…" : "Envoyer"}
+                </button>
+                {chiefFeedback && (
+                  <span
+                    className={`text-[12px] font-semibold ${
+                      chiefFeedback.tone === "error" ? "text-[#B93840]" : "text-[#184D2E]"
+                    }`}
+                  >
+                    {chiefFeedback.message}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {chiefFeedback && !chiefComments.some((item) => !item.submittedAt && String(item.comment || "").trim()) && (
+              <div className="mt-4">
+                <span
+                  className={`text-[12px] font-semibold ${
+                    chiefFeedback.tone === "error" ? "text-[#B93840]" : "text-[#184D2E]"
+                  }`}
+                >
+                  {chiefFeedback.message}
+                </span>
+              </div>
+            )}
+          </article>
+        </section>
       )}
     </section>
   );
