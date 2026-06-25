@@ -2976,6 +2976,7 @@ function buildSimplePdfBuffer(title, lines = []) {
 }
 
 async function buildRhReportExport(reportId, request) {
+  const fmt = String(request.query?.format || '').toLowerCase();
   const [syntheses, validations, calibration, population] = await Promise.all([
     getRhSyntheses(request, { json: (data) => data }),
     getRhValidations(request, { json: (data) => data }),
@@ -2984,22 +2985,37 @@ async function buildRhReportExport(reportId, request) {
   ]);
 
   if (reportId === 'rh-synthese-validee') {
-    const lines = syntheses.items.length
+    const pdfLines = syntheses.items.length
       ? syntheses.items.map(
           (item) =>
             `${item.name} | ${item.role} | Score final: ${item.finalScore ?? 'N/A'} | Recommandation: ${item.displayStatus || 'N/A'}`
         )
       : ['Aucune synthese RH validee disponible pour le moment.'];
 
+    if (fmt === 'csv') {
+      const rows = syntheses.items.map((item) => [
+        item.name,
+        item.role,
+        formatDepartmentLabel(item.department),
+        item.finalScore ?? '',
+        item.displayStatus || '',
+      ]);
+      return {
+        filename: 'synthese-rh-validee-cycle-2026.csv',
+        contentType: 'text/csv; charset=utf-8',
+        buffer: buildCsvBuffer(['Collaborateur', 'Role', 'Departement', 'Score final', 'Recommandation'], rows),
+      };
+    }
+
     return {
       filename: 'synthese-rh-validee-cycle-2026.pdf',
       contentType: 'application/pdf',
-      buffer: buildSimplePdfBuffer('Synthese RH validee - Cycle 2026', lines),
+      buffer: buildSimplePdfBuffer('Synthese RH validee - Cycle 2026', pdfLines),
     };
   }
 
   if (reportId === 'rh-validations') {
-    const rows = validations.items.map((item) => [
+    const csvRows = validations.items.map((item) => [
       item.name,
       item.role,
       formatDepartmentLabel(item.department),
@@ -3009,40 +3025,77 @@ async function buildRhReportExport(reportId, request) {
       item.finalScore ?? '',
       item.displayStatus,
     ]);
+    const csvHeaders = ['Collaborateur', 'Role', 'Departement', 'Manager', 'Auto-evaluation', 'Evaluation manager', 'Score final', 'Statut'];
+
+    if (fmt === 'pdf') {
+      const pdfLines = validations.items.length
+        ? validations.items.map(
+            (item) =>
+              `${item.name} | ${item.role} | Score: ${item.finalScore ?? 'N/A'} | ${item.displayStatus}`
+          )
+        : ['Aucune validation RH disponible pour le moment.'];
+      return {
+        filename: 'file-validations-rh-cycle-2026.pdf',
+        contentType: 'application/pdf',
+        buffer: buildSimplePdfBuffer('File de validations RH - Cycle 2026', pdfLines),
+      };
+    }
 
     return {
       filename: 'file-validations-rh-cycle-2026.csv',
       contentType: 'text/csv; charset=utf-8',
-      buffer: buildCsvBuffer(
-        ['Collaborateur', 'Role', 'Departement', 'Manager', 'Auto-evaluation', 'Evaluation manager', 'Score final', 'Statut'],
-        rows
-      ),
+      buffer: buildCsvBuffer(csvHeaders, csvRows),
     };
   }
 
   if (reportId === 'rh-calibration') {
-    const lines = calibration.items.length
+    const pdfLines = calibration.items.length
       ? calibration.items.map(
           (item) => `${item.department} | Moyenne: ${item.average ?? 'N/A'} | Evalues: ${item.evaluated} | Risque: ${item.risk}`
         )
       : ['Aucune calibration disponible pour le moment.'];
 
+    if (fmt === 'csv') {
+      const rows = calibration.items.map((item) => [
+        item.department,
+        item.average ?? '',
+        item.evaluated ?? '',
+        item.risk ?? '',
+      ]);
+      return {
+        filename: 'calibration-departements-cycle-2026.csv',
+        contentType: 'text/csv; charset=utf-8',
+        buffer: buildCsvBuffer(['Departement', 'Moyenne', 'Evalues', 'Risque'], rows),
+      };
+    }
+
     return {
       filename: 'calibration-departements-cycle-2026.pdf',
       contentType: 'application/pdf',
-      buffer: buildSimplePdfBuffer('Calibration des departements - Cycle 2026', lines),
+      buffer: buildSimplePdfBuffer('Calibration des departements - Cycle 2026', pdfLines),
     };
   }
 
   if (reportId === 'rh-population') {
-    const rows = population.groups.flatMap((group) =>
+    const csvRows = population.groups.flatMap((group) =>
       (group.members || []).map((member) => [group.group, member.name, member.role, member.status, member.score ?? ''])
     );
+
+    if (fmt === 'pdf') {
+      const pdfLines = population.groups.flatMap((group) =>
+        (group.members || []).map((member) => `[${group.group}] ${member.name} | ${member.role} | ${member.status} | Score: ${member.score ?? 'N/A'}`)
+      );
+      return {
+        filename: 'suivi-population-cycle-2026.pdf',
+        contentType: 'application/pdf',
+        buffer: buildSimplePdfBuffer('Cycle de population suivi 2026', pdfLines.length ? pdfLines : ['Aucune donnee disponible.']),
+      };
+    }
 
     return {
       filename: 'suivi-population-cycle-2026.csv',
       contentType: 'text/csv; charset=utf-8',
-      buffer: buildCsvBuffer(['Groupe', 'Nom', 'Role', 'Statut', 'Score'], rows),
+      buffer: buildCsvBuffer(['Groupe', 'Nom', 'Role', 'Statut', 'Score'], csvRows),
     };
   }
 
@@ -3064,6 +3117,7 @@ async function getRhReports(request, response) {
         id: 'rh-synthese-validee',
         title: 'Synthese RH validee',
         format: 'PDF',
+        availableFormats: ['PDF', 'CSV'],
         owner: 'RH',
         status: syntheses.items.length ? 'Pret' : 'A generer',
         downloadable: true,
@@ -3071,7 +3125,8 @@ async function getRhReports(request, response) {
       {
         id: 'rh-validations',
         title: 'File de validations RH',
-        format: 'XLSX',
+        format: 'CSV',
+        availableFormats: ['CSV', 'PDF'],
         owner: 'RH',
         status: validations.items.length ? 'Pret' : 'A generer',
         downloadable: true,
@@ -3080,14 +3135,16 @@ async function getRhReports(request, response) {
         id: 'rh-calibration',
         title: 'Calibration des departements',
         format: 'PDF',
+        availableFormats: ['PDF', 'CSV'],
         owner: 'RH',
         status: calibration.items.length ? 'Pret' : 'A generer',
         downloadable: true,
       },
       {
         id: 'rh-population',
-        title: 'Suivi population cycle 2026',
-        format: 'XLSX',
+        title: 'Cycle de population suivi 2026',
+        format: 'CSV',
+        availableFormats: ['CSV', 'PDF'],
         owner: 'RH',
         status: population.groups.length ? 'Pret' : 'A generer',
         downloadable: true,
