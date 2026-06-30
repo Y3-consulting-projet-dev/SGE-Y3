@@ -45,7 +45,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
   useEffect(() => {
     if (!assistantMode || activeSection !== "my-results") return;
     setIsLoadingResult(true);
-    setEvaluationResultError("");
+    setEvaluationResultError(""); 
     getAssistantRhEvaluationResult()
       .then((data) => setEvaluationResult(data?.result || null))
       .catch((err) => setEvaluationResultError(err.message || "Erreur lors du chargement des résultats."))

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { getRhPopulation, updateRhUserCareer } from "@/lib/rhOverview";
-import { departmentOptions, gradeOptions } from "@/lib/userPresentation";
+import { getRhPopulation } from "@/lib/rhOverview";
 
 function statusClass(status) {
   if (status === "Validé" || status === "Valide") return "bg-[#DDECCF] text-[#4E8B1B]";
@@ -14,9 +13,6 @@ function PopulationRH() {
   const [selectedGroup, setSelectedGroup] = useState("Managers");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
-  const [careerDrafts, setCareerDrafts] = useState({});
-  const [savingMemberId, setSavingMemberId] = useState("");
-  const [careerStatus, setCareerStatus] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -54,53 +50,6 @@ function PopulationRH() {
   );
   const selectedDetails = selectedRow?.members || [];
 
-  const reloadPopulation = async () => {
-    const response = await getRhPopulation();
-    setData(response);
-    setCareerDrafts({});
-    setSelectedGroup((currentGroup) =>
-      response.groups?.some((group) => group.group === currentGroup) ? currentGroup : response.groups?.[0]?.group || "Managers"
-    );
-  };
-
-  const getCareerDraft = (member) => ({
-    grade: careerDrafts[member.memberId]?.grade ?? member.grade ?? "",
-    department: careerDrafts[member.memberId]?.department ?? member.department ?? "",
-  });
-
-  const updateCareerDraft = (member, field, value) => {
-    setCareerStatus("");
-    setCareerDrafts((current) => ({
-      ...current,
-      [member.memberId]: {
-        grade: current[member.memberId]?.grade ?? member.grade ?? "",
-        department: current[member.memberId]?.department ?? member.department ?? "",
-        [field]: value,
-      },
-    }));
-  };
-
-  const hasCareerChanges = (member) => {
-    const draft = getCareerDraft(member);
-    return draft.grade !== (member.grade ?? "") || draft.department !== (member.department ?? "");
-  };
-
-  const saveCareer = async (member) => {
-    const draft = getCareerDraft(member);
-
-    try {
-      setSavingMemberId(member.memberId);
-      setCareerStatus("");
-      const result = await updateRhUserCareer(member.memberId, draft);
-      await reloadPopulation();
-      setCareerStatus(result.message || "Grade et departement mis a jour.");
-    } catch (error) {
-      setCareerStatus(error.message || "Mise a jour impossible.");
-    } finally {
-      setSavingMemberId("");
-    }
-  };
-
   const getScoreColor = (completed, total) => {
     const rate = total ? completed / total : 0;
     if (rate < 0.75) return "text-[#F87171]";
@@ -121,7 +70,6 @@ function PopulationRH() {
     <section className="rounded-xl bg-white p-5 shadow-sm">
       <h2 className="text-xl font-extrabold text-[#0F3A63]">Suivi équipe</h2>
       <p className="mt-1 text-sm font-semibold text-slate-500">Avancement par groupe de collaborateurs.</p>
-      {careerStatus ? <p className="mt-3 text-sm font-bold text-[#0F4A72]">{careerStatus}</p> : null}
 
       <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {populationRows.map((row) => (
@@ -171,54 +119,21 @@ function PopulationRH() {
                 <tr>
                   <th className="px-4 py-3">Nom</th>
                   <th className="px-4 py-3">Role</th>
-                  <th className="px-4 py-3">Grade</th>
-                  <th className="px-4 py-3">Departement</th>
                   {tracksEvaluations(selectedRow) ? (
                     <>
                       <th className="px-4 py-3">Statut</th>
                       <th className="px-4 py-3">Score</th>
                     </>
                   ) : null}
-                  <th className="px-4 py-3">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {selectedDetails.map((member) => {
-                  const draft = getCareerDraft(member);
-                  const isSaving = savingMemberId === member.memberId;
-                  const canSave = hasCareerChanges(member) && !isSaving;
 
                   return (
                     <tr key={`${selectedRow.group}-${member.memberId || member.id}`} className="border-b border-slate-100 last:border-0">
                       <td className="px-4 py-3 font-bold text-[#0F3A63]">{member.name}</td>
                       <td className="px-4 py-3 font-semibold text-slate-600">{member.role}</td>
-                      <td className="px-4 py-3">
-                        <select
-                          value={draft.grade}
-                          onChange={(event) => updateCareerDraft(member, "grade", event.target.value)}
-                          className="h-10 w-full min-w-[150px] rounded-lg border border-[#D6E1EF] bg-white px-3 text-sm font-semibold text-[#0F3A63] outline-none"
-                        >
-                          {gradeOptions.map((grade) => (
-                            <option key={grade} value={grade}>
-                              {grade}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-4 py-3">
-                        <select
-                          value={draft.department}
-                          onChange={(event) => updateCareerDraft(member, "department", event.target.value)}
-                          className="h-10 w-full min-w-[230px] rounded-lg border border-[#D6E1EF] bg-white px-3 text-sm font-semibold text-[#0F3A63] outline-none"
-                        >
-                          <option value="">Selectionner</option>
-                          {departmentOptions.map((department) => (
-                            <option key={department} value={department}>
-                              {department}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
                       {tracksEvaluations(selectedRow) ? (
                         <>
                           <td className="px-4 py-3">
@@ -231,16 +146,6 @@ function PopulationRH() {
                           </td>
                         </>
                       ) : null}
-                      <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => saveCareer(member)}
-                          disabled={!canSave}
-                          className="rounded-full bg-[#0D496A] px-4 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-                        >
-                          {isSaving ? "Enregistrement..." : "Enregistrer"}
-                        </button>
-                      </td>
                     </tr>
                   );
                 })}
