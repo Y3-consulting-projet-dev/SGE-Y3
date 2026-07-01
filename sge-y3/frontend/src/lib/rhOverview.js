@@ -1,6 +1,6 @@
 import { loadSession } from "@/lib/auth";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { API_BASE_URL } from "./apiBase";
 
 async function request(path, options = {}) {
   const session = loadSession();
@@ -37,13 +37,6 @@ export function getRhSelfEvaluation() {
   return request("/rh/self-evaluation");
 }
 
-export function createRhSelfMissionEvaluation(payload) {
-  return request("/rh/self-evaluation/missions", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
 export function getAssistantRhEvaluation(memberId) {
   return request(`/rh/assistant-evaluations/${memberId}`);
 }
@@ -76,13 +69,6 @@ export function saveAssistantRhSelfEvaluation(payload) {
 export function submitRhSelfEvaluation() {
   return request("/rh/self-evaluation/submit", {
     method: "POST",
-  });
-}
-
-export function submitRhSelfMissionEvaluation(missionId) {
-  return request("/rh/self-evaluation/missions/submit", {
-    method: "POST",
-    body: JSON.stringify({ missionId }),
   });
 }
 
@@ -130,6 +116,41 @@ export function getRhCalibration() {
 
 export function getRhPopulation() {
   return request("/rh/population");
+}
+
+export function updateRhUserCareer(memberId, payload) {
+  return request(`/rh/population/${memberId}/career`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getRhCollaborators(params = {}) {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== "")
+  ).toString();
+  return request(`/rh/collaborators${query ? `?${query}` : ""}`);
+}
+
+export function createRhCollaborator(payload) {
+  return request("/rh/collaborators", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateRhCollaborator(userId, payload) {
+  return request(`/rh/collaborators/${userId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function setRhCollaboratorStatus(userId, isActive) {
+  return request(`/rh/collaborators/${userId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ is_active: isActive }),
+  });
 }
 
 export function getRhReports() {
@@ -201,4 +222,35 @@ export function submitRhSyntheses() {
   return request("/rh/syntheses/submit", {
     method: "POST",
   });
+}
+
+export function getMyRhEvaluationHistory() {
+  return request("/rh/evaluation/history");
+}
+
+export function getRhTeamMembers() {
+  return request("/rh/team/members");
+}
+
+export function getRhTeamMemberHistory(memberId) {
+  return request(`/rh/team/${memberId}/history`);
+}
+
+export function getRhCycles() {
+  return request("/rh/cycles");
+}
+
+export function createRhCycle(payload) {
+  return request("/rh/cycles", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getRhReceivedComments() {
+  return request("/rh/received-comments");
+}
+
+export function getAssistantRhEvaluationResult() {
+  return request("/rh/my-evaluation-result");
 }

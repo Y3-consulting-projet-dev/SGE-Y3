@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { API_BASE_URL } from "./apiBase";
 const STORAGE_KEY = "sge-auth-session";
 
 export async function loginUser(credentials) {
@@ -65,7 +65,7 @@ export function loadSession() {
 
   try {
     return JSON.parse(session);
-  } catch (_error) {
+  } catch {
     window.localStorage.removeItem(STORAGE_KEY);
     return null;
   }

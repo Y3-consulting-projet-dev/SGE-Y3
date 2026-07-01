@@ -1,6 +1,6 @@
 import { loadSession } from "@/lib/auth";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { API_BASE_URL } from "./apiBase";
 
 async function request(path, options = {}) {
   const session = loadSession();
@@ -41,6 +41,10 @@ export function getManagerSelfEvaluation() {
   return request("/manager/self-evaluation");
 }
 
+export function getManagerSelfEvaluationHistory() {
+  return request("/manager/self-evaluation/history");
+}
+
 export function createManagerMissionEvaluation(payload) {
   return request("/manager/self-evaluation/missions", {
     method: "POST",
@@ -61,15 +65,19 @@ export function submitManagerSelfEvaluation() {
   });
 }
 
-export function submitManagerMissionEvaluation(missionId) {
+export function submitManagerMissionEvaluation(missionId, payload = {}) {
   return request("/manager/self-evaluation/missions/submit", {
     method: "POST",
-    body: JSON.stringify({ missionId }),
+    body: JSON.stringify({ missionId, ...payload }),
   });
 }
 
 export function getManagerMemberEvaluation(memberId) {
   return request(`/manager/members/${memberId}/evaluation`);
+}
+
+export function getManagerMemberHistory(memberId) {
+  return request(`/manager/members/${memberId}/history`);
 }
 
 export function createManagerMemberMission(memberId, payload) {
@@ -103,5 +111,12 @@ export function submitManagerMemberMissionReview(memberId, missionId) {
   return request(`/manager/members/${memberId}/evaluation/missions/${missionId}/submit`, {
     method: "POST",
     body: JSON.stringify({ missionId }),
+  });
+}
+
+export function decideTrainingRequests(memberId, decision, comment = "") {
+  return request(`/manager/members/${memberId}/training-decision`, {
+    method: "PUT",
+    body: JSON.stringify({ decision, comment }),
   });
 }

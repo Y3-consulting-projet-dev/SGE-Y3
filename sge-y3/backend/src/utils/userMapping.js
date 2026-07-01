@@ -27,6 +27,13 @@ const CATEGORY_BY_GRADE = {
 const ALLOWED_GRADES = Object.keys(CATEGORY_BY_GRADE);
 const ASSISTANT_RH_EMAIL = 'fatoumata.ouattara@ycubeac.com';
 const FULL_RH_EMAILS = ['isabella.beda@ycubeac.com'];
+const SUPPORT_ROLE_BY_EMAIL = {
+  'fleur.nguessan@ycubeac.com': 'Office Manager',
+  'aziz.ouattara@ycubeac.com': 'PMO',
+  'porthela.kakou@ycubeac.com': 'Responsable IT',
+  'adele.creppy@ycubeac.com': 'Comptable interne senior',
+};
+const SUPPORT_EMAILS = Object.keys(SUPPORT_ROLE_BY_EMAIL);
 
 function normalizeText(value = '') {
   return String(value).replace(/\s+/g, ' ').trim();
@@ -69,8 +76,11 @@ function getFullName(user = {}) {
 function isFullRh(user = {}) {
   const email = normalizeEmail(user.email || '');
   const fullName = getFullName(user);
-
   return FULL_RH_EMAILS.includes(email) || (fullName.includes('ISABELLA') && fullName.includes('BEDA'));
+}
+
+function getSupportRoleLabel(user = {}) {
+  return SUPPORT_ROLE_BY_EMAIL[normalizeEmail(user.email || '')] || user.grade || 'Service support';
 }
 
 function getPermissionRole(user = {}) {
@@ -103,11 +113,16 @@ function getPermissionRole(user = {}) {
 
 module.exports = {
   ALLOWED_GRADES,
+  ASSISTANT_RH_EMAIL,
   CATEGORY_BY_GRADE,
+  SUPPORT_EMAILS,
+  SUPPORT_ROLE_BY_EMAIL,
   getCategoryFromGrade,
   getGradeFromCategory,
   getPermissionRole,
   getRoleFromGrade,
+  getSupportRoleLabel,
+  isFullRh,
   normalizeCategory,
   normalizeDepartment,
   normalizeEmail,

@@ -1,6 +1,6 @@
 import { loadSession } from "@/lib/auth";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { API_BASE_URL } from "./apiBase";
 
 async function request(path, options = {}) {
   const session = loadSession();
@@ -37,10 +37,21 @@ export function getMyAssistantResults() {
   return request("/collaborator/results/me");
 }
 
+export function getMyAssistantEvaluationHistory() {
+  return request("/collaborator/evaluation/history");
+}
+
 export function saveMyAssistantEvaluation(payload) {
   return request("/collaborator/evaluation/me", {
     method: "PUT",
     body: JSON.stringify(payload),
+  });
+}
+
+export function saveMyChiefComments(chiefComments) {
+  return request("/collaborator/evaluation/me", {
+    method: "PUT",
+    body: JSON.stringify({ chiefComments }),
   });
 }
 
@@ -55,5 +66,19 @@ export function submitMyAssistantEvaluation(payload = {}) {
   return request("/collaborator/evaluation/me/submit", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function saveMyDevelopmentPlan(payload) {
+  return request("/collaborator/development/me", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function submitMyDevelopmentPlan(managerId) {
+  return request("/collaborator/development/me/submit", {
+    method: "POST",
+    body: JSON.stringify({ managerId }),
   });
 }

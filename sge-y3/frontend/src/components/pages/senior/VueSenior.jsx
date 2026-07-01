@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { LogOut } from "lucide-react";
 import logoY3 from "@/assets/logo-y3.png";
 import { menuGroups } from "@/components/pages/senior/seniorData";
@@ -8,9 +8,14 @@ import Evaluerassistants from "@/components/pages/senior/Evaluerassistants";
 import MesresultatsSenior from "@/components/pages/senior/MesresultatsSenior";
 import MesobjectifsSenior from "@/components/pages/senior/MesobjectifsSenior";
 import MonautoevaluationSenior from "@/components/pages/senior/MonautoevaluationSenior";
+import Monhistorique from "@/components/pages/senior/Monhistorique";
+import HistoriqueAssistants from "@/components/pages/senior/HistoriqueAssistants";
+import CalendrierAssistants from "@/components/pages/collaborator/CalendrierAssistants";
 import ProfilePanel from "@/components/profile/ProfilePanel";
+import CommentairesRecus from "@/components/CommentairesRecus";
 import { getDisplayName, getInitials } from "@/lib/userPresentation";
-import { getSeniorAssistants, getSeniorCommonMissions, getSeniorOverview } from "@/lib/seniorAssistants";
+import { addSeniorAssistantMission, getSeniorAssistantEvaluation, getSeniorAssistants, getSeniorCommonMissions, getSeniorOverview } from "@/lib/seniorAssistants";
+import { getMySeniorEvaluation } from "@/lib/seniorEvaluation";
 
 function VueSenior({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
@@ -20,6 +25,9 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
   const [selectedAssistantId, setSelectedAssistantId] = useState("");
   const [assistantsError, setAssistantsError] = useState("");
   const [isLoadingAssistants, setIsLoadingAssistants] = useState(true);
+  const [selfEvaluationData, setSelfEvaluationData] = useState(null);
+  const [selfEvaluationError, setSelfEvaluationError] = useState("");
+  const [isLoadingSelfEvaluation, setIsLoadingSelfEvaluation] = useState(false);
   const displayName = getDisplayName(user);
   const profileKey = [user?.id, user?.email, user?.first_name, user?.last_name, user?.grade, user?.department].join("|");
   const initials = getInitials(user);
@@ -85,8 +93,48 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
 
   useEffect(() => {
     if (activeSection === "overview" || activeSection === "goals" || activeSection === "reviews" || activeSection === "results") {
-      refreshSeniorData();
+      const timeoutId = setTimeout(() => {
+        void refreshSeniorData();
+      }, 0);
+
+      return () => clearTimeout(timeoutId);
     }
+
+    return undefined;
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (activeSection !== "calendar") {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    async function loadSelfEvaluation() {
+      try {
+        setIsLoadingSelfEvaluation(true);
+        setSelfEvaluationError("");
+        const response = await getMySeniorEvaluation();
+
+        if (!cancelled) {
+          setSelfEvaluationData(response);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSelfEvaluationError(error.message || "Chargement de mon calendrier impossible.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingSelfEvaluation(false);
+        }
+      }
+    }
+
+    loadSelfEvaluation();
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeSection]);
 
   const pageTitle = useMemo(() => {
@@ -95,9 +143,20 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
     if (activeSection === "results") return "SYNTHESES TRANSMISES";
     if (activeSection === "goals") return "MISSIONS COMMUNES";
     if (activeSection === "self-evaluation") return "MON AUTO-EVALUATION";
+    if (activeSection === "calendar") return "MON CALENDRIER";
+    if (activeSection === "history") return "HISTORIQUE";
+    if (activeSection === "assistants-history") return "HISTORIQUE ASSISTANTS";
     if (activeSection === "profile") return "MON PROFIL";
+    if (activeSection === "comments") return "COMMENTAIRES RECUS";
     return "TABLEAU DE BORD SENIOR";
   }, [activeSection]);
+
+  function openAssistantReview(assistantId) {
+    if (assistantId) {
+      setSelectedAssistantId(assistantId);
+    }
+    setActiveSection("reviews");
+  }
 
   return (
     <div className="min-h-screen bg-[#EEF2F6] text-[#0E2B4F]">
@@ -116,6 +175,7 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
                   {group.items.map((item) => {
                     const Icon = item.icon;
                     const isActive = activeSection === item.key;
+                    const badge = item.key === "comments" ? (overviewData?.anonymousComments || []).length : 0;
                     return (
                       <button
                         key={item.key}
@@ -127,6 +187,11 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
                         <span className="flex items-center gap-2">
                           <Icon size={15} />
                           {item.label}
+                          {badge > 0 && (
+                            <span className="ml-auto rounded-full bg-[#7CB342] px-2 py-0.5 text-xs font-bold text-white">
+                              {badge}
+                            </span>
+                          )}
                         </span>
                       </button>
                     );
@@ -164,7 +229,13 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
           </header>
 
           {activeSection === "overview" ? (
-            <Vueensemble onOpen={setActiveSection} overviewData={overviewData} isLoading={isLoadingAssistants} errorMessage={assistantsError} />
+            <Vueensemble
+              onOpen={setActiveSection}
+              onOpenReview={openAssistantReview}
+              overviewData={overviewData}
+              isLoading={isLoadingAssistants}
+              errorMessage={assistantsError}
+            />
           ) : activeSection === "assistants" ? (
             <Mesassistants
               assistants={assistants}
@@ -189,10 +260,49 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
             <MesobjectifsSenior missions={commonMissions} isLoading={isLoadingAssistants} errorMessage={assistantsError} />
           ) : activeSection === "self-evaluation" ? (
             <MonautoevaluationSenior user={user} />
+          ) : activeSection === "calendar" ? (
+            isLoadingSelfEvaluation ? (
+              <section className="rounded-lg bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement de mon calendrier...</section>
+            ) : selfEvaluationError ? (
+              <section className="rounded-lg bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">{selfEvaluationError}</section>
+            ) : (
+              <CalendrierAssistants
+                assistants={assistants}
+                ownMissionEvaluations={selfEvaluationData?.mission_evaluations || []}
+                ownTitle="Mon calendrier"
+                ownEyebrow="Mes missions senior évaluées"
+                ownEmptyMessage="Aucune mission senior évaluée pour le moment."
+                ownExportFileName="resultats-mission-senior.xls"
+                emptyAssistantsMessage="Aucun assistant rattaché à ce Senior."
+                exportFileNamePrefix="resultats-mission-assistant-senior"
+                fetchAssistantEvaluation={getSeniorAssistantEvaluation}
+                assignMission={addSeniorAssistantMission}
+                assignLabel="Assistant"
+              />
+            )
+          ) : activeSection === "history" ? (
+            <Monhistorique />
+          ) : activeSection === "assistants-history" ? (
+            <HistoriqueAssistants
+              assistants={assistants}
+              isLoading={isLoadingAssistants}
+              errorMessage={assistantsError}
+            />
+          ) : activeSection === "comments" ? (
+            <CommentairesRecus
+              comments={overviewData?.anonymousComments || []}
+              isLoading={isLoadingAssistants}
+            />
           ) : activeSection === "profile" ? (
             <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />
           ) : (
-            <Vueensemble onOpen={setActiveSection} overviewData={overviewData} isLoading={isLoadingAssistants} errorMessage={assistantsError} />
+            <Vueensemble
+              onOpen={setActiveSection}
+              onOpenReview={openAssistantReview}
+              overviewData={overviewData}
+              isLoading={isLoadingAssistants}
+              errorMessage={assistantsError}
+            />
           )}
         </main>
       </div>

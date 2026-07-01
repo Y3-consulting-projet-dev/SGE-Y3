@@ -41,6 +41,11 @@ function buildAuthResponse(user) {
   };
 }
 
+function canEditGradeAndDepartment(user) {
+  const department = normalizeDepartment(user?.department);
+  return department === 'RH' || department === 'CAPITAL HUMAIN';
+}
+
 async function login(request, response) {
   const email = normalizeEmail(request.body?.email);
   const password = String(request.body?.password || '');
@@ -76,8 +81,9 @@ async function updateProfile(request, response) {
   const firstName = normalizeText(request.body?.first_name);
   const lastName = normalizeText(request.body?.last_name);
   const email = normalizeEmail(request.body?.email);
-  const grade = normalizeText(request.body?.grade);
-  const department = normalizeDepartment(request.body?.department);
+  const canEditCareerInfo = canEditGradeAndDepartment(currentUser);
+  const grade = canEditCareerInfo ? normalizeText(request.body?.grade) : currentUser.grade;
+  const department = canEditCareerInfo ? normalizeDepartment(request.body?.department) : currentUser.department;
 
   if (!firstName || !lastName || !email || !grade) {
     return response.status(400).json({
@@ -85,7 +91,7 @@ async function updateProfile(request, response) {
     });
   }
 
-  if (!ALLOWED_GRADES.includes(grade)) {
+  if (canEditCareerInfo && !ALLOWED_GRADES.includes(grade)) {
     return response.status(400).json({
       message: 'Grade invalide.',
     });

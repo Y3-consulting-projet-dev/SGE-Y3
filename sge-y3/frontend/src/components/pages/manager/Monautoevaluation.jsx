@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Check, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   createManagerMissionEvaluation,
   getManagerSelfEvaluation,
@@ -7,6 +7,7 @@ import {
   submitManagerMissionEvaluation,
   submitManagerSelfEvaluation,
 } from "@/lib/managerOverview";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
 
 function getPageProgress(page) {
   const themes = page?.themes || [];
@@ -44,6 +45,51 @@ function getMissionAverage(criteria = []) {
   const scores = criteria.map((criterion) => criterion.score).filter((score) => typeof score === "number");
   if (!scores.length) return "--";
   return (scores.reduce((total, score) => total + score, 0) / scores.length).toFixed(1);
+}
+
+function getMissionFinalScore(missions = []) {
+  const missionScores = missions
+    .map((mission) => {
+      const score = getMissionAverage(mission.criteria || []);
+      return score === "--" ? null : Number(score);
+    })
+    .filter((score) => typeof score === "number");
+
+  if (!missionScores.length) return "--";
+  return (missionScores.reduce((total, score) => total + score, 0) / missionScores.length).toFixed(1);
+}
+
+function formatDateDisplay(value) {
+  if (!value) return "";
+
+  if (/^\d{2}-\d{2}-\d{4}$/.test(value)) {
+    return value;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-");
+    return `${day}-${month}-${year}`;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString("fr-FR").replace(/\//g, "-");
+}
+
+function formatMissionPeriod(period, startDate = "", endDate = "") {
+  if (startDate && endDate) {
+    return `Du ${formatDateDisplay(startDate)} au ${formatDateDisplay(endDate)}`;
+  }
+
+  const rangeMatch = String(period || "").match(/(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}).*?(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4})/);
+  if (rangeMatch) {
+    return `Du ${formatDateDisplay(rangeMatch[1])} au ${formatDateDisplay(rangeMatch[2])}`;
+  }
+
+  return period || "Période non renseignée";
 }
 
 function createInitialPageIndexes(sections = []) {
@@ -142,8 +188,23 @@ function isRhValidationRecipient(recipient) {
   return normalizedDepartment === "RH";
 }
 
+function getRecipientOptionValue(recipient) {
+  return String(recipient?.id || recipient?.user_id || "");
+}
+
+function getMissionEvaluatingRecipients(mission) {
+  return (mission?.recipients || []).filter((recipient) => recipient?.canEvaluate !== false && recipient?.can_evaluate !== false);
+}
+
 function hasRequiredSubmissionComment(sections = []) {
   return sections.length > 0 && sections.every((section) => String(section.comment || "").trim().length >= 3);
+}
+
+function normalizeSearchValue(value = "") {
+  return String(value)
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
 }
 
 function ScoreSelector({ selected, onSelect }) {
@@ -175,6 +236,20 @@ function ScoreSelector({ selected, onSelect }) {
   );
 }
 
+function InlineFeedback({ feedback }) {
+  if (!feedback?.message) return null;
+
+  return (
+    <div
+      className={`rounded-md px-3 py-2 text-xs font-semibold ${
+        feedback.tone === "error" ? "bg-[#FDEBEC] text-[#B93840]" : "bg-[#DCECCB] text-[#184D2E]"
+      }`}
+    >
+      {feedback.message}
+    </div>
+  );
+}
+
 function SectionBadge({ progress }) {
   if (progress === 100) {
     return (
@@ -194,14 +269,20 @@ function SectionBadge({ progress }) {
 
 function Monautoevaluation() {
   const [evaluationData, setEvaluationData] = useState(null);
-  const [activeView, setActiveView] = useState("cycle");
+  const [activeView, setActiveView] = useState("missions");
+  const [activeMissionView, setActiveMissionView] = useState("synthese");
+  const [missionSearchQuery, setMissionSearchQuery] = useState("");
+  const [isMissionPickerOpen, setIsMissionPickerOpen] = useState(false);
   const [sections, setSections] = useState([]);
   const [missionEvaluations, setMissionEvaluations] = useState([]);
   const [activeMissionId, setActiveMissionId] = useState("");
   const [missionSectionIds, setMissionSectionIds] = useState({});
   const [missionPageIndexes, setMissionPageIndexes] = useState({});
   const [missionTitle, setMissionTitle] = useState("");
-  const [missionPeriod, setMissionPeriod] = useState("");
+  const [missionStartDate, setMissionStartDate] = useState("");
+  const [missionEndDate, setMissionEndDate] = useState("");
+  const [selectedAssociateValues, setSelectedAssociateValues] = useState([]);
+  const [selectedAssociateValue, setSelectedAssociateValue] = useState("");
   const [activeSectionId, setActiveSectionId] = useState(1);
   const [pageIndexes, setPageIndexes] = useState({});
   const [savedComments, setSavedComments] = useState({});
@@ -211,6 +292,12 @@ function Monautoevaluation() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [customTitre, setCustomTitre] = useState("");
+  const [customLabel, setCustomLabel] = useState("");
+  const [customStatement, setCustomStatement] = useState("");
+  const [customCriterionFeedback, setCustomCriterionFeedback] = useState(null);
+  const customCriterionCounterRef = useRef(0);
+  const missionPickerRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -266,10 +353,36 @@ function Monautoevaluation() {
   const averageScore = useMemo(() => getPageAverage(activePage), [activePage]);
   const rhRecipients = evaluationData?.submitted_to || [];
   const rhValidationRecipients = rhRecipients.filter(isRhValidationRecipient);
+  const associateRecipients = evaluationData?.associate_recipients || [];
+  const selectedAssociates = useMemo(
+    () => associateRecipients.filter((recipient) => selectedAssociateValues.includes(getRecipientOptionValue(recipient))),
+    [associateRecipients, selectedAssociateValues]
+  );
+  const availableAssociates = useMemo(
+    () => associateRecipients.filter((recipient) => !selectedAssociateValues.includes(getRecipientOptionValue(recipient))),
+    [associateRecipients, selectedAssociateValues]
+  );
+
+  function handleAddAssociateRecipient() {
+    if (!selectedAssociateValue) return;
+
+    setSelectedAssociateValues((current) =>
+      current.includes(selectedAssociateValue) ? current : [...current, selectedAssociateValue]
+    );
+    setSelectedAssociateValue("");
+    setFeedbackMessage("");
+  }
+
+  function handleRemoveAssociateRecipient(value) {
+    setSelectedAssociateValues((current) => current.filter((item) => item !== value));
+    setSelectedAssociateValue((current) => (current === value ? "" : current));
+  }
 
   const missionProgress = missionEvaluations.length
     ? Math.round(missionEvaluations.reduce((total, mission) => total + getMissionProgress(mission), 0) / missionEvaluations.length)
     : 0;
+  const finalMissionScore = useMemo(() => getMissionFinalScore(missionEvaluations), [missionEvaluations]);
+  const submittedMissionsCount = missionEvaluations.filter((mission) => mission.status === "Soumise").length;
   const activeMission = missionEvaluations.find((mission) => mission.id === activeMissionId) || missionEvaluations[0] || null;
   const missionCriteriaGroups = useMemo(() => getMissionCriteriaGroups(activeMission?.criteria || []), [activeMission]);
   const missionSections = useMemo(() => getMissionSections(missionCriteriaGroups), [missionCriteriaGroups]);
@@ -282,19 +395,63 @@ function Monautoevaluation() {
     Math.max((activeMissionSection?.groups?.length || 1) - 1, 0)
   );
   const activeMissionGroup = activeMissionSection?.groups?.[activeMissionPageIndex] || activeMissionSection?.groups?.[0] || null;
+  const isLastMissionStep =
+    activeMissionSectionIndex === missionSections.length - 1 &&
+    activeMissionPageIndex === Math.max((activeMissionSection?.groups?.length || 1) - 1, 0);
   const activeMissionAverage = useMemo(() => getMissionAverage(activeMission?.criteria || []), [activeMission]);
+
+  const filteredMissionEvaluations = useMemo(() => {
+    const query = normalizeSearchValue(missionSearchQuery.trim());
+    if (!query) return missionEvaluations;
+
+    return missionEvaluations.filter((item) => {
+      const haystack = [item.title, ...getMissionEvaluatingRecipients(item).map((recipient) => recipient.name)]
+        .map(normalizeSearchValue)
+        .join(" ");
+      return haystack.includes(query);
+    });
+  }, [missionEvaluations, missionSearchQuery]);
+
+  const recentMissionEvaluations = useMemo(() => missionEvaluations.slice(-3).reverse(), [missionEvaluations]);
+
+  useEffect(() => {
+    if (!isMissionPickerOpen) return undefined;
+
+    function handlePointerDown(event) {
+      if (missionPickerRef.current && !missionPickerRef.current.contains(event.target)) {
+        setIsMissionPickerOpen(false);
+      }
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        setIsMissionPickerOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isMissionPickerOpen]);
 
   useEffect(() => {
     if (!activeMission?.id || !missionSections.length) return;
 
-    setMissionSectionIds((current) => ({
-      ...current,
-      [activeMission.id]: current[activeMission.id] || missionSections[0].id,
-    }));
-    setMissionPageIndexes((current) => ({
-      ...current,
-      [activeMission.id]: current[activeMission.id] || 0,
-    }));
+    const timeoutId = setTimeout(() => {
+      setMissionSectionIds((current) => ({
+        ...current,
+        [activeMission.id]: current[activeMission.id] || missionSections[0].id,
+      }));
+      setMissionPageIndexes((current) => ({
+        ...current,
+        [activeMission.id]: current[activeMission.id] || 0,
+      }));
+    }, 0);
+    return () => clearTimeout(timeoutId);
   }, [activeMission?.id, missionSections]);
 
   function syncSections(updater) {
@@ -381,6 +538,70 @@ function Monautoevaluation() {
     setFeedbackMessage("");
   }
 
+  function addCustomMissionCriterion() {
+    if (!activeMission || !activeMissionSection) return;
+
+    const titre = customTitre.trim();
+    const label = customLabel.trim();
+
+    if (!titre || !label) {
+      setCustomCriterionFeedback({ tone: "error", message: "Renseignez un titre et le libellé de la compétence." });
+      return;
+    }
+
+    customCriterionCounterRef.current += 1;
+
+    const newCriterion = {
+      id: `custom-${activeMission.id}-${Date.now()}-${customCriterionCounterRef.current}`,
+      sectionTitle: activeMissionSection.title,
+      pageTitle: titre,
+      sourceSheet: "",
+      sourceLabel: "",
+      themeCode: "",
+      label,
+      statement: customStatement.trim(),
+      score: null,
+      isCustom: true,
+    };
+
+    const existingGroupIndex = (activeMissionSection.groups || []).findIndex(
+      (group) => group.pageTitle === titre && !group.sourceSheet && !group.sourceLabel
+    );
+    const targetPageIndex = existingGroupIndex >= 0 ? existingGroupIndex : (activeMissionSection.groups || []).length;
+
+    setMissionEvaluations((currentMissions) =>
+      currentMissions.map((mission) =>
+        mission.id !== activeMissionId
+          ? mission
+          : {
+              ...mission,
+              status: mission.status === "Soumise" ? mission.status : "En cours",
+              criteria: [...(mission.criteria || []), newCriterion],
+            }
+      )
+    );
+    setMissionPageIndexes((current) => ({
+      ...current,
+      [activeMission.id]: targetPageIndex,
+    }));
+    setCustomTitre("");
+    setCustomLabel("");
+    setCustomStatement("");
+    setCustomCriterionFeedback({ tone: "success", message: "Compétence ajoutée." });
+    setFeedbackMessage("");
+  }
+
+  function removeCustomMissionCriterion(criterionId) {
+    setMissionEvaluations((currentMissions) =>
+      currentMissions.map((mission) =>
+        mission.id !== activeMissionId
+          ? mission
+          : { ...mission, criteria: (mission.criteria || []).filter((criterion) => criterion.id !== criterionId) }
+      )
+    );
+    setFeedbackMessage("");
+  }
+
   async function persistSections(
     nextSections = sections,
     successMessage = "Auto-évaluation manager enregistrée.",
@@ -426,12 +647,36 @@ function Monautoevaluation() {
       return;
     }
 
+    if (!missionStartDate || !missionEndDate) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Renseignez la date de début et la date de fin de la mission.");
+      return;
+    }
+
+    if (missionEndDate < missionStartDate) {
+      setFeedbackTone("error");
+      setFeedbackMessage("La date de fin doit être postérieure ou égale à la date de début.");
+      return;
+    }
+
+    if (!selectedAssociates.length) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Sélectionnez au moins un associé destinataire pour cette mission.");
+      return;
+    }
+
     try {
       setIsSaving(true);
       setFeedbackMessage("");
       const response = await createManagerMissionEvaluation({
         title,
-        period: missionPeriod.trim(),
+        period: formatMissionPeriod("", missionStartDate, missionEndDate),
+        selectedAssociateRecipients: selectedAssociates.map((associate) => ({
+          id: associate.id,
+          name: associate.name,
+          grade: associate.grade,
+          department: associate.department,
+        })),
       });
 
       setEvaluationData(response);
@@ -442,7 +687,10 @@ function Monautoevaluation() {
         setActiveMissionId(addedMission.id);
       }
       setMissionTitle("");
-      setMissionPeriod("");
+      setMissionStartDate("");
+      setMissionEndDate("");
+      setSelectedAssociateValues([]);
+      setSelectedAssociateValue("");
       setFeedbackTone("success");
       setFeedbackMessage(response.message || "Mission manager ajoutée.");
     } catch (error) {
@@ -509,9 +757,32 @@ function Monautoevaluation() {
     }));
   }
 
+  function selectMission(item) {
+    setActiveMissionId(item.id);
+    setIsMissionPickerOpen(false);
+    setMissionSearchQuery("");
+  }
+
   async function handleSaveAndContinue() {
+    if (String(activeSection?.comment || "").trim().length < 3) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
+      return;
+    }
+
     await persistSections(sections, "Auto-évaluation manager enregistrée.");
     goToStep(1);
+  }
+
+  async function handleSaveMissionAndContinue() {
+    if (String(activeMission?.comment || "").trim().length < 3) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Le commentaire sur la mission d'au moins 3 caractères est obligatoire avant de continuer.");
+      return;
+    }
+
+    await persistMissionEvaluations(missionEvaluations, "Mission manager enregistrée.");
+    goToMissionStep(1);
   }
 
   async function handleSubmit() {
@@ -545,6 +816,14 @@ function Monautoevaluation() {
   async function handleSubmitMission() {
     if (!activeMission) return;
 
+    const missionAssociates = selectedAssociates.length ? selectedAssociates : getMissionEvaluatingRecipients(activeMission);
+
+    if (!missionAssociates.length) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Sélectionnez au moins un associé destinataire pour cette mission.");
+      return;
+    }
+
     const hasIncompleteCriterion = (activeMission.criteria || []).some(
       (criterion) => criterion.score === null || criterion.score === undefined
     );
@@ -552,6 +831,12 @@ function Monautoevaluation() {
     if (hasIncompleteCriterion) {
       setFeedbackTone("error");
       setFeedbackMessage("Toutes les questions de la mission manager doivent être renseignées avant soumission.");
+      return;
+    }
+
+    if (String(activeMission?.comment || "").trim().length < 3) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Le commentaire sur la mission d'au moins 3 caractères est obligatoire avant soumission.");
       return;
     }
 
@@ -563,10 +848,19 @@ function Monautoevaluation() {
 
     try {
       setIsSubmitting(true);
-      const response = await submitManagerMissionEvaluation(activeMission.id);
+      const response = await submitManagerMissionEvaluation(activeMission.id, {
+        selectedAssociateRecipients: missionAssociates.map((associate) => ({
+          id: associate.id,
+          name: associate.name,
+          grade: associate.grade,
+          department: associate.department,
+        })),
+      });
       setEvaluationData(response);
       setSections(response.evaluation.sections || []);
       setMissionEvaluations(response.mission_evaluations || []);
+      setSelectedAssociateValues([]);
+      setSelectedAssociateValue("");
       setFeedbackTone("success");
       setFeedbackMessage(response.message || "Mission manager soumise à la RH et aux associés.");
     } catch (error) {
@@ -617,7 +911,7 @@ function Monautoevaluation() {
         <button
           type="button"
           onClick={() => setActiveView("cycle")}
-          className={`rounded-md p-4 text-left transition ${
+          className={`hidden rounded-md p-4 text-left transition ${
             activeView === "cycle" ? "bg-[#003B63] text-white" : "bg-white text-[#0F3A63] shadow-sm"
           }`}
         >
@@ -645,10 +939,10 @@ function Monautoevaluation() {
               <p className="text-xs font-semibold text-[#0F3A63]">
                 Progression - {completedSections} / {sections.length} sections
               </p>
-              <span className="text-xs font-semibold text-[#E53935]">{progress}%</span>
+              <span className={`text-xs font-semibold ${getProgressToneClass(progress)}`}>{progress}%</span>
             </div>
             <div className="h-2 rounded-full bg-slate-300">
-              <div className="h-2 rounded-full bg-[#2AA7D6]" style={{ width: `${progress}%` }} />
+              <div className={`h-2 rounded-full ${getProgressBarClass(progress)}`} style={{ width: `${clampProgress(progress)}%` }} />
             </div>
           </section>
 
@@ -796,7 +1090,7 @@ function Monautoevaluation() {
                               {sourceBadgeLabel}
                             </span>
                           ) : null}
-                          <p className="mt-1 text-[10px] font-semibold text-[#79B742]">{pageProgress}%</p>
+                          <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(pageProgress)}`}>{pageProgress}%</p>
                         </button>
                       );
                     })}
@@ -826,7 +1120,9 @@ function Monautoevaluation() {
                 </div>
 
                 <div className="mt-4">
-                  <p className="mb-2 text-xs font-semibold text-[#79B742]">Commentaire de section</p>
+                  <p className="mb-2 text-xs font-semibold text-[#79B742]">
+                    Commentaire de section obligatoire <span className="text-red-600">*</span>
+                  </p>
                   <textarea
                     rows={3}
                     value={activeSection.comment || ""}
@@ -862,7 +1158,7 @@ function Monautoevaluation() {
                         disabled={isSaving || isSubmitting}
                         className="inline-flex items-center gap-2 rounded-md bg-[#003B63] px-4 py-2 text-[12px] font-semibold text-white disabled:opacity-70"
                       >
-                        Section suivante
+                        Sauvegarder et continuer
                         <ChevronRight size={14} />
                       </button>
                     ) : (
@@ -891,238 +1187,542 @@ function Monautoevaluation() {
           </section>
         </>
       ) : (
-        <section className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-          <div className="space-y-3 xl:col-span-5">
-            <article className="rounded-md bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold text-slate-400">{evaluationData.evaluation.cycle_label}</p>
-              <h2 className="mt-1 text-2xl font-black text-[#0F3A63]">Missions manager à auto-évaluer</h2>
-              <p className="mt-1 text-sm font-semibold text-slate-500">
-                {evaluationData.manager.name} - Transmission RH + associés
-              </p>
-
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <div className="rounded-lg bg-[#0D496A] p-4 text-white">
-                  <p className="text-xs font-bold">Missions créées</p>
-                  <p className="mt-2 text-2xl font-black text-[#86EFAC]">{missionEvaluations.length}</p>
-                </div>
-                <div className="rounded-lg bg-[#0D496A] p-4 text-white">
-                  <p className="text-xs font-bold">Progression missions</p>
-                  <p className="mt-2 text-2xl font-black text-[#86EFAC]">{missionProgress}%</p>
-                </div>
-              </div>
-            </article>
-
-            <article className="rounded-md bg-white p-4 shadow-sm">
-              <p className="text-xs font-bold uppercase text-slate-500">Nouvelle mission manager</p>
-              <p className="mt-1 text-xs font-semibold text-slate-500">
-                Saisissez le titre et la période. La mission sera évaluée puis soumise à la RH et aux associés.
-              </p>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                <input
-                  value={missionTitle}
-                  onChange={(event) => setMissionTitle(event.target.value)}
-                  placeholder="Titre de la mission"
-                  className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
-                />
-                <input
-                  value={missionPeriod}
-                  onChange={(event) => setMissionPeriod(event.target.value)}
-                  placeholder="Période"
-                  className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={handleAddMission}
-                disabled={isSaving || isSubmitting}
-                className="mt-4 rounded-md bg-[#79B742] px-5 py-2 text-sm font-semibold text-white disabled:opacity-70"
-              >
-                {isSaving ? "Ajout..." : "Ajouter la mission"}
-              </button>
-            </article>
-
-            <div className="space-y-3">
-              {missionEvaluations.length ? (
-                missionEvaluations.map((mission) => {
-                  const isActive = mission.id === activeMission?.id;
-                  const currentMissionProgress = getMissionProgress(mission);
-
-                  return (
-                    <button
-                      key={mission.id}
-                      type="button"
-                      onClick={() => setActiveMissionId(mission.id)}
-                      className={`w-full rounded-md p-4 text-left shadow-sm transition ${
-                        isActive ? "bg-[#EEF6E8] ring-2 ring-[#79B742]" : "bg-white hover:bg-slate-50"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
-                          <p className="mt-1 text-xs font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
-                        </div>
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#4E8B1B]">{mission.status}</span>
-                      </div>
-                      <p className="mt-2 text-xs font-semibold text-[#0F3A63]">Progression : {currentMissionProgress}%</p>
-                    </button>
-                  );
-                })
-              ) : (
-                <p className="rounded-md bg-[#EEF2F6] p-4 text-sm font-semibold text-slate-500">
-                  Aucune mission manager ajoutée pour le moment.
-                </p>
-              )}
-            </div>
+        <>
+          <div className="flex gap-2 border-b border-[#E3EAF3]">
+            <button
+              type="button"
+              onClick={() => setActiveMissionView("synthese")}
+              className={`rounded-t-md border border-b-0 px-4 py-2 text-sm font-bold transition ${
+                activeMissionView === "synthese" ? "border-[#E3EAF3] bg-white text-[#0F3A63]" : "border-transparent text-slate-500 hover:text-[#0F3A63]"
+              }`}
+            >
+              Synthèse et ajout de mission
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveMissionView("missions")}
+              className={`rounded-t-md border border-b-0 px-4 py-2 text-sm font-bold transition ${
+                activeMissionView === "missions" ? "border-[#E3EAF3] bg-white text-[#0F3A63]" : "border-transparent text-slate-500 hover:text-[#0F3A63]"
+              }`}
+            >
+              Mes missions
+            </button>
           </div>
 
-          <div className="space-y-3 xl:col-span-7">
-            {activeMission ? (
-              <article className="rounded-md bg-white p-4 shadow-sm">
-                <div className="mb-4 flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold text-slate-400">{activeMission.period || "Période non renseignée"}</p>
-                    <h2 className="mt-1 text-xl font-black text-[#0F3A63]">{activeMission.title}</h2>
-                    <p className="mt-1 text-xs font-semibold text-slate-500">Score moyen mission : {activeMissionAverage} / 5</p>
+          {activeMissionView === "synthese" ? (
+            <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+              <article className="space-y-4">
+                <div className="rounded-md bg-white p-4 shadow-sm">
+                  <p className="text-xs font-bold uppercase text-slate-500">Ajouter une mission</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    Saisissez le nom de la mission, sa date de début et sa date de fin. Elle sera ensuite soumise à la RH et aux associés.
+                  </p>
+                  <div className="mt-4 space-y-3">
+                    <input
+                      value={missionTitle}
+                      onChange={(event) => setMissionTitle(event.target.value)}
+                      placeholder="Nom ou type de mission"
+                      className="w-full rounded-md border border-slate-200 bg-white px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
+                    />
+                    <label className="block">
+                      <span className="text-xs font-bold text-slate-500">Date de début</span>
+                      <input
+                        type="date"
+                        value={missionStartDate}
+                        onChange={(event) => setMissionStartDate(event.target.value)}
+                        className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-3 text-sm text-[#0F3A63] outline-none"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-bold text-slate-500">Date de fin</span>
+                      <input
+                        type="date"
+                        value={missionEndDate}
+                        min={missionStartDate || undefined}
+                        onChange={(event) => setMissionEndDate(event.target.value)}
+                        className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-3 text-sm text-[#0F3A63] outline-none"
+                      />
+                    </label>
                   </div>
-                  <span className="rounded-full bg-[#E7EDF3] px-4 py-2 text-xs font-bold text-[#0F4A72]">{activeMission.status}</span>
-                </div>
+                  <div className="mt-3 rounded-md bg-slate-50 p-3">
+                    <p className="text-xs font-bold text-[#0F3A63]">Évaluateurs de la mission</p>
+                    <div className="mt-3 rounded-md bg-slate-200/60 p-3 text-xs font-semibold text-slate-500">
+                      {selectedAssociates.length ? (
+                        <div className="space-y-2">
+                          {selectedAssociates.map((associate) => {
+                            const value = getRecipientOptionValue(associate);
 
-                <div className="mb-4 rounded-md bg-[#F8FAFC] p-4">
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[12px] font-semibold text-slate-500">Pagination dans la mission</p>
-                      <h4 className="text-[18px] font-bold text-[#0F3A63]">{activeMissionSection?.title || "Mission manager"}</h4>
+                            return (
+                              <div key={value} className="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2">
+                                <span className="text-[#0F3A63]">
+                                  Associés - {associate.name} ({associate.grade || "Associé"})
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveAssociateRecipient(value)}
+                                  className="text-[11px] font-bold text-red-500"
+                                >
+                                  Retirer
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        "Aucun évaluateur sélectionné pour le moment."
+                      )}
                     </div>
-                    <span className="text-[12px] font-semibold text-[#0F3A63]">
-                      Titre {activeMissionPageIndex + 1} / {activeMissionSection?.groups?.length || 1}
+                    <div className="mt-3 flex gap-2">
+                      <select
+                        value={selectedAssociateValue}
+                        onChange={(event) => setSelectedAssociateValue(event.target.value)}
+                        className="min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-[#0F3A63] outline-none"
+                      >
+                        <option value="">Sélectionner un supérieur</option>
+                        {availableAssociates.map((associate) => {
+                          const value = getRecipientOptionValue(associate);
+
+                          return (
+                            <option key={value} value={value}>
+                              Associés - {associate.name} ({associate.grade || "Associé"})
+                            </option>
+                          );
+                        })}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={handleAddAssociateRecipient}
+                        disabled={!selectedAssociateValue}
+                        className="rounded-md bg-[#8CAFC7] px-5 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                      >
+                        Ajouter
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddMission}
+                    disabled={isSaving || isSubmitting}
+                    className="mt-4 rounded-md bg-[#79B742] px-5 py-2 text-sm font-semibold text-white disabled:opacity-70"
+                  >
+                    {isSaving ? "Ajout..." : "Ajouter la mission"}
+                  </button>
+                </div>
+              </article>
+
+              <article className="space-y-4">
+                <div className="rounded-md bg-white p-4 shadow-sm">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-[22px] font-bold text-[#0F3A63]">Synthèse des missions</h3>
+                      <p className="mt-1 text-[12px] font-semibold text-slate-500">
+                        Score final = somme des scores de mission divisée par le nombre de missions notées.
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">
+                      Score final {finalMissionScore} / 5
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    {(activeMissionSection?.groups || []).map((group, index) => (
-                      <button
-                        key={group.key}
-                        type="button"
-                        onClick={() =>
-                          setMissionPageIndexes((current) => ({
-                            ...current,
-                            [activeMission.id]: index,
-                          }))
-                        }
-                        className={`rounded-md border px-3 py-2 text-left transition ${
-                          index === activeMissionPageIndex
-                            ? "border-[#79B742] bg-[#F3FAEA] text-[#0F3A63]"
-                            : "border-[#D9E3EE] bg-white text-slate-600 hover:bg-slate-50"
-                        }`}
-                      >
-                        <p className="text-[11px] font-bold">Titre {index + 1}</p>
-                        <p className="mt-1 text-[12px] font-semibold">{group.pageTitle}</p>
-                        <p className="mt-1 text-[10px] font-semibold text-[#79B742]">
-                          {Math.round(((group.criteria || []).filter((criterion) => criterion.score !== null && criterion.score !== undefined).length / ((group.criteria || []).length || 1)) * 100)}%
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mb-4 space-y-3">
-                  {(missionSections || []).map((section) => {
-                    const isActive = section.id === activeMissionSectionId;
-                    return (
-                      <button
-                        key={section.id}
-                        type="button"
-                        onClick={() =>
-                          setMissionSectionIds((current) => ({
-                            ...current,
-                            [activeMission.id]: section.id,
-                          }))
-                        }
-                        className={`w-full rounded-md border px-3 py-3 text-left transition ${
-                          isActive ? "border-[#79B742] bg-[#F3FAEA]" : "border-slate-200 bg-white hover:bg-slate-50"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm font-bold text-[#0F3A63]">{section.title}</p>
-                          <span className="text-xs font-semibold text-[#79B742]">{getMissionSectionProgress(section)}%</span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {activeMissionGroup ? (
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-[11px] font-bold uppercase text-slate-500">{activeMissionGroup.sectionTitle}</p>
-                      <p className="mt-1 text-[15px] font-bold text-[#0F3A63]">{activeMissionGroup.pageTitle}</p>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <p className="font-semibold text-[#0F3A63]">Progression globale des missions</p>
+                      <span className={`font-bold ${getProgressToneClass(missionProgress)}`}>{missionProgress}%</span>
                     </div>
-
-                    {(activeMissionGroup.criteria || []).map((criterion) => (
-                      <div key={criterion.id} className="space-y-2">
-                        <p className="text-xs font-semibold text-[#0F3A63]">
-                          {criterion.themeCode}. {criterion.label}
-                        </p>
-                        <p className="text-xs text-slate-500">{criterion.statement}</p>
-                        <ScoreSelector selected={criterion.score} onSelect={(score) => updateMissionScore(criterion.id, score)} />
+                    <div className="h-2 rounded-full bg-slate-200">
+                      <div className={`h-2 rounded-full ${getProgressBarClass(missionProgress)}`} style={{ width: `${clampProgress(missionProgress)}%` }} />
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                      <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
+                        <p className="text-[11px] font-semibold text-slate-500">Missions</p>
+                        <p className="mt-1 text-lg font-black text-[#0F3A63]">{missionEvaluations.length}</p>
                       </div>
-                    ))}
+                      <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
+                        <p className="text-[11px] font-semibold text-slate-500">Missions soumises</p>
+                        <p className="mt-1 text-lg font-black text-[#0F3A63]">{submittedMissionsCount}</p>
+                      </div>
+                      <div className="rounded-md bg-[#F8FAFC] px-3 py-3">
+                        <p className="text-[11px] font-semibold text-slate-500">Statut</p>
+                        <p className="mt-1 text-sm font-black text-[#0F3A63]">{evaluationData?.evaluation?.status || "En cours"}</p>
+                      </div>
+                    </div>
                   </div>
-                ) : null}
-
-                <div className="mt-4">
-                  <p className="mb-2 text-xs font-semibold text-[#79B742]">Commentaire sur la mission</p>
-                  <textarea
-                    rows={3}
-                    value={activeMission.comment || ""}
-                    onChange={(event) => updateMissionComment(event.target.value)}
-                    placeholder="Elements marquants, difficultes, impact..."
-                    className="w-full resize-none rounded-md border border-slate-200 bg-slate-100 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
-                  />
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() => goToMissionStep(-1)}
-                    disabled={activeMissionSectionIndex <= 0 && activeMissionPageIndex === 0}
-                    className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <ChevronLeft size={14} />
-                    Précédent
-                  </button>
+                <div className="rounded-md bg-white p-4 shadow-sm">
+                  <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">Mes missions</h3>
+                  <div className="space-y-3">
+                    {missionEvaluations.length ? (
+                      missionEvaluations.map((mission) => {
+                        const isActive = mission.id === activeMission?.id;
+                        const currentMissionProgress = getMissionProgress(mission);
 
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => persistMissionEvaluations(missionEvaluations)}
-                      disabled={isSaving || isSubmitting}
-                      className="rounded-md bg-[#0D496A] px-8 py-2 text-xs font-semibold text-white disabled:opacity-70"
-                    >
-                      {isSaving ? "Sauvegarde..." : "Sauvegarder la mission"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSubmitMission}
-                      disabled={isSaving || isSubmitting || activeMission.status === "Soumise"}
-                      className="rounded-md bg-[#79B742] px-8 py-2 text-xs font-semibold text-white disabled:opacity-70"
-                    >
-                      {isSubmitting ? "Soumission..." : "Soumettre la mission"}
-                    </button>
+                        return (
+                          <button
+                            key={mission.id}
+                            type="button"
+                            onClick={() => setActiveMissionId(mission.id)}
+                            className={`w-full rounded-md p-4 text-left shadow-sm transition ${
+                              isActive ? "bg-[#EEF6E8] ring-2 ring-[#79B742]" : "bg-white hover:bg-slate-50"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
+                                <p className="mt-1 text-xs font-semibold text-slate-500">{formatMissionPeriod(mission.period)}</p>
+                                {getMissionEvaluatingRecipients(mission).length ? (
+                                  <p className="mt-1 text-[11px] font-semibold text-slate-400">
+                                    Associé(s) : {getMissionEvaluatingRecipients(mission).map((recipient) => recipient.name).join(", ")}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#4E8B1B]">{mission.status}</span>
+                            </div>
+                            <p className={`mt-2 text-xs font-semibold ${getProgressToneClass(currentMissionProgress)}`}>
+                              Progression : {currentMissionProgress}%
+                            </p>
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <p className="rounded-md bg-[#EEF2F6] p-4 text-sm font-semibold text-slate-500">
+                        Aucune mission manager ajoutée pour le moment.
+                      </p>
+                    )}
                   </div>
                 </div>
               </article>
-            ) : (
-              <div className="rounded-md bg-[#EEF2F6] p-5 text-sm font-semibold text-slate-500">
-                Ajoutez une mission manager pour commencer l'auto-évaluation par mission.
-              </div>
-            )}
-          </div>
-        </section>
+            </section>
+          ) : (
+            <section className="grid grid-cols-1 gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+              <article className="space-y-4">
+                <div ref={missionPickerRef} className="relative rounded-md bg-white p-4 shadow-sm">
+                  <p className="mb-2 text-[12px] font-bold text-[#0F3A63]">Mission</p>
+                  {missionEvaluations.length ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setIsMissionPickerOpen((current) => !current)}
+                        className="flex w-full items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-left text-[13px] font-bold text-[#0F3A63]"
+                      >
+                        <span className="truncate">{activeMission ? activeMission.title : "Sélectionner une mission"}</span>
+                        <ChevronDown size={16} className={`shrink-0 transition ${isMissionPickerOpen ? "rotate-180" : ""}`} />
+                      </button>
+
+                      {isMissionPickerOpen ? (
+                        <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-md border border-[#E3EAF3] bg-white p-2 shadow-lg">
+                          <input
+                            autoFocus
+                            value={missionSearchQuery}
+                            onChange={(event) => setMissionSearchQuery(event.target.value)}
+                            placeholder="Rechercher par nom de mission ou d'associé..."
+                            className="mb-2 w-full rounded-md bg-slate-100 px-3 py-2 text-[12px] font-semibold text-[#0F3A63] outline-none"
+                          />
+                          <div className="max-h-72 space-y-1 overflow-y-auto">
+                            {filteredMissionEvaluations.length ? (
+                              filteredMissionEvaluations.map((item) => (
+                                <button
+                                  key={item.id}
+                                  type="button"
+                                  onClick={() => selectMission(item)}
+                                  className={`block w-full rounded-md px-3 py-2 text-left transition ${
+                                    item.id === activeMission?.id ? "bg-[#F3FAEA] text-[#0F3A63]" : "text-slate-600 hover:bg-slate-50"
+                                  }`}
+                                >
+                                  <p className="text-[12px] font-bold">{item.title}</p>
+                                  <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                                    {formatMissionPeriod(item.period)} · {item.status}
+                                  </p>
+                                </button>
+                              ))
+                            ) : (
+                              <p className="px-3 py-2 text-[12px] font-semibold text-slate-500">Aucune mission ne correspond à la recherche.</p>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p className="text-sm font-semibold text-slate-500">Aucune mission manager ajoutée pour le moment.</p>
+                  )}
+                </div>
+
+                {recentMissionEvaluations.length ? (
+                  <div className="space-y-3">
+                    <p className="text-[12px] font-bold text-[#0F3A63]">Missions récentes</p>
+                    {recentMissionEvaluations.map((item) => {
+                      const progress = getMissionProgress(item);
+                      const isActive = item.id === activeMission?.id;
+
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => selectMission(item)}
+                          className={`w-full rounded-md border p-3 text-left transition ${
+                            isActive ? "border-[#79B742] bg-[#EEF6E8]" : "border-slate-100 bg-[#F8FAFC] hover:bg-slate-100"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="text-sm font-extrabold text-[#0F3A63]">{item.title}</p>
+                            <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#4E8B1B]">{item.status}</span>
+                          </div>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">{formatMissionPeriod(item.period)}</p>
+                          <div className="mt-3 h-1.5 rounded-full bg-slate-200">
+                            <div className={`h-1.5 rounded-full ${getProgressBarClass(progress)}`} style={{ width: `${clampProgress(progress)}%` }} />
+                          </div>
+                          <p className={`mt-1 text-xs font-bold ${getProgressToneClass(progress)}`}>{progress}% complétée</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </article>
+
+              <article className="space-y-4">
+                <div className="rounded-md bg-white p-4 shadow-sm">
+                  {activeMission ? (
+                    <>
+                      <div className="mb-4 flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold text-slate-400">{formatMissionPeriod(activeMission.period)}</p>
+                          <h2 className="mt-1 text-xl font-black text-[#0F3A63]">{activeMission.title}</h2>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">Score moyen mission : {activeMissionAverage} / 5</p>
+                        </div>
+                        <span className="rounded-full bg-[#E7EDF3] px-4 py-2 text-xs font-bold text-[#0F4A72]">{activeMission.status}</span>
+                      </div>
+
+                      <div className="mb-4 rounded-md bg-[#F8FAFC] p-4">
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[12px] font-semibold text-slate-500">Pagination dans la mission</p>
+                            <h4 className="text-[18px] font-bold text-[#0F3A63]">{activeMissionSection?.title || "Mission manager"}</h4>
+                          </div>
+                          <span className="text-[12px] font-semibold text-[#0F3A63]">
+                            Titre {activeMissionPageIndex + 1} / {activeMissionSection?.groups?.length || 1}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          {(activeMissionSection?.groups || []).map((group, index) => {
+                            const groupProgress = Math.round(
+                              (((group.criteria || []).filter((criterion) => criterion.score !== null && criterion.score !== undefined).length) /
+                                ((group.criteria || []).length || 1)) *
+                                100
+                            );
+                            const isCustomGroup = group.criteria.some((item) => item.isCustom);
+
+                            return (
+                              <button
+                                key={group.key}
+                                type="button"
+                                onClick={() =>
+                                  setMissionPageIndexes((current) => ({
+                                    ...current,
+                                    [activeMission.id]: index,
+                                  }))
+                                }
+                                className={`rounded-md border px-3 py-2 text-left transition ${
+                                  index === activeMissionPageIndex
+                                    ? "border-[#79B742] bg-[#F3FAEA] text-[#0F3A63]"
+                                    : "border-[#D9E3EE] bg-white text-slate-600 hover:bg-slate-50"
+                                }`}
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  <p className="text-[11px] font-bold">Titre {index + 1}</p>
+                                  {isCustomGroup ? (
+                                    <span className="rounded-full bg-[#DCECCB] px-1.5 py-0.5 text-[9px] font-bold text-[#4E8B1B]">Ajouté</span>
+                                  ) : null}
+                                </div>
+                                <p className="mt-1 text-[12px] font-semibold">{group.pageTitle}</p>
+                                <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(groupProgress)}`}>{groupProgress}%</p>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="mt-3 rounded-md border border-dashed border-[#C7D6E8] bg-white p-3">
+                          <p className="text-[12px] font-bold text-[#0F3A63]">{`Ajouter un titre à "${activeMissionSection?.title || ""}"`}</p>
+                          <p className="mt-1 text-[11px] text-slate-500">
+                            {"Ce titre s'ajoutera aux autres titres de cette section, avec sa propre progression. Il ne s'applique qu'à cette mission et compte dans la moyenne et la note finale."}
+                          </p>
+                          <div className="mt-2 grid gap-2 md:grid-cols-2">
+                            <input
+                              value={customTitre}
+                              onChange={(event) => {
+                                setCustomTitre(event.target.value);
+                                setCustomCriterionFeedback(null);
+                              }}
+                              placeholder="Titre"
+                              className="h-10 w-full rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-600 outline-none placeholder:text-slate-400"
+                            />
+                            <input
+                              value={customLabel}
+                              onChange={(event) => {
+                                setCustomLabel(event.target.value);
+                                setCustomCriterionFeedback(null);
+                              }}
+                              placeholder="Libellé de la compétence"
+                              className="h-10 w-full rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-600 outline-none placeholder:text-slate-400"
+                            />
+                          </div>
+                          <textarea
+                            rows={2}
+                            value={customStatement}
+                            onChange={(event) => {
+                              setCustomStatement(event.target.value);
+                              setCustomCriterionFeedback(null);
+                            }}
+                            placeholder="Description (optionnel)"
+                            className="mt-2 w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[12px] text-slate-600 outline-none placeholder:text-slate-400"
+                          />
+                          <button
+                            type="button"
+                            onClick={addCustomMissionCriterion}
+                            className="mt-2 rounded-md bg-[#79B742] px-4 py-2 text-xs font-bold text-white"
+                          >
+                            Ajouter le titre
+                          </button>
+                          <div className="mt-2">
+                            <InlineFeedback feedback={customCriterionFeedback} />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mb-4 space-y-3">
+                        {(missionSections || []).map((section) => {
+                          const isActive = section.id === activeMissionSectionId;
+                          return (
+                            <button
+                              key={section.id}
+                              type="button"
+                              onClick={() =>
+                                setMissionSectionIds((current) => ({
+                                  ...current,
+                                  [activeMission.id]: section.id,
+                                }))
+                              }
+                              className={`w-full rounded-md border px-3 py-3 text-left transition ${
+                                isActive ? "border-[#79B742] bg-[#F3FAEA]" : "border-slate-200 bg-white hover:bg-slate-50"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="text-sm font-bold text-[#0F3A63]">{section.title}</p>
+                                <span className={`text-xs font-semibold ${getProgressToneClass(getMissionSectionProgress(section))}`}>{getMissionSectionProgress(section)}%</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {activeMissionGroup ? (
+                        <div className="space-y-4">
+                          <div>
+                            <p className="text-[11px] font-bold uppercase text-slate-500">{activeMissionGroup.sectionTitle}</p>
+                            <div className="mt-1 flex items-center gap-2">
+                              <p className="text-[15px] font-bold text-[#0F3A63]">{activeMissionGroup.pageTitle}</p>
+                              {activeMissionGroup.criteria.some((item) => item.isCustom) ? (
+                                <span className="rounded-full bg-[#DCECCB] px-2 py-0.5 text-[10px] font-bold text-[#4E8B1B]">
+                                  Titre ajouté
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          {(activeMissionGroup.criteria || []).map((criterion) => (
+                            <div key={criterion.id} className="space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-xs font-semibold text-[#0F3A63]">
+                                  {criterion.themeCode ? `${criterion.themeCode}. ` : ""}
+                                  {criterion.label}
+                                </p>
+                                {criterion.isCustom ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeCustomMissionCriterion(criterion.id)}
+                                    className="shrink-0 rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500 hover:bg-slate-200"
+                                  >
+                                    Retirer
+                                  </button>
+                                ) : null}
+                              </div>
+                              <p className="text-xs text-slate-500">{criterion.statement}</p>
+                              <ScoreSelector selected={criterion.score} onSelect={(score) => updateMissionScore(criterion.id, score)} />
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      <div className="mt-4">
+                        <p className="mb-2 text-xs font-semibold text-[#79B742]">
+                          Commentaire sur la mission obligatoire <span className="text-red-600">*</span>
+                        </p>
+                        <textarea
+                          rows={3}
+                          value={activeMission.comment || ""}
+                          onChange={(event) => updateMissionComment(event.target.value)}
+                          placeholder="Elements marquants, difficultes, impact..."
+                          className="w-full resize-none rounded-md border border-slate-200 bg-slate-100 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
+                        />
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                        <button
+                          type="button"
+                          onClick={() => goToMissionStep(-1)}
+                          disabled={activeMissionSectionIndex <= 0 && activeMissionPageIndex === 0}
+                          className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <ChevronLeft size={14} />
+                          Précédent
+                        </button>
+
+                        {!isLastMissionStep ? (
+                          <button
+                            type="button"
+                            onClick={handleSaveMissionAndContinue}
+                            disabled={isSaving || isSubmitting}
+                            className="inline-flex items-center gap-2 rounded-md bg-[#79B742] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                          >
+                            Sauvegarder et continuer
+                            <ChevronRight size={14} />
+                          </button>
+                        ) : (
+                          <div className="flex flex-wrap items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={handleSubmitMission}
+                              disabled={isSaving || isSubmitting || activeMission.status === "Soumise"}
+                              className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                            >
+                              {isSubmitting ? "Soumission..." : "Soumettre la mission"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => persistMissionEvaluations(missionEvaluations)}
+                              disabled={isSaving || isSubmitting}
+                              className="inline-flex items-center gap-2 rounded-md bg-[#79B742] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                            >
+                              {isSaving ? "Sauvegarde..." : "Enregistrer la mission"}
+                              <ChevronRight size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-md bg-[#EEF2F6] p-5 text-sm font-semibold text-slate-500">
+                      Ajoutez une mission manager pour commencer l'auto-évaluation par mission.
+                    </div>
+                  )}
+                </div>
+              </article>
+            </section>
+          )}
+        </>
       )}
     </div>
   );
 }
 
 export default Monautoevaluation;
-

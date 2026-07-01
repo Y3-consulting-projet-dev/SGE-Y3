@@ -43,7 +43,7 @@ function PopulationRH() {
     };
   }, []);
 
-  const populationRows = data?.groups || [];
+  const populationRows = useMemo(() => data?.groups || [], [data?.groups]);
   const selectedRow = useMemo(
     () => populationRows.find((row) => row.group === selectedGroup) || populationRows[0],
     [populationRows, selectedGroup]
@@ -55,6 +55,8 @@ function PopulationRH() {
     if (rate < 0.75) return "text-[#F87171]";
     return "text-[#86EFAC]";
   };
+
+  const tracksEvaluations = (row) => row?.tracksEvaluations !== false;
 
   if (isLoading) {
     return <section className="rounded-md bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement de l'équipe...</section>;
@@ -79,10 +81,16 @@ function PopulationRH() {
             }`}
           >
             <p className="text-sm font-extrabold">{row.group}</p>
-            <p className={`mt-3 text-2xl font-black ${getScoreColor(row.completed, row.total)}`}>
-              {row.completed}/{row.total}
+            {tracksEvaluations(row) ? (
+              <p className={`mt-3 text-2xl font-black ${getScoreColor(row.completed, row.total)}`}>
+                {row.completed}/{row.total}
+              </p>
+            ) : (
+              <p className="mt-3 text-2xl font-black text-white">{row.total}</p>
+            )}
+            <p className="mt-2 text-xs font-semibold text-slate-200">
+              {tracksEvaluations(row) ? `${row.missing} evaluation(s) manquante(s)` : "profil(s) hors soumission RH"}
             </p>
-            <p className="mt-2 text-xs font-semibold text-slate-200">{row.missing} évaluation(s) manquante(s)</p>
           </button>
         ))}
       </div>
@@ -93,39 +101,54 @@ function PopulationRH() {
             <div>
               <h3 className="text-lg font-extrabold text-[#0F3A63]">Détails - {selectedRow.group}</h3>
               <p className="mt-1 text-sm font-semibold text-slate-500">
-                {selectedRow.completed} évaluation(s) complétée(s) sur {selectedRow.total}.
+                {tracksEvaluations(selectedRow)
+                  ? `${selectedRow.completed} evaluation(s) completee(s) sur ${selectedRow.total}.`
+                  : `${selectedRow.total} profil(s) suivi(s), sans soumission a la RH.`}
               </p>
             </div>
-            <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#0F4A72]">
-              {selectedRow.missing} manquante(s)
-            </span>
+            {tracksEvaluations(selectedRow) ? (
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#0F4A72]">
+                {selectedRow.missing} manquante(s)
+              </span>
+            ) : null}
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[680px] text-left text-sm">
+            <table className={`w-full text-left text-sm ${tracksEvaluations(selectedRow) ? "min-w-[980px]" : "min-w-[760px]"}`}>
               <thead className="bg-white text-xs uppercase text-slate-500">
                 <tr>
                   <th className="px-4 py-3">Nom</th>
                   <th className="px-4 py-3">Role</th>
-                  <th className="px-4 py-3">Statut</th>
-                  <th className="px-4 py-3">Score</th>
+                  {tracksEvaluations(selectedRow) ? (
+                    <>
+                      <th className="px-4 py-3">Statut</th>
+                      <th className="px-4 py-3">Score</th>
+                    </>
+                  ) : null}
                 </tr>
               </thead>
               <tbody>
-                {selectedDetails.map((member) => (
-                  <tr key={`${selectedRow.group}-${member.id}`} className="border-b border-slate-100 last:border-0">
-                    <td className="px-4 py-3 font-bold text-[#0F3A63]">{member.name}</td>
-                    <td className="px-4 py-3 font-semibold text-slate-600">{member.role}</td>
-                    <td className="px-4 py-3">
-                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass(member.status)}`}>
-                        {member.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-black text-[#0F3A63]">
-                      {typeof member.score === "number" ? member.score : "-"}
-                    </td>
-                  </tr>
-                ))}
+                {selectedDetails.map((member) => {
+
+                  return (
+                    <tr key={`${selectedRow.group}-${member.memberId || member.id}`} className="border-b border-slate-100 last:border-0">
+                      <td className="px-4 py-3 font-bold text-[#0F3A63]">{member.name}</td>
+                      <td className="px-4 py-3 font-semibold text-slate-600">{member.role}</td>
+                      {tracksEvaluations(selectedRow) ? (
+                        <>
+                          <td className="px-4 py-3">
+                            <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass(member.status)}`}>
+                              {member.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-black text-[#0F3A63]">
+                            {typeof member.score === "number" ? member.score : "-"}
+                          </td>
+                        </>
+                      ) : null}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -5,6 +5,7 @@ import {
   saveAssistantRhEvaluation,
   submitAssistantRhEvaluation,
 } from "@/lib/rhOverview";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
 
 function getPageProgress(page) {
   const themes = page?.themes || [];
@@ -71,9 +72,12 @@ function ScoreSelector({ selected, onSelect }) {
       </div>
       <div className="flex items-center gap-2">
         <div className="h-[3px] w-28 rounded-full bg-slate-300">
-          <div className="h-[3px] rounded-full bg-[#79B742]" style={{ width: `${selected ? selected * 20 : 0}%` }} />
+          <div
+            className={`h-[3px] rounded-full ${getProgressBarClass(selected ? selected * 20 : 0)}`}
+            style={{ width: `${clampProgress(selected ? selected * 20 : 0)}%` }}
+          />
         </div>
-        <span className={`text-xs font-semibold ${selected ? "text-[#79B742]" : "text-slate-400"}`}>
+        <span className={`text-xs font-semibold ${selected ? getProgressToneClass(selected * 20) : "text-slate-400"}`}>
           {selected ? `${selected * 20}%` : "--%"}
         </span>
       </div>
@@ -86,7 +90,7 @@ function SectionBadge({ progress }) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-[#DFECD4] px-3 py-1 text-[11px] font-semibold text-[#79B742]">
         <CheckCircle2 size={12} />
-        Complete
+        Complétée
       </span>
     );
   }
@@ -160,10 +164,8 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
   const activeSection = sections.find((section) => Number(section.id) === Number(activeSectionId)) || sections[0];
   const activePageIndex = pageIndexes[activeSection?.id] || 0;
   const activePage = activeSection?.pages?.[activePageIndex] || activeSection?.pages?.[0];
-  const completedSections = sections.filter((section) => getSectionProgress(section) === 100).length;
   const progress = Math.round(sections.reduce((total, section) => total + getSectionProgress(section), 0) / (sections.length || 1));
   const averageScore = useMemo(() => getPageAverage(activePage), [activePage]);
-  const associateRecipients = reviewData?.submitted_to || [];
   const selfEvaluation = reviewData?.self_evaluation || {};
 
   function syncSections(updater) {
@@ -174,7 +176,7 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
         const sectionProgress = getSectionProgress(section);
         return {
           ...section,
-          status: sectionProgress === 0 ? "A faire" : sectionProgress === 100 ? "Complete" : "En cours",
+          status: sectionProgress === 0 ? "À faire" : sectionProgress === 100 ? "Complétée" : "En cours",
         };
       });
     });
@@ -271,6 +273,12 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
   }
 
   async function handleSaveAndContinue() {
+    if (String(activeSection?.comment || "").trim().length < 3) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
+      return;
+    }
+
     await persistSections(sections);
     goToStep(1);
   }
@@ -356,7 +364,7 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
             <div className="mt-5 grid grid-cols-2 gap-3">
               <div className="rounded-lg bg-[#0D496A] p-4 text-white">
                 <p className="text-xs font-bold">Progression RH</p>
-                <p className="mt-2 text-2xl font-black text-[#86EFAC]">{progress}%</p>
+                <p className={`mt-2 text-2xl font-black ${getProgressToneClass(progress)}`}>{progress}%</p>
               </div>
               <div className="rounded-lg bg-[#0D496A] p-4 text-white">
                 <p className="text-xs font-bold">Score RH</p>
@@ -471,7 +479,7 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
                     >
                       <p className="text-[11px] font-bold">Titre {index + 1}</p>
                       <p className="mt-1 text-[12px] font-semibold">{page.title}</p>
-                      <p className="mt-1 text-[10px] font-semibold text-[#79B742]">{pageProgress}%</p>
+                      <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(pageProgress)}`}>{pageProgress}%</p>
                     </button>
                   );
                 })}
@@ -496,7 +504,9 @@ function EvaluationAssistanteRH({ memberId, onBack, onSubmitted }) {
             </div>
 
             <div className="mt-4">
-              <p className="mb-2 text-xs font-semibold text-[#79B742]">Commentaire de section</p>
+              <p className="mb-2 text-xs font-semibold text-[#79B742]">
+                Commentaire de section obligatoire <span className="text-red-600">*</span>
+              </p>
               <textarea
                 rows={3}
                 value={activeSection.comment || ""}

@@ -98,7 +98,7 @@ const managerMemberReviewSchema = new mongoose.Schema(
     status: {
       type: String,
       default: 'En cours',
-      enum: ['Brouillon', 'En cours', 'Soumis a RH', 'Valide RH', 'Transmis a l associe', 'Cloture'],
+      enum: ['Brouillon', 'En cours', 'Soumis à la RH', 'Validé RH', "Transmis à l'associe", 'Clôture'],
     },
     template_type: { type: String, default: 'manager-member-evaluation', trim: true },
     submitted_to_user_ids: { type: [mongoose.Schema.Types.ObjectId], ref: 'User', default: [] },
@@ -121,5 +121,21 @@ const managerMemberReviewSchema = new mongoose.Schema(
 );
 
 managerMemberReviewSchema.index({ cycle_label: 1, manager_id: 1, member_id: 1 }, { unique: true });
+
+[
+  'Soumis a RH',
+  'Soumis à la RH',
+  'Valide RH',
+  'Validé RH',
+  'Transmis a l associe',
+  "Transmis à l'associe",
+  "Transmis à l'associé",
+  'Cloture',
+  'Clôture',
+].forEach((status) => {
+  if (!managerMemberReviewSchema.path('status').enumValues.includes(status)) {
+    managerMemberReviewSchema.path('status').enumValues.push(status);
+  }
+});
 
 module.exports = mongoose.model('ManagerMemberReview', managerMemberReviewSchema);

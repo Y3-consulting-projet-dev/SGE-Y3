@@ -1,6 +1,6 @@
 import { loadSession } from "@/lib/auth";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { API_BASE_URL } from "./apiBase";
 
 async function request(path, options = {}) {
   const session = loadSession();
@@ -54,8 +54,21 @@ export function submitAssociateSelfEvaluation() {
   });
 }
 
-export function getReceivedAssociateEvaluations() {
-  return request("/associate/received-evaluations");
+export function getMyAssociateEvaluationHistory() {
+  return request("/associate/self-evaluation/history");
+}
+
+export function getCabinetMembers() {
+  return request("/associate/cabinet-members");
+}
+
+export function getCabinetMemberHistory(memberId) {
+  return request(`/associate/cabinet-members/${memberId}/history`);
+}
+
+export function getReceivedAssociateEvaluations(scope = "") {
+  const query = scope ? `?scope=${encodeURIComponent(scope)}` : "";
+  return request(`/associate/received-evaluations${query}`);
 }
 
 export function getReceivedAssociateEvaluation(evaluationId) {
@@ -66,6 +79,12 @@ export function saveReceivedAssociateEvaluationComment(evaluationId, payload) {
   return request(`/associate/received-evaluations/${evaluationId}/comment`, {
     method: "PUT",
     body: JSON.stringify(payload),
+  });
+}
+
+export function submitReceivedAssociateEvaluationToRh(evaluationId) {
+  return request(`/associate/received-evaluations/${evaluationId}/submit-rh`, {
+    method: "POST",
   });
 }
 
@@ -82,4 +101,26 @@ export function saveAssociateManagerEvaluation(managerId, payload) {
     method: "PUT",
     body: JSON.stringify(payload),
   });
+}
+
+export function submitAssociateManagerEvaluationToRh(managerId, payload) {
+  return request(`/associate/manager-evaluations/${managerId}/submit-rh`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getAssociateSupportEvaluations() {
+  return request("/associate/support-evaluations");
+}
+
+export function getAssociateSupportEvaluation(supportId) {
+  return request(`/associate/support-evaluations/${supportId}`);
+}
+
+export function saveAssociateSupportEvaluation(supportId, payload) {
+  return request(`/associate/support-evaluations/${supportId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  })
 }

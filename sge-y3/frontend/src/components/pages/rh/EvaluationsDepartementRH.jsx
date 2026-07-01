@@ -17,6 +17,35 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString("fr-FR");
 }
 
+function getDisplayFinalScore(member = {}) {
+  return member.rhValidationFinalScore ?? member.finalScore;
+}
+
+function groupDetailsByMission(details = []) {
+  const missionMap = new Map();
+
+  details.forEach((detail, index) => {
+    const missionTitle = detail.missionTitle || "Évaluation globale";
+    const missionKey = detail.missionId || missionTitle;
+    const current = missionMap.get(missionKey) || {
+      title: missionTitle,
+      finalScore: null,
+      evaluators: [],
+    };
+    const isFinalScore = String(detail.source || "").toLowerCase().includes("score final");
+
+    if (isFinalScore) {
+      current.finalScore = detail.score;
+    } else {
+      current.evaluators.push({ ...detail, key: `${missionKey}-${detail.source}-${detail.evaluatorName}-${index}` });
+    }
+
+    missionMap.set(missionKey, current);
+  });
+
+  return Array.from(missionMap.values());
+}
+
 function ScoreWithTooltip({ score, details = [] }) {
   const [isPinned, setIsPinned] = useState(false);
   const containerRef = useRef(null);
@@ -161,6 +190,78 @@ function EvaluationStepCard({ step }) {
         )}
       </div>
     </section>
+  );
+}
+
+function MissionEvaluationDetails({ details = [] }) {
+  const missionGroups = groupDetailsByMission(details);
+
+  if (!missionGroups.length) {
+    return <p className="text-sm font-semibold text-slate-500">Aucun détail de mission disponible pour ce collaborateur.</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {missionGroups.map((mission, missionIndex) => (
+        <section key={`${mission.title}-${missionIndex}`} className="rounded-lg bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-3">
+            <div>
+              <h5 className="text-base font-black text-[#0F3A63]">{mission.title}</h5>
+              <p className="mt-1 text-xs font-bold uppercase text-slate-400">
+                {mission.evaluators.length} évaluateur(s)
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-bold uppercase text-slate-400">Note finale de mission</p>
+              <p className="mt-1 text-lg font-black text-[#78B843]">{formatScore(mission.finalScore)}</p>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {mission.evaluators.map((detail) => (
+              <article key={detail.key} className="rounded-lg bg-[#F8FAFC] p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black text-[#0F3A63]">
+                      {detail.source} - {detail.evaluatorName}
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">{detail.evaluatorGrade || "Collaborateur"}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-black text-[#78B843]">{formatScore(detail.score)}</p>
+                    {detail.submittedAt ? <p className="mt-1 text-xs font-semibold text-slate-400">{formatDate(detail.submittedAt)}</p> : null}
+                  </div>
+                </div>
+
+                {detail.sectionComments?.length ? (
+                  <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    {detail.sectionComments.map((section) => (
+                      <div key={`${detail.key}-${section.sectionId || section.title}`} className="rounded-md bg-white px-3 py-3">
+                        <p className="text-xs font-extrabold uppercase text-[#0F4A72]">{section.title}</p>
+                        <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{section.comment}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                {detail.titleJustifications?.length ? (
+                  <div className="mt-4 space-y-3">
+                    <p className="text-xs font-extrabold uppercase text-slate-500">Justifications par titre</p>
+                    {detail.titleJustifications.map((title) => (
+                      <div key={`${detail.key}-${title.pageId}-${title.pageTitle}`} className="rounded-md bg-white px-3 py-3">
+                        <p className="text-xs font-extrabold uppercase text-[#0F4A72]">{title.sectionTitle}</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">{title.pageTitle}</p>
+                        <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{title.comment}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
   );
 }
 
@@ -327,13 +428,11 @@ function EvaluationsDepartementRH() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[880px] text-left text-sm">
+          <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-[#F3F6F8] text-xs uppercase text-slate-500">
               <tr>
                 <th className="px-4 py-3">Collaborateur</th>
                 <th className="px-4 py-3">Evaluateur</th>
-                <th className="px-4 py-3">Score mission(s)</th>
-                <th className="px-4 py-3">Score globaux</th>
                 <th className="px-4 py-3">Score final</th>
                 <th className="px-4 py-3">Statut RH</th>
               </tr>
@@ -353,12 +452,8 @@ function EvaluationsDepartementRH() {
                   </td>
                   <td className="px-4 py-4 font-semibold">{member.evaluator}</td>
                   <td className="px-4 py-4">
-                    <ScoreWithTooltip score={member.missionScore} details={member.missionScoreDetails} />
+                    <ScoreWithTooltip score={getDisplayFinalScore(member)} details={member.missionScoreDetails} />
                   </td>
-                  <td className="px-4 py-4">
-                    <ScoreWithTooltip score={member.scoreGlobal} details={member.globalScoreDetails} />
-                  </td>
-                  <td className="px-4 py-4 text-lg font-black text-[#78B843]">{formatScore(member.finalScore)}</td>
                   <td className="px-4 py-4">
                     <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass(member.status)}`}>
                       {member.status}
@@ -412,18 +507,16 @@ function EvaluationsDepartementRH() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-lg bg-[#F8FAFC] p-4">
-                <p className="text-xs font-bold uppercase text-slate-500">Score mission(s)</p>
-                <p className="mt-2 text-2xl font-black text-[#0F3A63]">{formatScore(selectedMember.missionScore)}</p>
-              </div>
-              <div className="rounded-lg bg-[#F8FAFC] p-4">
-                <p className="text-xs font-bold uppercase text-slate-500">Score globaux</p>
-                <p className="mt-2 text-2xl font-black text-[#0F3A63]">{formatScore(selectedMember.scoreGlobal)}</p>
-              </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="rounded-lg bg-[#F8FAFC] p-4">
                 <p className="text-xs font-bold uppercase text-slate-500">Score final</p>
-                <p className="mt-2 text-2xl font-black text-[#78B843]">{formatScore(selectedMember.finalScore)}</p>
+                <p className="mt-2 text-2xl font-black text-[#78B843]">{formatScore(getDisplayFinalScore(selectedMember))}</p>
+              </div>
+              <div className="rounded-lg bg-[#F8FAFC] p-4">
+                <p className="text-xs font-bold uppercase text-slate-500">Nombre total de missions</p>
+                <p className="mt-2 text-2xl font-black text-[#0F3A63]">
+                  {selectedMember.missionScoreCount || groupDetailsByMission(selectedMember.missionScoreDetails || []).length || 0}
+                </p>
               </div>
             </div>
 
@@ -432,15 +525,13 @@ function EvaluationsDepartementRH() {
             <section className="mt-5 rounded-lg bg-[#F8FAFC] p-4">
               <h4 className="text-sm font-extrabold text-[#0F3A63]">Détail complet de l'évaluation</h4>
               <p className="mt-2 text-sm font-semibold text-slate-500">
-                Toutes les notes et tous les commentaires, de l'assistant jusqu'au manager.
+                Toutes les missions, les évaluateurs, les notes, les commentaires et les justifications.
               </p>
               <div className="mt-4 space-y-4">
                 {isLoadingDetail ? (
                   <p className="text-sm font-semibold text-slate-500">Chargement du detail de l'evaluation...</p>
-                ) : (selectedMember.evaluationTrail || []).length ? (
-                  selectedMember.evaluationTrail.map((step, index) => (
-                    <EvaluationStepCard key={`${step.source}-${step.evaluatorName}-${index}`} step={step} />
-                  ))
+                ) : (selectedMember.missionScoreDetails || []).length ? (
+                  <MissionEvaluationDetails details={selectedMember.missionScoreDetails || []} />
                 ) : (
                   <p className="text-sm font-semibold text-slate-500">Aucun détail d'évaluation disponible pour ce collaborateur.</p>
                 )}

@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   createManagerMemberMission,
+  decideTrainingRequests,
   getManagerMemberEvaluation,
   saveManagerMemberMissionReviews,
   saveManagerMemberEvaluation,
   submitManagerMemberMissionReview,
   submitManagerMemberEvaluation,
 } from "@/lib/managerOverview";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
 
 function getSourceBadgeLabel(page) {
   if (page?.source_label) return page.source_label;
@@ -226,6 +228,39 @@ function formatSubmittedAt(value) {
   return new Date(value).toLocaleDateString("fr-FR");
 }
 
+function formatDateDisplay(value) {
+  if (!value) return "";
+
+  if (/^\d{2}-\d{2}-\d{4}$/.test(value)) {
+    return value;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-");
+    return `${day}-${month}-${year}`;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString("fr-FR").replace(/\//g, "-");
+}
+
+function formatMissionPeriod(period, startDate = "", endDate = "") {
+  if (startDate && endDate) {
+    return `Du ${formatDateDisplay(startDate)} au ${formatDateDisplay(endDate)}`;
+  }
+
+  const rangeMatch = String(period || "").match(/(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}).*?(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4})/);
+  if (rangeMatch) {
+    return `Du ${formatDateDisplay(rangeMatch[1])} au ${formatDateDisplay(rangeMatch[2])}`;
+  }
+
+  return period || "Période non renseignée";
+}
+
 function Evaluermonequipe({ member }) {
   const [reviewData, setReviewData] = useState(null);
   const [sections, setSections] = useState([]);
@@ -237,7 +272,8 @@ function Evaluermonequipe({ member }) {
   const [missionPageIndexes, setMissionPageIndexes] = useState({});
   const [missionReviews, setMissionReviews] = useState([]);
   const [missionTitle, setMissionTitle] = useState("");
-  const [missionPeriod, setMissionPeriod] = useState("");
+  const [missionStartDate, setMissionStartDate] = useState("");
+  const [missionEndDate, setMissionEndDate] = useState("");
   const [savedComments, setSavedComments] = useState({});
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackTone, setFeedbackTone] = useState("success");
@@ -245,6 +281,9 @@ function Evaluermonequipe({ member }) {
   const [errorMessage, setErrorMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [trainingDecisionComment, setTrainingDecisionComment] = useState("");
+  const [isDecidingTraining, setIsDecidingTraining] = useState(false);
+  const [trainingDecisionFeedback, setTrainingDecisionFeedback] = useState({ text: "", ok: true });
 
   useEffect(() => {
     let cancelled = false;
@@ -267,9 +306,10 @@ function Evaluermonequipe({ member }) {
         setSections(response.review.sections || []);
         setMissionReviews(response.mission_reviews || []);
         setMissionTitle("");
-        setMissionPeriod("");
+        setMissionStartDate("");
+        setMissionEndDate("");
         setActiveSectionId(Number(response.review.activeSectionId || response.review.sections?.[0]?.id || 1));
-        setActiveMissionId((current) => current || response.submitted_missions?.[0]?.id || "");
+        setActiveMissionId((current) => current || response.submitted_missions?.[0]?.id || response.mission_reviews?.[0]?.id || "");
         setMissionSectionIds({});
         setMissionPageIndexes({});
         setPageIndexes(createInitialPageIndexes(response.review.sections || []));
@@ -355,14 +395,18 @@ function Evaluermonequipe({ member }) {
   useEffect(() => {
     if (!activeMissionReview?.id || !missionSections.length) return;
 
-    setMissionSectionIds((current) => ({
-      ...current,
-      [activeMissionReview.id]: current[activeMissionReview.id] || missionSections[0].id,
-    }));
-    setMissionPageIndexes((current) => ({
-      ...current,
-      [activeMissionReview.id]: current[activeMissionReview.id] || 0,
-    }));
+    const timeoutId = setTimeout(() => {
+      setMissionSectionIds((current) => ({
+        ...current,
+        [activeMissionReview.id]: current[activeMissionReview.id] || missionSections[0].id,
+      }));
+      setMissionPageIndexes((current) => ({
+        ...current,
+        [activeMissionReview.id]: current[activeMissionReview.id] || 0,
+      }));
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [activeMissionReview?.id, missionSections]);
 
   function syncSections(updater) {
@@ -373,7 +417,7 @@ function Evaluermonequipe({ member }) {
         const progress = getSectionProgress(section);
         return {
           ...section,
-          status: progress === 0 ? "À faire" : progress === 100 ? "Complète" : "En cours",
+          status: progress === 0 ? "À faire" : progress === 100 ? "Complétée" : "En cours",
         };
       });
     });
@@ -570,12 +614,24 @@ function Evaluermonequipe({ member }) {
       return;
     }
 
+    if (!missionStartDate || !missionEndDate) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Renseignez la date de début et la date de fin de la mission.");
+      return;
+    }
+
+    if (missionEndDate < missionStartDate) {
+      setFeedbackTone("error");
+      setFeedbackMessage("La date de fin doit être postérieure ou égale à la date de début.");
+      return;
+    }
+
     try {
       setIsSaving(true);
       setFeedbackMessage("");
       const response = await createManagerMemberMission(member.id, {
         title,
-        period: missionPeriod.trim(),
+        period: formatMissionPeriod("", missionStartDate, missionEndDate),
       });
 
       setReviewData(response);
@@ -595,7 +651,8 @@ function Evaluermonequipe({ member }) {
         }));
       }
       setMissionTitle("");
-      setMissionPeriod("");
+      setMissionStartDate("");
+      setMissionEndDate("");
       setFeedbackTone("success");
       setFeedbackMessage(response.message || "Mission ajoutée pour ce membre.");
     } catch (error) {
@@ -685,6 +742,12 @@ function Evaluermonequipe({ member }) {
       return;
     }
 
+    if (String(activeMissionSection?.comment || "").trim().length < 3) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
+      return;
+    }
+
     goToMissionStep(1);
   }
 
@@ -715,6 +778,12 @@ function Evaluermonequipe({ member }) {
     if (!hasRequiredJustification) {
       setFeedbackTone("error");
       setFeedbackMessage("Une justification est requise pour toute note inférieure à 3.");
+      return;
+    }
+
+    if (String(activeSection?.comment || "").trim().length < 3) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
       return;
     }
 
@@ -789,59 +858,7 @@ function Evaluermonequipe({ member }) {
           {reviewData.review.status}
         </div>
       </div>
-
-      <section className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-        <button
-          type="button"
-          onClick={() => setActiveView("mission")}
-          className={`rounded-xl border px-5 py-4 text-left shadow-sm transition ${
-            activeView === "mission"
-              ? "border-[#7FB1D6] bg-[#F6FAFD]"
-              : "border-[#D9E3EE] bg-white hover:bg-[#F8FBFE]"
-          }`}
-        >
-          <div className="mb-3 inline-flex rounded-full bg-[#0B4C7A] px-3 py-1 text-[11px] font-bold uppercase text-white">
-            Parcours 1
-          </div>
-          <h2 className="text-lg font-black text-[#0F3A63]">Évaluations par mission</h2>
-          <p className="mt-1 text-sm font-semibold text-slate-500">
-            {submittedMissions.length} mission(s) soumise(s)
-          </p>
-          <p className="mt-2 text-xs font-semibold text-[#0B4C7A]">
-            Consultez les scores finaux déjà transmis pour chaque mission.
-          </p>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveView("global")}
-          className={`rounded-xl border px-5 py-4 text-left shadow-sm transition ${
-            activeView === "global"
-              ? "border-[#B7D39E] bg-[#FBFEF7]"
-              : "border-[#D9E3EE] bg-white hover:bg-[#FCFEF8]"
-          }`}
-        >
-          <div className="mb-3 inline-flex rounded-full bg-[#DCECCB] px-3 py-1 text-[11px] font-bold uppercase text-[#4E8B1B]">
-            Parcours 2
-          </div>
-          <h2 className="text-lg font-black text-[#0F3A63]">Évaluation globale du cycle</h2>
-          <p className="mt-1 text-sm font-semibold text-slate-500">
-            {reviewData.review.cycle_label || "Cycle 2025-2026"} - {globalProgress}%
-          </p>
-          <p className="mt-2 text-xs font-semibold text-[#4E8B1B]">
-            Notez la matrice globale du membre puis soumettez à la RH.
-          </p>
-        </button>
-      </section>
-
-      {feedbackMessage ? (
-        <div
-          className={`rounded-md px-4 py-3 text-sm font-semibold ${
-            feedbackTone === "error" ? "bg-[#FDEBEC] text-[#B93840]" : "bg-[#DCECCB] text-[#184D2E]"
-          }`}
-        >
-          {feedbackMessage}
-        </div>
-      ) : null}
+      
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.9fr_1.35fr]">
         {activeView === "mission" ? (
@@ -849,33 +866,49 @@ function Evaluermonequipe({ member }) {
             <article className="space-y-4">
               <div className="rounded-md border border-[#D9E3EE] bg-white p-4 shadow-sm">
                 <div className="mb-3">
-                  <p className="text-sm font-bold text-[#0B4C7A]">Nouvelle mission pour ce membre</p>
+                  <p className="text-sm font-bold text-[#0B4C7A]">Assigner une mission</p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
-                    Renseignez le titre et la période. Le membre la recevra dans son auto-évaluation par mission.
+                    Renseignez le titre, la date de début et la date de fin. Le membre la recevra dans son auto-évaluation par mission.
                   </p>
                 </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  <input
-                    value={missionTitle}
-                    onChange={(event) => setMissionTitle(event.target.value)}
-                    placeholder="Titre de la mission"
-                    className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
-                  />
-                  <input
-                    value={missionPeriod}
-                    onChange={(event) => setMissionPeriod(event.target.value)}
-                    placeholder="Période"
-                    className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
-                  />
+                <div className="mt-3 space-y-3">
+                <input
+                  type="text"
+                  value={missionTitle}
+                  onChange={(event) => setMissionTitle(event.target.value)}
+                  placeholder="Nom ou type de mission"
+                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0F3A63] outline-none"
+                />
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-[12px] font-bold text-[#0F3A63]">Date de début</label>
+                    <input
+                      type="date"
+                      value={missionStartDate}
+                      onChange={(event) => setMissionStartDate(event.target.value)}
+                      className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0F3A63] outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-[12px] font-bold text-[#0F3A63]">Date de fin</label>
+                    <input
+                      type="date"
+                      min={missionStartDate || undefined}
+                      value={missionEndDate}
+                      onChange={(event) => setMissionEndDate(event.target.value)}
+                      className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0F3A63] outline-none"
+                    />
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={handleAddMission}
                   disabled={isSaving || isSubmitting}
-                  className="mt-4 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                  className="inline-flex rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
                 >
-                  {isSaving ? "Ajout..." : "Ajouter la mission"}
+                  {isSaving ? "Ajout…" : "Ajouter la mission"}
                 </button>
+              </div>
               </div>
 
               {pendingAssignedMissions.length ? (
@@ -895,7 +928,7 @@ function Evaluermonequipe({ member }) {
                     {pendingAssignedMissions.map((mission) => (
                       <button key={mission.id} type="button" onClick={() => setActiveMissionId(mission.id)} className="w-full rounded-md border border-slate-100 bg-[#F8FAFC] p-3 text-left transition hover:bg-white">
                         <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
-                        <p className="mt-1 text-xs font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">{formatMissionPeriod(mission.period)}</p>
                         <p className="mt-1 text-xs font-bold text-[#0F3A63]">{mission.status || "A démarrer"}</p>
                       </button>
                     ))}
@@ -939,9 +972,9 @@ function Evaluermonequipe({ member }) {
                         }`}
                       >
                         <p className="text-sm font-extrabold text-[#0F3A63]">{mission.title}</p>
-                        <p className="mt-1 text-xs font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-500">{formatMissionPeriod(mission.period)}</p>
                         <p className="mt-1 text-xs font-bold text-[#0F3A63]">{mission.department}</p>
-                        <p className="mt-2 text-xs font-bold text-[#76B82A]">
+                        <p className={`mt-2 text-xs font-bold ${getProgressToneClass(getMissionReviewProgress(missionReviews.find((item) => item.id === mission.id)))}`}>
                           {getMissionReviewProgress(missionReviews.find((item) => item.id === mission.id))}%
                         </p>
                       </button>
@@ -963,7 +996,7 @@ function Evaluermonequipe({ member }) {
                       </div>
                       <h4 className="text-xl font-black text-[#0F3A63]">{activeMission.title}</h4>
                       <p className="mt-1 text-sm font-semibold text-slate-500">
-                        {activeMission.period || "Période non renseignée"} - {activeMission.department}
+                        {formatMissionPeriod(activeMission.period)} - {activeMission.department}
                       </p>
                     </div>
                   </div>
@@ -981,7 +1014,33 @@ function Evaluermonequipe({ member }) {
                             <p className="text-xs text-slate-500">{formatSubmittedAt(submission.submittedAt)}</p>
                           </div>
                         </div>
-                        {submission.comment ? <p className="mt-3 text-sm text-slate-600">{submission.comment}</p> : null}
+                        {submission.comment ? (
+                          <div className="mt-3 rounded-md bg-white px-3 py-3">
+                            <p className="text-xs font-bold uppercase text-slate-500">Commentaire général</p>
+                            <p className="mt-1 text-sm text-slate-600">{submission.comment}</p>
+                          </div>
+                        ) : null}
+                        {(submission.sectionComments || []).length ? (
+                          <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+                            {(submission.sectionComments || []).map((section) => (
+                              <div key={`${submission.evaluatorName}-${section.sectionId}`} className="rounded-md bg-white p-3">
+                                <p className="text-xs font-bold text-[#0F3A63]">{section.title}</p>
+                                <p className="mt-1 text-sm font-semibold text-slate-600">{section.comment}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                        {(submission.titleJustifications || []).length ? (
+                          <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+                            {(submission.titleJustifications || []).map((item) => (
+                              <div key={`${submission.evaluatorName}-${item.pageId}`} className="rounded-md bg-white p-3">
+                                <p className="text-xs font-bold text-[#0F3A63]">{item.sectionTitle}</p>
+                                <p className="mt-1 text-xs font-semibold text-slate-500">{item.pageTitle}</p>
+                                <p className="mt-1 text-sm font-semibold text-slate-600">{item.comment}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -1031,9 +1090,9 @@ function Evaluermonequipe({ member }) {
                               </div>
                               <p className="text-[12px] font-semibold">{section.groups?.length || 0} titre(s)</p>
                               <div className="mt-3 h-1.5 rounded-full bg-slate-200">
-                                <div className="h-1.5 rounded-full bg-[#7BC443]" style={{ width: `${progress}%` }} />
+                                <div className={`h-1.5 rounded-full ${getProgressBarClass(progress)}`} style={{ width: `${clampProgress(progress)}%` }} />
                               </div>
-                              <p className="mt-1.5 text-[10px] font-semibold text-slate-200">{progress}%</p>
+                              <p className={`mt-1.5 text-[10px] font-semibold ${getProgressToneClass(progress)}`}>{progress}%</p>
                             </button>
                           );
                         })}
@@ -1078,7 +1137,7 @@ function Evaluermonequipe({ member }) {
                                     {group.sourceLabel}
                                   </span>
                                 ) : null}
-                                <p className="mt-1 text-[10px] font-semibold text-[#76B82A]">{progress}%</p>
+                                <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(progress)}`}>{progress}%</p>
                               </button>
                             );
                           })}
@@ -1135,7 +1194,8 @@ function Evaluermonequipe({ member }) {
                             ) : null}
                             <div className="rounded-md bg-[#F8FAFC] p-3">
                               <label className="text-[12px] font-bold text-[#0F3A63]">
-                                Commentaire global de la section <span className="text-[11px] text-slate-500">(minimum 3 caractères)</span>
+                                Commentaire global de la section <span className="text-red-600">*</span>{" "}
+                                <span className="text-[11px] text-slate-500">(minimum 3 caractères)</span>
                               </label>
                               <textarea
                                 value={activeMissionSection?.comment || ""}
@@ -1146,6 +1206,17 @@ function Evaluermonequipe({ member }) {
                               />
                             </div>
                           </div>
+                        </div>
+                      ) : null}
+
+
+                      {feedbackMessage ? (
+                        <div
+                          className={`rounded-md px-4 py-3 text-sm font-semibold ${
+                            feedbackTone === "error" ? "bg-[#FDEBEC] text-[#B93840]" : "bg-[#DCECCB] text-[#184D2E]"
+                          }`}
+                        >
+                          {feedbackMessage}
                         </div>
                       ) : null}
 
@@ -1172,17 +1243,6 @@ function Evaluermonequipe({ member }) {
                           Titre suivant
                           <ChevronRight size={14} />
                         </button>
-                      </div>
-
-                      <div>
-                        <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire manager sur la mission</p>
-                        <textarea
-                          rows={4}
-                          value={activeMissionReview.comment || ""}
-                          onChange={(event) => updateMissionReviewComment(event.target.value)}
-                          placeholder="Analyse manager, écarts constates, faits marquants..."
-                          className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
-                        />
                       </div>
 
                       <div className="flex flex-wrap justify-end gap-3">
@@ -1256,6 +1316,18 @@ function Evaluermonequipe({ member }) {
                 <p className="mt-4 border-t border-slate-100 pt-3 text-sm font-semibold text-slate-500">
                   Statut : {selfEvaluation.status || "En attente"} | Moyenne : {selfEvaluation.overallAverage ?? "--"} / 5
                 </p>
+                {(selfEvaluation.chiefComments || []).length > 0 && (
+                  <div className="mt-4 space-y-2 border-t border-slate-100 pt-3">
+                    <p className="text-xs font-bold uppercase tracking-wide text-[#0F3A63]">
+                      Commentaire anonyme reçu
+                    </p>
+                    {(selfEvaluation.chiefComments || []).map((item, index) => (
+                      <div key={index} className="rounded-md bg-[#F4FAED] p-3 ring-1 ring-[#C3DFAA]">
+                        <p className="text-[12px] font-semibold text-slate-700">{item.comment}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="rounded-md border border-[#D9E3EE] bg-white p-4 shadow-sm">
@@ -1313,10 +1385,10 @@ function Evaluermonequipe({ member }) {
                   <div>
                     <p className="text-sm font-bold text-[#4E8B1B]">Sections globales</p>
                     <p className="text-xs font-semibold text-slate-500">
-                      {completedSections} / {sections.length} complète(s)
+                      {completedSections} / {sections.length} complétée(s)
                     </p>
                   </div>
-                  <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">{globalProgress}%</span>
+                  <span className={`rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold ${getProgressToneClass(globalProgress)}`}>{globalProgress}%</span>
                 </div>
 
                 <div className="space-y-3">
@@ -1339,9 +1411,9 @@ function Evaluermonequipe({ member }) {
                         </div>
                         <p className="mt-1 text-xs font-semibold text-slate-500">{section.pages?.length || 0} titre(s)</p>
                         <div className="mt-3 h-1.5 rounded-full bg-slate-200">
-                          <div className="h-1.5 rounded-full bg-[#76B82A]" style={{ width: `${progress}%` }} />
+                          <div className={`h-1.5 rounded-full ${getProgressBarClass(progress)}`} style={{ width: `${clampProgress(progress)}%` }} />
                         </div>
-                        <p className="mt-1 text-xs font-bold text-[#76B82A]">{progress}% complété</p>
+                        <p className={`mt-1 text-xs font-bold ${getProgressToneClass(progress)}`}>{progress}% complétée</p>
                       </button>
                     );
                   })}
@@ -1415,7 +1487,7 @@ function Evaluermonequipe({ member }) {
                           {sourceBadgeLabel}
                         </span>
                       ) : null}
-                      <p className="mt-1 text-[10px] font-semibold text-[#76B82A]">{progress}%</p>
+                      <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(progress)}`}>{progress}%</p>
                     </button>
                   );
                 })}
@@ -1459,7 +1531,7 @@ function Evaluermonequipe({ member }) {
 
             <div className="mt-4">
               <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">
-                Commentaire de section
+                Commentaire de section obligatoire <span className="text-red-600">*</span>
               </p>
               <textarea
                 rows={4}
@@ -1534,8 +1606,171 @@ function Evaluermonequipe({ member }) {
           </>
         )}
       </section>
+
+      {(selfEvaluation.development?.wishes || (selfEvaluation.development?.trainingRequests || []).length > 0) && (
+        <div className="rounded-md border border-[#D9E3EE] bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-sm font-bold text-[#0F3A63]">Plan de développement</p>
+            <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${selfEvaluation.development.status === "Soumis au Manager" ? "bg-[#DCECCB] text-[#2A5C08]" : "bg-slate-100 text-slate-500"}`}>
+              {selfEvaluation.development.status === "Soumis au Manager" ? "Soumis au Manager" : "Brouillon"}
+            </span>
+          </div>
+
+          {selfEvaluation.development.wishes ? (
+            <div className="mb-3">
+              <p className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-500">
+                Souhaits d'évolution
+              </p>
+              <p className="rounded-md bg-[#F8FAFC] p-3 text-sm font-semibold text-[#0F3A63]">
+                {selfEvaluation.development.wishes}
+              </p>
+            </div>
+          ) : null}
+
+          {(selfEvaluation.development.trainingRequests || []).length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                Formations demandées
+              </p>
+              <ul className="mb-4 space-y-1.5">
+                {selfEvaluation.development.trainingRequests.map((item, index) => (
+                  <li
+                    key={index}
+                    className="rounded-md border border-[#D5DBEE] bg-[#F0F3FA] px-3 py-2 text-sm font-semibold text-[#0F3A63]"
+                  >
+                    {item}
+                  </li>
+                ))}
+              </ul>
+
+              {/* Décision du manager */}
+              {selfEvaluation.development.status === "Soumis au Manager" && (() => {
+                const decision = selfEvaluation.development.trainingDecision || "En attente";
+                const alreadyDecided = decision === "Accepté" || decision === "Refusé";
+
+                async function handleDecision(choix) {
+                  setIsDecidingTraining(true);
+                  setTrainingDecisionFeedback({ text: "", ok: true });
+                  try {
+                    await decideTrainingRequests(member.id, choix, trainingDecisionComment);
+                    setReviewData((prev) => ({
+                      ...prev,
+                      self_evaluation: {
+                        ...prev.self_evaluation,
+                        development: {
+                          ...prev.self_evaluation.development,
+                          trainingDecision: choix,
+                          trainingManagerComment: trainingDecisionComment,
+                          trainingDecidedAt: new Date().toISOString(),
+                        },
+                      },
+                    }));
+                    setTrainingDecisionFeedback({
+                      text: choix === "Accepté" ? "Demandes de formation acceptées." : "Demandes de formation refusées.",
+                      ok: true,
+                    });
+                  } catch (err) {
+                    setTrainingDecisionFeedback({ text: err.message || "Erreur lors de la décision.", ok: false });
+                  } finally {
+                    setIsDecidingTraining(false);
+                  }
+                }
+
+                return (
+                  <div className="border-t border-slate-100 pt-3">
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                      Décision du manager
+                    </p>
+
+                    {alreadyDecided ? (
+                      <div className="space-y-2">
+                        <span className={`inline-block rounded-full px-3 py-1 text-[11px] font-bold ${decision === "Accepté" ? "bg-[#DCECCB] text-[#2A5C08]" : "bg-red-100 text-red-700"}`}>
+                          {decision}
+                        </span>
+                        {selfEvaluation.development.trainingManagerComment && (
+                          <p className="rounded-md bg-[#F8FAFC] p-2 text-xs font-semibold text-[#0F3A63]">
+                            {selfEvaluation.development.trainingManagerComment}
+                          </p>
+                        )}
+                        {selfEvaluation.development.trainingDecidedAt && (
+                          <p className="text-[11px] text-slate-400">
+                            Décidé le {new Date(selfEvaluation.development.trainingDecidedAt).toLocaleDateString("fr-FR")}
+                          </p>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReviewData((prev) => ({
+                              ...prev,
+                              self_evaluation: {
+                                ...prev.self_evaluation,
+                                development: {
+                                  ...prev.self_evaluation.development,
+                                  trainingDecision: "En attente",
+                                  trainingManagerComment: "",
+                                  trainingDecidedAt: null,
+                                },
+                              },
+                            }));
+                            setTrainingDecisionComment("");
+                            setTrainingDecisionFeedback({ text: "", ok: true });
+                          }}
+                          className="text-[11px] font-semibold text-slate-400 underline hover:text-slate-600"
+                        >
+                          Modifier la décision
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <textarea
+                          rows={2}
+                          value={trainingDecisionComment}
+                          onChange={(e) => setTrainingDecisionComment(e.target.value)}
+                          placeholder="Commentaire optionnel..."
+                          className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[12px] text-[#0F3A63] outline-none focus:ring-1 focus:ring-[#001871]"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            disabled={isDecidingTraining}
+                            onClick={() => handleDecision("Accepté")}
+                            className="rounded-md bg-[#78BE20] px-4 py-2 text-[12px] font-bold text-white hover:opacity-90 disabled:opacity-50"
+                          >
+                            Accepter
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isDecidingTraining}
+                            onClick={() => handleDecision("Refusé")}
+                            className="rounded-md bg-red-600 px-4 py-2 text-[12px] font-bold text-white hover:opacity-90 disabled:opacity-50"
+                          >
+                            Refuser
+                          </button>
+                        </div>
+                        {trainingDecisionFeedback.text && (
+                          <p className={`text-[12px] font-semibold ${trainingDecisionFeedback.ok ? "text-[#76B82A]" : "text-red-600"}`}>
+                            {trainingDecisionFeedback.text}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {selfEvaluation.development.submittedAt && (
+            <p className="mt-3 text-xs text-slate-400">
+              Envoyé le {new Date(selfEvaluation.development.submittedAt).toLocaleDateString("fr-FR")}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 export default Evaluermonequipe;
+
+

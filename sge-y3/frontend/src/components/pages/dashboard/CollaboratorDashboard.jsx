@@ -1,7 +1,9 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import {
+  CalendarDays,
   ChevronsLeft,
   ClipboardList,
+  History,
   LayoutDashboard,
   LineChart,
   LogOut,
@@ -14,7 +16,9 @@ import logoY3 from "@/assets/logo-y3.png";
 import MonTableauDeBord from "@/components/pages/collaborator/Collaboratordashboard";
 import Monautoevaluation from "@/components/pages/collaborator/Monautoevaluation";
 import Mesresultats from "@/components/pages/collaborator/Mesresultats";
+import Monhistorique from "@/components/pages/collaborator/Monhistorique";
 import Mondeveloppement from "@/components/pages/collaborator/Mondeveloppement";
+import Calendrier from "@/components/pages/collaborator/Calendrier";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import { getDisplayName } from "@/lib/userPresentation";
 import { getMyAssistantEvaluation, getMyAssistantResults } from "@/lib/collaboratorEvaluation";
@@ -28,7 +32,9 @@ const menuGroups = [
     title: "Evaluation",
     items: [
       { key: "self-evaluation", label: "Mon auto-évaluation", icon: ClipboardList },
-      { key: "results", label: "Mes resultats", icon: LineChart },
+      { key: "calendar", label: "Calendrier", icon: CalendarDays },
+      { key: "results", label: "Mes résultats", icon: LineChart },
+      { key: "history", label: "Historique", icon: History },
     ],
   },
   {
@@ -80,8 +86,24 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
 
   function handleEvaluationUpdate(nextEvaluationData) {
     setEvaluationData(nextEvaluationData);
+    setMissionEvaluations(nextEvaluationData?.mission_evaluations || []);
     refreshAssistantResults();
   }
+
+  function handleDevelopmentChange(nextDevelopment) {
+    setEvaluationData((prev) => prev ? { ...prev, development: nextDevelopment } : prev);
+  }
+
+  // Stale-data guard: if evaluationData loaded from an old server response lacks the development field, re-fetch.
+  useEffect(() => {
+    if (activeSection === "development" && evaluationData && !evaluationData.development && !isLoadingEvaluation) {
+      let cancelled = false;
+      getMyAssistantEvaluation()
+        .then((fresh) => { if (!cancelled) handleEvaluationUpdate(fresh); })
+        .catch(() => {});
+      return () => { cancelled = true; };
+    }
+  }, [activeSection, evaluationData, isLoadingEvaluation]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let cancelled = false;
@@ -107,6 +129,7 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
 
         if (!cancelled) {
           setEvaluationData(evaluationResponse);
+          setMissionEvaluations(evaluationResponse?.mission_evaluations || []);
           setResultsData(resultsResponse);
         }
       } catch (error) {
@@ -132,7 +155,9 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
   const pageTitle = useMemo(() => {
     if (activeSection === "dashboard") return "TABLEAU DE BORD";
     if (activeSection === "self-evaluation") return "MON AUTO-ÉVALUATION";
+    if (activeSection === "calendar") return "CALENDRIER";
     if (activeSection === "results") return "MES RÉSULTATS";
+    if (activeSection === "history") return "HISTORIQUE";
     if (activeSection === "development") return "MON DÉVELOPPEMENT";
     if (activeSection === "profile") return "MON PROFIL";
     return "ESPACE COLLABORATEUR";
@@ -194,8 +219,30 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
       );
     }
 
+    if (activeSection === "calendar") {
+      return <Calendrier missionEvaluations={missionEvaluations} resultsData={resultsData} />;
+    }
+
+    if (activeSection === "history") {
+      return <Monhistorique />;
+    }
+
     if (activeSection === "development") {
-      return <Mondeveloppement />;
+      if (isLoadingEvaluation) {
+        return <section className="rounded-lg bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement du plan de développement...</section>;
+      }
+      if (evaluationError) {
+        return <section className="rounded-lg bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">{evaluationError}</section>;
+      }
+      if (evaluationData && !evaluationData.development) {
+        return <section className="rounded-lg bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement du plan de développement...</section>;
+      }
+      return (
+        <Mondeveloppement
+          evaluationData={evaluationData}
+          onDevelopmentChange={handleDevelopmentChange}
+        />
+      );
     }
 
     return <ProfilePanel key={profileKey} user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />;

@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 
 const connectDB = require('./config/db');
+const { loadActiveCycle } = require('./utils/activeCycle');
 const authRoutes = require('./routes/authRoutes');
 const collaboratorRoutes = require('./routes/collaboratorRoutes');
 const seniorRoutes = require('./routes/seniorRoutes');
@@ -10,6 +11,7 @@ const managerRoutes = require('./routes/managerRoutes');
 const committeeRoutes = require('./routes/committeeRoutes');
 const rhRoutes = require('./routes/rhRoutes');
 const associateRoutes = require('./routes/associateRoutes');
+const supportRoutes = require('./routes/supportRoutes');
 
 dotenv.config();
 
@@ -37,12 +39,13 @@ app.use('/api/manager', managerRoutes);
 app.use('/api/committee', committeeRoutes);
 app.use('/api/rh', rhRoutes);
 app.use('/api/associate', associateRoutes);
+app.use('/api/support', supportRoutes);
 
 app.use((error, _request, response, _next) => {
   console.error(error);
   if (error.type === 'entity.too.large') {
     return response.status(413).json({
-      message: "Le contenu envoye est trop volumineux pour etre traite.",
+      message: "Le contenu envoyé est trop volumineux pour être traité.",
     });
   }
   response.status(error.statusCode || 500).json({
@@ -52,8 +55,9 @@ app.use((error, _request, response, _next) => {
 
 const startServer = async () => {
   await connectDB();
-  app.listen(PORT, () => {
-    console.log(`Serveur backend demarre sur le port ${PORT}`);
+  await loadActiveCycle();
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Serveur backend démarre sur le port ${PORT}`);
   });
 };
 

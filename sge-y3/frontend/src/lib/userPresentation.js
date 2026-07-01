@@ -4,15 +4,18 @@ export const gradeOptions = [
   "Assistant manager",
   "Manager",
   "Senior manager",
-  "Associe",
+  "Associé",
 ];
 
 export const departmentOptions = [
   "AUDIT",
   "AUDIT & EXPERTISE COMPTABLE",
   "CONSEIL FINANCIER",
+  "CONSEIL OPERATIONNEL",
   "EXPERTISE COMPTABLE",
+  "CAPITAL HUMAIN",
   "RH",
+  "SERVICE SUPPORT",
 ];
 
 export function getInitials(user) {

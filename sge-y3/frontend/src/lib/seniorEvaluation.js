@@ -1,6 +1,6 @@
 import { loadSession } from "@/lib/auth";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { API_BASE_URL } from "./apiBase";
 
 async function request(path, options = {}) {
   const session = loadSession();
@@ -33,10 +33,21 @@ export function getMySeniorEvaluation() {
   return request("/senior/evaluation/me");
 }
 
+export function getMySeniorEvaluationHistory() {
+  return request("/senior/evaluation/history");
+}
+
 export function saveMySeniorEvaluation(payload) {
   return request("/senior/evaluation/me", {
     method: "PUT",
     body: JSON.stringify(payload),
+  });
+}
+
+export function saveMySeniorChiefComments(chiefComments) {
+  return request("/senior/evaluation/me", {
+    method: "PUT",
+    body: JSON.stringify({ chiefComments }),
   });
 }
 

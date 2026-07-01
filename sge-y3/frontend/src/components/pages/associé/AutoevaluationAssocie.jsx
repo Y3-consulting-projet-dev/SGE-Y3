@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   getAssociateSelfEvaluation,
@@ -7,7 +7,9 @@ import {
   saveAssociateSelfEvaluation,
   saveReceivedAssociateEvaluationComment,
   submitAssociateSelfEvaluation,
+  submitReceivedAssociateEvaluationToRh,
 } from "@/lib/associateOverview";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
 
 function getPageProgress(page) {
   const themes = page?.themes || [];
@@ -120,7 +122,7 @@ function AutoevaluationAssocie() {
         setErrorMessage("");
         const [selfResponse, receivedResponse] = await Promise.all([
           getAssociateSelfEvaluation(),
-          getReceivedAssociateEvaluations(),
+          getReceivedAssociateEvaluations("associate-only"),
         ]);
 
         if (cancelled) return;
@@ -150,9 +152,7 @@ function AutoevaluationAssocie() {
 
   useEffect(() => {
     if (!selectedReceivedId) {
-      setReceivedDetail(null);
-      setReceivedComment("");
-      return;
+      return undefined;
     }
 
     let cancelled = false;
@@ -361,6 +361,34 @@ function AutoevaluationAssocie() {
     }
   }
 
+  async function handleSubmitReceivedToRh() {
+    if (!selectedReceivedId) return;
+
+    try {
+      setIsSubmitting(true);
+      const response = await submitReceivedAssociateEvaluationToRh(selectedReceivedId);
+      setReceivedDetail(response);
+      setReceivedList((current) =>
+        current.map((item) =>
+          item.id === selectedReceivedId
+            ? {
+                ...item,
+                status: response.evaluation?.status || item.status,
+                submittedAt: response.evaluation?.submitted_at || item.submittedAt,
+              }
+            : item
+        )
+      );
+      setFeedbackTone("success");
+      setFeedbackMessage(response.message || "Évaluation transmise à la RH.");
+    } catch (error) {
+      setFeedbackTone("error");
+      setFeedbackMessage(error.message || "Transmission à la RH impossible.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   function goToStep(direction) {
     if (!activeSection) return;
     const nextPageIndex = activePageIndex + direction;
@@ -378,6 +406,24 @@ function AutoevaluationAssocie() {
       ...current,
       [nextSection.id]: direction > 0 ? 0 : Math.max((nextSection.pages?.length || 1) - 1, 0),
     }));
+  }
+
+  function handleSelfNextStep() {
+    if (String(activeSection?.comment || "").trim().length < 3) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
+      return;
+    }
+    goToStep(1);
+  }
+
+  function handlePeerNextStep() {
+    if (String(peerActiveSection?.comment || "").trim().length < 3) {
+      setFeedbackTone("error");
+      setFeedbackMessage("Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
+      return;
+    }
+    goToPeerStep(1);
   }
 
   function goToPeerStep(direction) {
@@ -448,9 +494,9 @@ function AutoevaluationAssocie() {
                 Soumettre à {selfData?.evaluation?.recipient?.name || "un autre associé"}
               </p>
               <div className="mt-4 h-2 rounded-full bg-slate-300">
-                <div className="h-2 rounded-full bg-[#2AA7D6]" style={{ width: `${progress}%` }} />
+                <div className={`h-2 rounded-full ${getProgressBarClass(progress)}`} style={{ width: `${clampProgress(progress)}%` }} />
               </div>
-              <p className="mt-2 text-xs font-semibold text-[#0F3A63]">
+              <p className={`mt-2 text-xs font-semibold ${getProgressToneClass(progress)}`}>
                 {completedSections} / {sections.length} sections complétées - {progress}%
               </p>
             </article>
@@ -543,7 +589,7 @@ function AutoevaluationAssocie() {
                         >
                           <p className="text-[11px] font-bold">Titre {index + 1}</p>
                           <p className="mt-1 text-[12px] font-semibold">{page.title}</p>
-                          <p className="mt-1 text-[10px] font-semibold text-[#79B742]">{pageProgress}%</p>
+                          <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(pageProgress)}`}>{pageProgress}%</p>
                         </button>
                       );
                     })}
@@ -567,7 +613,9 @@ function AutoevaluationAssocie() {
                   ))}
 
                   <div>
-                    <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire de section</p>
+                    <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">
+                      Commentaire de section obligatoire <span className="text-red-600">*</span>
+                    </p>
                     <textarea
                       rows={4}
                       value={activeSection.comment || ""}
@@ -607,7 +655,7 @@ function AutoevaluationAssocie() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => goToStep(1)}
+                      onClick={handleSelfNextStep}
                       disabled={
                         Number(activeSectionId) === Number(sections[sections.length - 1]?.id) &&
                         activePageIndex === (activeSection.pages?.length || 1) - 1
@@ -672,15 +720,41 @@ function AutoevaluationAssocie() {
 
                 <h3 className="mb-3 text-sm font-black uppercase text-slate-500">Auto-évaluation reçue</h3>
                 <div className="space-y-3">
-                  {(receivedDetail.evaluation.sections || []).map((section) => (
-                    <div key={section.id} className="rounded-lg bg-[#F8FAFC] p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-bold text-[#0F3A63]">{section.title}</p>
-                        <p className="text-xs font-semibold text-[#79B742]">{getPageAverage({ themes: (section.pages || []).flatMap((page) => page.themes || []) })}/5</p>
+                  {(receivedDetail.evaluation.sections || []).length ? (
+                    (receivedDetail.evaluation.sections || []).map((section) => (
+                      <div key={section.id} className="rounded-lg bg-[#F8FAFC] p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-bold text-[#0F3A63]">{section.title}</p>
+                          <p className="text-xs font-semibold text-[#79B742]">{getPageAverage({ themes: (section.pages || []).flatMap((page) => page.themes || []) })}/5</p>
+                        </div>
+                        <p className="mt-2 text-sm font-semibold text-slate-600">{section.comment || "Aucun commentaire de section."}</p>
                       </div>
-                      <p className="mt-2 text-sm font-semibold text-slate-600">{section.comment || "Aucun commentaire de section."}</p>
+                    ))
+                  ) : (
+                    <p className="rounded-lg bg-[#F8FAFC] p-4 text-sm font-semibold text-slate-500">
+                      Cette auto-évaluation est structurée par mission.
+                    </p>
+                  )}
+                  {(receivedDetail.evaluation.missions || []).length ? (
+                    <div className="rounded-lg bg-[#F8FAFC] p-4">
+                      <p className="mb-3 text-sm font-black uppercase text-slate-500">Missions transmises</p>
+                      <div className="space-y-2">
+                        {(receivedDetail.evaluation.missions || []).map((mission) => (
+                          <div key={mission.id} className="rounded-md bg-white px-3 py-2">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-sm font-bold text-[#0F3A63]">{mission.title}</p>
+                              <p className="text-xs font-black text-[#76B82A]">
+                                {typeof mission.average === "number" ? `${mission.average}/5` : "--"}
+                              </p>
+                            </div>
+                            <p className="mt-1 text-xs font-semibold text-slate-500">
+                              {mission.period} - {mission.department}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  ))}
+                  ) : null}
                 </div>
 
                 <div className="mt-6 rounded-lg border border-[#D9E3EE] bg-white p-4">
@@ -750,7 +824,7 @@ function AutoevaluationAssocie() {
                               >
                                 <p className="text-[11px] font-bold">Titre {index + 1}</p>
                                 <p className="mt-1 text-[12px] font-semibold">{page.title}</p>
-                                <p className="mt-1 text-[10px] font-semibold text-[#79B742]">{pageProgress}%</p>
+                                <p className={`mt-1 text-[10px] font-semibold ${getProgressToneClass(pageProgress)}`}>{pageProgress}%</p>
                               </button>
                             );
                           })}
@@ -774,7 +848,9 @@ function AutoevaluationAssocie() {
                         ))}
 
                         <div>
-                          <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">Commentaire de section obligatoire</p>
+                          <p className="mb-2 text-[12px] font-semibold text-[#0F3A63]">
+                            Commentaire de section obligatoire <span className="text-red-600">*</span>
+                          </p>
                           <textarea
                             rows={4}
                             value={peerActiveSection.comment || ""}
@@ -797,7 +873,7 @@ function AutoevaluationAssocie() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => goToPeerStep(1)}
+                          onClick={handlePeerNextStep}
                           disabled={
                             Number(peerActiveSectionId) === Number(peerSections[peerSections.length - 1]?.id) &&
                             peerActivePageIndex === (peerActiveSection.pages?.length || 1) - 1
@@ -822,15 +898,25 @@ function AutoevaluationAssocie() {
                   className="mt-5 min-h-[120px] w-full resize-none rounded-lg border border-slate-200 px-3 py-3 text-sm text-[#0F3A63] outline-none"
                 />
 
-                <div className="mt-4 flex justify-end">
+                <div className="mt-4 flex flex-wrap justify-end gap-3">
                   <button
                     type="button"
                     onClick={handleSaveReceivedComment}
-                    disabled={isSaving}
+                    disabled={isSaving || isSubmitting}
                     className="rounded-full bg-[#0F3A63] px-5 py-2 text-sm font-bold text-white disabled:opacity-70"
                   >
                     {isSaving ? "Enregistrement..." : "Enregistrer l'évaluation"}
                   </button>
+                  {receivedDetail.evaluation?.templateType !== "associate-self-evaluation" ? (
+                    <button
+                      type="button"
+                      onClick={handleSubmitReceivedToRh}
+                      disabled={isSaving || isSubmitting || receivedDetail.evaluation?.status === "Soumis a RH"}
+                      className="rounded-full bg-[#76B82A] px-5 py-2 text-sm font-bold text-white disabled:opacity-70"
+                    >
+                      {isSubmitting ? "Transmission..." : "Transmettre à la RH"}
+                    </button>
+                  ) : null}
                 </div>
               </>
             ) : (

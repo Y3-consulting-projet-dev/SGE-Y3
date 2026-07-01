@@ -1,28 +1,16 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import LoginPage from "@/components/pages/auth/LoginPage";
-import ManagerDashboard from "@/components/pages/dashboard/ManagerDashboard";
-import CollaboratorDashboard from "@/components/pages/dashboard/CollaboratorDashboard";
-import SeniorDashboard from "@/components/pages/dashboard/SeniorDashboard";
-import Vuecabinet from "@/components/pages/associé/Vuecabinet";
-import VueRH from "@/components/pages/rh/VueRH";
-import VueSupport from "@/components/pages/support/VueSupport";
 import { clearSession, loadSession, loginUser, saveSession } from "@/lib/auth";
 
-const ASSISTANT_RH_EMAIL = "fatoumata.ouattara@ycubeac.com";
-const FULL_RH_EMAILS = ["isabella.beda@ycubeac.com"];
-const SUPPORT_EMAILS = [
-  "fleur.nguessan@ycubeac.com",
-  "porthela.kakou@ycubeac.com",
-  "aziz.ouattara@ycubeac.com",
-  "adele.creppy@ycubeac.com",
-];
+const ManagerDashboard = lazy(() => import("@/components/pages/dashboard/ManagerDashboard"));
+const CollaboratorDashboard = lazy(() => import("@/components/pages/dashboard/CollaboratorDashboard"));
+const SeniorDashboard = lazy(() => import("@/components/pages/dashboard/SeniorDashboard"));
+const Vuecabinet = lazy(() => import("@/components/pages/associé/Vuecabinet"));
+const VueRH = lazy(() => import("@/components/pages/rh/VueRH"));
+const VueSupport = lazy(() => import("@/components/pages/support/VueSupport"));
 
 function normalizeDepartment(value = "") {
   return String(value).replace(/\s+/g, " ").trim().toUpperCase();
-}
-
-function normalizeEmail(value = "") {
-  return String(value).replace(/\s+/g, " ").trim().toLowerCase();
 }
 
 function isRhDepartment(value = "") {
@@ -31,7 +19,8 @@ function isRhDepartment(value = "") {
 }
 
 function isSupportUser(user) {
-  return SUPPORT_EMAILS.includes(normalizeEmail(user?.email));
+  const dept = normalizeDepartment(user?.department);
+  return dept === "SUPPORT" || dept === "SERVICE SUPPORT";
 }
 
 function getFullName(user) {
@@ -39,14 +28,11 @@ function getFullName(user) {
 }
 
 function isFullRh(user) {
-  const email = normalizeEmail(user?.email);
   const fullName = getFullName(user);
-
-  return FULL_RH_EMAILS.includes(email) || (fullName.includes("ISABELLA") && fullName.includes("BEDA"));
+  return fullName.includes("ISABELLA") && fullName.includes("BEDA");
 }
 
 function isAssistantRh(user) {
-  const email = normalizeEmail(user?.email);
   const grade = normalizeDepartment(user?.grade);
   const role = normalizeDepartment(user?.role);
   const permissionRole = normalizeDepartment(user?.permission_role);
@@ -56,9 +42,8 @@ function isAssistantRh(user) {
   }
 
   return (
-    email === ASSISTANT_RH_EMAIL ||
-    (isRhDepartment(user?.department) &&
-      (role === "RH-ASSISTANT" || role === "ASSISTANTE RH" || permissionRole === "RH_ASSISTANT" || grade.includes("ASSISTANT")))
+    isRhDepartment(user?.department) &&
+    (role === "RH-ASSISTANT" || role === "ASSISTANTE RH" || permissionRole === "RH_ASSISTANT" || grade.includes("ASSISTANT"))
   );
 }
 
@@ -107,6 +92,14 @@ function getInitialAuthState() {
   };
 }
 
+function LoadingView() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#EBEFF3] text-sm font-bold text-[#0F3A63]">
+      Chargement de l'espace...
+    </div>
+  );
+}
+
 function App() {
   const [authState, setAuthState] = useState(getInitialAuthState);
 
@@ -139,38 +132,32 @@ function App() {
     applySession(session);
   };
 
-  if (isAuthenticated) {
-    if (userRole === "collaborator") {
-      return <CollaboratorDashboard user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
-    }
-
-    if (userRole === "senior") {
-      return <SeniorDashboard user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
-    }
-
-    if (userRole === "associate") {
-      return <Vuecabinet user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
-    }
-
-    if (userRole === "support") {
-      return <VueSupport user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
-    }
-
-    if (userRole === "rh" || userRole === "rh-assistant") {
-      return (
-        <VueRH
-          user={currentUser}
-          assistantMode={userRole === "rh-assistant"}
-          onLogout={handleLogout}
-          onUserUpdate={handleSessionRefresh}
-        />
-      );
-    }
-
-    return <ManagerDashboard user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
+  if (!isAuthenticated) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
-  return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  let dashboard = <ManagerDashboard user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
+
+  if (userRole === "collaborator") {
+    dashboard = <CollaboratorDashboard user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
+  } else if (userRole === "senior") {
+    dashboard = <SeniorDashboard user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
+  } else if (userRole === "associate") {
+    dashboard = <Vuecabinet user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
+  } else if (userRole === "support") {
+    dashboard = <VueSupport user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;
+  } else if (userRole === "rh" || userRole === "rh-assistant") {
+    dashboard = (
+      <VueRH
+        user={currentUser}
+        assistantMode={userRole === "rh-assistant"}
+        onLogout={handleLogout}
+        onUserUpdate={handleSessionRefresh}
+      />
+    );
+  }
+
+  return <Suspense fallback={<LoadingView />}>{dashboard}</Suspense>;
 }
 
 export default App;

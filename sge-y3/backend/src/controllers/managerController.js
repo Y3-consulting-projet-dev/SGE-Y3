@@ -2,6 +2,7 @@ const User = require('../models/User');
 const EvaluationInstance = require('../models/EvaluationInstance');
 const ManagerMemberReview = require('../models/ManagerMemberReview');
 const SeniorAssistantReview = require('../models/SeniorAssistantReview');
+const AssociateManagerReview = require('../models/AssociateManagerReview');
 const CommitteeDecision = require('../models/CommitteeDecision');
 const { buildEvaluationTemplateForUser } = require('../utils/competencyMatrix');
 const {
@@ -16,11 +17,13 @@ const {
   validateSectionCommentsForSubmit,
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
+const { buildCyclesForInstances, resolveTemplateTypeForUser } = require('../utils/evaluationHistory');
+const { getCurrentCycleLabel } = require('../utils/activeCycle');
+const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
+const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
 const FULL_RH_EMAILS = ['isabella.beda@ycubeac.com'];
 const RH_DEPARTMENT_REGEX = /^RH$/i;
 const CAPITAL_HUMAIN_DEPARTMENT_REGEX = /^CAPITAL HUMAIN$/i;
-
-const CURRENT_CYCLE_LABEL = 'Cycle 2025-2026';
 
 function normalizeText(value = '') {
   return String(value || '').replace(/\s+/g, ' ').trim().toUpperCase();
@@ -162,6 +165,8 @@ function normalizeManagerMissionEvaluations(missionEvaluations = []) {
             name: String(recipient.name || '').trim(),
             grade: String(recipient.grade || '').trim(),
             department: String(recipient.department || '').trim(),
+            can_evaluate: recipient.can_evaluate !== false,
+            receives_copy: recipient.receives_copy === true,
           }))
       : [],
     criteria: Array.isArray(mission.criteria)
@@ -177,6 +182,7 @@ function normalizeManagerMissionEvaluations(missionEvaluations = []) {
           label: String(criterion.label || '').trim(),
           statement: String(criterion.statement || '').trim(),
           score: criterion.score === null || criterion.score === undefined ? null : Number(criterion.score),
+          is_custom: Boolean(criterion.isCustom || criterion.is_custom),
         }))
       : [],
     comment: String(mission.comment || '').trim(),
@@ -206,6 +212,8 @@ function formatManagerMissionEvaluations(missionEvaluations = []) {
       name: recipient.name,
       grade: recipient.grade,
       department: recipient.department,
+      canEvaluate: recipient.can_evaluate !== false,
+      receivesCopy: recipient.receives_copy === true,
     })),
     criteria: (mission.criteria || []).map((criterion) => ({
       id: criterion.criterion_id,
@@ -219,6 +227,7 @@ function formatManagerMissionEvaluations(missionEvaluations = []) {
       label: criterion.label,
       statement: criterion.statement,
       score: criterion.score,
+      isCustom: Boolean(criterion.is_custom),
     })),
     comment: mission.comment || '',
     status: mission.status || 'Brouillon',
@@ -265,7 +274,6 @@ async function resolveRhRecipients() {
     $or: [
       { department: RH_DEPARTMENT_REGEX },
       { department: CAPITAL_HUMAIN_DEPARTMENT_REGEX },
-      { email: { $in: FULL_RH_EMAILS } },
       { first_name: /ISABELLA/i, last_name: /BEDA/i },
     ],
   })
@@ -276,10 +284,49 @@ async function resolveRhRecipients() {
 async function resolveAssociateRecipients() {
   return User.find({
     is_active: true,
-    $or: [{ code_categorie: '11' }, { grade: 'Associé' }, { grade: 'Associe' }],
+    $or: [
+      { code_categorie: '11' },
+      { grade: /Associ/i },
+    ],
   })
     .sort({ last_name: 1, first_name: 1 })
     .select('_id name first_name last_name grade department code_categorie');
+}
+
+function resolveSelectedAssociateRecipients(associateRecipients = [], selectedRecipients = []) {
+  const selected = Array.isArray(selectedRecipients) ? selectedRecipients : [];
+
+  if (!selected.length) {
+    return [];
+  }
+
+  const seen = new Set();
+
+  return selected
+    .map((recipient) => {
+      const selectedId = String(recipient?.id || recipient?.user_id || '').trim();
+      const selectedName = normalizeText(recipient?.name || '');
+
+      return (
+        associateRecipients.find((associate) => {
+          const associateId = String(associate._id || associate.id || '').trim();
+          if (selectedId && associateId && selectedId === associateId) {
+            return true;
+          }
+
+          return selectedName && normalizeText(associate.name || '') === selectedName;
+        }) || null
+      );
+    })
+    .filter((associate) => {
+      const key = String(associate?._id || associate?.id || '');
+      if (!key || seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    });
 }
 
 async function getMemberForManager(managerUser, memberId) {
@@ -296,13 +343,14 @@ async function getMemberForManager(managerUser, memberId) {
 async function getSelfEvaluationInstanceForMember(member) {
   return EvaluationInstance.findOne({
     evalue_id: member._id,
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     template_type: getExpectedTemplateType(member),
-  }).select('status submitted_at sections submitted_to_user_ids mission_evaluations');
+  }).select('status submitted_at sections submitted_to_user_ids mission_evaluations anonymous_feedback chief_comments development_wishes development_training_requests development_status development_submitted_at development_submitted_to_user_id development_submitted_to_name development_training_decision development_training_manager_comment development_training_decided_at');
 }
 
 function buildSelfEvaluationPayload(instance) {
   const sections = normalizeSections(instance?.sections || []);
+  const missionEvaluations = formatManagerMissionEvaluations(normalizeManagerMissionEvaluations(instance?.mission_evaluations || []));
 
   return {
     status: instance?.status || 'En attente',
@@ -322,13 +370,52 @@ function buildSelfEvaluationPayload(instance) {
         comment: String(section.comment || '').trim(),
       })),
     titleJustifications: getPageJustifications(sections),
+    missionEvaluations,
+    anonymous_feedback: instance?.anonymous_feedback || [],
+    chief_comments: instance?.chief_comments || [],
+    development: {
+      wishes: instance?.development_wishes || '',
+      trainingRequests: instance?.development_training_requests || [],
+      status: instance?.development_status || 'Brouillon',
+      submittedAt: instance?.development_submitted_at || null,
+      submittedToUserId: instance?.development_submitted_to_user_id ? String(instance.development_submitted_to_user_id) : null,
+      submittedToName: instance?.development_submitted_to_name || '',
+      trainingDecision: instance?.development_training_decision || 'En attente',
+      trainingManagerComment: instance?.development_training_manager_comment || '',
+      trainingDecidedAt: instance?.development_training_decided_at || null,
+    },
   };
+}
+
+function formatAnonymousFeedbackForUser(feedbackItems = [], targetUser) {
+  const targetId = String(targetUser?._id || '');
+  const targetName = normalizeText(targetUser?.name || '');
+
+  return (feedbackItems || [])
+    .filter((item) => {
+      const itemTargetId = String(item?.target_user_id || '');
+      const itemTargetName = normalizeText(item?.target_name || '');
+      return (targetId && itemTargetId === targetId) || (targetName && itemTargetName === targetName);
+    })
+    .map((item) => ({
+      targetName: item.target_name || targetUser?.name || '',
+      targetGrade: item.target_grade || targetUser?.grade || '',
+      targetDepartment: item.target_department || targetUser?.department || '',
+      comment: item.comment || '',
+      submittedAt: item.submitted_at || null,
+    }))
+    .filter((item) => String(item.comment || '').trim());
+}
+
+function formatSentChiefCommentsForUser(feedbackItems = [], targetUser) {
+  return formatAnonymousFeedbackForUser(feedbackItems, targetUser)
+    .filter((item) => item.submittedAt !== null);
 }
 
 async function getOrCreateManagerSelfEvaluation(user) {
   let instance = await EvaluationInstance.findOne({
     evalue_id: user._id,
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     template_type: 'manager-self-evaluation',
   });
 
@@ -336,7 +423,7 @@ async function getOrCreateManagerSelfEvaluation(user) {
 
   if (!instance) {
     instance = await EvaluationInstance.create({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       evalue_id: user._id,
       status: 'En cours',
       template_type: 'manager-self-evaluation',
@@ -370,7 +457,7 @@ async function resolveManagerTeamMembers(managerUser) {
     .select('_id name first_name last_name grade department code_categorie');
 }
 
-function buildManagerSelfEvaluationPayload(instance, user, rhRecipients = [], teamMembers = []) {
+function buildManagerSelfEvaluationPayload(instance, user, rhRecipients = [], teamMembers = [], associateRecipients = []) {
   const sections = normalizeSections(instance.sections || []);
   const activeSection = sections.find((section) => section.status !== 'Complete') || sections[0] || null;
   const missionEvaluations = formatManagerMissionEvaluations(normalizeManagerMissionEvaluations(instance.mission_evaluations || []));
@@ -399,6 +486,12 @@ function buildManagerSelfEvaluationPayload(instance, user, rhRecipients = [], te
       department: user.department,
     },
     submitted_to: rhRecipients.map((recipient) => ({
+      id: recipient._id.toString(),
+      name: recipient.name,
+      department: recipient.department,
+      grade: recipient.grade,
+    })),
+    associate_recipients: associateRecipients.map((recipient) => ({
       id: recipient._id.toString(),
       name: recipient.name,
       department: recipient.department,
@@ -521,6 +614,36 @@ function isRecipientUser(recipient, user) {
   }
 
   return normalizeText(recipient.name || '') === normalizeText(user.name || '');
+}
+
+function isEvaluatingRecipientUser(recipient, user) {
+  return recipient?.can_evaluate !== false && isRecipientUser(recipient, user);
+}
+
+function isSubmittedMissionForManager(mission = {}, managerUser) {
+  return (
+    mission.status === 'Soumise' &&
+    (mission.recipients || []).some((recipient) => isEvaluatingRecipientUser(recipient, managerUser))
+  );
+}
+
+function isSubmittedManagerMissionReview(missionReview = {}) {
+  const status = normalizeText(missionReview.status || '');
+  return Boolean(
+    missionReview.submitted_at ||
+      status === 'SOUMISE A LA RH' ||
+      status === 'SOUMISE A RH' ||
+      status.includes('SOUMIS') ||
+      status.includes('TRANSMIS')
+  );
+}
+
+function hasSubmittedManagerMissionReview(review = {}, missionId = '') {
+  return (review.mission_reviews || []).some(
+    (missionReview) =>
+      String(missionReview.mission_id || missionReview.id || '').trim() === String(missionId || '').trim() &&
+      isSubmittedManagerMissionReview(missionReview)
+  );
 }
 
 function normalizeMissionReviews(missionReviews = []) {
@@ -681,7 +804,7 @@ async function syncManagerMissionReviews(review, managerUser, selfEvaluationInst
   const submittedMissions = (selfEvaluationInstance?.mission_evaluations || []).filter(
     (mission) =>
       mission.status === 'Soumise' &&
-      (mission.recipients || []).some((recipient) => isRecipientUser(recipient, managerUser))
+      (mission.recipients || []).some((recipient) => isEvaluatingRecipientUser(recipient, managerUser))
   );
   const submittedMissionIds = new Set(submittedMissions.map((mission) => String(mission.mission_id)));
 
@@ -706,14 +829,18 @@ async function syncManagerMissionReviews(review, managerUser, selfEvaluationInst
   });
 
   const persistedSubmittedReviews = currentMissionReviews.filter(
-    (mission) => mission.status === 'Soumise a RH' && !submittedMissionIds.has(mission.mission_id)
+    (mission) => mission.status === 'Soumise à la RH' && !submittedMissionIds.has(mission.mission_id)
   );
 
   const pendingManagerAssignedReviews = currentMissionReviews.filter(
     (mission) => mission.origin === 'manager-assigned' && !submittedMissionIds.has(mission.mission_id)
   );
 
-  review.mission_reviews = [...pendingManagerAssignedReviews, ...persistedSubmittedReviews, ...nextMissionReviews];
+  const visiblePersistedSubmittedReviews = persistedSubmittedReviews.filter(
+    (mission) => mission.origin === 'manager-assigned' || submittedMissionIds.has(mission.mission_id)
+  );
+
+  review.mission_reviews = [...pendingManagerAssignedReviews, ...visiblePersistedSubmittedReviews, ...nextMissionReviews];
   return review;
 }
 
@@ -722,16 +849,14 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
     globalScores: [],
     missions: [],
   };
-
-  if (member.code_categorie !== '8C') {
-    return payload;
-  }
-
-  const seniorReviews = await SeniorAssistantReview.find({
-    cycle_label: CURRENT_CYCLE_LABEL,
-    assistant_id: member._id,
-    submitted_to_user_ids: managerUser._id,
-  }).select('senior_id sections mission_reviews submitted_at status');
+  const seniorReviews =
+    member.code_categorie === '8C'
+      ? await SeniorAssistantReview.find({
+          cycle_label: getCurrentCycleLabel(),
+          assistant_id: member._id,
+          submitted_to_user_ids: managerUser._id,
+        }).select('senior_id sections mission_reviews submitted_at status')
+      : [];
 
   const seniorIds = seniorReviews.map((review) => review.senior_id).filter(Boolean);
   const seniorUsers = seniorIds.length
@@ -739,6 +864,16 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
     : [];
   const seniorUserById = new Map(seniorUsers.map((user) => [String(user._id), user]));
   const missionsMap = new Map();
+  const evaluableMissionIds = new Set(
+    (selfEvaluationInstance?.mission_evaluations || [])
+      .filter(
+        (mission) =>
+          mission.status === 'Soumise' &&
+          (mission.recipients || []).some((recipient) => isEvaluatingRecipientUser(recipient, managerUser))
+      )
+      .map((mission) => String(mission.mission_id || mission.id || '').trim())
+      .filter(Boolean)
+  );
   const managerMissionReviewById = new Map(
     normalizeMissionReviews(review?.mission_reviews || []).map((missionReview) => [missionReview.mission_id, missionReview])
   );
@@ -767,6 +902,9 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
       if (missionReview.status !== 'Transmise') {
         continue;
       }
+      if (!evaluableMissionIds.has(String(missionReview.mission_id || missionReview.id || '').trim())) {
+        continue;
+      }
 
       const existingMission = missionsMap.get(missionReview.mission_id) || {
         id: missionReview.mission_id,
@@ -783,6 +921,8 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
         finalScore: getMissionAverage(missionReview.criteria || []),
         submittedAt: missionReview.submitted_at || null,
         comment: missionReview.comment || '',
+        sectionComments: getMissionSectionComments(missionReview),
+        titleJustifications: getMissionTitleJustifications(missionReview),
       });
 
       missionsMap.set(missionReview.mission_id, existingMission);
@@ -790,10 +930,9 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
   }
 
   for (const mission of selfEvaluationInstance?.mission_evaluations || []) {
-    const missionAlreadyKnownByManager = missionsMap.has(mission.mission_id);
-    const isSubmittedToManager = (mission.recipients || []).some((recipient) => isRecipientUser(recipient, managerUser));
+    const isSubmittedToManager = (mission.recipients || []).some((recipient) => isEvaluatingRecipientUser(recipient, managerUser));
 
-    if (mission.status !== 'Soumise' || (!isSubmittedToManager && !missionAlreadyKnownByManager)) {
+    if (mission.status !== 'Soumise' || !isSubmittedToManager) {
       continue;
     }
 
@@ -813,6 +952,8 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
       finalScore: getMissionAverage(mission.criteria || []),
       submittedAt: mission.submitted_at || null,
       comment: mission.comment || '',
+      sectionComments: getMissionSectionComments(mission),
+      titleJustifications: getMissionTitleJustifications(mission),
     });
 
     missionsMap.set(mission.mission_id, existingMission);
@@ -834,7 +975,7 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
 
 async function getOrCreateManagerMemberReview(managerUser, member) {
   let review = await ManagerMemberReview.findOne({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     manager_id: managerUser._id,
     member_id: member._id,
   });
@@ -844,7 +985,7 @@ async function getOrCreateManagerMemberReview(managerUser, member) {
 
   if (!review) {
     review = await ManagerMemberReview.create({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       manager_id: managerUser._id,
       member_id: member._id,
       member_department: evaluationDepartment,
@@ -865,6 +1006,7 @@ async function getOrCreateManagerMemberReview(managerUser, member) {
 function buildManagerReviewPayload(review, managerUser, member, selfEvaluation, rhRecipients = [], missionAndScoreData = {}) {
   const sections = normalizeSections(review.sections);
   const activeSection = sections.find((section) => section.status !== 'Complete') || sections[0] || null;
+  const { chief_comments: chiefCommentsSource = [], ...publicSelfEvaluation } = selfEvaluation || {};
 
   return {
     review: {
@@ -898,7 +1040,10 @@ function buildManagerReviewPayload(review, managerUser, member, selfEvaluation, 
     review_context: {
       evaluationDepartment: review.member_department || member.department,
     },
-    self_evaluation: selfEvaluation,
+    self_evaluation: {
+      ...publicSelfEvaluation,
+      chiefComments: formatSentChiefCommentsForUser(chiefCommentsSource, managerUser),
+    },
     received_global_scores: missionAndScoreData.globalScores || [],
     submitted_missions: missionAndScoreData.missions || [],
     mission_reviews: formatMissionReviews(review.mission_reviews || []),
@@ -1078,7 +1223,7 @@ function validateMissionReviewCriteria(criteria = []) {
   for (const criterion of criteria) {
     if (criterion.score !== null && criterion.score !== undefined) {
       if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
-        return `La note du critere "${criterion.label}" doit etre comprise entre 1 et 5.`;
+        return `La note du critère "${criterion.label}" doit être comprise entre 1 et 5.`;
       }
     }
   }
@@ -1105,14 +1250,14 @@ async function getManagerOverview(request, response) {
     ? await Promise.all([
         EvaluationInstance.find({
           evalue_id: { $in: memberIds },
-          cycle_label: CURRENT_CYCLE_LABEL,
+          cycle_label: getCurrentCycleLabel(),
           template_type: { $in: ['assistant-self-evaluation', 'senior-self-evaluation'] },
-        }).select('evalue_id template_type status submitted_at submitted_to_user_ids sections'),
+        }).select('evalue_id template_type status submitted_at submitted_to_user_ids sections mission_evaluations chief_comments development_status development_training_requests development_submitted_to_user_id development_training_decision'),
         ManagerMemberReview.find({
-          cycle_label: CURRENT_CYCLE_LABEL,
+          cycle_label: getCurrentCycleLabel(),
           manager_id: request.user._id,
           member_id: { $in: memberIds },
-        }).select('member_id status submitted_at sections'),
+        }).select('member_id status submitted_at sections mission_reviews'),
       ])
     : [[], []];
 
@@ -1143,11 +1288,43 @@ async function getManagerOverview(request, response) {
     );
   });
 
-  const pendingEvaluations = receivedEvaluations.map((member) => {
+  const pendingEvaluations = members.map((member) => {
     const instance = relevantInstancesByMemberId.get(String(member._id));
     const review = managerReviewsByMemberId.get(String(member._id));
+    const hasGlobalSubmission =
+      instance &&
+      (instance.submitted_to_user_ids || []).some((userId) => String(userId) === String(request.user._id)) &&
+      (instance.status === 'Soumis aux Managers' || instance.status === 'Soumis au Manager');
+    const pendingMissions = (instance?.mission_evaluations || []).filter(
+      (mission) =>
+        isSubmittedMissionForManager(mission, request.user) &&
+        !hasSubmittedManagerMissionReview(review, mission.mission_id || mission.id)
+    );
 
-    if (review?.status === 'Soumis a RH') {
+    if (!hasGlobalSubmission && !pendingMissions.length) {
+      return null;
+    }
+
+    if (pendingMissions.length) {
+      const latestMissionSubmittedAt = pendingMissions
+        .map((mission) => mission.submitted_at || mission.submittedAt || null)
+        .filter(Boolean)
+        .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0];
+
+      return {
+        id: member._id.toString(),
+        name: member.name,
+        grade: member.grade,
+        department: member.department,
+        submittedAt: latestMissionSubmittedAt || instance?.submitted_at || null,
+        status: 'Mission à évaluer',
+        templateType: instance?.template_type || getExpectedTemplateType(member),
+        pendingType: 'mission',
+        pendingMissionsCount: pendingMissions.length,
+      };
+    }
+
+    if (review?.status === 'Soumis à la RH') {
       return null;
     }
 
@@ -1168,22 +1345,53 @@ async function getManagerOverview(request, response) {
   const totalMembers = members.length;
   const receivedCount = receivedEvaluations.length;
 
+  const chiefCommentInstances = await EvaluationInstance.find({
+    cycle_label: getCurrentCycleLabel(),
+    'chief_comments.target_user_id': request.user._id,
+  }).select('chief_comments');
+
+  const anonymousComments = chiefCommentInstances.flatMap((instance) =>
+    (instance.chief_comments || [])
+      .filter((comment) => String(comment.target_user_id) === String(request.user._id) && comment.submitted_at)
+      .map((comment) => ({ comment: comment.comment, submittedAt: comment.submitted_at }))
+  );
+  const anonymousCommentsCount = anonymousComments.length;
+
+  const pendingTrainingRequests = members
+    .map((member) => {
+      const instance = relevantInstancesByMemberId.get(String(member._id));
+      if (!instance) return null;
+      if (instance.development_status !== 'Soumis au Manager') return null;
+      if (String(instance.development_submitted_to_user_id) !== String(request.user._id)) return null;
+      if (!(instance.development_training_requests || []).length) return null;
+      const decision = instance.development_training_decision || 'En attente';
+      if (decision !== 'En attente') return null;
+      return {
+        memberId: String(member._id),
+        memberName: member.name,
+        memberGrade: member.grade,
+        trainingCount: instance.development_training_requests.length,
+      };
+    })
+    .filter(Boolean);
+  const pendingTrainingCount = pendingTrainingRequests.length;
+
   let selfEvaluationInstance = await EvaluationInstance.findOne({
     evalue_id: request.user._id,
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     template_type: 'manager-self-evaluation',
   }).select('status submitted_at');
 
   if (!selfEvaluationInstance) {
     selfEvaluationInstance = await EvaluationInstance.findOne({
       evalue_id: request.user._id,
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       template_type: 'senior-self-evaluation',
     }).select('status submitted_at');
   }
 
   return response.json({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     summary: {
       totalMembers,
       assistantsCount,
@@ -1194,6 +1402,8 @@ async function getManagerOverview(request, response) {
       pendingEvaluationsCount: pendingEvaluations.length,
       selfEvaluationStatus: selfEvaluationInstance?.status || 'En attente',
       selfEvaluationSubmittedAt: selfEvaluationInstance?.submitted_at || null,
+      anonymousCommentsCount,
+      pendingTrainingCount,
     },
     members: members.map((member) =>
       formatMember(
@@ -1203,6 +1413,8 @@ async function getManagerOverview(request, response) {
       )
     ),
     pendingEvaluations,
+    anonymousComments,
+    pendingTrainingRequests,
   });
 }
 
@@ -1225,24 +1437,24 @@ async function getManagerTeamReport(request, response) {
     memberIds.length
       ? await Promise.all([
           ManagerMemberReview.find({
-            cycle_label: CURRENT_CYCLE_LABEL,
+            cycle_label: getCurrentCycleLabel(),
             manager_id: request.user._id,
             member_id: { $in: memberIds },
           }).select('member_id status submitted_at sections'),
           ManagerMemberReview.find({
-            cycle_label: CURRENT_CYCLE_LABEL,
+            cycle_label: getCurrentCycleLabel(),
             member_id: { $in: memberIds },
           }).select('member_id manager_id status submitted_at sections mission_reviews'),
           SeniorAssistantReview.find({
-            cycle_label: CURRENT_CYCLE_LABEL,
+            cycle_label: getCurrentCycleLabel(),
             assistant_id: { $in: memberIds },
           }).select('assistant_id senior_id status submitted_at sections mission_reviews'),
           EvaluationInstance.find({
-            cycle_label: CURRENT_CYCLE_LABEL,
+            cycle_label: getCurrentCycleLabel(),
             evalue_id: { $in: memberIds },
             template_type: { $in: ['assistant-self-evaluation', 'senior-self-evaluation'] },
           }).select('evalue_id template_type status submitted_at sections mission_evaluations'),
-          CommitteeDecision.findOne({ scope: 'associate-final', cycle_label: CURRENT_CYCLE_LABEL }).sort({ submitted_at: -1 }),
+          CommitteeDecision.findOne({ scope: 'associate-final', cycle_label: getCurrentCycleLabel() }).sort({ submitted_at: -1 }),
           User.find({ is_active: true }).select('_id name grade department'),
         ])
       : [[], [], [], [], null, []];
@@ -1289,7 +1501,7 @@ async function getManagerTeamReport(request, response) {
         missionScoreDetails.push(
           buildScoreDetail({
             category: 'mission',
-            source: 'Auto-evaluation',
+            source: 'Auto-évaluation',
             evaluatorName: member.name,
             evaluatorGrade: member.grade,
             missionTitle: mission.title,
@@ -1330,7 +1542,7 @@ async function getManagerTeamReport(request, response) {
       }
       for (const missionReview of managerReview.mission_reviews || []) {
         const score = getMissionAverage(missionReview.criteria || []);
-        if (missionReview.status === 'Soumise a RH' && typeof score === 'number') {
+        if (missionReview.status === 'Soumise à la RH' && typeof score === 'number') {
           missionScoreDetails.push(
             buildScoreDetail({
               category: 'mission',
@@ -1352,7 +1564,7 @@ async function getManagerTeamReport(request, response) {
       globalScoreDetails.push(
         buildScoreDetail({
           category: 'global',
-          source: 'Auto-evaluation',
+          source: 'Auto-évaluation',
           evaluatorName: member.name,
           evaluatorGrade: member.grade,
           score: selfGlobalScore,
@@ -1445,7 +1657,7 @@ async function getManagerTeamReport(request, response) {
   const completionRate = rows.length ? Math.round((completedRows.length / rows.length) * 100) : 0;
 
   return response.json({
-    cycle_label: CURRENT_CYCLE_LABEL,
+    cycle_label: getCurrentCycleLabel(),
     kpis: {
       missionTeamAverage,
       globalTeamAverage,
@@ -1459,13 +1671,109 @@ async function getManagerTeamReport(request, response) {
 }
 
 async function getMyManagerEvaluation(request, response) {
-  const [instance, rhRecipients, teamMembers] = await Promise.all([
+  const [instance, rhRecipients, teamMembers, associateRecipients] = await Promise.all([
     getOrCreateManagerSelfEvaluation(request.user),
     resolveRhRecipients(),
     resolveManagerTeamMembers(request.user),
+    resolveAssociateRecipients(),
   ]);
 
-  return response.json(buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers));
+  return response.json(buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers, associateRecipients));
+}
+
+async function fetchAssociateCommentsForManager(cycleLabel, managerId) {
+  const associateReviews = await AssociateManagerReview.find({
+    cycle_label: cycleLabel,
+    manager_id: managerId,
+    status: { $ne: 'En cours' },
+  }).select('associate_id submitted_at sections status');
+
+  const associateIds = associateReviews.map((review) => review.associate_id).filter(Boolean);
+  const associateUsers = associateIds.length
+    ? await User.find({ _id: { $in: associateIds } }).select('_id name grade')
+    : [];
+  const associateById = new Map(associateUsers.map((associate) => [String(associate._id), associate]));
+
+  return associateReviews
+    .map((review) => {
+      const comment = normalizeSections(review.sections || [])
+        .map((section) => String(section.comment || '').trim())
+        .filter(Boolean)
+        .join(' ');
+
+      if (!comment) {
+        return null;
+      }
+
+      const associate = associateById.get(String(review.associate_id));
+      return {
+        comment,
+        authorName: associate?.name || 'Associé',
+        authorGrade: associate?.grade || 'Associé',
+        submittedAt: review.submitted_at || null,
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => {
+      const leftDate = left.submittedAt ? new Date(left.submittedAt).getTime() : 0;
+      const rightDate = right.submittedAt ? new Date(right.submittedAt).getTime() : 0;
+      return rightDate - leftDate;
+    });
+}
+
+async function getMyManagerEvaluationHistory(request, response) {
+  const instances = await EvaluationInstance.find({
+    evalue_id: request.user._id,
+    template_type: 'manager-self-evaluation',
+    cycle_label: { $ne: getCurrentCycleLabel() },
+  }).sort({ cycle_label: -1 });
+
+  const cycles = await buildCyclesForInstances(instances, 'sections', (cycleLabel) =>
+    fetchAssociateCommentsForManager(cycleLabel, request.user._id)
+  );
+
+  return response.json({ cycles });
+}
+
+async function getTeamMemberHistoryForManager(request, response) {
+  const member = await getMemberForManager(request.user, request.params.memberId);
+
+  if (!member) {
+    return response.status(404).json({
+      message: "Membre d'équipe introuvable pour ce manager.",
+    });
+  }
+
+  const resolved = resolveTemplateTypeForUser(member);
+
+  if (!resolved) {
+    return response.status(404).json({
+      message: "Historique indisponible pour ce membre.",
+    });
+  }
+
+  const { templateType, kind } = resolved;
+
+  const instances = await EvaluationInstance.find({
+    evalue_id: member._id,
+    template_type: templateType,
+    cycle_label: { $ne: getCurrentCycleLabel() },
+  }).sort({ cycle_label: -1 });
+
+  const getComments = templateType === 'manager-self-evaluation'
+    ? (cycleLabel) => fetchAssociateCommentsForManager(cycleLabel, member._id)
+    : (cycleLabel) => fetchManagerCommentsForMember(cycleLabel, member._id);
+
+  const cycles = await buildCyclesForInstances(instances, kind, getComments);
+
+  return response.json({
+    cycles,
+    member: {
+      id: member._id.toString(),
+      name: member.name,
+      grade: member.grade,
+    },
+  });
 }
 
 async function addMyManagerMissionEvaluation(request, response) {
@@ -1478,11 +1786,23 @@ async function addMyManagerMissionEvaluation(request, response) {
     });
   }
 
-  const [instance, rhRecipients, teamMembers] = await Promise.all([
+  const [instance, rhRecipients, teamMembers, associateRecipients] = await Promise.all([
     getOrCreateManagerSelfEvaluation(request.user),
     resolveRhRecipients(),
     resolveManagerTeamMembers(request.user),
+    resolveAssociateRecipients(),
   ]);
+  const selectedAssociateRecipients = resolveSelectedAssociateRecipients(
+    associateRecipients,
+    request.body?.selectedAssociateRecipients
+  );
+
+  if (!selectedAssociateRecipients.length) {
+    return response.status(400).json({
+      message: 'Selectionnez au moins un associe destinataire pour cette mission manager.',
+    });
+  }
+
   const templateSections = cloneManagerSelfTemplate(request.user);
   const missionEvaluations = normalizeManagerMissionEvaluations(instance.mission_evaluations || []);
 
@@ -1500,11 +1820,18 @@ async function addMyManagerMissionEvaluation(request, response) {
     assigned_by_name: '',
     assigned_by_grade: '',
     assigned_at: null,
-    primary_recipient_user_id: null,
-    primary_recipient_name: '',
-    primary_recipient_grade: '',
-    primary_recipient_department: '',
-    recipients: [],
+    primary_recipient_user_id: selectedAssociateRecipients[0]?._id || null,
+    primary_recipient_name: selectedAssociateRecipients[0]?.name || '',
+    primary_recipient_grade: selectedAssociateRecipients[0]?.grade || '',
+    primary_recipient_department: selectedAssociateRecipients[0]?.department || '',
+    recipients: selectedAssociateRecipients.map((recipient) => ({
+      user_id: recipient._id,
+      name: recipient.name,
+      grade: recipient.grade,
+      department: recipient.department,
+      can_evaluate: true,
+      receives_copy: false,
+    })),
     criteria: buildManagerMissionCriteria(templateSections),
     comment: '',
     status: 'Brouillon',
@@ -1516,14 +1843,14 @@ async function addMyManagerMissionEvaluation(request, response) {
   await instance.save();
 
   return response.json({
-    message: 'Mission manager ajoutee.',
-    ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers),
+    message: 'Mission manager ajoutée.',
+    ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers, associateRecipients),
   });
 }
 
 async function addMissionToManagerMember(request, response) {
   const title = String(request.body?.title || '').trim();
-  const period = String(request.body?.period || '').trim() || 'Periode non renseignee';
+  const period = String(request.body?.period || '').trim() || 'Période non renseignée';
 
   if (!title) {
     return response.status(400).json({
@@ -1535,7 +1862,7 @@ async function addMissionToManagerMember(request, response) {
 
   if (!member) {
     return response.status(404).json({
-      message: "Membre d'equipe introuvable pour ce manager.",
+      message: "Membre d'équipe introuvable pour ce manager.",
     });
   }
 
@@ -1596,7 +1923,7 @@ async function addMissionToManagerMember(request, response) {
   const missionAndScoreData = await buildManagerMissionAndGlobalInputs(request.user, member, selfEvaluationInstance, review);
 
   return response.json({
-    message: `Mission ajoutee pour ${member.name}. Le membre la verra dans son auto-evaluation par mission.`,
+    message: `Mission ajoutée pour ${member.name}. Le membre la verra dans son auto-évaluation par mission.`,
     ...buildManagerReviewPayload(
       review,
       request.user,
@@ -1613,60 +1940,132 @@ async function saveMyManagerEvaluation(request, response) {
   const missionEvaluations = Array.isArray(request.body?.missionEvaluations)
     ? normalizeManagerMissionEvaluations(request.body.missionEvaluations)
     : null;
+  const isMissionOnlyEvaluation = Array.isArray(missionEvaluations) && missionEvaluations.length > 0;
 
-  if (!rawSections?.length) {
+  if (!rawSections?.length && !isMissionOnlyEvaluation) {
     return response.status(400).json({
-      message: "Les sections de l'auto-evaluation manager sont requises.",
+      message: "Les sections ou les évaluations par mission de l'auto-évaluation manager sont requises.",
     });
   }
 
-  const sections = normalizeSections(rawSections);
+  const sections = rawSections?.length ? normalizeSections(rawSections) : [];
 
-  for (const section of sections) {
-    for (const criterion of section.criteria) {
-      if (criterion.score !== null && criterion.score !== undefined) {
-        if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
+  if (rawSections?.length) {
+    for (const section of sections) {
+      for (const criterion of section.criteria) {
+        if (criterion.score !== null && criterion.score !== undefined) {
+          if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
+            return response.status(400).json({
+              message: `La note du critère "${criterion.label}" doit être comprise entre 1 et 5.`,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  if (missionEvaluations) {
+    for (const mission of missionEvaluations) {
+      for (const criterion of mission.criteria || []) {
+        if (criterion.score !== null && criterion.score !== undefined) {
+          if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
+            return response.status(400).json({
+              message: `La note du critère "${criterion.label}" doit être comprise entre 1 et 5.`,
+            });
+          }
+        }
+
+        if (criterion.is_custom && !criterion.label) {
           return response.status(400).json({
-            message: `La note du critere "${criterion.label}" doit etre comprise entre 1 et 5.`,
+            message: 'Le libellé de la compétence ajoutée est requis.',
           });
         }
       }
     }
   }
 
-  const [instance, rhRecipients, teamMembers] = await Promise.all([
+  const [instance, rhRecipients, teamMembers, associateRecipients] = await Promise.all([
     getOrCreateManagerSelfEvaluation(request.user),
     resolveRhRecipients(),
     resolveManagerTeamMembers(request.user),
+    resolveAssociateRecipients(),
   ]);
   const summary = getEvaluationSummary(sections);
 
-  instance.sections = toPersistenceSections(sections);
+  if (rawSections?.length) {
+    instance.sections = toPersistenceSections(sections);
+  }
   if (missionEvaluations) {
     instance.mission_evaluations = missionEvaluations;
   }
-  instance.status = summary.globalProgress === 0 ? 'Brouillon' : 'En cours';
+  instance.status =
+    isMissionOnlyEvaluation
+      ? missionEvaluations.every((mission) => (mission.criteria || []).every((criterion) => criterion.score !== null && criterion.score !== undefined))
+        ? 'En cours'
+        : 'Brouillon'
+      : summary.globalProgress === 0
+      ? 'Brouillon'
+      : 'En cours';
   instance.last_saved_at = new Date();
   await instance.save();
 
   return response.json({
-    message: 'Auto-evaluation manager enregistree.',
-    ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers),
+    message: 'Auto-évaluation manager enregistrée.',
+    ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers, associateRecipients),
   });
 }
 
 async function submitMyManagerEvaluation(request, response) {
-  const [instance, rhRecipients, teamMembers] = await Promise.all([
+  const [instance, rhRecipients, teamMembers, associateRecipients] = await Promise.all([
     getOrCreateManagerSelfEvaluation(request.user),
     resolveRhRecipients(),
     resolveManagerTeamMembers(request.user),
+    resolveAssociateRecipients(),
   ]);
   const sections = normalizeSections(instance.sections || []);
+  const missionEvaluations = normalizeManagerMissionEvaluations(instance.mission_evaluations || []);
+  const hasMissionEvaluations = missionEvaluations.length > 0;
+
+  if (hasMissionEvaluations) {
+    const pendingMissions = missionEvaluations.filter((mission) => mission.status !== 'Soumise');
+
+    if (pendingMissions.length) {
+      return response.status(400).json({
+        message: 'Chaque mission doit être soumise à la RH et aux associés avant la soumission finale.',
+        pendingMissions: pendingMissions.map((mission) => ({
+          missionId: mission.mission_id,
+          title: mission.title,
+        })),
+      });
+    }
+
+    instance.status = 'Soumis à la RH';
+    instance.submitted_to_role = 'rh';
+    instance.submitted_to_user_ids = rhRecipients.map((recipient) => recipient._id);
+    instance.submitted_to_names = rhRecipients.map((recipient) => recipient.name);
+    instance.submitted_at = new Date();
+    instance.last_saved_at = new Date();
+    await instance.save();
+
+    notifySubmissionRecipients({
+      recipientIds: instance.submitted_to_user_ids,
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: 'son auto-évaluation manager',
+      cycleLabel: getCurrentCycleLabel(),
+    });
+
+    return response.json({
+      message: 'Evaluations par mission manager transmises à la RH et aux associés.',
+      ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers, associateRecipients),
+    });
+  }
+
   const missingAnswers = validateSectionsForSubmit(sections);
 
   if (missingAnswers.length) {
     return response.status(400).json({
-      message: 'Toutes les questions obligatoires doivent etre renseignees avant soumission.',
+      message: 'Toutes les questions obligatoires doivent être renseignées avant soumission.',
       missingAnswers,
     });
   }
@@ -1675,13 +2074,13 @@ async function submitMyManagerEvaluation(request, response) {
 
   if (missingSectionComments.length) {
     return response.status(400).json({
-      message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
+      message: "Un commentaire de section d'au moins 3 caractères est obligatoire pour chaque section avant soumission.",
       missingSectionComments,
     });
   }
 
   instance.sections = toPersistenceSections(sections);
-  instance.status = 'Soumis a RH';
+  instance.status = 'Soumis à la RH';
   instance.submitted_to_role = 'rh';
   instance.submitted_to_user_ids = rhRecipients.map((recipient) => recipient._id);
   instance.submitted_to_names = rhRecipients.map((recipient) => recipient.name);
@@ -1689,9 +2088,17 @@ async function submitMyManagerEvaluation(request, response) {
   instance.last_saved_at = new Date();
   await instance.save();
 
+  notifySubmissionRecipients({
+    recipientIds: instance.submitted_to_user_ids,
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: 'son auto-évaluation manager',
+    cycleLabel: getCurrentCycleLabel(),
+  });
+
   return response.json({
-    message: 'Auto-evaluation manager soumise a la RH / Capital Humain.',
-    ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers),
+    message: 'Auto-évaluation manager soumise à la RH.',
+    ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers, associateRecipients),
   });
 }
 
@@ -1700,7 +2107,7 @@ async function submitMyManagerMissionEvaluation(request, response) {
 
   if (!missionId) {
     return response.status(400).json({
-      message: 'La mission manager a soumettre est requise.',
+      message: 'La mission manager à soumettre est requise.',
     });
   }
 
@@ -1725,27 +2132,38 @@ async function submitMyManagerMissionEvaluation(request, response) {
 
   if (hasIncompleteCriterion) {
     return response.status(400).json({
-      message: 'Toutes les questions de la mission manager doivent etre renseignees avant soumission.',
+      message: 'Toutes les questions de la mission manager doivent être renseignées avant soumission.',
     });
   }
 
-  const allRecipients = [...rhRecipients, ...associateRecipients];
+  const selectedAssociateRecipients = resolveSelectedAssociateRecipients(
+    associateRecipients,
+    Array.isArray(request.body?.selectedAssociateRecipients) && request.body.selectedAssociateRecipients.length
+      ? request.body.selectedAssociateRecipients
+      : mission.recipients
+  );
+  const allRecipients = [
+    ...rhRecipients.map((recipient) => ({ ...(recipient.toObject?.() || recipient), can_evaluate: false, receives_copy: true })),
+    ...selectedAssociateRecipients.map((recipient) => ({ ...(recipient.toObject?.() || recipient), can_evaluate: true, receives_copy: false })),
+  ];
 
-  if (!allRecipients.length) {
+  if (!selectedAssociateRecipients.length) {
     return response.status(400).json({
-      message: "Aucun destinataire actif n'est disponible pour recevoir cette mission manager.",
+      message: 'Selectionnez au moins un associe destinataire pour cette mission manager.',
     });
   }
 
-  mission.primary_recipient_user_id = rhRecipients[0]?._id || associateRecipients[0]?._id || null;
-  mission.primary_recipient_name = rhRecipients[0]?.name || associateRecipients[0]?.name || '';
-  mission.primary_recipient_grade = rhRecipients[0]?.grade || associateRecipients[0]?.grade || '';
-  mission.primary_recipient_department = rhRecipients[0]?.department || associateRecipients[0]?.department || '';
+  mission.primary_recipient_user_id = selectedAssociateRecipients[0]?._id || null;
+  mission.primary_recipient_name = selectedAssociateRecipients[0]?.name || '';
+  mission.primary_recipient_grade = selectedAssociateRecipients[0]?.grade || '';
+  mission.primary_recipient_department = selectedAssociateRecipients[0]?.department || '';
   mission.recipients = allRecipients.map((recipient) => ({
     user_id: recipient._id,
     name: recipient.name,
     grade: recipient.grade,
     department: recipient.department,
+    can_evaluate: recipient.can_evaluate !== false,
+    receives_copy: recipient.receives_copy === true,
   }));
   mission.status = 'Soumise';
   mission.submitted_at = new Date();
@@ -1754,23 +2172,82 @@ async function submitMyManagerMissionEvaluation(request, response) {
   instance.last_saved_at = new Date();
   await instance.save();
 
+  notifySubmissionRecipients({
+    recipientIds: allRecipients.map((recipient) => recipient._id),
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: `la mission manager "${mission.title}"`,
+    cycleLabel: getCurrentCycleLabel(),
+  });
+
   return response.json({
-    message: `Mission manager soumise a la RH et aux associes (${allRecipients.map((recipient) => recipient.name).join(', ')}).`,
-    ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers),
+    message: `Mission manager soumise a la RH et aux associes (${selectedAssociateRecipients.map((recipient) => recipient.name).join(', ')}).`,
+    ...buildManagerSelfEvaluationPayload(instance, request.user, rhRecipients, teamMembers, associateRecipients),
+  });
+}
+
+async function decideTrainingRequests(request, response) {
+  const decision = String(request.body?.decision || '').trim();
+  const comment = String(request.body?.comment || '').trim();
+
+  if (!['Accepté', 'Refusé'].includes(decision)) {
+    return response.status(400).json({ message: "La décision doit être 'Accepté' ou 'Refusé'." });
+  }
+
+  const member = await getMemberForManager(request.user, request.params.memberId);
+  if (!member) {
+    return response.status(404).json({ message: "Membre d'équipe introuvable pour ce manager." });
+  }
+
+  const instance = await EvaluationInstance.findOne({
+    evalue_id: member._id,
+    cycle_label: getCurrentCycleLabel(),
+    template_type: { $in: ['assistant-self-evaluation', 'senior-self-evaluation'] },
+  });
+
+  if (!instance) {
+    return response.status(404).json({ message: "Aucune auto-évaluation trouvée pour ce collaborateur." });
+  }
+
+  if (instance.development_status !== 'Soumis au Manager') {
+    return response.status(400).json({ message: "Le plan de développement n'a pas encore été soumis par le collaborateur." });
+  }
+
+  if ((instance.development_training_requests || []).length === 0) {
+    return response.status(400).json({ message: "Ce collaborateur n'a aucune demande de formation à valider." });
+  }
+
+  instance.development_training_decision = decision;
+  instance.development_training_manager_comment = comment;
+  instance.development_training_decided_at = new Date();
+  await instance.save();
+
+  return response.json({
+    message: decision === 'Accepté'
+      ? 'Demandes de formation acceptées.'
+      : 'Demandes de formation refusées.',
+    development: {
+      trainingDecision: instance.development_training_decision,
+      trainingManagerComment: instance.development_training_manager_comment,
+      trainingDecidedAt: instance.development_training_decided_at,
+    },
   });
 }
 
 module.exports = {
   addMissionToManagerMember,
   addMyManagerMissionEvaluation,
+  fetchAssociateCommentsForManager,
   getMyManagerEvaluation,
+  getMyManagerEvaluationHistory,
+  getTeamMemberHistoryForManager,
   getManagerTeamReport,
   async getManagerMemberEvaluation(request, response) {
     const member = await getMemberForManager(request.user, request.params.memberId);
 
     if (!member) {
       return response.status(404).json({
-        message: "Membre d'equipe introuvable pour ce manager.",
+        message: "Membre d'équipe introuvable pour ce manager.",
       });
     }
 
@@ -1801,7 +2278,7 @@ module.exports = {
 
     if (!rawSections?.length) {
       return response.status(400).json({
-        message: "Les sections de l'evaluation manager sont requises.",
+        message: "Les sections de l'évaluation manager sont requises.",
       });
     }
 
@@ -1809,7 +2286,7 @@ module.exports = {
 
     if (!member) {
       return response.status(404).json({
-        message: "Membre d'equipe introuvable pour ce manager.",
+        message: "Membre d'équipe introuvable pour ce manager.",
       });
     }
 
@@ -1818,7 +2295,7 @@ module.exports = {
 
     if (missingPageComments.length) {
       return response.status(400).json({
-        message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+        message: "Une justification par titre d'au moins 3 caractères est obligatoire pour toute note inferieure a 3.",
         missingPageComments,
       });
     }
@@ -1828,7 +2305,7 @@ module.exports = {
         if (criterion.score !== null && criterion.score !== undefined) {
           if (!Number.isInteger(criterion.score) || criterion.score < 1 || criterion.score > 5) {
             return response.status(400).json({
-              message: `La note du critere "${criterion.label}" doit etre comprise entre 1 et 5.`,
+              message: `La note du critère "${criterion.label}" doit être comprise entre 1 et 5.`,
             });
           }
         }
@@ -1850,7 +2327,7 @@ module.exports = {
     await review.save();
 
     return response.json({
-      message: 'Evaluation manager enregistree.',
+      message: 'Evaluation manager enregistrée.',
       ...buildManagerReviewPayload(
         review,
         request.user,
@@ -1866,7 +2343,7 @@ module.exports = {
 
     if (!member) {
       return response.status(404).json({
-        message: "Membre d'equipe introuvable pour ce manager.",
+        message: "Membre d'équipe introuvable pour ce manager.",
       });
     }
 
@@ -1882,7 +2359,7 @@ module.exports = {
 
     if (missingAnswers.length) {
       return response.status(400).json({
-        message: "Toutes les questions obligatoires doivent etre renseignees avant soumission a la RH.",
+        message: "Toutes les questions obligatoires doivent être renseignées avant soumission à la RH.",
         missingAnswers,
       });
     }
@@ -1891,7 +2368,7 @@ module.exports = {
 
     if (missingSectionComments.length) {
       return response.status(400).json({
-        message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
+        message: "Un commentaire de section d'au moins 3 caractères est obligatoire pour chaque section avant soumission.",
         missingSectionComments,
       });
     }
@@ -1900,13 +2377,13 @@ module.exports = {
 
     if (missingPageComments.length) {
       return response.status(400).json({
-        message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+        message: "Une justification par titre d'au moins 3 caractères est obligatoire pour toute note inferieure a 3.",
         missingPageComments,
       });
     }
 
     review.sections = toPersistenceSections(sections);
-    review.status = 'Soumis a RH';
+    review.status = 'Soumis à la RH';
     review.submitted_to_user_ids = rhRecipients.map((recipient) => recipient._id);
     review.submitted_to_names = rhRecipients.map((recipient) => recipient.name);
     review.rh_validation_selected = true;
@@ -1915,10 +2392,18 @@ module.exports = {
     review.last_saved_at = new Date();
     await review.save();
 
+    notifySubmissionRecipients({
+      recipientIds: review.submitted_to_user_ids,
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: `l'évaluation de ${member.name}`,
+      cycleLabel: getCurrentCycleLabel(),
+    });
+
     return response.json({
       message: rhRecipients.length
-        ? `Evaluation soumise a ${rhRecipients.map((recipient) => recipient.name).join(', ')}.`
-        : 'Evaluation soumise a la RH / Capital Humain.',
+        ? `Evaluation soumise à ${rhRecipients.map((recipient) => recipient.name).join(', ')}.`
+        : 'Evaluation soumise à la RH.',
       ...buildManagerReviewPayload(
         review,
         request.user,
@@ -1934,7 +2419,7 @@ module.exports = {
 
     if (!rawMissionReviews) {
       return response.status(400).json({
-        message: "Les evaluations par mission sont requises.",
+        message: "Les évaluations par mission sont requises.",
       });
     }
 
@@ -1942,7 +2427,7 @@ module.exports = {
 
     if (!member) {
       return response.status(404).json({
-        message: "Membre d'equipe introuvable pour ce manager.",
+        message: "Membre d'équipe introuvable pour ce manager.",
       });
     }
 
@@ -1969,7 +2454,7 @@ module.exports = {
     const missionAndScoreData = await buildManagerMissionAndGlobalInputs(request.user, member, selfEvaluationInstance, review);
 
     return response.json({
-      message: 'Evaluation manager par mission enregistree.',
+      message: 'Evaluation manager par mission enregistrée.',
       ...buildManagerReviewPayload(
         review,
         request.user,
@@ -1985,7 +2470,7 @@ module.exports = {
 
     if (!missionId) {
       return response.status(400).json({
-        message: 'La mission a soumettre est requise.',
+        message: 'La mission à soumettre est requise.',
       });
     }
 
@@ -1993,7 +2478,7 @@ module.exports = {
 
     if (!member) {
       return response.status(404).json({
-        message: "Membre d'equipe introuvable pour ce manager.",
+        message: "Membre d'équipe introuvable pour ce manager.",
       });
     }
 
@@ -2008,7 +2493,7 @@ module.exports = {
 
     if (!missionReview) {
       return response.status(404).json({
-        message: 'Mission introuvable dans cette evaluation manager.',
+        message: 'Mission introuvable dans cette évaluation manager.',
       });
     }
 
@@ -2018,7 +2503,7 @@ module.exports = {
 
     if (hasIncompleteCriterion) {
       return response.status(400).json({
-        message: 'Toutes les questions de la mission doivent etre renseignees avant soumission a la RH.',
+        message: 'Toutes les questions de la mission doivent être renseignées avant soumission à la RH.',
       });
     }
 
@@ -2026,7 +2511,7 @@ module.exports = {
 
     if (missingSectionComments.length) {
       return response.status(400).json({
-        message: 'Un commentaire de section d au moins 3 caracteres est obligatoire pour chaque section avant soumission.',
+        message: "Un commentaire de section d'au moins 3 caractères est obligatoire pour chaque section avant soumission.",
         missingSectionComments,
       });
     }
@@ -2035,14 +2520,14 @@ module.exports = {
 
     if (missingPageComments.length) {
       return response.status(400).json({
-        message: 'Une justification par titre d au moins 3 caracteres est obligatoire pour toute note inferieure a 3.',
+        message: "Une justification par titre d'au moins 3 caractères est obligatoire pour toute note inferieure a 3.",
         missingPageComments,
       });
     }
 
-    missionReview.status = 'Soumise a RH';
+    missionReview.status = 'Soumise à la RH';
     missionReview.submitted_at = new Date();
-    review.status = 'Soumis a RH';
+    review.status = 'Soumis à la RH';
     review.submitted_to_user_ids = rhRecipients.map((recipient) => recipient._id);
     review.submitted_to_names = rhRecipients.map((recipient) => recipient.name);
     review.rh_validation_selected = true;
@@ -2050,12 +2535,20 @@ module.exports = {
     review.last_saved_at = new Date();
     await review.save();
 
+    notifySubmissionRecipients({
+      recipientIds: review.submitted_to_user_ids,
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: `la mission de ${member.name}`,
+      cycleLabel: getCurrentCycleLabel(),
+    });
+
     const missionAndScoreData = await buildManagerMissionAndGlobalInputs(request.user, member, selfEvaluationInstance, review);
 
     return response.json({
       message: rhRecipients.length
-        ? `Mission soumise a ${rhRecipients.map((recipient) => recipient.name).join(', ')}.`
-        : 'Mission soumise a la RH / Capital Humain.',
+        ? `Mission soumise à ${rhRecipients.map((recipient) => recipient.name).join(', ')}.`
+        : 'Mission soumise à la RH.',
       ...buildManagerReviewPayload(
         review,
         request.user,
@@ -2066,6 +2559,7 @@ module.exports = {
       ),
     });
   },
+  decideTrainingRequests,
   getManagerOverview,
   saveMyManagerEvaluation,
   submitMyManagerMissionEvaluation,
