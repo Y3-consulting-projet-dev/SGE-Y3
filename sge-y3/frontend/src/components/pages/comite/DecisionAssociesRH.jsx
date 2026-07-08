@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { committeeLevels } from "@/components/pages/comite/comiteData";
-import { getLatestCommitteeDecision } from "@/lib/committee";
+﻿import { useEffect, useState } from "react";
+import { committeeLevels } from "@/data/comiteData";
+import { getLatestCommitteeDecision } from "@/api/committee";
 
 function formatDate(value) {
   if (!value) return "";

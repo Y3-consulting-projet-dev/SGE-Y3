@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   getAssociateSupportEvaluation,
   getAssociateSupportEvaluations,
   saveAssociateSupportEvaluation,
-} from "@/lib/associateOverview";
+} from "@/api/associateOverview";
 
 function formatScore(score) {
   return typeof score === "number" ? `${score.toFixed(1)}/5` : "--";

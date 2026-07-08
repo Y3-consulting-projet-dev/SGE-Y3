@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
-import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
 import {
   getSupportSelfEvaluation,
   saveSupportSelfEvaluation,
   submitSupportSelfEvaluation,
-} from "@/lib/supportEvaluation";
+} from "@/api/supportEvaluation";
 
 function getSupportRoleKey(user) {
   return user?.grade || "Service support";

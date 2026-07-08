@@ -7,8 +7,8 @@ import {
   saveMyChiefComments,
   submitMyAssistantEvaluation,
   submitMyAssistantMissionEvaluation,
-} from "@/lib/collaboratorEvaluation";
-import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
+} from "@/api/collaboratorEvaluation";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
 
 const gradingHelp = [
   { level: "1", text: "Insuffisant - objectif non atteint", color: "text-[#FF7A00]" },

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { getRhDepartmentEvaluationDetail, getRhDepartmentEvaluations, selectRhDepartmentEvaluation } from "@/lib/rhOverview";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { getRhDepartmentEvaluationDetail, getRhDepartmentEvaluations, selectRhDepartmentEvaluation } from "@/api/rhOverview";
 
 function statusClass(status) {
   if (status === "Valide" || status === "Pret Associe" || status === "Prêt Associé") return "bg-[#DDECCF] text-[#4E8B1B]";

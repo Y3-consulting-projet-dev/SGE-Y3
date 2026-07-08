@@ -9,10 +9,10 @@ import HistoriqueEquipe from "@/components/pages/manager/HistoriqueEquipe";
 import Rapportsequipe from "@/components/pages/manager/Rapportsequipe";
 import CalendrierAssistants from "@/components/pages/collaborator/CalendrierAssistants";
 import ProfilePanel from "@/components/profile/ProfilePanel";
-import CommentairesRecus from "@/components/CommentairesRecus";
+import CommentairesRecus from "@/components/common/CommentairesRecus";
 import logoY3 from "@/assets/logo-y3.png";
-import { getDisplayName, getInitials } from "@/lib/userPresentation";
-import { getManagerMemberEvaluation, getManagerOverview, getManagerSelfEvaluation } from "@/lib/managerOverview";
+import { getDisplayName, getInitials } from "@/utils/userPresentation";
+import { getManagerMemberEvaluation, getManagerOverview, getManagerSelfEvaluation } from "@/api/managerOverview";
 
 const sidebarSections = [
   {

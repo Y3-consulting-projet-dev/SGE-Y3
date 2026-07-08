@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { BarChart2, LogOut, UserRound } from "lucide-react";
 import logoY3 from "@/assets/logo-y3.png";
-import { rhMenuGroups } from "@/components/pages/rh/rhData";
+import { rhMenuGroups } from "@/data/rhData";
 import TableauRH from "@/components/pages/rh/TableauRH";
 import ValidationsRH from "@/components/pages/rh/ValidationsRH";
 import MonautoevaluationAssistanteRH from "@/components/pages/rh/MonautoevaluationAssistanteRH";
@@ -19,9 +19,9 @@ import GestionCycles from "@/components/pages/rh/GestionCycles";
 import GestionCollaborateurs from "@/components/pages/rh/GestionCollaborateurs";
 import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
 import ProfilePanel from "@/components/profile/ProfilePanel";
-import { saveCommitteeDecision } from "@/lib/committee";
-import { getDisplayName } from "@/lib/userPresentation";
-import { getRhReceivedComments, getAssistantRhEvaluationResult } from "@/lib/rhOverview";
+import { saveCommitteeDecision } from "@/api/committee";
+import { getDisplayName } from "@/utils/userPresentation";
+import { getRhReceivedComments, getAssistantRhEvaluationResult } from "@/api/rhOverview";
 
 function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");

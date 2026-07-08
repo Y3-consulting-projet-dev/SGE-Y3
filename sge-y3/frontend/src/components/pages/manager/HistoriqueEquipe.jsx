@@ -1,7 +1,7 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import HistoriqueEvaluation from "@/components/historique/HistoriqueEvaluation";
 import MemberSearchSelect from "@/components/historique/MemberSearchSelect";
-import { getManagerMemberHistory } from "@/lib/managerOverview";
+import { getManagerMemberHistory } from "@/api/managerOverview";
 
 function HistoriqueEquipe({ members = [], isLoading, errorMessage }) {
   const [selectedId, setSelectedId] = useState(members[0]?.id || "");

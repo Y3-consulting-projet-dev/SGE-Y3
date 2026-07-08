@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { getSeniorTransmittedSummaries } from "@/lib/seniorAssistants";
+﻿import { useEffect, useState } from "react";
+import { getSeniorTransmittedSummaries } from "@/api/seniorAssistants";
 
 function formatDate(value) {
   if (!value) return "Non précisée";

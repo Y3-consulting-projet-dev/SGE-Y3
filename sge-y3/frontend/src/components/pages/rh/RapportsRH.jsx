@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { Download, FileSpreadsheet, FileText } from "lucide-react";
-import { downloadRhReport, getRhReports } from "@/lib/rhOverview";
+﻿import { Download, FileSpreadsheet, FileText } from "lucide-react";
+import { useDownloadFile } from "@/hooks/useDownloadFile";
+import { useRhReports } from "@/hooks/useRhReports";
+import { downloadRhReport } from "@/api/rhOverview";
 
 function FormatToggle({ rowId, formats, selected, onChange, disabled }) {
   return (
@@ -41,81 +42,20 @@ function StatusBadge({ status }) {
 }
 
 function RapportsRH({ readOnly = false }) {
-  const [data, setData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [downloadingId, setDownloadingId] = useState("");
-  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
-  const [selectedFormats, setSelectedFormats] = useState({});
+  const { rows, isLoading, error, getActiveFormat, setFormat } = useRhReports();
+  const { downloadingId, error: downloadError, download } = useDownloadFile();
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadReports() {
-      try {
-        setIsLoading(true);
-        setErrorMessage("");
-        const response = await getRhReports();
-        if (!cancelled) {
-          setData(response);
-          const defaults = {};
-          (response?.exports || []).forEach((row) => {
-            defaults[row.id] = row.format || (row.availableFormats?.[0] ?? "PDF");
-          });
-          setSelectedFormats(defaults);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setErrorMessage(error.message || "Chargement des rapports RH impossible.");
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    loadReports();
-    return () => { cancelled = true; };
-  }, []);
-
-  const rows = data?.exports || [];
-
-  function handleFormatChange(rowId, fmt) {
-    setSelectedFormats((prev) => ({ ...prev, [rowId]: fmt }));
-  }
+  const displayError = error || downloadError;
 
   async function handleDownload(row) {
-    if (!row?.id || readOnly) return;
-    try {
-      setDownloadingId(row.id);
-      setErrorMessage("");
-      const format = selectedFormats[row.id] || row.format || "";
-      const { blob, filename } = await downloadRhReport(row.id, format);
-      const url = window.URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = filename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      setErrorMessage(error.message || "Téléchargement impossible.");
-    } finally {
-      setDownloadingId("");
-    }
+    if (readOnly) return;
+    const format = getActiveFormat(row);
+    await download(row.id, () => downloadRhReport(row.id, format));
   }
 
   async function handleDownloadAll() {
     if (readOnly || !rows.length) return;
-    try {
-      setIsDownloadingAll(true);
-      setErrorMessage("");
-      for (const row of rows) await handleDownload(row);
-    } finally {
-      setIsDownloadingAll(false);
-    }
+    for (const row of rows) await handleDownload(row);
   }
 
   if (isLoading) {
@@ -126,17 +66,16 @@ function RapportsRH({ readOnly = false }) {
     );
   }
 
-  if (errorMessage) {
+  if (displayError) {
     return (
       <section className="rounded-xl bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">
-        {errorMessage}
+        {displayError}
       </section>
     );
   }
 
   return (
-    <section className="rounded-xl bg-white shadow-sm overflow-hidden">
-      {/* Header */}
+    <section className="overflow-hidden rounded-xl bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-4">
         <div>
           <h2 className="text-xl font-extrabold text-[#0F3A63]">Rapports RH</h2>
@@ -147,19 +86,18 @@ function RapportsRH({ readOnly = false }) {
         <button
           type="button"
           onClick={handleDownloadAll}
-          disabled={readOnly || !rows.length || isDownloadingAll || Boolean(downloadingId)}
+          disabled={readOnly || !rows.length || Boolean(downloadingId)}
           className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold transition-colors ${
-            readOnly || !rows.length || isDownloadingAll || downloadingId
+            readOnly || !rows.length || downloadingId
               ? "cursor-not-allowed bg-slate-100 text-slate-400"
               : "bg-[#8BC53F] text-white hover:bg-[#7ab535]"
           }`}
         >
           <Download size={13} />
-          {readOnly ? "Lecture seule" : isDownloadingAll ? "Génération..." : "Tout télécharger"}
+          {readOnly ? "Lecture seule" : downloadingId ? "Génération..." : "Tout télécharger"}
         </button>
       </div>
 
-      {/* Table */}
       {rows.length ? (
         <table className="w-full text-sm">
           <thead>
@@ -172,9 +110,9 @@ function RapportsRH({ readOnly = false }) {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {rows.map((row) => {
-              const activeFormat = selectedFormats[row.id] || row.format;
+              const activeFormat = getActiveFormat(row);
               const isDownloading = downloadingId === row.id;
-              const isBusy = isDownloading || isDownloadingAll;
+              const isBusy = isDownloading || Boolean(downloadingId);
               const Icon = activeFormat === "CSV" ? FileSpreadsheet : FileText;
 
               return (
@@ -195,7 +133,7 @@ function RapportsRH({ readOnly = false }) {
                       rowId={row.id}
                       formats={row.availableFormats || [row.format]}
                       selected={activeFormat}
-                      onChange={handleFormatChange}
+                      onChange={setFormat}
                       disabled={readOnly || isBusy}
                     />
                   </td>

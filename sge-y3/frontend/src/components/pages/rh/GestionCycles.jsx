@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { createRhCycle, getRhCycles } from "@/lib/rhOverview";
-import { formatCommentDate } from "@/components/historique/historiqueUtils";
+﻿import { useEffect, useMemo, useState } from "react";
+import { createRhCycle, getRhCycles } from "@/api/rhOverview";
+import { formatCommentDate } from "@/utils/historiqueUtils";
 
 function GestionCycles() {
   const [cycles, setCycles] = useState([]);
