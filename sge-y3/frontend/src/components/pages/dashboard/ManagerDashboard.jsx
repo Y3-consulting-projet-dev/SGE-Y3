@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { BarChart3, CalendarDays, FileBarChart2, FolderKanban, History, LayoutDashboard, LogOut, MessageSquare, Settings2, Users, X } from "lucide-react";
+import { BarChart3, CalendarDays, FileBarChart2, FolderKanban, History, LayoutDashboard, LogOut, Menu, MessageSquare, Settings2, Users, X } from "lucide-react";
+import SidebarShell from "@/components/layouts/SidebarShell";
 import Monequipe from "@/components/pages/manager/Monequipe";
 import Evaluermonequipe from "@/components/pages/manager/Evaluermonequipe";
 import Objectifsequipe from "@/components/pages/manager/Objectifsequipe";
@@ -49,6 +50,7 @@ function formatSubmissionDate(value) {
 
 function ManagerDashboard({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [relanceMessage, setRelanceMessage] = useState("");
   const [createGoalSignal, setCreateGoalSignal] = useState(0);
@@ -294,7 +296,11 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
   return (
     <div className="min-h-screen bg-[#EEF2F6] text-[#0E2B4F]">
       <div className="flex min-h-screen w-full">
-        <aside className="min-h-screen w-full max-w-[260px] border-r border-slate-200/80 bg-white px-5 py-6">
+        <SidebarShell
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          className="max-w-[260px] border-r border-slate-200/80 bg-white px-5 py-6"
+        >
           <div className="mb-8 flex items-center gap-3">
             <div className="leading-none text-4xl font-black tracking-tight text-[#0E4A6B]">
               SGE
@@ -318,7 +324,10 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
                     return (
                       <button
                         key={item.key}
-                        onClick={() => setActiveSection(item.key)}
+                        onClick={() => {
+                          setActiveSection(item.key);
+                          setIsSidebarOpen(false);
+                        }}
                         className={`w-full rounded-md px-3 py-2 text-left transition ${
                           isActive ? "bg-[#DDE6EE] font-semibold text-[#0E4A6B]" : "text-[#0F3A63] hover:bg-slate-100"
                         }`}
@@ -359,13 +368,22 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
               Déconnexion
             </button>
           </nav>
-        </aside>
+        </SidebarShell>
 
-        <main className="flex-1 p-5 md:p-8">
+        <main className="min-w-0 flex-1 p-5 md:p-8">
           <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
-              {activeSection === "overview" ? <p className="mt-1 text-sm text-slate-500">{displayName} - {user?.grade}</p> : null}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white text-[#0F3A63] shadow-sm lg:hidden"
+                aria-label="Ouvrir le menu"
+              >
+                <Menu size={18} />
+              </button>
+              <div>
+                <h1 className="text-2xl font-black tracking-tight text-[#0F3A63] sm:text-3xl">{pageTitle}</h1>
+                {activeSection === "overview" ? <p className="mt-1 text-sm text-slate-500">{displayName} - {user?.grade}</p> : null}
+              </div>
             </div>
 
             {activeSection === "team-goals" ? (

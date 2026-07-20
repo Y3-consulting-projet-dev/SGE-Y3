@@ -167,8 +167,8 @@ function Objectifsequipe({ createSignal = 0 }) {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-md border border-slate-100">
-          <table className="w-full border-collapse text-sm">
+        <div className="overflow-x-auto rounded-md border border-slate-100">
+          <table className="w-full min-w-[640px] border-collapse text-sm">
             <thead>
               <tr className="bg-[#003B63] text-left text-white">
                 <th className="px-4 py-3 font-semibold">Objectif</th>

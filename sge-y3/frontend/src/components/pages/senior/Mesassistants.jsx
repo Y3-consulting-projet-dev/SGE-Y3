@@ -24,8 +24,8 @@ function Mesassistants({ assistants = [], isLoading, errorMessage, onOpenReview 
   }
 
   return (
-    <section className="overflow-hidden rounded-md bg-white shadow-sm">
-      <table className="w-full border-collapse text-sm">
+    <section className="overflow-x-auto rounded-md bg-white shadow-sm">
+      <table className="w-full min-w-[720px] border-collapse text-sm">
         <thead>
           <tr className="bg-[#003B63] text-left text-white">
             <th className="px-4 py-4 font-semibold">Assistant</th>

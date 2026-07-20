@@ -7,11 +7,13 @@ import {
   LayoutDashboard,
   LineChart,
   LogOut,
+  Menu,
   Settings2,
   Target,
   TrendingUp,
   User,
 } from "lucide-react";
+import SidebarShell from "@/components/layouts/SidebarShell";
 import logoY3 from "@/assets/logo-y3.png";
 import MonTableauDeBord from "@/components/pages/collaborator/Collaboratordashboard";
 import Monautoevaluation from "@/components/pages/collaborator/Monautoevaluation";
@@ -51,6 +53,7 @@ const menuGroups = [
 
 function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("dashboard");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [evaluationData, setEvaluationData] = useState(null);
   const [evaluationError, setEvaluationError] = useState("");
   const [isLoadingEvaluation, setIsLoadingEvaluation] = useState(true);
@@ -251,8 +254,15 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
   return (
     <div className="min-h-screen bg-[#EBEFF3] text-[#0E2B4F]">
       <div className="flex min-h-screen w-full">
-        <aside className="relative min-h-screen w-full max-w-[280px] border-r border-slate-300/70 bg-[#F3F4F6] px-4 py-5">
-          <button className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#E4E7EB] text-slate-500 shadow-sm">
+        <SidebarShell
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          className="max-w-[280px] border-r border-slate-300/70 bg-[#F3F4F6] px-4 py-5"
+        >
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#E4E7EB] text-slate-500 shadow-sm"
+          >
             <ChevronsLeft size={14} />
           </button>
 
@@ -274,7 +284,10 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
                     return (
                       <button
                         key={item.key}
-                        onClick={() => setActiveSection(item.key)}
+                        onClick={() => {
+                          setActiveSection(item.key);
+                          setIsSidebarOpen(false);
+                        }}
                         className={`w-full rounded-md px-3 py-2 text-left text-sm transition ${
                           isActive
                             ? "bg-[#D8E3EC] font-semibold text-[#0E4A6B] shadow-sm"
@@ -312,13 +325,22 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
             <LogOut size={14} />
             Déconnexion
           </button>
-        </aside>
+        </SidebarShell>
 
-        <main className="relative flex-1 p-4 md:p-6">
+        <main className="relative min-w-0 flex-1 p-4 md:p-6">
           <header className="mb-5 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="text-[34px] font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
-              {activeSection === "dashboard" ? <p className="mt-1 text-sm text-slate-500">{displayName} - {user?.grade}</p> : null}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white text-[#0F3A63] shadow-sm lg:hidden"
+                aria-label="Ouvrir le menu"
+              >
+                <Menu size={18} />
+              </button>
+              <div>
+                <h1 className="text-2xl font-black tracking-tight text-[#0F3A63] sm:text-[34px]">{pageTitle}</h1>
+                {activeSection === "dashboard" ? <p className="mt-1 text-sm text-slate-500">{displayName} - {user?.grade}</p> : null}
+              </div>
             </div>
           </header>
 

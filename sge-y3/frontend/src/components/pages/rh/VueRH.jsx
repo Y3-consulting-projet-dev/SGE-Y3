@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { BarChart2, LogOut, UserRound } from "lucide-react";
+import { BarChart2, LogOut, Menu, UserRound } from "lucide-react";
+import SidebarShell from "@/components/layouts/SidebarShell";
 import logoY3 from "@/assets/logo-y3.png";
 import { rhMenuGroups } from "@/components/pages/rh/rhData";
 import TableauRH from "@/components/pages/rh/TableauRH";
@@ -25,6 +26,7 @@ import { getRhReceivedComments, getAssistantRhEvaluationResult } from "@/lib/rhO
 
 function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedAssistantRh, setSelectedAssistantRh] = useState(null);
   const [receivedComments, setReceivedComments] = useState([]);
   const [isLoadingReceived, setIsLoadingReceived] = useState(false);
@@ -197,8 +199,8 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
                 ))}
               </section>
 
-              <section className="flex justify-between gap-4">
-                <article className="w-[53%] rounded-md bg-white p-4 shadow-sm">
+              <section className="flex flex-col gap-4 lg:flex-row lg:justify-between">
+                <article className="rounded-md bg-white p-4 shadow-sm lg:w-[53%]">
                   <div className="mb-4">
                     <h3 className="text-[18px] font-bold text-[#0F3A63]">Synthèse par section</h3>
                     <p className="mt-1 text-[12px] font-semibold text-slate-500">
@@ -239,7 +241,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
                   </div>
                 </article>
 
-                <article className="w-[45%] rounded-md bg-white p-4 shadow-sm">
+                <article className="rounded-md bg-white p-4 shadow-sm lg:w-[45%]">
                   <h3 className="mb-3 text-[22px] font-bold leading-tight text-[#0F3A63]">Commentaire de la RH</h3>
                   <div className="space-y-3">
                     {sectionComments.length ? (
@@ -330,7 +332,11 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
   return (
     <div className="min-h-screen bg-[#EEF2F6] text-[#0E2B4F]">
       <div className="flex min-h-screen w-full">
-        <aside className="min-h-screen w-full max-w-[270px] border-r border-slate-200/80 bg-white px-5 py-6">
+        <SidebarShell
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          className="max-w-[270px] border-r border-slate-200/80 bg-white px-5 py-6"
+        >
           <div className="mb-8">
             <p className="text-4xl font-black tracking-tight text-[#0E4A6B]">SGE</p>
             <img src={logoY3} alt="Y3" className="mt-2 h-20 w-auto scale-x-110 origin-left" />
@@ -347,7 +353,10 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
                     return (
                       <button
                         key={item.key}
-                        onClick={() => setActiveSection(item.key)}
+                        onClick={() => {
+                          setActiveSection(item.key);
+                          setIsSidebarOpen(false);
+                        }}
                         className={`w-full rounded-md px-3 py-2 text-left transition ${
                           isActive ? "bg-[#DDE6EE] font-semibold text-[#0E4A6B]" : "text-[#0F3A63] hover:bg-slate-100"
                         }`}
@@ -367,7 +376,10 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Mes résultats</p>
                 <div className="space-y-1">
                   <button
-                    onClick={() => setActiveSection("my-results")}
+                    onClick={() => {
+                      setActiveSection("my-results");
+                      setIsSidebarOpen(false);
+                    }}
                     className={`w-full rounded-md px-3 py-2 text-left transition ${
                       activeSection === "my-results" ? "bg-[#DDE6EE] font-semibold text-[#0E4A6B]" : "text-[#0F3A63] hover:bg-slate-100"
                     }`}
@@ -401,15 +413,24 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
             <LogOut size={14} />
             Déconnexion
           </button>
-        </aside>
+        </SidebarShell>
 
-        <main className="flex-1 p-5 md:p-8">
+        <main className="min-w-0 flex-1 p-5 md:p-8">
           <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
-              <p className="mt-1 text-sm font-semibold text-slate-500">
-                {assistantMode ? "Cycle 2025-2026 - Consultation RH et gestion des questions" : "Cycle 2025-2026 - Pilotage des évaluations"}
-              </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white text-[#0F3A63] shadow-sm lg:hidden"
+                aria-label="Ouvrir le menu"
+              >
+                <Menu size={18} />
+              </button>
+              <div>
+                <h1 className="text-2xl font-black tracking-tight text-[#0F3A63] sm:text-3xl">{pageTitle}</h1>
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  {assistantMode ? "Cycle 2025-2026 - Consultation RH et gestion des questions" : "Cycle 2025-2026 - Pilotage des évaluations"}
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               {/* <button onClick={() => window.alert("Notifications RH bientôt disponibles.")} className="text-slate-500 hover:text-[#0F3A63]">

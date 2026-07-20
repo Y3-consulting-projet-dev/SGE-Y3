@@ -6,9 +6,11 @@ import {
   History,
   LayoutDashboard,
   LogOut,
+  Menu,
   Settings2,
   UsersRound,
 } from "lucide-react";
+import SidebarShell from "@/components/layouts/SidebarShell";
 import SyntheseRH from "@/components/pages/associé/SynthèseRH";
 import Autoevamanager from "@/components/pages/associé/autoevamanager";
 import AutoevaluationAssocie from "@/components/pages/associé/AutoevaluationAssocie";
@@ -66,6 +68,7 @@ const defaultOverview = {
 
 function Vuecabinet({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("vue-cabinet");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [overview, setOverview] = useState(defaultOverview);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState("");
@@ -137,7 +140,11 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
   return (
     <div className="min-h-screen bg-[#EDF1F5] text-[#0F3A63]">
       <div className="flex min-h-screen">
-        <aside className="w-full max-w-[248px] border-r border-slate-200 bg-[#F5F7FA] px-4 py-6">
+        <SidebarShell
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          className="max-w-[248px] border-r border-slate-200 bg-[#F5F7FA] px-4 py-6"
+        >
           <div className="mb-10">
             <p className="text-4xl font-black tracking-tight text-[#0E4A6B]">SGE</p>
             <img src={logoY3} alt="Y3" className="mt-2 h-16 w-auto object-contain" />
@@ -154,7 +161,10 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
                     return (
                       <button
                         key={item.key}
-                        onClick={() => setActiveSection(item.key)}
+                        onClick={() => {
+                          setActiveSection(item.key);
+                          setIsSidebarOpen(false);
+                        }}
                         className={`w-full rounded-md px-2 py-2 text-left text-sm ${
                           isActive ? "bg-[#C9D8E6] font-semibold text-[#0E4A6B]" : "text-[#0F3A63] hover:bg-slate-200/60"
                         }`}
@@ -178,14 +188,22 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
             <LogOut size={14} />
             Déconnexion
           </button>
-        </aside>
+        </SidebarShell>
 
-        <main className="flex-1 p-6 md:p-9">
+        <main className="min-w-0 flex-1 p-6 md:p-9">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="mb-4 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white text-[#0F3A63] shadow-sm lg:hidden"
+            aria-label="Ouvrir le menu"
+          >
+            <Menu size={18} />
+          </button>
+
           {activeSection === "vue-cabinet" ? (
             <>
               <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
+                  <h1 className="text-2xl font-black tracking-tight text-[#0F3A63] sm:text-3xl">{pageTitle}</h1>
                   <p className="text-sm text-slate-500">
                     {displayName} - {user?.grade} - {overview.cycle_label || "Cycle 2025-2026"} - Synthèse globale
                   </p>
