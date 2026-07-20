@@ -1,0 +1,208 @@
+SGE
+Système de Gestion des Évaluations — Y3 Audits &amp; Conseils
+MANUEL D'UTILISATION
+Profil : Manager
+Pilotage d'équipe, validation des évaluations et suivi des objectifs
+Cycle 2025-2026
+Document interne — usage réservé aux collaborateurs de Y3 Audits &amp; Conseils
+Table des matières
+Table des matières
+TOC \o "1-3" \h \z \u Table des matières PAGEREF _Toc234253996 \h 2
+1. Introduction PAGEREF _Toc234253997 \h 3
+1.1 Votre rôle dans le cycle d'évaluation PAGEREF _Toc234253998 \h 3
+1.2 Le circuit d'évaluation dans le cabinet PAGEREF _Toc234253999 \h 3
+2. Se connecter à SGE PAGEREF _Toc234254000 \h 3
+2.1 Étapes de connexion PAGEREF _Toc234254001 \h 3
+3. Découvrir votre espace de travail PAGEREF _Toc234254002 \h 4
+4. Votre propre auto-évaluation PAGEREF _Toc234254003 \h 5
+4.1 Ajouter une mission PAGEREF _Toc234254004 \h 5
+4.2 Noter une mission PAGEREF _Toc234254005 \h 6
+4.3 Ajouter une compétence complémentaire PAGEREF _Toc234254006 \h 7
+5. Piloter votre équipe PAGEREF _Toc234254007 \h 7
+5.1 Vue d'ensemble PAGEREF _Toc234254008 \h 8
+5.2 Mon équipe PAGEREF _Toc234254009 \h 8
+5.3 Évaluer un membre de l'équipe PAGEREF _Toc234254010 \h 9
+6. Rapports, historique et commentaires reçus PAGEREF _Toc234254011 \h 10
+Gérer votre profil et votre mot de passe PAGEREF _Toc234254012 \h 10
+Informations personnelles PAGEREF _Toc234254013 \h 10
+Connexion &amp; mot de passe PAGEREF _Toc234254014 \h 11
+Statuts d'évaluation — signification PAGEREF _Toc234254015 \h 11
+Bonnes pratiques PAGEREF _Toc234254016 \h 12
+Foire aux questions PAGEREF _Toc234254017 \h 12
+Pourquoi je ne vois pas tous les collaborateurs du cabinet ? PAGEREF _Toc234254018 \h 12
+Puis-je modifier une évaluation déjà transmise à la RH ? PAGEREF _Toc234254019 \h 12
+Comment savoir si mon auto-évaluation a bien été reçue ? PAGEREF _Toc234254020 \h 12
+Glossaire PAGEREF _Toc234254021 \h 13
+TOC \h \o "1-3"
+1. Introduction
+Ce manuel s'adresse aux collaborateurs de Y3 Audits &amp; Conseils rattachés au profil Manager dans l'outil SGE (Système de Gestion des Évaluations). Il décrit, écran par écran, comment utiliser l'application : connexion, navigation, saisie de l'auto-évaluation, actions spécifiques à ce profil, suivi des statuts et bonnes pratiques.
+Ce profil regroupe les grades Manager et Senior Manager. Vous encadrez une équipe (Assistants, Seniors, Assistants Managers) sur votre département et validez leurs évaluations avant transmission à la RH.
+1.1 Votre rôle dans le cycle d'évaluation
+Vous êtes le point de passage obligé entre le terrain (Assistants, Seniors) et la RH : vous consolidez les auto-évaluations et revues de votre équipe, validez la cohérence des notes, pilotez les objectifs collectifs et traitez les demandes de formation.
+Astuce — SGE fonctionne par cycle annuel (ex. « Cycle 2025-2026 »). Toutes les données affichées (missions, évaluations, historiques) sont rattachées au cycle actif défini par la RH.
+1.2 Le circuit d'évaluation dans le cabinet
+Chaque évaluation suit un circuit en plusieurs étapes, du collaborateur évalué jusqu'à la décision finale des associés. Les cases en vert ci-dessous indiquent les étapes qui concernent votre profil.
+Assistant / Senior
+Auto-évaluation par mission
+Senior
+Revue des assistants
+Manager
+Validation d'équipe
+RH
+Contrôle &amp; calibration
+Associés
+Comité &amp; décision finale
+Le Manager valide les auto-évaluations de son équipe (complétées par la revue Senior le cas échéant), puis transmet le dossier consolidé à la RH pour contrôle et calibration. Le Manager réalise également sa propre auto-évaluation comme un Assistant.
+2. Se connecter à SGE
+L'accès à SGE se fait exclusivement via l'écran de connexion, à l'adresse fournie par la RH ou le service Support.
+2.1 Étapes de connexion
+Ouvrez l'application SGE dans votre navigateur.
+Dans le champ « EMAIL », saisissez votre adresse email professionnelle (@ycubeac.com).
+Dans le champ « MOT DE PASSE », saisissez votre mot de passe. Cliquez sur l'icône en forme d'œil pour afficher ou masquer votre saisie.
+Cliquez sur le bouton vert « Se Connecter ».
+Astuce — Si vous vous connectez pour la première fois, utilisez le mot de passe temporaire (Ycube@c2026), puis changez-le immédiatement depuis votre profil (voir chapitre « Gérer votre profil »).
+Attention — En cas d'email ou de mot de passe incorrect, un message d'erreur s'affiche sous le formulaire. Si le problème persiste, contactez la RH ou le service Support — le lien « Mot de passe oublié ? » n'est pas encore actif dans cette version.
+3. Découvrir votre espace de travail
+Ce profil regroupe les grades Assistant Manager, Manager et Senior Manager. Le menu de gauche « WORKFLOW MANAGER » est organisé ainsi :
+Groupe
+Écran
+À quoi ça sert
+Tableau de bord
+Vue d'ensemble
+Accueil : membres de l'équipe, auto-évaluations reçues, évaluations à donner.
+Tableau de bord
+Commentaires reçus
+Commentaires anonymes reçus de votre équipe.
+Equipe
+Mon équipe
+Liste des collaborateurs de votre périmètre (Assistants, Seniors, Assistants Managers).
+Equipe
+Historique équipe
+Historique des évaluations de l'équipe sur les cycles précédents.
+Mon évaluation
+Mon auto-évaluation
+Votre propre auto-évaluation, comme un Assistant.
+Mon évaluation
+Mon calendrier
+Vue chronologique de vos missions manager évaluées.
+Mon évaluation
+Historique
+Votre historique personnel.
+Reporting
+Rapports
+Rapports consolidés sur votre équipe.
+Compte
+Profil
+Informations personnelles et mot de passe.
+Astuce — Votre périmètre d'équipe dépend de votre département : si vous êtes en AUDIT, vous récupérez également les profils rattachés à « AUDIT &amp; EXPERTISE COMPTABLE ». Même logique pour le département EXPERTISE COMPTABLE.
+4. Votre propre auto-évaluation
+En tant que Manager, vous réalisez votre auto-évaluation par mission : déclaration des missions de l'année, notation des critères de 1 à 5, commentaire de section obligatoire, puis soumission mission par mission avant soumission finale.
+Attention — Pensez à déclarer toutes vos missions de l'année avant la date limite fixée par la RH : une mission oubliée ne compte pas dans votre moyenne finale.
+4.1 Ajouter une mission
+Depuis « Mon auto-évaluation » &gt; onglet « Synthèse et ajout de mission » :
+Renseignez le nom ou le type de mission dans le champ « Nom ou type de mission ».
+Indiquez la date de début et la date de fin de la mission.
+Dans « Évaluateurs de la mission », sélectionnez le ou les supérieurs (Associé) qui vous ont encadré sur cette mission, puis cliquez sur « Ajouter » pour chacun.
+Cliquez sur « Ajouter » pour créer la fiche mission. Elle apparaît désormais dans la liste « Mes missions ».
+4.2 Noter une mission
+Ouvrez une mission depuis l'onglet « Mes missions », puis parcourez les sections et thèmes proposés (identiques au référentiel de compétences du cabinet). Pour chaque critère :
+Lisez l'énoncé du critère (compétence attendue).
+Attribuez une note de 1 à 5 en cliquant sur le chiffre correspondant.
+Rédigez un commentaire de section d'au moins 3 caractères (obligatoire) dès le premier titre d’une section.
+Cliquez sur « Enregistrer et continuer » pour passer à la section suivante, ou utilisez les flèches de navigation.
+Note
+Signification
+1
+Insuffisant — objectif non atteint
+2
+En progression — à améliorer
+3
+Satisfaisant — niveau attendu
+4
+Bon — dépasse les attentes
+5
+Excellent — référence dans l'équipe
+Astuce — La saisie est enregistrée automatiquement au fur et à mesure (sauvegarde progressive) : vous pouvez fermer l'application et reprendre plus tard sans perdre votre travail.
+Important — Une fois l'auto-évaluation soumise, vous ne pouvez plus modifier vos notes. Vérifiez chaque mission avant l'envoi final.
+4.3 Ajouter une compétence complémentaire
+Si un aspect de votre mission n'est couvert par aucun critère standard, vous pouvez ajouter une compétence personnalisée depuis l'écran de notation d'une mission : renseignez un titre, un libellé et, si besoin, une description, puis validez. Elle s'ajoute à la section en cours et est notée comme les autres critères.
+5. Piloter votre équipe
+5.1 Vue d'ensemble
+L'écran d'accueil affiche quatre indicateurs clés : le nombre total de membres (avec répartition Assistants / Seniors / Assistants Managers), le nombre d'auto-évaluations reçues, le nombre d'évaluations à donner, et le statut de votre propre auto-évaluation.
+La liste « Évaluations globales en attente » permet d'ouvrir directement la revue d'un collaborateur en attente de validation.
+5.2 Mon équipe
+La page « Mon équipe » liste tous les collaborateurs de votre périmètre avec leur statut d'auto-évaluation. Depuis cette liste, vous pouvez :
+Ouvrir la fiche d'évaluation d'un membre en cliquant sur « Évaluer ».
+Rechercher un membre par nom.
+5.3 Évaluer un membre de l'équipe
+En cliquant sur « Voir » ou sur un assistant depuis « Mon équipe » ou depuis la « Vue d'ensemble », une fenêtre s'ouvre avec le détail de l'auto-évaluation du collaborateur (missions, notes, commentaires) et votre propre grille de validation.
+Consultez les missions et notes déclarées par le collaborateur (et, pour un Assistant, celles ajoutées par son Senior).
+Complétez votre appréciation Manager pour chaque mission ou critère concerné.
+Renseignez vos commentaires.
+Soumettez votre validation : l'évaluation passe au statut « Soumis à la RH ».
+Astuce — En tant que Manager, vous validez également les demandes de formation exprimées par vos collaborateurs dans « Mon développement » : vous pouvez accepter ou refuser chaque demande.
+6. Rapports, historique et commentaires reçus
+La page « Rapports » propose une vue consolidée des résultats de votre équipe sur le cycle. « Historique équipe » conserve la trace des cycles précédents.
+« Commentaires reçus » affiche les commentaires anonymes envoyés par les membres de votre équipe pour vous aider à progresser dans votre rôle de manager ; un badge indique le nombre de nouveaux commentaires.
+Gérer votre profil et votre mot de passe
+La page « Profil » (icône Réglages dans le menu « Compte ») est accessible depuis tous les profils. Elle comporte deux onglets.
+Informations personnelles
+Vous pouvez modifier votre prénom, votre nom et votre email. Cliquez sur « Enregistrer » pour valider, ou « Annuler » pour revenir aux valeurs précédentes.
+Astuce — Les champs « Grade » et « Département » sont en lecture seule : seule la RH peut les modifier, à partir de la page « Gestion des collaborateurs ».
+Connexion &amp; mot de passe
+Cet onglet permet de changer votre mot de passe :
+Saisissez votre ancien mot de passe.
+Saisissez le nouveau mot de passe souhaité.
+Confirmez le nouveau mot de passe.
+Cliquez sur « Modifier le mot de passe ».
+Statuts d'évaluation — signification
+Au fil du circuit de validation, votre évaluation (ou celle de vos collaborateurs) passe par plusieurs statuts. Voici leur signification :
+Statut
+Signification
+Brouillon
+Auto-évaluation (vôtre ou celle d'un membre) en cours de saisie.
+En cours
+Une ou plusieurs missions sont en cours de notation.
+Soumis au Manager / Soumis aux Managers
+L'auto-évaluation du collaborateur vous a été transmise pour revue.
+Soumis à la RH
+Votre validation Manager a été transmise à la RH.
+Validé RH
+La RH a validé et harmonisé l'évaluation du collaborateur.
+Transmis à l'associé
+L'évaluation validée par la RH a été transmise aux Associés pour décision finale.
+Clôture
+Le cycle est terminé pour ce collaborateur ; les résultats sont consultables.
+Bonnes pratiques
+Croisez systématiquement l'auto-évaluation de l'assistant et la revue du Senior avant de valider votre propre appréciation.
+Basez vos notes sur des faits observés durant les missions communes, pas sur une impression générale.
+Renseignez des commentaires de section précis : ils aident vos évaluateurs à comprendre le contexte de votre travail.
+Traitez les demandes de formation rapidement : elles conditionnent le plan de développement du collaborateur.
+Foire aux questions
+Pourquoi je ne vois pas tous les collaborateurs du cabinet ?
+Votre périmètre « Mon équipe » est limité à votre département (avec la règle de rattachement AUDIT / EXPERTISE COMPTABLE), pas à l'ensemble du cabinet.
+Puis-je modifier une évaluation déjà transmise à la RH ?
+Non. Contactez la RH si une correction est nécessaire après transmission.
+Comment savoir si mon auto-évaluation a bien été reçue ?
+La carte « Mon auto-évaluation » sur la Vue d'ensemble affiche son statut en temps réel.
+Glossaire
+Terme
+Définition
+Cycle
+Période annuelle d'évaluation (ex. « Cycle 2025-2026 »), définie et ouverte par la RH.
+Auto-évaluation
+Évaluation que chaque collaborateur réalise de son propre travail, mission par mission.
+Mission
+Dossier ou intervention (audit, expertise comptable, conseil...) sur laquelle un collaborateur est évalué.
+Critère
+Compétence ou comportement noté de 1 à 5 au sein d'une mission.
+Synthèse
+Résumé consolidé d'une évaluation, transmis d'un niveau à l'autre du circuit de validation.
+Calibration
+Harmonisation des notes entre départements réalisée par la RH avant transmission aux associés.
+Comité d'évaluation
+Séance de classement collectif (glisser-déposer) des collaborateurs dans les niveaux CA à CD.
+Commentaire anonyme
+Retour libre, non attribué nominativement au lecteur, laissé à un supérieur ou un collaborateur.
+Décision formation
+Réponse (Accepté / Refusé) du Manager à une demande de formation d'un collaborateur.

@@ -1,0 +1,168 @@
+SGE
+Système de Gestion des Évaluations — Y3 Audits &amp; Conseils
+MANUEL D'UTILISATION
+Profil : Support
+Auto-évaluation et échange de commentaires anonymes
+Cycle 2025-2026
+Document interne — usage réservé aux collaborateurs de Y3 Audits &amp; Conseils
+Table des matières
+TOC \o "1-3" \h \z \u
+1. Introduction PAGEREF _Toc234253559 \h 3
+1.1 Votre rôle dans le cycle d'évaluation PAGEREF _Toc234253560 \h 3
+1.2 Le circuit d'évaluation dans le cabinet PAGEREF _Toc234253561 \h 3
+2. Se connecter à SGE PAGEREF _Toc234253562 \h 3
+2.1 Étapes de connexion PAGEREF _Toc234253563 \h 3
+3. Découvrir votre espace de travail PAGEREF _Toc234253564 \h 4
+4. Votre circuit d'évaluation PAGEREF _Toc234253565 \h 5
+5. Réaliser votre auto-évaluation PAGEREF _Toc234253566 \h 5
+6. Commentaires anonymes PAGEREF _Toc234253567 \h 6
+6.1 Envoyer un commentaire PAGEREF _Toc234253568 \h 7
+6.2 Consulter les commentaires reçus PAGEREF _Toc234253569 \h 7
+7. Historique PAGEREF _Toc234253570 \h 8
+Gérer votre profil et votre mot de passe PAGEREF _Toc234253571 \h 8
+Informations personnelles PAGEREF _Toc234253572 \h 8
+Connexion &amp; mot de passe PAGEREF _Toc234253573 \h 8
+Statuts d'évaluation — signification PAGEREF _Toc234253574 \h 9
+Bonnes pratiques PAGEREF _Toc234253575 \h 9
+Foire aux questions PAGEREF _Toc234253576 \h 9
+Pourquoi je ne vois pas de Manager ou de Senior dans mon circuit ? PAGEREF _Toc234253577 \h 10
+Puis-je modifier un commentaire anonyme après l'avoir envoyé ? PAGEREF _Toc234253578 \h 10
+Où voir le résultat final de mon évaluation ? PAGEREF _Toc234253579 \h 10
+Glossaire PAGEREF _Toc234253580 \h 10
+TOC \h \o "1-3"
+1. Introduction
+Ce manuel s'adresse aux collaborateurs de Y3 Audits &amp; Conseils rattachés au profil Support dans l'outil SGE (Système de Gestion des Évaluations). Il décrit, écran par écran, comment utiliser l'application : connexion, navigation, saisie de l'auto-évaluation, actions spécifiques à ce profil, suivi des statuts et bonnes pratiques.
+Le profil Support s'adresse aux collaborateurs des fonctions transverses du cabinet (Office Management, PMO, Informatique, Comptabilité interne...). Votre circuit d'évaluation est simplifié : votre auto-évaluation est envoyée directement aux Associés.
+1.1 Votre rôle dans le cycle d'évaluation
+Vous documentez votre activité de l'année à travers une évaluation globale du cycle, vous auto-évaluez avec objectivité, puis échangez des retours anonymes avec vos collègues pour contribuer à un climat de travail constructif.
+Astuce — SGE fonctionne par cycle annuel (ex. « Cycle 2025-2026 »). Toutes les données affichées (évaluations, historiques) sont rattachées au cycle actif défini par la RH.
+1.2 Le circuit d'évaluation dans le cabinet
+Chaque évaluation suit un circuit en plusieurs étapes, du collaborateur évalué jusqu'à la décision finale des associés. Les cases en vert ci-dessous indiquent les étapes qui concernent votre profil.
+Assistant / Senior
+Auto-évaluation par mission
+Senior
+Revue des assistants
+Manager
+Validation d'équipe
+RH
+Contrôle &amp; calibration
+Associés
+Comité &amp; décision finale
+Le service Support ne suit pas le circuit standard Assistant → Senior → Manager → RH → Associés : son auto-évaluation est transmise directement aux Associés pour décision et classement.
+2. Se connecter à SGE
+L'accès à SGE se fait exclusivement via l'écran de connexion, à l'adresse fournie par la RH ou le service Support.
+2.1 Étapes de connexion
+Ouvrez l'application SGE dans votre navigateur.
+Dans le champ « EMAIL », saisissez votre adresse email professionnelle (@ycubeac.com).
+Dans le champ « MOT DE PASSE », saisissez votre mot de passe. Cliquez sur l'icône en forme d'œil pour afficher ou masquer votre saisie.
+Cliquez sur le bouton vert « Se Connecter ».
+Astuce — Si vous vous connectez pour la première fois, utilisez le mot de passe temporaire (Ycube@c2026), puis changez-le immédiatement depuis votre profil (voir chapitre « Gérer votre profil »).
+Attention — En cas d'email ou de mot de passe incorrect, un message d'erreur s'affiche sous le formulaire. Si le problème persiste, contactez la RH ou le service Support — le lien « Mot de passe oublié ? » n'est pas encore actif dans cette version.
+3. Découvrir votre espace de travail
+Le profil Support s'adresse aux collaborateurs du service Support (Office Management, PMO, Informatique, Comptabilité interne...). Son espace de travail est volontairement simple, avec cinq écrans :
+Écran
+À quoi ça sert
+Vue support
+Accueil : rappel des trois grandes étapes de votre circuit d'évaluation.
+Mon auto-évaluation
+Saisie de votre auto-évaluation, mission par mission.
+Historique
+Historique de vos évaluations des cycles précédents.
+Commentaires anonymes
+Envoi et réception de commentaires anonymes.
+Profil
+Informations personnelles et mot de passe.
+4. Votre circuit d'évaluation
+Le service Support suit un circuit simplifié, différent de celui des autres profils : votre auto-évaluation est envoyée directement aux Associés, sans passer par un Senior ou un Manager.
+Étape
+Description
+Auto-évaluation
+À soumettre directement aux associés.
+Décision
+Évaluation et classement réalisés par les associés.
+Retour RH
+Les taux d'augmentation sont transmis à la RH.
+5. Réaliser votre auto-évaluation
+Contrairement aux autres profils, vous vous évaluez globalement : notez les critères correspondants de 1 à 5, rédigez un commentaire de section, puis soumettez.
+Note
+Signification
+1
+Insuffisant — objectif non atteint
+2
+En progression — à améliorer
+3
+Satisfaisant — niveau attendu
+4
+Bon — dépasse les attentes
+5
+Excellent — référence dans l'équipe
+Pour vous évaluer vous devez parcourir les sections et thèmes proposés (identiques au référentiel de compétences du cabinet). Pour chaque critère :
+Lisez l'énoncé du critère (compétence attendue).
+Attribuez une note de 1 à 5 en cliquant sur le chiffre correspondant.
+Rédigez un commentaire de section d'au moins 3 caractères (obligatoire) dès le premier titre d’une section.
+Cliquez sur « Suivant » pour passer à la section suivante, ou utilisez les flèches de navigation.
+Important — Une fois votre auto-évaluation soumise, elle part directement à la validation des Associés : vérifiez chaque mission avant l'envoi final, vous ne pourrez plus la modifier ensuite.
+6. Commentaires anonymes
+Cet écran comporte deux onglets : « Mes commentaires » (les commentaires que vous envoyez) et « Reçus » (les commentaires anonymes qui vous sont adressés).
+6.1 Envoyer un commentaire
+Dans l'onglet « Mes commentaires », sélectionnez un destinataire dans la liste déroulante.
+Cliquez sur « Ajouter ».
+Rédigez votre commentaire dans la zone de texte prévue.
+Cliquez sur « Envoyer ». Le commentaire apparaît alors directement chez le destinataire et ne peut plus être modifié.
+6.2 Consulter les commentaires reçus
+L'onglet « Reçus » affiche les commentaires anonymes qui vous ont été adressés, avec leur date de réception. Un badge indique le nombre de commentaires reçus.
+7. Historique
+La page « Historique » conserve la trace de vos évaluations des cycles précédents pour suivre votre progression.
+Gérer votre profil et votre mot de passe
+La page « Profil » (icône Réglages dans le menu « Compte ») est accessible depuis tous les profils. Elle comporte deux onglets.
+Informations personnelles
+Vous pouvez modifier votre prénom, votre nom et votre email. Cliquez sur « Enregistrer » pour valider, ou « Annuler » pour revenir aux valeurs précédentes.
+Astuce — Les champs « Grade » et « Département » sont en lecture seule : seule la RH peut les modifier, à partir de la page « Gestion des collaborateurs ».
+Connexion &amp; mot de passe
+Cet onglet permet de changer votre mot de passe :
+Saisissez votre ancien mot de passe.
+Saisissez le nouveau mot de passe souhaité.
+Confirmez le nouveau mot de passe.
+Cliquez sur « Modifier le mot de passe ».
+Statuts d'évaluation — signification
+Au fil du circuit de validation, votre évaluation (ou celle de vos collaborateurs) passe par plusieurs statuts. Voici leur signification :
+Statut
+Signification
+Brouillon
+Votre auto-évaluation est en cours de saisie, non encore soumise.
+En cours
+Une ou plusieurs missions sont en cours de notation.
+Soumis aux Associés
+Votre auto-évaluation a été transmise directement aux Associés.
+Clôture
+Le cycle est terminé ; le taux d'augmentation décidé par les Associés a été transmis à la RH.
+Bonnes pratiques
+Rédigez des commentaires de section précis : sans revue Senior ou Manager intermédiaire, ils sont votre seul moyen de contextualiser votre travail auprès des Associés.
+Utilisez les commentaires anonymes pour un retour constructif, jamais pour régler un différend personnel.
+Consultez régulièrement l'onglet « Reçus » pour prendre connaissance des retours qui vous sont adressés.
+Foire aux questions
+Pourquoi je ne vois pas de Manager ou de Senior dans mon circuit ?
+Le service Support a un circuit simplifié : votre auto-évaluation part directement aux Associés, qui la valident avant retour du taux d'augmentation à la RH.
+Puis-je modifier un commentaire anonyme après l'avoir envoyé ?
+Non, un commentaire envoyé est définitif et visible immédiatement par son destinataire.
+Où voir le résultat final de mon évaluation ?
+Le détail des notes attribuées apparaît dans votre historique une fois le cycle clôturé par la RH.
+Glossaire
+Terme
+Définition
+Cycle
+Période annuelle d'évaluation (ex. « Cycle 2025-2026 »), définie et ouverte par la RH.
+Auto-évaluation
+Évaluation que chaque collaborateur réalise de son propre travail, mission par mission.
+Mission
+Dossier ou intervention (audit, expertise comptable, conseil...) sur laquelle un collaborateur est évalué.
+Critère
+Compétence ou comportement noté de 1 à 5 au sein d'une mission.
+Synthèse
+Résumé consolidé d'une évaluation, transmis d'un niveau à l'autre du circuit de validation.
+Calibration
+Harmonisation des notes entre départements réalisée par la RH avant transmission aux associés.
+Commentaire anonyme
+Retour libre, non attribué nominativement au lecteur, laissé à un supérieur ou un collaborateur.
+Circuit simplifié
+Circuit d'évaluation du service Support : auto-évaluation transmise directement aux Associés, sans étape Senior/Manager/RH intermédiaire.
