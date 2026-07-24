@@ -18,31 +18,21 @@ import Monhistorique from "@/components/pages/rh/Monhistorique";
 import HistoriqueEquipe from "@/components/pages/rh/HistoriqueEquipe";
 import GestionCycles from "@/components/pages/rh/GestionCycles";
 import GestionCollaborateurs from "@/components/pages/rh/GestionCollaborateurs";
+import CommentairesAnonymesRH from "@/components/pages/rh/CommentairesAnonymesRH";
 import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import { saveCommitteeDecision } from "@/api/committee";
 import { getDisplayName } from "@/utils/userPresentation";
-import { getRhReceivedComments, getAssistantRhEvaluationResult } from "@/api/rhOverview";
+import { getAssistantRhEvaluationResult } from "@/api/rhOverview";
 
 function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedAssistantRh, setSelectedAssistantRh] = useState(null);
-  const [receivedComments, setReceivedComments] = useState([]);
-  const [isLoadingReceived, setIsLoadingReceived] = useState(false);
   const [evaluationResult, setEvaluationResult] = useState(null);
   const [isLoadingResult, setIsLoadingResult] = useState(false);
   const [evaluationResultError, setEvaluationResultError] = useState("");
   const displayName = getDisplayName(user);
-
-  useEffect(() => {
-    if (activeSection !== "received-comments") return;
-    setIsLoadingReceived(true);
-    getRhReceivedComments()
-      .then((data) => setReceivedComments(data?.received || []))
-      .catch(() => {})
-      .finally(() => setIsLoadingReceived(false));
-  }, [activeSection]);
 
   useEffect(() => {
     if (!assistantMode || activeSection !== "my-results") return;
@@ -70,7 +60,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
     if (activeSection === "committee") return "COMITÉ D'ÉVALUATION";
     if (activeSection === "collaborators") return "GESTION DES COLLABORATEURS";
     if (activeSection === "cycles") return "GESTION DES CYCLES";
-    if (activeSection === "received-comments") return "COMMENTAIRES REÇUS";
+    if (activeSection === "received-comments") return "COMMENTAIRES ANONYMES";
     if (activeSection === "my-results") return "MES RÉSULTATS";
     if (activeSection === "profile") return "MON PROFIL";
     return "TABLEAU DE BORD RH";
@@ -268,44 +258,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
     }
 
     if (activeSection === "received-comments") {
-      return (
-        <section className="space-y-4">
-          <article className="rounded-md bg-white p-5 shadow-sm">
-            <div className="mb-1 flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h3 className="text-[22px] font-bold text-[#0F3A63]">Commentaires anonymes reçus</h3>
-                <p className="mt-1 text-[12px] font-semibold text-slate-500">
-                  Ces commentaires ont été rédigés anonymement par des collaborateurs et vous sont destinés. L'identité des auteurs n'est pas divulguée.
-                </p>
-              </div>
-              <span className="rounded-full border border-[#D9E3EE] bg-white px-3 py-1 text-[11px] font-bold text-[#0F4A72]">
-                Anonyme · Confidentiel
-              </span>
-            </div>
-
-            <div className="mt-5 space-y-3">
-              {isLoadingReceived ? (
-                <p className="rounded-md bg-[#EEF2F6] px-4 py-4 text-sm font-semibold text-slate-500">Chargement…</p>
-              ) : receivedComments.length > 0 ? (
-                receivedComments.map((item, index) => (
-                  <div key={index} className="rounded-md border border-[#C3DFAA] bg-[#F4FAED] p-4">
-                    <p className="rounded-md bg-white px-3 py-2 text-[12px] text-slate-700 ring-1 ring-[#C3DFAA]">
-                      {item.comment}
-                    </p>
-                    <p className="mt-2 text-[11px] text-slate-400">
-                      Reçu le {new Date(item.submittedAt).toLocaleDateString("fr-FR")}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <p className="rounded-md bg-[#EEF2F6] px-4 py-4 text-sm font-semibold text-slate-500">
-                  Aucun commentaire reçu pour le moment.
-                </p>
-              )}
-            </div>
-          </article>
-        </section>
-      );
+      return <CommentairesAnonymesRH />;
     }
 
     if (activeSection === "profile") {

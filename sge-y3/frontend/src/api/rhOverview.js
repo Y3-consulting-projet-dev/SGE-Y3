@@ -253,6 +253,14 @@ export function getRhReceivedComments() {
   return request("/rh/received-comments");
 }
 
+export function getRhCollaboratorAnonymousComments(userId) {
+  return request(`/rh/collaborators/${userId}/anonymous-comments`);
+}
+
+export function getRhAnonymousCommentRecipients() {
+  return request("/rh/anonymous-comments/recipients");
+}
+
 export function getAssistantRhEvaluationResult() {
   return request("/rh/my-evaluation-result");
 }

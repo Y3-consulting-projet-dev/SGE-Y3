@@ -3349,18 +3349,18 @@ async function getMyAssistantRhEvaluationResult(request, response) {
   }
 }
 
-async function getRhReceivedChiefComments(request, response) {
-  const userId = String(request.user._id);
+async function findAnonymousCommentsReceivedByUser(userId) {
+  const targetId = String(userId);
   const instances = await EvaluationInstance.find({
     cycle_label: getCurrentCycleLabel(),
-    'chief_comments.target_user_id': request.user._id,
+    'chief_comments.target_user_id': userId,
   }).select('chief_comments');
 
   const received = [];
   for (const instance of instances) {
     for (const comment of instance.chief_comments || []) {
       if (
-        String(comment.target_user_id) === userId &&
+        String(comment.target_user_id) === targetId &&
         comment.submitted_at &&
         String(comment.comment || '').trim()
       ) {
@@ -3373,7 +3373,58 @@ async function getRhReceivedChiefComments(request, response) {
   }
 
   received.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+  return received;
+}
+
+async function getRhReceivedChiefComments(request, response) {
+  const received = await findAnonymousCommentsReceivedByUser(request.user._id);
   return response.json({ received });
+}
+
+async function getRhCollaboratorAnonymousComments(request, response) {
+  const userId = String(request.params.userId || '').trim();
+
+  if (!/^[0-9a-fA-F]{24}$/.test(userId)) {
+    return response.status(400).json({ message: 'Identifiant de collaborateur invalide.' });
+  }
+
+  const collaborator = await User.findById(userId).select('_id');
+  if (!collaborator) {
+    return response.status(404).json({ message: 'Collaborateur introuvable.' });
+  }
+
+  const received = await findAnonymousCommentsReceivedByUser(userId);
+  return response.json({ received });
+}
+
+async function getRhAnonymousCommentRecipients(request, response) {
+  const instances = await EvaluationInstance.find({
+    cycle_label: getCurrentCycleLabel(),
+    'chief_comments.0': { $exists: true },
+  }).select('chief_comments');
+
+  const recipientsById = new Map();
+  for (const instance of instances) {
+    for (const comment of instance.chief_comments || []) {
+      if (!comment.target_user_id || !comment.submitted_at || !String(comment.comment || '').trim()) {
+        continue;
+      }
+
+      const id = String(comment.target_user_id);
+      const current = recipientsById.get(id) || {
+        id,
+        name: comment.target_name || '',
+        grade: comment.target_grade || '',
+        department: comment.target_department || '',
+        commentCount: 0,
+      };
+      current.commentCount += 1;
+      recipientsById.set(id, current);
+    }
+  }
+
+  const recipients = Array.from(recipientsById.values()).sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  return response.json({ recipients });
 }
 
 module.exports = {
@@ -3395,6 +3446,8 @@ module.exports = {
   getMyAssistantRhEvaluationResult,
   getRhOverview,
   getRhReceivedChiefComments,
+  getRhCollaboratorAnonymousComments,
+  getRhAnonymousCommentRecipients,
   getRhPopulation,
   getRhReports,
   getRhSyntheses,

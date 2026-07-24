@@ -23,6 +23,8 @@ const {
   getMyAssistantRhEvaluationResult,
   getRhOverview,
   getRhReceivedChiefComments,
+  getRhCollaboratorAnonymousComments,
+  getRhAnonymousCommentRecipients,
   getRhPopulation,
   getRhReports,
   getRhSyntheses,
@@ -81,5 +83,7 @@ router.get('/cycles', requireAuth, requireRh, getRhCycles);
 router.post('/cycles', requireAuth, requireRh, createRhCycle);
 router.get('/my-evaluation-result', requireAuth, requireRh, getMyAssistantRhEvaluationResult);
 router.get('/received-comments', requireAuth, requireRh, getRhReceivedChiefComments);
+router.get('/collaborators/:userId/anonymous-comments', requireAuth, requireRh, getRhCollaboratorAnonymousComments);
+router.get('/anonymous-comments/recipients', requireAuth, requireRh, getRhAnonymousCommentRecipients);
 
 module.exports = router;

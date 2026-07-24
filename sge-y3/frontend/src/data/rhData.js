@@ -38,7 +38,7 @@ export const rhMenuGroups = [
   },
   {
     title: "Commentaires",
-    items: [{ key: "received-comments", label: "Commentaires reçus", icon: MessageSquare }],
+    items: [{ key: "received-comments", label: "Commentaires anonymes", icon: MessageSquare }],
   },
   {
     title: "Compte",
