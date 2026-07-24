@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { getRhValidations, validateRhSelection } from "@/lib/rhOverview";
+﻿import { useEffect, useRef, useState } from "react";
+import { getRhValidations, validateRhSelection } from "@/api/rhOverview";
 
 function statusClass(status) {
   if (status === "Prêt Associé") return "bg-[#DDECCF] text-[#4E8B1B]";

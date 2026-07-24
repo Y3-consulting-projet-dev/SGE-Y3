@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import {
   Bell,
   CircleHelp,
@@ -20,9 +20,9 @@ import HistoriqueCabinet from "@/components/pages/associé/HistoriqueCabinet";
 import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import logoY3 from "@/assets/logo-y3.png";
-import { saveCommitteeDecision } from "@/lib/committee";
-import { getAssociateOverview } from "@/lib/associateOverview";
-import { getDisplayName, getInitials } from "@/lib/userPresentation";
+import { saveCommitteeDecision } from "@/api/committee";
+import { getAssociateOverview } from "@/api/associateOverview";
+import { getDisplayName, getInitials } from "@/utils/userPresentation";
 
 const sideMenu = [
   {

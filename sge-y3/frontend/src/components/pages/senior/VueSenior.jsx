@@ -2,7 +2,7 @@
 import { LogOut, Menu } from "lucide-react";
 import SidebarShell from "@/components/layouts/SidebarShell";
 import logoY3 from "@/assets/logo-y3.png";
-import { menuGroups } from "@/components/pages/senior/seniorData";
+import { menuGroups } from "@/data/seniorData";
 import Vueensemble from "@/components/pages/senior/Vueensemble";
 import Mesassistants from "@/components/pages/senior/Mesassistants";
 import Evaluerassistants from "@/components/pages/senior/Evaluerassistants";
@@ -13,10 +13,10 @@ import Monhistorique from "@/components/pages/senior/Monhistorique";
 import HistoriqueAssistants from "@/components/pages/senior/HistoriqueAssistants";
 import CalendrierAssistants from "@/components/pages/collaborator/CalendrierAssistants";
 import ProfilePanel from "@/components/profile/ProfilePanel";
-import CommentairesRecus from "@/components/CommentairesRecus";
-import { getDisplayName, getInitials } from "@/lib/userPresentation";
-import { addSeniorAssistantMission, getSeniorAssistantEvaluation, getSeniorAssistants, getSeniorCommonMissions, getSeniorOverview } from "@/lib/seniorAssistants";
-import { getMySeniorEvaluation } from "@/lib/seniorEvaluation";
+import CommentairesRecus from "@/components/common/CommentairesRecus";
+import { getDisplayName, getInitials } from "@/utils/userPresentation";
+import { addSeniorAssistantMission, getSeniorAssistantEvaluation, getSeniorAssistants, getSeniorCommonMissions, getSeniorOverview } from "@/api/seniorAssistants";
+import { getMySeniorEvaluation } from "@/api/seniorEvaluation";
 
 function VueSenior({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");

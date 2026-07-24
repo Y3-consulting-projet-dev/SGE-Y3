@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import HistoriqueEvaluation from "@/components/historique/HistoriqueEvaluation";
 import MemberSearchSelect from "@/components/historique/MemberSearchSelect";
-import { getRhTeamMembers, getRhTeamMemberHistory } from "@/lib/rhOverview";
+import { getRhTeamMembers, getRhTeamMemberHistory } from "@/api/rhOverview";
 
 function HistoriqueEquipe() {
   const [members, setMembers] = useState([]);

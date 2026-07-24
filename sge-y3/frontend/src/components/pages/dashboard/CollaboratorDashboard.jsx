@@ -22,8 +22,8 @@ import Monhistorique from "@/components/pages/collaborator/Monhistorique";
 import Mondeveloppement from "@/components/pages/collaborator/Mondeveloppement";
 import Calendrier from "@/components/pages/collaborator/Calendrier";
 import ProfilePanel from "@/components/profile/ProfilePanel";
-import { getDisplayName } from "@/lib/userPresentation";
-import { getMyAssistantEvaluation, getMyAssistantResults } from "@/lib/collaboratorEvaluation";
+import { getDisplayName } from "@/utils/userPresentation";
+import { getMyAssistantEvaluation, getMyAssistantResults } from "@/api/collaboratorEvaluation";
 
 const menuGroups = [
   {

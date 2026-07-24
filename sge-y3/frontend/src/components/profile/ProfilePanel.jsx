@@ -1,7 +1,7 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Eye, EyeOff, Power } from "lucide-react";
-import { updatePassword, updateProfile } from "@/lib/auth";
-import { departmentOptions, getDisplayName, getInitials, gradeOptions } from "@/lib/userPresentation";
+import { updatePassword, updateProfile } from "@/api/auth";
+import { departmentOptions, getDisplayName, getInitials, gradeOptions } from "@/utils/userPresentation";
 
 function createInfoForm(user) {
   return {

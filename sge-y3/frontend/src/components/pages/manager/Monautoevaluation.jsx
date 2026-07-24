@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   createManagerMissionEvaluation,
@@ -6,8 +6,8 @@ import {
   saveManagerSelfEvaluation,
   submitManagerMissionEvaluation,
   submitManagerSelfEvaluation,
-} from "@/lib/managerOverview";
-import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
+} from "@/api/managerOverview";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
 
 function getPageProgress(page) {
   const themes = page?.themes || [];

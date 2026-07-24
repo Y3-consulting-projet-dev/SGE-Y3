@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import HistoriqueEvaluation from "@/components/historique/HistoriqueEvaluation";
 import MemberSearchSelect from "@/components/historique/MemberSearchSelect";
-import { getCabinetMembers, getCabinetMemberHistory } from "@/lib/associateOverview";
+import { getCabinetMembers, getCabinetMemberHistory } from "@/api/associateOverview";
 
 function HistoriqueCabinet() {
   const [members, setMembers] = useState([]);

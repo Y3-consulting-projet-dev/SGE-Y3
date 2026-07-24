@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { committeeAssistants, committeeLeaders, committeeLevels, committeeMembers, committeeSupport } from "@/components/pages/comite/comiteData";
-import { getCommitteeParticipants, getLatestCommitteeDecision } from "@/lib/committee";
+﻿import { useEffect, useMemo, useState } from "react";
+import { committeeAssistants, committeeLeaders, committeeLevels, committeeMembers, committeeSupport } from "@/data/comiteData";
+import { getCommitteeParticipants, getLatestCommitteeDecision } from "@/api/committee";
 
 function PersonCard({ person, draggable, onDragStart, onRateChange, compact = false, rateEnabled = false }) {
   return (

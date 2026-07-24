@@ -1,6 +1,6 @@
 ﻿import { CheckCircle2, CircleDashed } from "lucide-react";
 
-import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
 
 const reminders = [
   { label: "Soumettre l'auto-évaluation", date: "18-04-2026" },

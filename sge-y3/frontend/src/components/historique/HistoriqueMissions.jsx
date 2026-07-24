@@ -1,4 +1,4 @@
-import { formatCommentDate } from "./historiqueUtils";
+import { formatCommentDate } from "@/utils/historiqueUtils";
 
 function HistoriqueMissions({ cycle }) {
   return (

@@ -1,6 +1,6 @@
-import { lazy, Suspense, useState } from "react";
+﻿import { lazy, Suspense, useState } from "react";
 import LoginPage from "@/components/pages/auth/LoginPage";
-import { clearSession, loadSession, loginUser, saveSession } from "@/lib/auth";
+import { clearSession, loadSession, loginUser, saveSession } from "@/api/auth";
 
 const ManagerDashboard = lazy(() => import("@/components/pages/dashboard/ManagerDashboard"));
 const CollaboratorDashboard = lazy(() => import("@/components/pages/dashboard/CollaboratorDashboard"));

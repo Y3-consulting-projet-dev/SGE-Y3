@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { getRhSyntheses, submitRhSyntheses } from "@/lib/rhOverview";
+﻿import { useEffect, useState } from "react";
+import { getRhSyntheses, submitRhSyntheses } from "@/api/rhOverview";
 
 function SynthesesRH({ readOnly = false }) {
   const [data, setData] = useState(null);

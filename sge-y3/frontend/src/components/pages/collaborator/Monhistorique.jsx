@@ -1,5 +1,5 @@
-import HistoriqueEvaluation from "@/components/historique/HistoriqueEvaluation";
-import { getMyAssistantEvaluationHistory } from "@/lib/collaboratorEvaluation";
+﻿import HistoriqueEvaluation from "@/components/historique/HistoriqueEvaluation";
+import { getMyAssistantEvaluationHistory } from "@/api/collaboratorEvaluation";
 
 function Monhistorique() {
   return <HistoriqueEvaluation fetchHistory={getMyAssistantEvaluationHistory} />;

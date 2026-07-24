@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Bell } from "lucide-react";
-import { getAssociateSyntheses } from "@/lib/associateOverview";
+import { getAssociateSyntheses } from "@/api/associateOverview";
 
 function formatScore(score) {
   return typeof score === "number" ? `${score.toFixed(1)}/5` : "--";

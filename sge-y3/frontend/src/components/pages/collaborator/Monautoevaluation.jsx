@@ -7,15 +7,49 @@ import {
   saveMyChiefComments,
   submitMyAssistantEvaluation,
   submitMyAssistantMissionEvaluation,
-} from "@/lib/collaboratorEvaluation";
-import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
+} from "@/api/collaboratorEvaluation";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
 
 const gradingHelp = [
-  { level: "1", text: "Insuffisant - objectif non atteint", color: "text-[#FF7A00]" },
-  { level: "2", text: "En progression - à améliorer", color: "text-[#0F3A63]" },
-  { level: "3", text: "Satisfaisant - niveau attendu", color: "text-[#0F3A63]" },
-  { level: "4", text: "Bon - dépasse les attentes", color: "text-[#0F3A63]" },
-  { level: "5", text: "Excellent - référence dans l'équipe", color: "text-[#76B82A]" },
+  {
+    level: "1",
+    text: "Insuffisant - Objectif non atteint",
+    description:
+      "Le collaborateur ne remplit pas les attentes de base de son grade actuel, même sur les missions standards. Les lacunes sont récurrentes, observées sur plusieurs missions, et n'ont montré aucun signe d'amélioration malgré les retours reçus. Une note de 1 doit obligatoirement être accompagnée d'exemples concrets dans le commentaire.",
+    note: "Un plan d'accompagnement doit être envisagé.",
+    noteType: "warning",
+    color: "text-[#FF7A00]",
+  },
+  {
+    level: "2",
+    text: "En progression - À améliorer",
+    description:
+      "Le collaborateur remplit partiellement les attentes de son grade. Il maîtrise certains aspects mais présente des lacunes identifiées sur d'autres. La progression est visible mais insuffisante pour valider le niveau complet. C'est la note d'un collaborateur sur la bonne trajectoire, mais qui n'y est pas encore.",
+    color: "text-[#0F3A63]",
+  },
+  { 
+    level: "3",
+    text: "Satisfaisant - Niveau attendu",
+    description:
+      "Le collaborateur remplit pleinement les attentes de son grade actuel, de façon régulière et autonome. C'est la note de référence. Un 3 est une bonne note — elle signifie que le collaborateur est compétent et fiable à son niveau. Elle n'exclut pas une évolution de grade si d'autres signaux positifs sont présents.",
+    note: "Le 3 n'est pas une note par défaut. Ne pas l'attribuer à tout le monde par confort, cela viderait l'outil de son sens.",
+    noteType: "check",
+    color: "text-[#0F3A63]",
+  },
+  {
+    level: "4",
+    text: "Bon - Dépasse les attentes",
+    description:
+      "Le collaborateur maîtrise son grade et démontre déjà régulièrement des comportements ou compétences attendus au grade supérieur. C'est observé sur au moins deux missions et de façon constante, pas ponctuelle. Le 4 est la note la plus haute couramment attribuée, c'est un signal fort de progression.",
+    color: "text-[#0F3A63]",
+  },
+  {
+    level: "5",
+    text: "Excellent - Référence dans l'équipe",
+    description:
+      "Le collaborateur opère clairement au niveau du grade supérieur de façon constante et sur l'ensemble de ses missions. Il est un point d'appui pour ses pairs et contribue au-delà de ce qu'on attend de lui. Le 5 est exceptionnel et rarissime, il signale une performance hors norme sur le cycle évalué.",
+    color: "text-[#76B82A]",
+  },
 ];
 
 function getRecipientLabel(recipient) {
@@ -500,6 +534,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   const [activeMissionView, setActiveMissionView] = useState("synthese");
   const [missionSearchQuery, setMissionSearchQuery] = useState("");
   const [isMissionPickerOpen, setIsMissionPickerOpen] = useState(false);
+  const [openGradingLevel, setOpenGradingLevel] = useState(null);
   const [chiefComments, setChiefComments] = useState(() => evaluationData?.chief_comments || []);
   const [chiefTargetValue, setChiefTargetValue] = useState("");
   const [chiefFeedback, setChiefFeedback] = useState(null);
@@ -1565,14 +1600,44 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
           <div className="rounded-md bg-white p-4 shadow-sm">
             <h3 className="mb-3 text-[20px] font-bold text-[#0F3A63]">Aide à la notation</h3>
             <div className="space-y-2">
-              {gradingHelp.map((item) => (
-                <div key={item.level} className="flex items-center gap-2 text-[12px]">
-                  <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-slate-200 font-bold text-slate-500">
-                    {item.level}
-                  </span>
-                  <p className={`font-semibold ${item.color}`}>{item.text}</p>
-                </div>
-              ))}
+              {gradingHelp.map((item) => {
+                const isOpen = openGradingLevel === item.level;
+
+                return (
+                  <div key={item.level} className="rounded-md">
+                    <button
+                      type="button"
+                      onClick={() => setOpenGradingLevel((current) => (current === item.level ? null : item.level))}
+                      className="flex w-full items-center gap-2 text-left text-[12px]"
+                    >
+                      <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-200 font-bold text-slate-500">
+                        {item.level}
+                      </span>
+                      <p className={`flex-1 font-semibold ${item.color}`}>{item.text}</p>
+                      <ChevronDown
+                        className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                    {isOpen ? (
+                      <div className="mt-1 pl-7">
+                        {item.description ? (
+                          <p className="text-[11px] font-normal text-slate-500">{item.description}</p>
+                        ) : null}
+                        {item.note ? (
+                          <p
+                            className={`mt-1 text-[11px] font-semibold ${
+                              item.noteType === "warning" ? "text-[#FF7A00]" : "text-[#4E8B1B]"
+                            }`}
+                          >
+                            {item.noteType === "warning" ? "⚠ " : "✓ "}
+                            {item.note}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </article>

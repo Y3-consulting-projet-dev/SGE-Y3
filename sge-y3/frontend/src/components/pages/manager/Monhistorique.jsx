@@ -1,5 +1,5 @@
-import HistoriqueEvaluation from "@/components/historique/HistoriqueEvaluation";
-import { getManagerSelfEvaluationHistory } from "@/lib/managerOverview";
+﻿import HistoriqueEvaluation from "@/components/historique/HistoriqueEvaluation";
+import { getManagerSelfEvaluationHistory } from "@/api/managerOverview";
 
 function Monhistorique() {
   return <HistoriqueEvaluation fetchHistory={getManagerSelfEvaluationHistory} />;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import HistoriqueMissions from "./HistoriqueMissions";
 import HistoriqueSections from "./HistoriqueSections";
-import { formatCommentDate, formatScore } from "./historiqueUtils";
+import { formatCommentDate, formatScore } from "@/utils/historiqueUtils";
 
 function HistoriqueEvaluation({ fetchHistory }) {
   const [cycles, setCycles] = useState([]);

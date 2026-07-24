@@ -5,8 +5,8 @@ import logoY3 from "@/assets/logo-y3.png";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import MonautoevaluationSupport from "@/components/pages/support/MonautoevaluationSupport";
 import Monhistorique from "@/components/pages/support/Monhistorique";
-import { getDisplayName } from "@/lib/userPresentation";
-import { getSupportSelfEvaluation, saveSupportChiefComments, getReceivedSupportChiefComments } from "@/lib/supportEvaluation";
+import { getDisplayName } from "@/utils/userPresentation";
+import { getSupportSelfEvaluation, saveSupportChiefComments, getReceivedSupportChiefComments } from "@/api/supportEvaluation";
 
 const supportMenu = [
   { key: "overview", label: "Vue support", icon: LayoutDashboard },
