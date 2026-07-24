@@ -1,7 +1,7 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import HistoriqueEvaluation from "@/components/historique/HistoriqueEvaluation";
 import MemberSearchSelect from "@/components/historique/MemberSearchSelect";
-import { getSeniorAssistantHistory } from "@/lib/seniorAssistants";
+import { getSeniorAssistantHistory } from "@/api/seniorAssistants";
 
 function HistoriqueAssistants({ assistants = [], isLoading, errorMessage }) {
   const [selectedId, setSelectedId] = useState(assistants[0]?.id || "");

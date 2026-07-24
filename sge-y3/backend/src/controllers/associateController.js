@@ -865,7 +865,8 @@ const ASSOCIATE_DASHBOARD_DEPARTMENTS = [
 ];
 
 function isSupportEvaluationTarget(user) {
-  return String(user?.department || '').toUpperCase() === 'SUPPORT';
+  const department = normalizeText(user?.department || '');
+  return department === 'SUPPORT' || department === 'SERVICE SUPPORT';
 }
 
 function cloneSectionsForSupport(user) {

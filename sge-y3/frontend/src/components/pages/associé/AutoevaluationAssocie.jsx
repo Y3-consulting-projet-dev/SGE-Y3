@@ -8,8 +8,8 @@ import {
   saveReceivedAssociateEvaluationComment,
   submitAssociateSelfEvaluation,
   submitReceivedAssociateEvaluationToRh,
-} from "@/lib/associateOverview";
-import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
+} from "@/api/associateOverview";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
 
 function getPageProgress(page) {
   const themes = page?.themes || [];

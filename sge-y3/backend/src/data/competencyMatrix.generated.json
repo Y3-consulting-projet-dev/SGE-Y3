@@ -420,16 +420,6 @@
                 "Manager": "Connaissance avanc\u00e9e du pack office pour la revue des travaux",
                 "Associ?": "Expertise dans la connaissance du pack office pour la validation des travaux"
               }
-            },
-            {
-              "code": "B",
-              "label": "Utilisation du logiciel d'audit Intelligent Audit",
-              "statements": {
-                "Assistant": "Connaissance simplifi\u00e9e du logiciel d'audit",
-                "Senior": "Maitrise et Utilisation fr\u00e9quente du logiciel d'audit pour la documentation des travaux",
-                "Manager": "Maitrise et Utilisation fr\u00e9quente du logiciel d'audit pour la revue des travaux",
-                "Associ?": "Maitrise et Utilisation fr\u00e9quente du logiciel d'audit pour la validation des travaux"
-              }
             }
           ]
         },

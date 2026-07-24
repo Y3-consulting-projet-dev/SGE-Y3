@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardList, History, LayoutDashboard, LogOut, MessageSquare, Settings2 } from "lucide-react";
+import { ClipboardList, History, LayoutDashboard, LogOut, Menu, MessageSquare, Settings2 } from "lucide-react";
+import SidebarShell from "@/components/layouts/SidebarShell";
 import logoY3 from "@/assets/logo-y3.png";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import MonautoevaluationSupport from "@/components/pages/support/MonautoevaluationSupport";
 import Monhistorique from "@/components/pages/support/Monhistorique";
-import { getDisplayName } from "@/lib/userPresentation";
-import { getSupportSelfEvaluation, saveSupportChiefComments, getReceivedSupportChiefComments } from "@/lib/supportEvaluation";
+import { getDisplayName } from "@/utils/userPresentation";
+import { getSupportSelfEvaluation, saveSupportChiefComments, getReceivedSupportChiefComments } from "@/api/supportEvaluation";
 
 const supportMenu = [
   { key: "overview", label: "Vue support", icon: LayoutDashboard },
@@ -17,6 +18,7 @@ const supportMenu = [
 
 function VueSupport({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [commentsTab, setCommentsTab] = useState("sent");
 
   const [chiefComments, setChiefComments] = useState([]);
@@ -327,7 +329,11 @@ function VueSupport({ onLogout, onUserUpdate, user }) {
   return (
     <div className="min-h-screen bg-[#EEF2F6] text-[#0E2B4F]">
       <div className="flex min-h-screen w-full">
-        <aside className="min-h-screen w-full max-w-[260px] border-r border-slate-200/80 bg-white px-5 py-6">
+        <SidebarShell
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          className="max-w-[260px] border-r border-slate-200/80 bg-white px-5 py-6"
+        >
           <div className="mb-8">
             <p className="text-4xl font-black tracking-tight text-[#0E4A6B]">SGE</p>
             <img src={logoY3} alt="Y3" className="mt-2 h-16 w-auto object-contain" />
@@ -339,7 +345,10 @@ function VueSupport({ onLogout, onUserUpdate, user }) {
               return (
                 <button
                   key={item.key}
-                  onClick={() => setActiveSection(item.key)}
+                  onClick={() => {
+                    setActiveSection(item.key);
+                    setIsSidebarOpen(false);
+                  }}
                   className={`w-full rounded-md px-3 py-2 text-left ${
                     isActive ? "bg-[#DDE6EE] font-semibold text-[#0E4A6B]" : "text-[#0F3A63] hover:bg-slate-100"
                   }`}
@@ -356,14 +365,23 @@ function VueSupport({ onLogout, onUserUpdate, user }) {
             <LogOut size={14} />
             Deconnexion
           </button>
-        </aside>
+        </SidebarShell>
 
-        <main className="flex-1 p-5 md:p-8">
-          <header className="mb-6">
-            <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
-            <p className="mt-1 text-sm font-semibold text-slate-500">
-              {displayName} - Cycle 2025-2026 - Département support
-            </p>
+        <main className="min-w-0 flex-1 p-5 md:p-8">
+          <header className="mb-6 flex items-center gap-3">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white text-[#0F3A63] shadow-sm lg:hidden"
+              aria-label="Ouvrir le menu"
+            >
+              <Menu size={18} />
+            </button>
+            <div>
+              <h1 className="text-2xl font-black tracking-tight text-[#0F3A63] sm:text-3xl">{pageTitle}</h1>
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                {displayName} - Cycle 2025-2026 - Département support
+              </p>
+            </div>
           </header>
           {renderContent()}
         </main>

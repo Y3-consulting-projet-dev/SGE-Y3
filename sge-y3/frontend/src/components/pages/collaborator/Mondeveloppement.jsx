@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { saveMyDevelopmentPlan, submitMyDevelopmentPlan } from "@/lib/collaboratorEvaluation";
+﻿import { useEffect, useRef, useState } from "react";
+import { saveMyDevelopmentPlan, submitMyDevelopmentPlan } from "@/api/collaboratorEvaluation";
 
 function Mondeveloppement({ evaluationData, onDevelopmentChange }) {
   const development = evaluationData?.development || {};

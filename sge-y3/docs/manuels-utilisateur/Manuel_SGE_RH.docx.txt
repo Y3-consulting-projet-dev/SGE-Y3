@@ -1,0 +1,241 @@
+SGE
+Système de Gestion des Évaluations — Y3 Audits &amp; Conseils
+MANUEL D&apos;UTILISATION
+Profil : RH
+Pilotage, contrôle qualité et calibration des évaluations du cabinet
+🖼 CAPTURE D&apos;ÉCRAN À INSÉRER
+Écran d&apos;accueil / tableau de bord RH (à insérer)
+Cycle 2025-2026
+Document interne — usage réservé aux collaborateurs de Y3 Audits &amp; Conseils
+Table des matières
+TOC \h \o &quot;1-3&quot;
+1. Introduction
+Ce manuel s&apos;adresse aux collaborateurs de Y3 Audits &amp; Conseils rattachés au profil RH dans l&apos;outil SGE (Système de Gestion des Évaluations). Il décrit, écran par écran, comment utiliser l&apos;application : connexion, navigation, saisie de l&apos;auto-évaluation, actions spécifiques à ce profil, suivi des statuts et bonnes pratiques.
+La RH pilote l&apos;ensemble du cycle d&apos;évaluation du cabinet : elle contrôle la qualité des évaluations transmises par les Managers, harmonise les notes entre départements (calibration), anime le comité d&apos;évaluation et transmet les synthèses aux Associés.
+1.1 Votre rôle dans le cycle d&apos;évaluation
+Vous garantissez la cohérence et l&apos;équité du processus d&apos;évaluation à l&apos;échelle du cabinet, gérez le référentiel de compétences, les cycles annuels et les comptes utilisateurs, et faites le lien entre les Managers et les Associés.
+Astuce — SGE fonctionne par cycle annuel (ex. « Cycle 2025-2026 »). Toutes les données affichées (missions, évaluations, historiques) sont rattachées au cycle actif défini par la RH.
+1.2 Le circuit d&apos;évaluation dans le cabinet
+Chaque évaluation suit un circuit en plusieurs étapes, du collaborateur évalué jusqu&apos;à la décision finale des associés. Les cases en vert ci-dessous indiquent les étapes qui concernent votre profil.
+Assistant / Senior
+Auto-évaluation par mission
+Senior
+Revue des assistants
+Manager
+Validation d&apos;équipe
+RH
+Contrôle &amp; calibration
+Associés
+Comité &amp; décision finale
+La RH intervient après la validation Manager : elle contrôle, arbitre les écarts, calibre les notes entre départements, anime le comité d&apos;évaluation puis transmet la synthèse aux Associés pour décision finale. Elle réalise également sa propre auto-évaluation.
+2. Se connecter à SGE
+L&apos;accès à SGE se fait exclusivement via l&apos;écran de connexion, à l&apos;adresse fournie par la RH ou le service Support.
+2.1 Étapes de connexion
+Ouvrez l&apos;application SGE dans votre navigateur.
+Dans le champ « EMAIL », saisissez votre adresse email professionnelle (@ycubeac.com).
+Dans le champ « MOT DE PASSE », saisissez votre mot de passe. Cliquez sur l&apos;icône en forme d&apos;œil pour afficher ou masquer votre saisie.
+Cliquez sur le bouton vert « Se Connecter ».
+🖼 CAPTURE D&apos;ÉCRAN À INSÉRER
+Écran de connexion SGE (champs Email / Mot de passe, bouton « Se Connecter »)
+Astuce — Si vous vous connectez pour la première fois, utilisez le mot de passe temporaire communiqué par la RH, puis changez-le immédiatement depuis votre profil (voir chapitre « Gérer votre profil »).
+Attention — En cas d&apos;email ou de mot de passe incorrect, un message d&apos;erreur s&apos;affiche sous le formulaire. Si le problème persiste, contactez la RH ou le service Support — le lien « Mot de passe oublié ? » n&apos;est pas encore actif dans cette version.
+3. Découvrir votre espace de travail
+Le profil RH existe en deux variantes : la RH « complète » (accès total) et l&apos;Assistante RH (accès restreint, en lecture seule sur la plupart des écrans, avec sa propre auto-évaluation et l&apos;évaluation d&apos;une assistante RH). Un badge en haut à droite de l&apos;écran indique « Accès total » ou « Accès restreint ».
+Groupe
+Écran
+À quoi ça sert
+Tableau de bord
+Vue RH
+Accueil : indicateurs globaux du cycle en cours.
+Évaluation
+Validations RH
+Liste des évaluations en attente de contrôle RH.
+Évaluation
+Mon auto-évaluation
+Votre propre auto-évaluation (RH ou Assistante RH).
+Évaluation
+Mon historique
+Votre historique personnel.
+Évaluation
+Sections &amp; questions
+Gestion du référentiel de compétences (questionnaire).
+Évaluation
+Synthèses à transmettre
+Synthèses prêtes à être envoyées aux Associés.
+Évaluation
+Calibration
+Harmonisation des notes entre départements.
+Suivi cabinet
+Évaluations par département
+Détail des évaluations, filtrées par département.
+Suivi cabinet
+Équipe
+Vue de la population du cabinet.
+Suivi cabinet
+Historique collaborateurs
+Historique des évaluations de tous les collaborateurs.
+Suivi cabinet
+Rapports
+Téléchargement de rapports consolidés.
+Comité
+Comité d&apos;évaluation
+Classement collectif avant transmission aux Associés.
+Administration
+Gestion des collaborateurs
+Création, modification, activation des comptes.
+Administration
+Gestion des cycles
+Ouverture et paramétrage des cycles d&apos;évaluation.
+Commentaires
+Commentaires reçus
+Commentaires anonymes reçus de collaborateurs.
+Compte
+Profil
+Informations personnelles et mot de passe.
+🖼 CAPTURE D&apos;ÉCRAN À INSÉRER
+Tableau de bord RH — « Vue RH » (accès total)
+4. Contrôler et valider les évaluations
+4.1 Validations RH
+Cette page liste toutes les évaluations transmises par les Managers, avec un indicateur de statut par ligne :
+Statut affiché
+Signification
+À compléter
+Il manque des éléments (notes ou commentaires) avant de pouvoir statuer.
+Écart à arbitrer
+Des écarts de notation significatifs ont été détectés entre évaluateurs ; un arbitrage RH est nécessaire.
+Prêt Associé
+L&apos;évaluation est cohérente et prête à être intégrée à la synthèse envoyée aux Associés.
+🖼 CAPTURE D&apos;ÉCRAN À INSÉRER
+Page « Validations RH » avec badges de statut par collaborateur
+En cliquant sur une note, une infobulle détaille les scores calculés (évaluateur par évaluateur, mission par mission) qui composent la moyenne affichée.
+Ouvrez une ligne pour examiner le détail de l&apos;évaluation.
+Comparez les notes de l&apos;auto-évaluation, de la revue Senior et de la validation Manager.
+Cliquez sur « Valider » (ou l&apos;action équivalente) une fois le dossier cohérent.
+Astuce — L&apos;Assistante RH consulte cet écran en lecture seule : elle ne peut pas valider les dossiers, sauf pour sa propre évaluation d&apos;assistante RH.
+4.2 Évaluer une assistante RH
+Si vous êtes Assistante RH, vous disposez d&apos;un écran dédié « Evaluation Assistante RH » pour noter l&apos;assistante que vous encadrez, avec le même mécanisme de critères notés de 1 à 5 que les autres profils.
+5. Calibration et évaluations par département
+La « Calibration » vous permet de comparer les moyennes de notation entre départements (Audit, Expertise comptable, etc.) afin de corriger d&apos;éventuels écarts de sévérité entre évaluateurs, avant l&apos;envoi de la synthèse aux Associés.
+🖼 CAPTURE D&apos;ÉCRAN À INSÉRER
+Page « Calibration » — comparaison des moyennes par département
+« Évaluations par département » permet de filtrer et consulter le détail de chaque évaluation par département, pour un contrôle fin avant validation.
+6. Synthèses à transmettre
+Une fois les évaluations validées et calibrées, cette page regroupe les synthèses prêtes à être envoyées : celles des Managers vers les Associés (« Transmis à l&apos;associé »), et celles issues du Comité d&apos;évaluation.
+🖼 CAPTURE D&apos;ÉCRAN À INSÉRER
+Page « Synthèses à transmettre »
+7. Comité d&apos;évaluation
+Le Comité d&apos;évaluation est l&apos;étape de classement collectif des Assistants, Seniors et Assistants Managers, avant transmission aux Associés pour décision finale sur le taux d&apos;augmentation.
+7.1 Classer les collaborateurs
+Chaque collaborateur apparaît sous forme de fiche que vous faites glisser (glisser-déposer) dans l&apos;un des quatre niveaux :
+Niveau
+Appréciation
+Plage de note finale
+CA
+Insuffisant
+Entre 1,00 et 2,00
+CB
+Passable
+Entre 2,1 et 3,00
+CC
+Bien
+Entre 3,1 et 4,00
+CD
+Excellent
+Entre 4,1 et 5,00
+🖼 CAPTURE D&apos;ÉCRAN À INSÉRER
+Comité d&apos;évaluation — glisser-déposer des fiches collaborateurs dans les niveaux CA à CD
+Faites glisser chaque fiche collaborateur dans la case de niveau correspondant à sa note finale.
+Vérifiez la répartition globale (un niveau anormalement chargé peut signaler un besoin d&apos;arbitrage).
+Cliquez sur « Transmettre aux associés » pour envoyer le classement.
+Astuce — Une fois transmis, le classement est visible par les Associés dans leur propre écran « Comité d&apos;évaluation », où ils complètent le classement (RH, Managers) et fixent les taux d&apos;augmentation avant retour à la RH.
+8. Administration : collaborateurs et cycles
+8.1 Gestion des collaborateurs
+Cet écran centralise la gestion des comptes utilisateurs du cabinet.
+Créer un nouveau collaborateur (nom, email, grade, département).
+Modifier les informations d&apos;un collaborateur existant.
+Activer ou désactiver un compte (par exemple lors d&apos;un départ).
+🖼 CAPTURE D&apos;ÉCRAN À INSÉRER
+Page « Gestion des collaborateurs »
+8.2 Gestion des cycles
+Un cycle d&apos;évaluation correspond à une période annuelle (ex. « Cycle 2025-2026 »). C&apos;est la RH qui ouvre un nouveau cycle et en définit les paramètres ; toutes les données affichées dans SGE sont rattachées au cycle actif.
+🖼 CAPTURE D&apos;ÉCRAN À INSÉRER
+Page « Gestion des cycles »
+8.3 Sections &amp; questions
+Cet écran permet de faire évoluer le référentiel d&apos;évaluation utilisé par tous les profils : ajout de sections, de pages/thèmes et de questions (critères notés de 1 à 5).
+Attention — Toute modification du référentiel s&apos;applique aux nouvelles évaluations du cycle en cours : à manier avec prudence en cours de campagne.
+9. Suivi cabinet : population, historique et rapports
+« Équipe » (Population) donne une vue d&apos;ensemble des effectifs par département et grade. « Historique collaborateurs » conserve la trace de toutes les évaluations passées.
+« Rapports » permet de télécharger des rapports consolidés (format PDF) pour analyse ou archivage.
+🖼 CAPTURE D&apos;ÉCRAN À INSÉRER
+Page « Rapports RH » avec liste de rapports téléchargeables
+10. Commentaires reçus
+Cette page regroupe les commentaires anonymes adressés à la RH par des collaborateurs du cabinet, afin d&apos;alimenter votre réflexion sur le climat social et les points d&apos;amélioration.
+Gérer votre profil et votre mot de passe
+La page « Profil » (icône Réglages dans le menu « Compte ») est accessible depuis tous les profils. Elle comporte deux onglets.
+Informations personnelles
+Vous pouvez modifier votre prénom, votre nom et votre email. Cliquez sur « Enregistrer » pour valider, ou « Annuler » pour revenir aux valeurs précédentes.
+Astuce — Votre profil (RH) est habilité à modifier également le grade et le département — ces champs sont réservés à la RH pour tous les autres profils (lecture seule).
+🖼 CAPTURE D&apos;ÉCRAN À INSÉRER
+Onglet « Informations personnelles » du profil
+Connexion &amp; mot de passe
+Cet onglet permet de changer votre mot de passe :
+Saisissez votre ancien mot de passe.
+Saisissez le nouveau mot de passe souhaité.
+Confirmez le nouveau mot de passe.
+Cliquez sur « Modifier le mot de passe ».
+🖼 CAPTURE D&apos;ÉCRAN À INSÉRER
+Onglet « Connexion &amp; mot de passe »
+Statuts d&apos;évaluation — signification
+Au fil du circuit de validation, votre évaluation (ou celle de vos collaborateurs) passe par plusieurs statuts. Voici leur signification :
+Statut
+Signification
+À compléter
+Le dossier d&apos;un collaborateur nécessite des éléments manquants avant contrôle.
+Écart à arbitrer
+Des écarts de notation entre évaluateurs nécessitent un arbitrage RH.
+Prêt Associé
+Le dossier est validé et prêt à intégrer la synthèse envoyée aux Associés.
+Valide RH
+L&apos;évaluation a été validée et harmonisée par la RH.
+Soumis aux Associes
+La synthèse a été transmise aux Associés pour décision finale.
+Cloture
+Le cycle est terminé pour ce collaborateur.
+Bonnes pratiques
+Traitez les dossiers « Écart à arbitrer » en priorité : ils bloquent le passage au comité d&apos;évaluation.
+Calibrez les notes entre départements avant de transmettre les synthèses aux Associés, pour garantir l&apos;équité du classement.
+Modifiez le référentiel (Sections &amp; questions) hors période de campagne active, pour ne pas perturber les évaluations en cours.
+Documentez chaque activation/désactivation de compte dans « Gestion des collaborateurs » pour garder une traçabilité RH.
+Vérifiez la répartition des niveaux CA à CD au comité d&apos;évaluation avant transmission : une répartition trop déséquilibrée mérite d&apos;être questionnée.
+Foire aux questions
+Quelle est la différence entre RH et Assistante RH ?
+La RH (accès total) valide, calibre et transmet les synthèses. L&apos;Assistante RH a un accès restreint (essentiellement en lecture) et gère sa propre auto-évaluation ainsi que celle d&apos;une assistante RH qu&apos;elle encadre.
+Comment corriger une note après validation ?
+Rouvrez le dossier depuis « Validations RH » ou « Évaluations par département » avant transmission au comité ; après transmission aux Associés, la correction doit passer par une nouvelle synthèse.
+Où voir le classement final décidé par les Associés ?
+Une fois les Associés transmis leur décision, le taux d&apos;augmentation revient à la RH via « Synthèses à transmettre » / le comité d&apos;évaluation.
+Glossaire
+Terme
+Définition
+Cycle
+Période annuelle d&apos;évaluation (ex. « Cycle 2025-2026 »), définie et ouverte par la RH.
+Auto-évaluation
+Évaluation que chaque collaborateur réalise de son propre travail, mission par mission.
+Mission
+Dossier ou intervention (audit, expertise comptable, conseil...) sur laquelle un collaborateur est évalué.
+Critère
+Compétence ou comportement noté de 1 à 5 au sein d&apos;une mission.
+Synthèse
+Résumé consolidé d&apos;une évaluation, transmis d&apos;un niveau à l&apos;autre du circuit de validation.
+Calibration
+Harmonisation des notes entre départements réalisée par la RH avant transmission aux associés.
+Comité d&apos;évaluation
+Séance de classement collectif (glisser-déposer) des collaborateurs dans les niveaux CA à CD.
+Commentaire anonyme
+Retour libre, non attribué nominativement au lecteur, laissé à un supérieur ou un collaborateur.
+Arbitrage RH
+Décision de la RH pour trancher un écart de notation entre évaluateurs.
+Population
+Ensemble des collaborateurs actifs du cabinet, visualisé par département et grade.
+Référentiel de compétences
+Ensemble des sections, thèmes et critères notés utilisés dans toutes les évaluations.

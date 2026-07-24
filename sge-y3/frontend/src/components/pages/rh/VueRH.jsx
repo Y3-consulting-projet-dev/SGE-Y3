@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { BarChart2, LogOut, UserRound } from "lucide-react";
+import { BarChart2, LogOut, Menu, UserRound } from "lucide-react";
+import SidebarShell from "@/components/layouts/SidebarShell";
 import logoY3 from "@/assets/logo-y3.png";
-import { rhMenuGroups } from "@/components/pages/rh/rhData";
+import { rhMenuGroups } from "@/data/rhData";
 import TableauRH from "@/components/pages/rh/TableauRH";
 import ValidationsRH from "@/components/pages/rh/ValidationsRH";
 import MonautoevaluationAssistanteRH from "@/components/pages/rh/MonautoevaluationAssistanteRH";
@@ -17,30 +18,21 @@ import Monhistorique from "@/components/pages/rh/Monhistorique";
 import HistoriqueEquipe from "@/components/pages/rh/HistoriqueEquipe";
 import GestionCycles from "@/components/pages/rh/GestionCycles";
 import GestionCollaborateurs from "@/components/pages/rh/GestionCollaborateurs";
+import CommentairesAnonymesRH from "@/components/pages/rh/CommentairesAnonymesRH";
 import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
 import ProfilePanel from "@/components/profile/ProfilePanel";
-import { saveCommitteeDecision } from "@/lib/committee";
-import { getDisplayName } from "@/lib/userPresentation";
-import { getRhReceivedComments, getAssistantRhEvaluationResult } from "@/lib/rhOverview";
+import { saveCommitteeDecision } from "@/api/committee";
+import { getDisplayName } from "@/utils/userPresentation";
+import { getAssistantRhEvaluationResult } from "@/api/rhOverview";
 
 function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedAssistantRh, setSelectedAssistantRh] = useState(null);
-  const [receivedComments, setReceivedComments] = useState([]);
-  const [isLoadingReceived, setIsLoadingReceived] = useState(false);
   const [evaluationResult, setEvaluationResult] = useState(null);
   const [isLoadingResult, setIsLoadingResult] = useState(false);
   const [evaluationResultError, setEvaluationResultError] = useState("");
   const displayName = getDisplayName(user);
-
-  useEffect(() => {
-    if (activeSection !== "received-comments") return;
-    setIsLoadingReceived(true);
-    getRhReceivedComments()
-      .then((data) => setReceivedComments(data?.received || []))
-      .catch(() => {})
-      .finally(() => setIsLoadingReceived(false));
-  }, [activeSection]);
 
   useEffect(() => {
     if (!assistantMode || activeSection !== "my-results") return;
@@ -68,7 +60,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
     if (activeSection === "committee") return "COMITÉ D'ÉVALUATION";
     if (activeSection === "collaborators") return "GESTION DES COLLABORATEURS";
     if (activeSection === "cycles") return "GESTION DES CYCLES";
-    if (activeSection === "received-comments") return "COMMENTAIRES REÇUS";
+    if (activeSection === "received-comments") return "COMMENTAIRES ANONYMES";
     if (activeSection === "my-results") return "MES RÉSULTATS";
     if (activeSection === "profile") return "MON PROFIL";
     return "TABLEAU DE BORD RH";
@@ -197,8 +189,8 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
                 ))}
               </section>
 
-              <section className="flex justify-between gap-4">
-                <article className="w-[53%] rounded-md bg-white p-4 shadow-sm">
+              <section className="flex flex-col gap-4 lg:flex-row lg:justify-between">
+                <article className="rounded-md bg-white p-4 shadow-sm lg:w-[53%]">
                   <div className="mb-4">
                     <h3 className="text-[18px] font-bold text-[#0F3A63]">Synthèse par section</h3>
                     <p className="mt-1 text-[12px] font-semibold text-slate-500">
@@ -239,7 +231,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
                   </div>
                 </article>
 
-                <article className="w-[45%] rounded-md bg-white p-4 shadow-sm">
+                <article className="rounded-md bg-white p-4 shadow-sm lg:w-[45%]">
                   <h3 className="mb-3 text-[22px] font-bold leading-tight text-[#0F3A63]">Commentaire de la RH</h3>
                   <div className="space-y-3">
                     {sectionComments.length ? (
@@ -266,44 +258,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
     }
 
     if (activeSection === "received-comments") {
-      return (
-        <section className="space-y-4">
-          <article className="rounded-md bg-white p-5 shadow-sm">
-            <div className="mb-1 flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h3 className="text-[22px] font-bold text-[#0F3A63]">Commentaires anonymes reçus</h3>
-                <p className="mt-1 text-[12px] font-semibold text-slate-500">
-                  Ces commentaires ont été rédigés anonymement par des collaborateurs et vous sont destinés. L'identité des auteurs n'est pas divulguée.
-                </p>
-              </div>
-              <span className="rounded-full border border-[#D9E3EE] bg-white px-3 py-1 text-[11px] font-bold text-[#0F4A72]">
-                Anonyme · Confidentiel
-              </span>
-            </div>
-
-            <div className="mt-5 space-y-3">
-              {isLoadingReceived ? (
-                <p className="rounded-md bg-[#EEF2F6] px-4 py-4 text-sm font-semibold text-slate-500">Chargement…</p>
-              ) : receivedComments.length > 0 ? (
-                receivedComments.map((item, index) => (
-                  <div key={index} className="rounded-md border border-[#C3DFAA] bg-[#F4FAED] p-4">
-                    <p className="rounded-md bg-white px-3 py-2 text-[12px] text-slate-700 ring-1 ring-[#C3DFAA]">
-                      {item.comment}
-                    </p>
-                    <p className="mt-2 text-[11px] text-slate-400">
-                      Reçu le {new Date(item.submittedAt).toLocaleDateString("fr-FR")}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <p className="rounded-md bg-[#EEF2F6] px-4 py-4 text-sm font-semibold text-slate-500">
-                  Aucun commentaire reçu pour le moment.
-                </p>
-              )}
-            </div>
-          </article>
-        </section>
-      );
+      return <CommentairesAnonymesRH />;
     }
 
     if (activeSection === "profile") {
@@ -330,7 +285,11 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
   return (
     <div className="min-h-screen bg-[#EEF2F6] text-[#0E2B4F]">
       <div className="flex min-h-screen w-full">
-        <aside className="min-h-screen w-full max-w-[270px] border-r border-slate-200/80 bg-white px-5 py-6">
+        <SidebarShell
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          className="max-w-[270px] border-r border-slate-200/80 bg-white px-5 py-6"
+        >
           <div className="mb-8">
             <p className="text-4xl font-black tracking-tight text-[#0E4A6B]">SGE</p>
             <img src={logoY3} alt="Y3" className="mt-2 h-20 w-auto scale-x-110 origin-left" />
@@ -347,7 +306,10 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
                     return (
                       <button
                         key={item.key}
-                        onClick={() => setActiveSection(item.key)}
+                        onClick={() => {
+                          setActiveSection(item.key);
+                          setIsSidebarOpen(false);
+                        }}
                         className={`w-full rounded-md px-3 py-2 text-left transition ${
                           isActive ? "bg-[#DDE6EE] font-semibold text-[#0E4A6B]" : "text-[#0F3A63] hover:bg-slate-100"
                         }`}
@@ -367,7 +329,10 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Mes résultats</p>
                 <div className="space-y-1">
                   <button
-                    onClick={() => setActiveSection("my-results")}
+                    onClick={() => {
+                      setActiveSection("my-results");
+                      setIsSidebarOpen(false);
+                    }}
                     className={`w-full rounded-md px-3 py-2 text-left transition ${
                       activeSection === "my-results" ? "bg-[#DDE6EE] font-semibold text-[#0E4A6B]" : "text-[#0F3A63] hover:bg-slate-100"
                     }`}
@@ -401,15 +366,24 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
             <LogOut size={14} />
             Déconnexion
           </button>
-        </aside>
+        </SidebarShell>
 
-        <main className="flex-1 p-5 md:p-8">
+        <main className="min-w-0 flex-1 p-5 md:p-8">
           <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
-              <p className="mt-1 text-sm font-semibold text-slate-500">
-                {assistantMode ? "Cycle 2025-2026 - Consultation RH et gestion des questions" : "Cycle 2025-2026 - Pilotage des évaluations"}
-              </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white text-[#0F3A63] shadow-sm lg:hidden"
+                aria-label="Ouvrir le menu"
+              >
+                <Menu size={18} />
+              </button>
+              <div>
+                <h1 className="text-2xl font-black tracking-tight text-[#0F3A63] sm:text-3xl">{pageTitle}</h1>
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  {assistantMode ? "Cycle 2025-2026 - Consultation RH et gestion des questions" : "Cycle 2025-2026 - Pilotage des évaluations"}
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               {/* <button onClick={() => window.alert("Notifications RH bientôt disponibles.")} className="text-slate-500 hover:text-[#0F3A63]">

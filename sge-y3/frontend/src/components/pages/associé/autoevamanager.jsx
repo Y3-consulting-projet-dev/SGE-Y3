@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   getAssociateManagerEvaluation,
@@ -9,8 +9,8 @@ import {
   saveReceivedAssociateEvaluationComment,
   submitAssociateManagerEvaluationToRh,
   submitReceivedAssociateEvaluationToRh,
-} from "@/lib/associateOverview";
-import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
+} from "@/api/associateOverview";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
 
 function formatScore(score) {
   return typeof score === "number" ? `${score.toFixed(1)}/5` : "--";

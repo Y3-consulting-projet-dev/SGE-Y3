@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { getRhPopulation } from "@/lib/rhOverview";
+import { getRhPopulation, updateRhUserCareer } from "@/api/rhOverview";
+import { departmentOptions, gradeOptions } from "@/utils/userPresentation";
 
 function statusClass(status) {
   if (status === "Validé" || status === "Valide") return "bg-[#DDECCF] text-[#4E8B1B]";

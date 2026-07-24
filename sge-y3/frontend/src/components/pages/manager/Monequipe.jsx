@@ -66,11 +66,11 @@ function Monequipe({ searchTerm, onSearchChange, onEvaluate, relanceMessage, mem
         </div>
       </div>
 
-      <section className="overflow-hidden rounded-md bg-white">
+      <section className="overflow-x-auto rounded-md bg-white">
         {!rows.length ? (
           <div className="p-5 text-sm font-semibold text-slate-500">Aucun membre trouve dans votre périmetre.</div>
         ) : null}
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full min-w-[640px] border-collapse text-sm">
           <thead>
             <tr className="bg-[#003B63] text-left text-white">
               <th className="px-4 py-4 font-semibold">Collaborateur</th>

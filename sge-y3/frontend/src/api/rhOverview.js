@@ -1,4 +1,4 @@
-import { loadSession } from "@/lib/auth";
+﻿import { loadSession } from "@/api/auth";
 
 import { API_BASE_URL } from "./apiBase";
 
@@ -157,15 +157,16 @@ export function getRhReports() {
   return request("/rh/reports");
 }
 
-function getReportFallbackFilename(reportId) {
-  if (reportId === "rh-synthese-validee") return "synthese-rh-validee-cycle-2026.pdf";
-  if (reportId === "rh-validations") return "file-validations-rh-cycle-2026.csv";
-  if (reportId === "rh-calibration") return "calibration-departements-cycle-2026.pdf";
-  if (reportId === "rh-population") return "suivi-population-cycle-2026.csv";
+function getReportFallbackFilename(reportId, format = "") {
+  const ext = format.toLowerCase() === "pdf" ? "pdf" : format.toLowerCase() === "csv" ? "csv" : null;
+  if (reportId === "rh-synthese-validee") return `synthese-rh-validee-cycle-2026.${ext || "pdf"}`;
+  if (reportId === "rh-validations") return `file-validations-rh-cycle-2026.${ext || "csv"}`;
+  if (reportId === "rh-calibration") return `calibration-departements-cycle-2026.${ext || "pdf"}`;
+  if (reportId === "rh-population") return `suivi-population-cycle-2026.${ext || "csv"}`;
   return `${reportId}.bin`;
 }
 
-export async function downloadRhReport(reportId) {
+export async function downloadRhReport(reportId, format = "") {
   const session = loadSession();
   const headers = {};
 
@@ -173,7 +174,8 @@ export async function downloadRhReport(reportId) {
     headers.Authorization = `Bearer ${session.token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}/rh/reports/${reportId}/download`, {
+  const formatParam = format ? `?format=${encodeURIComponent(format.toLowerCase())}` : "";
+  const response = await fetch(`${API_BASE_URL}/rh/reports/${reportId}/download${formatParam}`, {
     method: "GET",
     headers,
   });
@@ -192,7 +194,7 @@ export async function downloadRhReport(reportId) {
     (encodedMatch?.[1] ? decodeURIComponent(encodedMatch[1]) : "") ||
     quotedMatch?.[1] ||
     bareMatch?.[1]?.trim() ||
-    getReportFallbackFilename(reportId);
+    getReportFallbackFilename(reportId, format);
 
   return { blob, filename };
 }
@@ -249,6 +251,14 @@ export function createRhCycle(payload) {
 
 export function getRhReceivedComments() {
   return request("/rh/received-comments");
+}
+
+export function getRhCollaboratorAnonymousComments(userId) {
+  return request(`/rh/collaborators/${userId}/anonymous-comments`);
+}
+
+export function getRhAnonymousCommentRecipients() {
+  return request("/rh/anonymous-comments/recipients");
 }
 
 export function getAssistantRhEvaluationResult() {

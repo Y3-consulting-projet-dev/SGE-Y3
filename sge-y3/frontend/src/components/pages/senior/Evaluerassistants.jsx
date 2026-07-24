@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   addSeniorAssistantMission,
@@ -6,8 +6,8 @@ import {
   saveSeniorAssistantEvaluation,
   submitSeniorAssistantEvaluation,
   submitSeniorAssistantMissionEvaluation,
-} from "@/lib/seniorAssistants";
-import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
+} from "@/api/seniorAssistants";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
 
 const gradingHelp = [
   { level: "1", text: "Insuffisant - objectif non atteint", color: "text-[#FF7A00]" },

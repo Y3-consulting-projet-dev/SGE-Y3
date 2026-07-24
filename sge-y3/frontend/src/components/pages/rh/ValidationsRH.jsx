@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { getRhValidations, validateRhSelection } from "@/lib/rhOverview";
+﻿import { useEffect, useRef, useState } from "react";
+import { getRhValidations, validateRhSelection } from "@/api/rhOverview";
 
 function statusClass(status) {
   if (status === "Prêt Associé") return "bg-[#DDECCF] text-[#4E8B1B]";
@@ -131,9 +131,11 @@ function FinalScoreWithTooltip({ score, details = [] }) {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
 
+    const popoverWidth = Math.min(420, window.innerWidth - 24);
+
     setPopoverPosition({
       top: rect.bottom + 8,
-      left: Math.max(12, Math.min(rect.left, window.innerWidth - 440)),
+      left: Math.max(12, Math.min(rect.left, window.innerWidth - popoverWidth - 12)),
     });
   }
 
@@ -189,7 +191,7 @@ function FinalScoreWithTooltip({ score, details = [] }) {
       </button>
       {missionGroups.length ? (
         <div
-          className={`fixed z-50 max-h-[70vh] w-[420px] overflow-y-auto rounded-md bg-[#0F3A63] p-4 text-xs text-white shadow-xl transition-opacity duration-150 ${
+          className={`fixed z-50 max-h-[70vh] w-[min(420px,calc(100vw-24px))] overflow-y-auto rounded-md bg-[#0F3A63] p-4 text-xs text-white shadow-xl transition-opacity duration-150 ${
             isVisible
               ? "pointer-events-auto visible opacity-100"
               : "pointer-events-none invisible opacity-0"

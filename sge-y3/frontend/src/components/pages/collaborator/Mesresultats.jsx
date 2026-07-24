@@ -158,8 +158,8 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
       </section>
 
       <section className="space-y-4">
-        <div className="flex justify-between">
-          <article className="rounded-md w-[53%] bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:justify-between">
+          <article className="rounded-md bg-white p-4 shadow-sm lg:w-[53%]">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-[18px] font-bold text-[#0F3A63]">Synthèse finale</h3>
@@ -205,7 +205,7 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
             </div>
           </article>
 
-          <article className="rounded-md w-[45%] bg-white p-4 shadow-sm">
+          <article className="rounded-md bg-white p-4 shadow-sm lg:w-[45%]">
             <h3 className="mb-3 text-[22px] font-bold leading-tight text-[#0F3A63]">Commentaire du Manager</h3>
             <div className="space-y-3">
               {managerComments.length ? (

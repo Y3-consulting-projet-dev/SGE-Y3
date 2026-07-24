@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   createManagerMemberMission,
@@ -8,8 +8,8 @@ import {
   saveManagerMemberEvaluation,
   submitManagerMemberMissionReview,
   submitManagerMemberEvaluation,
-} from "@/lib/managerOverview";
-import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/lib/progressPresentation";
+} from "@/api/managerOverview";
+import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
 
 function getSourceBadgeLabel(page) {
   if (page?.source_label) return page.source_label;
