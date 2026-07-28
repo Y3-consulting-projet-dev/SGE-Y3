@@ -6,6 +6,7 @@ import {
   saveSupportSelfEvaluation,
   submitSupportSelfEvaluation,
 } from "@/api/supportEvaluation";
+import { sendNotificationEmail } from "@/services/notifications";
 
 function getSupportRoleKey(user) {
   return user?.grade || "Service support";
@@ -72,6 +73,8 @@ function MonautoevaluationSupport({ user }) {
   const [activeSectionId, setActiveSectionId] = useState("");
   const [pageIndexes, setPageIndexes] = useState({});
   const [status, setStatus] = useState("");
+  const [availableAssociates, setAvailableAssociates] = useState([]);
+  const [selectedAssociateIds, setSelectedAssociateIds] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [customTitre, setCustomTitre] = useState("");
   const [customLabel, setCustomLabel] = useState("");
@@ -91,6 +94,7 @@ function MonautoevaluationSupport({ user }) {
         if (cancelled) return;
         setSections(nextSections);
         setActiveSectionId(nextSections[0]?.id || "");
+        setAvailableAssociates(response?.evaluation?.available_associates || []);
       } catch (error) {
         if (!cancelled) setStatus(error.message || "Chargement impossible.");
       } finally {
@@ -264,7 +268,19 @@ function MonautoevaluationSupport({ user }) {
     }
   }
 
+  function toggleAssociateSelection(associateId) {
+    setSelectedAssociateIds((current) =>
+      current.includes(associateId) ? current.filter((id) => id !== associateId) : [...current, associateId]
+    );
+    setStatus("");
+  }
+
   async function submitToAssociates() {
+    if (!selectedAssociateIds.length) {
+      setStatus("Sélectionnez au moins un associé destinataire avant de soumettre.");
+      return;
+    }
+
     if (answeredQuestions < totalQuestions) {
       setStatus("Toutes les questions doivent être renseignées avant la soumission.");
       return;
@@ -279,12 +295,33 @@ function MonautoevaluationSupport({ user }) {
 
     try {
       await saveSupportSelfEvaluation({ sections });
-      const response = await submitSupportSelfEvaluation();
+      const response = await submitSupportSelfEvaluation(selectedAssociateIds);
       const nextSections = response?.evaluation?.sections || sections;
       setSections(nextSections);
-      setStatus(response.message || "Auto-évaluation support soumise directement aux associés.");
+      setStatus(response.message || "Auto-évaluation support soumise aux associés sélectionnés.");
+      notifyAssociates(response?.evaluation?.submitted_to || []);
     } catch (error) {
       setStatus(error.message || "Soumission impossible.");
+    }
+  }
+
+  async function notifyAssociates(recipients) {
+    const assistantName = user?.name || "";
+
+    try {
+      await Promise.allSettled(
+        recipients
+          .filter((recipient) => recipient.email)
+          .map((recipient) =>
+            sendNotificationEmail({
+              email: recipient.email,
+              name: recipient.name,
+              assistantName,
+            })
+          )
+      );
+    } catch (error) {
+      console.error("Erreur lors de l'envoi des notifications aux associés :", error);
     }
   }
 
@@ -311,7 +348,7 @@ function MonautoevaluationSupport({ user }) {
         <p className="text-xs font-bold uppercase text-slate-400">Département support</p>
         <h2 className="mt-1 text-2xl font-black text-[#0F3A63]">Mon auto-évaluation</h2>
         <p className="mt-1 text-sm font-semibold text-slate-500">
-          {user?.first_name} {user?.last_name} - {roleKey} - Soumission directe aux associés.
+          {user?.first_name} {user?.last_name} - {roleKey}
         </p>
         <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="rounded-lg bg-[#0D496A] p-4 text-white">
@@ -328,6 +365,43 @@ function MonautoevaluationSupport({ user }) {
               {answeredQuestions}/{totalQuestions}
             </p>
           </div>
+        </div>
+
+        <div className="mt-5 rounded-lg border border-dashed border-[#D9E3EE] bg-[#F8FBFF] p-4">
+          <p className="text-xs font-extrabold text-[#0F3A63]">
+            Destinataire(s) de l'auto-évaluation <span className="text-red-600">*</span>
+          </p>
+          <p className="mt-1 text-xs font-semibold text-slate-500">
+            Sélectionnez le ou les associés à qui soumettre cette auto-évaluation.
+          </p>
+          {availableAssociates.length ? (
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {availableAssociates.map((associate) => {
+                const isChecked = selectedAssociateIds.includes(associate.id);
+                return (
+                  <label
+                    key={associate.id}
+                    className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-xs font-semibold transition ${
+                      isChecked ? "border-[#76B82A] bg-[#EEF6E8] text-[#0F3A63]" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggleAssociateSelection(associate.id)}
+                      className="h-4 w-4 accent-[#0F3A63]"
+                    />
+                    <span>
+                      {associate.name}
+                      {associate.grade ? ` (${associate.grade})` : ""}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="mt-3 text-xs font-bold text-[#B93840]">Aucun associé disponible.</p>
+          )}
         </div>
       </article>
 
@@ -504,8 +578,12 @@ function MonautoevaluationSupport({ user }) {
         <button onClick={saveDraft} className="rounded-full bg-white px-6 py-3 text-sm font-extrabold text-[#0F3A63] shadow-sm">
           Enregistrer
         </button>
-        <button onClick={submitToAssociates} className="rounded-full bg-[#0F3A63] px-6 py-3 text-sm font-extrabold text-white">
-          Soumettre aux associés
+        <button
+          onClick={submitToAssociates}
+          disabled={!selectedAssociateIds.length}
+          className="rounded-full bg-[#0F3A63] px-6 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Soumettre aux associés sélectionnés
         </button>
       </div>
     </section>

@@ -39,9 +39,10 @@ export function saveSupportSelfEvaluation(payload) {
   });
 }
 
-export function submitSupportSelfEvaluation() {
+export function submitSupportSelfEvaluation(selectedAssociateIds = []) {
   return request("/support/self-evaluation/submit", {
     method: "POST",
+    body: JSON.stringify({ selectedAssociateIds }),
   });
 }
 

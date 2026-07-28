@@ -157,7 +157,7 @@ async function resolveOtherAssociates(currentUserId) {
     $or: [{ code_categorie: '11' }, { grade: 'Associé' }, { grade: 'Associe' }],
   })
     .sort({ last_name: 1, first_name: 1 })
-    .select('_id name first_name last_name grade department code_categorie');
+    .select('_id name first_name last_name grade department code_categorie email');
 }
 
 function cloneSectionsForAssociate(user) {
@@ -340,6 +340,7 @@ function buildAssociateSelfEvaluationPayload(instance, user, recipients = []) {
             name: recipients[0].name,
             grade: recipients[0].grade,
             department: recipients[0].department,
+            email: recipients[0].email,
           }
         : null,
       peerComment: instance.peer_review_comment || peerReviewSections.length

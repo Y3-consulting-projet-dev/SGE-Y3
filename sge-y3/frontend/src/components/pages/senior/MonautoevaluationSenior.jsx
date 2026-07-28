@@ -9,6 +9,7 @@ import {
 } from "@/api/seniorEvaluation";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
 import { getDisplayName } from "@/utils/userPresentation";
+import { sendNotificationEmail } from "@/services/notifications";
 
 const gradingHelp = [
   { level: "1", text: "Insuffisant - objectif non atteint", color: "text-[#FF7A00]" },
@@ -628,6 +629,7 @@ function MonautoevaluationSenior({ user }) {
         name: recipient.name,
         grade: recipient.grade,
         department: recipient.department,
+        email: recipient.email,
       })),
       criteria: buildMissionCriteriaFromSections(sections, primaryRecipient.department),
       status: "Brouillon",
@@ -797,6 +799,33 @@ function MonautoevaluationSenior({ user }) {
     }
   }
 
+  async function notifyMissionRecipients(missionToNotify) {
+    const assistantName = evaluationData?.assignee?.name || user?.name || "";
+    const emailById = new Map(
+      recipientOptions.filter((recipient) => recipient.email).map((recipient) => [String(recipient.id), recipient.email])
+    );
+    const recipients = (missionToNotify?.recipients || [])
+      .map((recipient) => ({
+        ...recipient,
+        email: recipient.email || emailById.get(String(recipient.id)),
+      }))
+      .filter((recipient) => recipient.email);
+
+    try {
+      await Promise.allSettled(
+        recipients.map((recipient) =>
+          sendNotificationEmail({
+            email: recipient.email,
+            name: recipient.name,
+            assistantName,
+          })
+        )
+      );
+    } catch (error) {
+      console.error("Erreur lors de l'envoi des notifications de mission :", error);
+    }
+  }
+
   async function handleSubmitMission() {
     if (!activeMission) return;
 
@@ -830,6 +859,7 @@ function MonautoevaluationSenior({ user }) {
       setEvaluationData(response);
       setMissionEvaluations(sanitizeMissionEvaluations(response.mission_evaluations || []));
       setScopedFeedback("mission", "success", response.message || "Mission soumise.");
+      notifyMissionRecipients(activeMission);
     } catch (error) {
       setScopedFeedback("mission", "error", error.message || "Soumission impossible.");
     } finally {
