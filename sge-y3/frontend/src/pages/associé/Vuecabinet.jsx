@@ -10,14 +10,14 @@ import {
   Settings2,
   UsersRound,
 } from "lucide-react";
-import SidebarShell from "@/components/layouts/SidebarShell";
-import SyntheseRH from "@/components/pages/associé/SynthèseRH";
-import Autoevamanager from "@/components/pages/associé/autoevamanager";
-import AutoevaluationAssocie from "@/components/pages/associé/AutoevaluationAssocie";
-import AutoevaluationSupport from "@/components/pages/associé/AutoevaluationSupport";
-import Monhistorique from "@/components/pages/associé/Monhistorique";
-import HistoriqueCabinet from "@/components/pages/associé/HistoriqueCabinet";
-import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
+import SidebarShell from "@/layouts/SidebarShell";
+import SyntheseRH from "@/pages/associé/SynthèseRH";
+import Autoevamanager from "@/pages/associé/autoevamanager";
+import AutoevaluationAssocie from "@/pages/associé/AutoevaluationAssocie";
+import AutoevaluationSupport from "@/pages/associé/AutoevaluationSupport";
+import Monhistorique from "@/pages/associé/Monhistorique";
+import HistoriqueCabinet from "@/pages/associé/HistoriqueCabinet";
+import ComiteEvaluation from "@/pages/comite/ComiteEvaluation";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import logoY3 from "@/assets/logo-y3.png";
 import { saveCommitteeDecision } from "@/api/committee";

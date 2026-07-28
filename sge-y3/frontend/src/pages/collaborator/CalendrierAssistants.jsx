@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PlusCircle, X } from "lucide-react";
-import Calendrier from "@/components/pages/collaborator/Calendrier";
+import Calendrier from "@/pages/collaborator/Calendrier";
 
 function getAssistantMissions(evaluationData) {
   return (

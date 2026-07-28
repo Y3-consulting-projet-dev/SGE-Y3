@@ -13,14 +13,14 @@ import {
   TrendingUp,
   User,
 } from "lucide-react";
-import SidebarShell from "@/components/layouts/SidebarShell";
+import SidebarShell from "@/layouts/SidebarShell";
 import logoY3 from "@/assets/logo-y3.png";
-import MonTableauDeBord from "@/components/pages/collaborator/Collaboratordashboard";
-import Monautoevaluation from "@/components/pages/collaborator/Monautoevaluation";
-import Mesresultats from "@/components/pages/collaborator/Mesresultats";
-import Monhistorique from "@/components/pages/collaborator/Monhistorique";
-import Mondeveloppement from "@/components/pages/collaborator/Mondeveloppement";
-import Calendrier from "@/components/pages/collaborator/Calendrier";
+import MonTableauDeBord from "@/pages/collaborator/Collaboratordashboard";
+import Monautoevaluation from "@/pages/collaborator/Monautoevaluation";
+import Mesresultats from "@/pages/collaborator/Mesresultats";
+import Monhistorique from "@/pages/collaborator/Monhistorique";
+import Mondeveloppement from "@/pages/collaborator/Mondeveloppement";
+import Calendrier from "@/pages/collaborator/Calendrier";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import { getDisplayName } from "@/utils/userPresentation";
 import { getMyAssistantEvaluation, getMyAssistantResults } from "@/api/collaboratorEvaluation";

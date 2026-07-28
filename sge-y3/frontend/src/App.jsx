@@ -1,13 +1,13 @@
 ﻿import { lazy, Suspense, useState } from "react";
-import LoginPage from "@/components/pages/auth/LoginPage";
+import LoginPage from "@/pages/auth/LoginPage";
 import { clearSession, loadSession, loginUser, saveSession } from "@/api/auth";
 
-const ManagerDashboard = lazy(() => import("@/components/pages/dashboard/ManagerDashboard"));
-const CollaboratorDashboard = lazy(() => import("@/components/pages/dashboard/CollaboratorDashboard"));
-const SeniorDashboard = lazy(() => import("@/components/pages/dashboard/SeniorDashboard"));
-const Vuecabinet = lazy(() => import("@/components/pages/associé/Vuecabinet"));
-const VueRH = lazy(() => import("@/components/pages/rh/VueRH"));
-const VueSupport = lazy(() => import("@/components/pages/support/VueSupport"));
+const ManagerDashboard = lazy(() => import("@/pages/dashboard/ManagerDashboard"));
+const CollaboratorDashboard = lazy(() => import("@/pages/dashboard/CollaboratorDashboard"));
+const SeniorDashboard = lazy(() => import("@/pages/dashboard/SeniorDashboard"));
+const Vuecabinet = lazy(() => import("@/pages/associé/Vuecabinet"));
+const VueRH = lazy(() => import("@/pages/rh/VueRH"));
+const VueSupport = lazy(() => import("@/pages/support/VueSupport"));
 
 function normalizeDepartment(value = "") {
   return String(value).replace(/\s+/g, " ").trim().toUpperCase();
