@@ -8,6 +8,7 @@ import {
   submitManagerSelfEvaluation,
 } from "@/api/managerOverview";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
+import { sendNotificationEmail } from "@/services/notifications";
 
 function getPageProgress(page) {
   const themes = page?.themes || [];
@@ -813,6 +814,27 @@ function Monautoevaluation() {
     }
   }
 
+  async function notifyMissionRecipients(missionAssociates) {
+    const assistantName = evaluationData?.manager?.name || "";
+    const recipients = [...rhValidationRecipients, ...missionAssociates]
+      .filter((recipient, index, list) => list.findIndex((item) => item.id === recipient.id) === index)
+      .filter((recipient) => recipient.email);
+
+    try {
+      await Promise.allSettled(
+        recipients.map((recipient) =>
+          sendNotificationEmail({
+            email: recipient.email,
+            name: recipient.name,
+            assistantName,
+          })
+        )
+      );
+    } catch (error) {
+      console.error("Erreur lors de l'envoi des notifications de mission :", error);
+    }
+  }
+
   async function handleSubmitMission() {
     if (!activeMission) return;
 
@@ -863,6 +885,7 @@ function Monautoevaluation() {
       setSelectedAssociateValue("");
       setFeedbackTone("success");
       setFeedbackMessage(response.message || "Mission manager soumise à la RH et aux associés.");
+      notifyMissionRecipients(missionAssociates);
     } catch (error) {
       setFeedbackTone("error");
       setFeedbackMessage(error.message || "Soumission de la mission impossible.");

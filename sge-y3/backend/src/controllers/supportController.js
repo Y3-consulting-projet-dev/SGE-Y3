@@ -130,7 +130,7 @@ async function resolveAssociates() {
   return User.find({
     is_active: true,
     $or: [{ code_categorie: '11' }, { grade: 'Associé' }, { grade: 'Associe' }],
-  }).select('_id name grade department');
+  }).select('_id name grade department email');
 }
 
 async function resolveCommentTargetsForSupport(user) {
@@ -204,8 +204,23 @@ async function getOrCreateSupportSelfEvaluation(user) {
   return instance;
 }
 
+function formatAssociate(recipient) {
+  return {
+    id: recipient._id.toString(),
+    name: recipient.name,
+    grade: recipient.grade,
+    department: recipient.department,
+    email: recipient.email,
+  };
+}
+
 function buildSupportSelfPayload(instance, user, recipients = [], commentTargets = []) {
   const sections = normalizeSections(instance.sections || []);
+  const submittedToIds = new Set((instance.submitted_to_user_ids || []).map((id) => String(id)));
+  const submittedToRecipients =
+    instance.status === 'Soumis aux Associes'
+      ? recipients.filter((recipient) => submittedToIds.has(String(recipient._id)))
+      : [];
 
   return {
     cycle_label: getCurrentCycleLabel(),
@@ -215,12 +230,8 @@ function buildSupportSelfPayload(instance, user, recipients = [], commentTargets
       submitted_at: instance.submitted_at,
       last_saved_at: instance.last_saved_at,
       sections,
-      submitted_to: recipients.map((recipient) => ({
-        id: recipient._id.toString(),
-        name: recipient.name,
-        grade: recipient.grade,
-        department: recipient.department,
-      })),
+      submitted_to: submittedToRecipients.map(formatAssociate),
+      available_associates: recipients.map(formatAssociate),
     },
     summary: {
       ...getEvaluationSummary(sections),
@@ -336,6 +347,24 @@ module.exports = {
       return response.status(400).json({ message: "Aucun associé destinataire n'est disponible." });
     }
 
+    const selectedAssociateIds = Array.isArray(request.body?.selectedAssociateIds)
+      ? request.body.selectedAssociateIds.map((id) => String(id || '').trim()).filter(Boolean)
+      : [];
+
+    if (!selectedAssociateIds.length) {
+      return response.status(400).json({
+        message: "Sélectionnez au moins un associé destinataire avant de soumettre.",
+      });
+    }
+
+    const selectedRecipients = recipients.filter((recipient) =>
+      selectedAssociateIds.includes(String(recipient._id))
+    );
+
+    if (!selectedRecipients.length) {
+      return response.status(400).json({ message: "Les associés sélectionnés sont introuvables." });
+    }
+
     const sections = normalizeSections(instance.sections || []);
     const missingAnswers = validateSectionsForSubmit(sections);
     if (missingAnswers.length) {
@@ -354,15 +383,15 @@ module.exports = {
     }
 
     instance.submitted_to_role = 'associate';
-    instance.submitted_to_user_ids = recipients.map((recipient) => recipient._id);
-    instance.submitted_to_names = recipients.map((recipient) => recipient.name);
+    instance.submitted_to_user_ids = selectedRecipients.map((recipient) => recipient._id);
+    instance.submitted_to_names = selectedRecipients.map((recipient) => recipient.name);
     instance.status = 'Soumis aux Associes';
     instance.submitted_at = new Date();
     instance.last_saved_at = new Date();
     await instance.save();
 
     return response.json({
-      message: 'Auto-évaluation support soumise aux associés.',
+      message: `Auto-évaluation support soumise à ${selectedRecipients.map((recipient) => recipient.name).join(', ')}.`,
       ...buildSupportSelfPayload(instance, request.user, recipients),
     });
   },

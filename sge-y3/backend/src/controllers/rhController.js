@@ -274,7 +274,7 @@ async function resolveAssociateRecipients() {
     $or: [{ code_categorie: '11' }, { grade: 'Associé' }, { grade: 'Associe' }],
   })
     .sort({ last_name: 1, first_name: 1 })
-    .select('_id name first_name last_name grade department code_categorie');
+    .select('_id name first_name last_name grade department code_categorie email');
 }
 
 async function resolveFullRhRecipients() {
@@ -286,7 +286,7 @@ async function resolveFullRhRecipients() {
     ],
   })
     .sort({ last_name: 1, first_name: 1 })
-    .select('_id name first_name last_name grade department code_categorie');
+    .select('_id name first_name last_name grade department code_categorie email');
 }
 
 async function resolveRhQueueUserIds() {
@@ -355,6 +355,7 @@ function buildRhSelfEvaluationPayload(instance, user, recipients = [], workflow 
       name: recipient.name,
       department: recipient.department,
       grade: recipient.grade,
+      email: recipient.email,
     })),
     workflow: {
       recipientRoleLabel: workflow.recipientRoleLabel || 'Associé',

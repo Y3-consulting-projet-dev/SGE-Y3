@@ -1,5 +1,4 @@
-﻿
-// export default Monautoevaluation;
+﻿// export default Monautoevaluation;
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, MessageSquare, ClipboardList } from "lucide-react";
 import {
@@ -9,6 +8,7 @@ import {
   submitMyAssistantMissionEvaluation,
 } from "@/api/collaboratorEvaluation";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
+import { sendNotificationEmail } from "@/services/notifications";
 
 const gradingHelp = [
   {
@@ -931,6 +931,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
       name: recipient.name,
       grade: recipient.grade,
       department: recipient.department,
+      email: recipient.email,
       canEvaluate: true,
       receivesCopy: false,
     }));
@@ -1104,6 +1105,36 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
     }));
   }
 
+  async function notifyMissionRecipients(missionToNotify) {
+    const assistantName = evaluationData?.assignee?.name || "";
+    const emailById = new Map(
+      evaluatorRecipientOptions
+        .filter((recipient) => recipient.email)
+        .map((recipient) => [String(recipient.id), recipient.email])
+    );
+    const recipients = getMissionEvaluatingRecipients(missionToNotify)
+      .map((recipient) => ({
+        ...recipient,
+        email: recipient.email || emailById.get(String(recipient.id)),
+      }))
+      .filter((recipient) => recipient.email);
+
+    try {
+      await Promise.allSettled(
+        recipients.map((recipient) =>
+          sendNotificationEmail({
+            email: recipient.email,
+            name: recipient.name,
+            assistantName,
+          })
+        )
+      );
+    } catch (error) {
+      console.error("Erreur lors de l'envoi des notifications de mission :", error);
+    }
+
+  }
+
   async function handleSubmitMission() {
     if (!mission) return;
     clearTimeout(autoSaveTimeoutRef.current);
@@ -1139,6 +1170,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
       setMissionEvaluations(sanitizeMissionEvaluations(response.mission_evaluations || []));
       setScopedFeedback("mission", "success", response.message || "Mission soumise.");
       onEvaluationChange?.(response);
+      notifyMissionRecipients(mission);
     } catch (error) {
       setScopedFeedback("mission", "error", error.message || "Soumission de la mission impossible.");
     } finally {

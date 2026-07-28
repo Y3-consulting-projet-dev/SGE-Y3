@@ -9,6 +9,7 @@ import {
   submitRhSelfEvaluation,
 } from "@/api/rhOverview";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
+import { sendNotificationEmail } from "@/services/notifications";
 
 function getPageProgress(page) {
   const themes = page?.themes || [];
@@ -327,6 +328,26 @@ function MonautoevaluationRH({ assistantMode = false }) {
     goToStep(1);
   }
 
+  async function notifyRecipients(recipients) {
+    const assistantName = evaluationData?.rh?.name || "";
+
+    try {
+      await Promise.allSettled(
+        (recipients || [])
+          .filter((recipient) => recipient.email)
+          .map((recipient) =>
+            sendNotificationEmail({
+              email: recipient.email,
+              name: recipient.name,
+              assistantName,
+            })
+          )
+      );
+    } catch (error) {
+      console.error("Erreur lors de l'envoi des notifications :", error);
+    }
+  }
+
   async function handleSubmit() {
     if (!hasRequiredSubmissionComment(sections)) {
       setFeedbackTone("error");
@@ -347,6 +368,7 @@ function MonautoevaluationRH({ assistantMode = false }) {
       setSections(response.evaluation.sections || []);
       setFeedbackTone("success");
       setFeedbackMessage(response.message || workflow.submittedMessage);
+      notifyRecipients(response.submitted_to);
     } catch (error) {
       setFeedbackTone("error");
       setFeedbackMessage(error.message || "Soumission impossible.");

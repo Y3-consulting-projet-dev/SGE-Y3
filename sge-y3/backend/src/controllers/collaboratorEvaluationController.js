@@ -70,7 +70,7 @@ async function resolveMissionRecipientsForAssistant(user) {
     ],
   })
     .sort({ last_name: 1, first_name: 1 })
-    .select('_id name first_name last_name grade department code_categorie');
+    .select('_id name first_name last_name grade department code_categorie email');
 }
 
 function getCommentSuperiorCategories(user) {
@@ -159,7 +159,7 @@ async function resolveManagersForSenior(user) {
     ],
   })
     .sort({ last_name: 1, first_name: 1 })
-    .select('_id name first_name last_name grade department code_categorie');
+    .select('_id name first_name last_name grade department code_categorie email');
 }
 
 async function resolveRecipientsForInstance(instance, user) {
@@ -190,6 +190,7 @@ function buildRecipientOptions(recipients = [], user) {
         grade: recipient.grade,
         department: recipient.department,
         code_categorie: recipient.code_categorie,
+        email: recipient.email,
       })),
     };
   });

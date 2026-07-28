@@ -278,7 +278,7 @@ async function resolveRhRecipients() {
     ],
   })
     .sort({ last_name: 1, first_name: 1 })
-    .select('_id name first_name last_name grade department');
+    .select('_id name first_name last_name grade department email');
 }
 
 async function resolveAssociateRecipients() {
@@ -290,7 +290,7 @@ async function resolveAssociateRecipients() {
     ],
   })
     .sort({ last_name: 1, first_name: 1 })
-    .select('_id name first_name last_name grade department code_categorie');
+    .select('_id name first_name last_name grade department code_categorie email');
 }
 
 function resolveSelectedAssociateRecipients(associateRecipients = [], selectedRecipients = []) {
@@ -490,12 +490,14 @@ function buildManagerSelfEvaluationPayload(instance, user, rhRecipients = [], te
       name: recipient.name,
       department: recipient.department,
       grade: recipient.grade,
+      email: recipient.email,
     })),
     associate_recipients: associateRecipients.map((recipient) => ({
       id: recipient._id.toString(),
       name: recipient.name,
       department: recipient.department,
       grade: recipient.grade,
+      email: recipient.email,
     })),
     team_members: teamMembers.map((member) => ({
       id: member._id.toString(),

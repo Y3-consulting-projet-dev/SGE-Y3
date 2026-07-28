@@ -10,6 +10,7 @@ import {
   submitReceivedAssociateEvaluationToRh,
 } from "@/api/associateOverview";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
+import { sendNotificationEmail } from "@/services/notifications";
 
 function getPageProgress(page) {
   const themes = page?.themes || [];
@@ -310,6 +311,20 @@ function AutoevaluationAssocie() {
     }
   }
 
+  async function notifyRecipient(recipient) {
+    if (!recipient?.email) return;
+
+    try {
+      await sendNotificationEmail({
+        email: recipient.email,
+        name: recipient.name,
+        assistantName: selfData?.associate?.name || "",
+      });
+    } catch (error) {
+      console.error("Erreur lors de l'envoi de la notification :", error);
+    }
+  }
+
   async function handleSubmit() {
     const saved = await persistSelf(sections, "Auto-évaluation associé prête pour soumission.");
     if (!saved) return;
@@ -321,6 +336,7 @@ function AutoevaluationAssocie() {
       setSections(response.evaluation.sections || []);
       setFeedbackTone("success");
       setFeedbackMessage(response.message || "Auto-évaluation associé soumise.");
+      notifyRecipient(response.evaluation?.recipient);
     } catch (error) {
       setFeedbackTone("error");
       setFeedbackMessage(error.message || "Soumission impossible.");
