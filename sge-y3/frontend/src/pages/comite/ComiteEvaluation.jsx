@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { committeeAssistants, committeeLeaders, committeeLevels, committeeMembers, committeeSupport } from "@/data/comiteData";
+import { committeeLevels } from "@/data/comiteData";
 import { getCommitteeParticipants, getLatestCommitteeDecision } from "@/api/committee";
 
 function PersonCard({ person, draggable, onDragStart, onRateChange, compact = false, rateEnabled = false }) {
@@ -56,25 +56,8 @@ function ComiteEvaluation({
   workflowText,
   onSubmit,
 }) {
-  const fallbackParticipants = useMemo(() => {
-    const primaryFallback =
-      participantScope === "none" ? [] : participantScope === "leadership" ? committeeLeaders : participantScope === "support" ? committeeSupport : committeeAssistants;
-    const secondaryFallback = secondaryParticipantScope === "leadership" ? committeeLeaders : [];
-    const tertiaryFallback = tertiaryParticipantScope === "support" ? committeeSupport : [];
-
-    return [
-      ...primaryFallback.map((person) => ({
-        ...person,
-        level: primaryUnclassified ? null : person.level,
-        lockedClassification: lockPrimaryClassification,
-      })),
-      ...secondaryFallback.map((person) => ({ ...person, level: secondaryUnclassified ? null : person.level })),
-      ...tertiaryFallback.map((person) => ({ ...person, level: tertiaryUnclassified ? null : person.level })),
-    ];
-  }, [lockPrimaryClassification, participantScope, primaryUnclassified, secondaryParticipantScope, secondaryUnclassified, tertiaryParticipantScope, tertiaryUnclassified]);
-
-  const [people, setPeople] = useState(fallbackParticipants);
-  const [committeeMemberNames, setCommitteeMemberNames] = useState(committeeMembers);
+  const [people, setPeople] = useState([]);
+  const [committeeMemberNames, setCommitteeMemberNames] = useState([]);
   const [draggedId, setDraggedId] = useState(null);
   const [status, setStatus] = useState("");
   const [loadStatus, setLoadStatus] = useState("");
@@ -84,7 +67,7 @@ function ComiteEvaluation({
   useEffect(() => {
     let ignore = false;
 
-    setPeople(fallbackParticipants);
+    setPeople([]);
     setSubmitted(false);
     setStatus("");
 
@@ -137,7 +120,10 @@ function ComiteEvaluation({
           ? primaryParticipants.map((participant) => {
               const savedDecision = decisionLevelById.get(participant.id);
 
-              if (!savedDecision) {
+              // Une décision sauvegardée ne doit rebâtir la bulle d'un collaborateur que si sa
+              // synthèse est réellement prête aujourd'hui. Sans synthèse actuelle, il reste dans
+              // "à classer", même si une ancienne décision (potentiellement obsolète) existe.
+              if (!savedDecision || participant.level === null || participant.level === undefined) {
                 return participant;
               }
 
@@ -167,7 +153,7 @@ function ComiteEvaluation({
           participants.map((participant) => {
             const savedDecision = decisionLevelById.get(participant.id);
 
-            if (!savedDecision) {
+            if (!savedDecision || participant.level === null || participant.level === undefined) {
               return participant;
             }
 
@@ -179,8 +165,13 @@ function ComiteEvaluation({
             };
           });
 
-        const secondaryParticipantsWithDecision = applySavedDecision(secondaryParticipants);
-        const tertiaryParticipantsWithDecision = applySavedDecision(tertiaryParticipants);
+        // Tant que la RH n'a pas transmis son propre classement aux associés (decision "rh-final"),
+        // les managers et la RH restent à 0 : pas de bulle pré-remplie, pas de taux hérité d'un
+        // ancien essai. Dès que la RH transmet, ils sont classés automatiquement selon leur score,
+        // exactement comme la RH le fait pour les autres membres, et les associés peuvent les déplacer.
+        const rhHasTransmitted = !initialDecisionScope || Boolean(latestInitialDecisionData?.decision);
+        const secondaryParticipantsWithDecision = rhHasTransmitted ? applySavedDecision(secondaryParticipants) : [];
+        const tertiaryParticipantsWithDecision = rhHasTransmitted ? applySavedDecision(tertiaryParticipants) : [];
 
         const participantMap = new Map();
         [...primaryParticipantsWithDecision, ...secondaryParticipantsWithDecision, ...tertiaryParticipantsWithDecision].forEach((participant) => {
@@ -199,18 +190,20 @@ function ComiteEvaluation({
         if (Array.isArray(committeeData?.participants) && committeeData.participants.length) {
           setCommitteeMemberNames(Array.from(new Set(committeeData.participants.map((participant) => participant.name).filter(Boolean))));
         } else {
-          setCommitteeMemberNames(committeeMembers);
+          setCommitteeMemberNames([]);
         }
 
-        if (loadedParticipants.length) {
-          setPeople(loadedParticipants);
-        }
-        setLoadStatus("");
+        setPeople(loadedParticipants);
+        setLoadStatus(
+          !rhHasTransmitted && (secondaryParticipantScope || tertiaryParticipantScope)
+            ? "En attente de la transmission du classement par la RH."
+            : ""
+        );
       })
       .catch(() => {
         if (!ignore) {
-          setCommitteeMemberNames(committeeMembers);
-          setLoadStatus("Liste de secours affichee.");
+          setCommitteeMemberNames([]);
+          setLoadStatus("Chargement du classement impossible.");
         }
       });
 
@@ -218,7 +211,6 @@ function ComiteEvaluation({
       ignore = true;
     };
   }, [
-    fallbackParticipants,
     lockPrimaryClassification,
     participantScope,
     primaryUnclassified,

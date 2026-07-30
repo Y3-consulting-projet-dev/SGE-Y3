@@ -956,7 +956,7 @@ function getAssociateSupportReviewSections(instance, supportUser) {
   const templateSections = cloneSectionsForSupport(supportUser);
 
   if (savedSections.length) {
-    return mergeSupportReviewSectionsWithTemplate(savedSections, templateSections);
+    return normalizeSections(mergeSupportReviewSectionsWithTemplate(savedSections, templateSections));
   }
 
   return templateSections;
@@ -1887,7 +1887,7 @@ module.exports = {
       return response.status(404).json({ message: 'Membre du service support introuvable.' });
     }
 
-    const selfEvaluation = await EvaluationInstance.findOne({
+    let selfEvaluation = await EvaluationInstance.findOne({
       cycle_label: getCurrentCycleLabel(),
       evalue_id: supportUser._id,
       template_type: 'support-self-evaluation',
@@ -1913,6 +1913,82 @@ module.exports = {
 
     return response.json({
       message: "Évaluation support enregistrée.",
+      ...buildAssociateSupportPayload(supportUser, selfEvaluation),
+    });
+  },
+  async submitAssociateSupportEvaluation(request, response) {
+    const supportUser = await User.findById(request.params.supportId).select(
+      '_id name first_name last_name email grade department code_categorie'
+    );
+
+    if (!supportUser || !isSupportEvaluationTarget(supportUser)) {
+      return response.status(404).json({ message: 'Membre du service support introuvable.' });
+    }
+
+    let selfEvaluation = await EvaluationInstance.findOne({
+      cycle_label: getCurrentCycleLabel(),
+      evalue_id: supportUser._id,
+      template_type: 'support-self-evaluation',
+    }).select(
+      '_id evalue_id status submitted_at sections peer_review_sections peer_review_comment peer_review_comment_saved_at submitted_to_role submitted_to_user_ids submitted_to_names'
+    );
+
+    if (!selfEvaluation) {
+      return response.status(404).json({ message: "Auto-évaluation support introuvable." });
+    }
+
+    selfEvaluation = await syncSupportSelfEvaluationWithTemplate(selfEvaluation, supportUser);
+
+    const rawSections = Array.isArray(request.body?.sections) ? request.body.sections : [];
+    if (rawSections.length) {
+      selfEvaluation.peer_review_sections = toPersistenceSections(normalizeSections(rawSections));
+    }
+
+    selfEvaluation.peer_review_comment = String(request.body?.note || selfEvaluation.peer_review_comment || '').trim();
+
+    const reviewSections = normalizeSections(selfEvaluation.peer_review_sections || []);
+    const missingAnswers = validateSectionsForSubmit(reviewSections);
+    if (missingAnswers.length) {
+      return response.status(400).json({
+        message: "Toutes les notes doivent être renseignées avant la transmission à la RH.",
+        missingAnswers,
+      });
+    }
+
+    const rhUserIds = await resolveRhQueueUserIds();
+    const rhUsers = rhUserIds.length ? await User.find({ _id: { $in: rhUserIds } }).select('_id name') : [];
+
+    if (!rhUsers.length) {
+      return response.status(400).json({
+        message: "Aucun destinataire RH n'est disponible pour cette transmission.",
+      });
+    }
+
+    const submittedToIds = new Map();
+    [request.user._id, ...rhUsers.map((user) => user._id)].forEach((id) => submittedToIds.set(String(id), id));
+
+    selfEvaluation.status = 'Soumis a RH';
+    selfEvaluation.submitted_to_role = 'rh';
+    selfEvaluation.submitted_to_user_ids = Array.from(submittedToIds.values());
+    selfEvaluation.submitted_to_names = [request.user.name, ...rhUsers.map((user) => user.name)].filter(Boolean);
+    selfEvaluation.peer_review_comment_by_user_id = request.user._id;
+    selfEvaluation.peer_review_comment_by_name =
+      [request.user?.first_name, request.user?.last_name].filter(Boolean).join(' ').trim() || request.user?.name || '';
+    selfEvaluation.peer_review_comment_saved_at = new Date();
+    selfEvaluation.submitted_at = new Date();
+    selfEvaluation.last_saved_at = new Date();
+    await selfEvaluation.save();
+
+    notifySubmissionRecipients({
+      recipientIds: rhUsers.map((user) => user._id),
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: `l'évaluation de ${supportUser.name}`,
+      cycleLabel: getCurrentCycleLabel(),
+    });
+
+    return response.json({
+      message: `Évaluation transmise à la RH (${rhUsers.map((user) => user.name).join(', ')}).`,
       ...buildAssociateSupportPayload(supportUser, selfEvaluation),
     });
   },

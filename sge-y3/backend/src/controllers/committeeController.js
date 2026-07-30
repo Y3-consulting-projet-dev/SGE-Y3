@@ -4,6 +4,7 @@ const EvaluationInstance = require('../models/EvaluationInstance');
 const ManagerMemberReview = require('../models/ManagerMemberReview');
 const SeniorAssistantReview = require('../models/SeniorAssistantReview');
 const { getOverallAverageScore } = require('../utils/evaluationHelpers');
+const { getAllRhReviewRows } = require('./rhController');
 
 
 const DEFAULT_CYCLE_LABEL = 'Cycle 2025-2026';
@@ -38,6 +39,25 @@ function buildParticipant(user, score = null) {
   };
 }
 
+// Le classement du comité s'appuie sur la synthèse du collaborateur (auto-évaluation, revue
+// senior puis manager) : le même score que celui affiché dans "Synthèses RH", au fur et à
+// mesure des soumissions — sans attendre la validation RH finale du dossier. Tant qu'aucune
+// évaluation n'a été soumise pour un collaborateur, il n'a pas de score et reste non classé
+// (pas de note par défaut).
+async function buildCollaboratorSyntheseScoreMap() {
+  const scoreMap = new Map();
+  const rows = await getAllRhReviewRows();
+
+  rows.forEach((row) => {
+    const score = typeof row.rhValidationFinalScore === 'number' ? row.rhValidationFinalScore : row.finalScore;
+    if (row.memberId && typeof score === 'number') {
+      scoreMap.set(String(row.memberId), score);
+    }
+  });
+
+  return scoreMap;
+}
+
 async function buildScoreMap(userIds, scope, cycleLabel) {
   const scoreMap = new Map();
 
@@ -53,8 +73,15 @@ async function buildScoreMap(userIds, scope, cycleLabel) {
       const avg = getOverallAverageScore(inst.sections || []);
       if (avg !== null) scoreMap.set(inst.evalue_id.toString(), avg);
     }
+  } else if (scope === 'collaborators') {
+    const syntheseScoreMap = await buildCollaboratorSyntheseScoreMap();
+    const userIdSet = new Set(userIds.map((id) => String(id)));
+
+    syntheseScoreMap.forEach((score, memberId) => {
+      if (userIdSet.has(memberId)) scoreMap.set(memberId, score);
+    });
   } else {
-    // collaborators or support: ManagerMemberReview > SeniorAssistantReview > EvaluationInstance
+    // support: ManagerMemberReview > SeniorAssistantReview > EvaluationInstance
     const [managerReviews, seniorReviews, instances] = await Promise.all([
       ManagerMemberReview.find({ member_id: { $in: userIds }, cycle_label: cycleLabel })
         .select('member_id sections')
@@ -63,7 +90,7 @@ async function buildScoreMap(userIds, scope, cycleLabel) {
         .select('assistant_id sections')
         .lean(),
       EvaluationInstance.find({ evalue_id: { $in: userIds }, cycle_label: cycleLabel })
-        .select('evalue_id sections')
+        .select('evalue_id sections peer_review_sections')
         .lean(),
     ]);
 
@@ -81,7 +108,10 @@ async function buildScoreMap(userIds, scope, cycleLabel) {
     for (const inst of instances) {
       const id = inst.evalue_id.toString();
       if (!scoreMap.has(id)) {
-        const avg = getOverallAverageScore(inst.sections || []);
+        // Pour le service support, l'évaluation de l'associé (peer_review_sections) fait foi
+        // sur l'auto-évaluation dès qu'elle existe, à l'image des revues manager/senior ci-dessus.
+        const avg =
+          getOverallAverageScore(inst.peer_review_sections || []) ?? getOverallAverageScore(inst.sections || []);
         if (avg !== null) scoreMap.set(id, avg);
       }
     }
@@ -120,7 +150,7 @@ async function listCommitteeParticipants(request, response) {
   } else if (scope === 'support') {
     users = await User.find({
       is_active: true,
-      department: 'SUPPORT',
+      department: 'SERVICE SUPPORT',
     })
       .sort({ last_name: 1, first_name: 1 })
       .select('_id name first_name last_name grade department');
