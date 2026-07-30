@@ -39,30 +39,6 @@ function loadLocalDecision(scope = "associate-final") {
   }
 }
 
-function countFilledIncreaseRates(decision) {
-  const decisions = decision?.decisions || {};
-
-  return Object.values(decisions).reduce((total, participants) => {
-    if (!Array.isArray(participants)) {
-      return total;
-    }
-
-    return total + participants.filter((participant) => String(participant?.increaseRate ?? "").trim() !== "").length;
-  }, 0);
-}
-
-function pickMostCompleteDecision(serverDecision, localDecision) {
-  if (!serverDecision) {
-    return localDecision;
-  }
-
-  if (!localDecision) {
-    return serverDecision;
-  }
-
-  return countFilledIncreaseRates(localDecision) > countFilledIncreaseRates(serverDecision) ? localDecision : serverDecision;
-}
-
 export async function getCommitteeParticipants(scope = "collaborators") {
   const session = loadSession();
   const headers = {
@@ -137,7 +113,6 @@ export async function getLatestCommitteeDecision(scope = "associate-final") {
   const headers = {
     "Content-Type": "application/json",
   };
-  const localDecision = loadLocalDecision(scope);
 
   if (session?.token) {
     headers.Authorization = `Bearer ${session.token}`;
@@ -150,14 +125,14 @@ export async function getLatestCommitteeDecision(scope = "associate-final") {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      return { decision: localDecision };
+      throw new Error(data.message || "Chargement de la decision impossible.");
     }
 
-    return {
-      ...data,
-      decision: pickMostCompleteDecision(data.decision, localDecision),
-    };
+    // Le serveur fait foi : une decision effacee cote serveur (ex. reinitialisation par la RH)
+    // ne doit pas etre ressuscitee par un ancien cache local juge "plus complet".
+    return data;
   } catch {
-    return { decision: localDecision };
+    // Le cache local ne sert que de secours si le serveur est reellement injoignable.
+    return { decision: loadLocalDecision(scope) };
   }
 }

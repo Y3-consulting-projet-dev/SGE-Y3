@@ -4,6 +4,7 @@ import {
   getAssociateSupportEvaluation,
   getAssociateSupportEvaluations,
   saveAssociateSupportEvaluation,
+  submitAssociateSupportEvaluation,
 } from "@/api/associateOverview";
 
 function formatScore(score) {
@@ -89,7 +90,7 @@ function AutoevaluationSupport() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [status, setStatus] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +99,7 @@ function AutoevaluationSupport() {
       try {
         setIsLoading(true);
         setErrorMessage("");
+        setSuccessMessage("");
         const response = await getAssociateSupportEvaluations();
 
         if (cancelled) return;
@@ -127,8 +129,8 @@ function AutoevaluationSupport() {
     async function loadDetail() {
       try {
         setIsDetailLoading(true);
-        setStatus("");
         setErrorMessage("");
+        setSuccessMessage("");
         const response = await getAssociateSupportEvaluation(selectedSupportId);
         const nextSections = buildSectionsPayload(response?.associate_review?.sections || []);
         const firstSection = nextSections[0];
@@ -184,6 +186,36 @@ function AutoevaluationSupport() {
   );
   const associateAverage = useMemo(() => getOverallAverage(associateSections), [associateSections]);
 
+  const flatSteps = useMemo(() => {
+    return associateSections.flatMap((section) => {
+      const sectionId = section.id || section.section_id;
+      const pages = getSectionPages(section);
+      if (!pages.length) return [{ sectionId, pageId: "" }];
+      return pages.map((page) => ({ sectionId, pageId: page.id }));
+    });
+  }, [associateSections]);
+
+  const currentStepIndex = useMemo(
+    () =>
+      flatSteps.findIndex(
+        (step) => String(step.sectionId) === String(selectedSectionId) && String(step.pageId) === String(selectedPageId)
+      ),
+    [flatSteps, selectedSectionId, selectedPageId]
+  );
+
+  const isFirstStep = currentStepIndex <= 0;
+  const isLastStep = currentStepIndex === -1 || currentStepIndex >= flatSteps.length - 1;
+
+  const goToStep = (offset) => {
+    if (!flatSteps.length) return;
+    const baseIndex = currentStepIndex === -1 ? 0 : currentStepIndex;
+    const nextIndex = Math.min(Math.max(baseIndex + offset, 0), flatSteps.length - 1);
+    const nextStep = flatSteps[nextIndex];
+    if (!nextStep) return;
+    setSelectedSectionId(nextStep.sectionId);
+    setSelectedPageId(nextStep.pageId);
+  };
+
   const kpis = useMemo(() => {
     const total = items.length;
     const submitted = items.filter((item) => item.selfEvaluationAvailable).length;
@@ -209,13 +241,13 @@ function AutoevaluationSupport() {
         ),
       }))
     );
-    setStatus("");
   };
 
   const saveEvaluation = async () => {
-    if (!selectedSupportId) return;
+    if (!selectedSupportId) return false;
 
     try {
+      setErrorMessage("");
       const response = await saveAssociateSupportEvaluation(selectedSupportId, {
         sections: associateSections,
         note,
@@ -225,7 +257,6 @@ function AutoevaluationSupport() {
       setDetailData(response);
       setAssociateSections(nextSections);
       setNote(response?.associate_review?.note || "");
-      setStatus("Évaluation support enregistrée.");
       setListData((current) => ({
         ...current,
         items: (current?.items || []).map((item) =>
@@ -238,8 +269,52 @@ function AutoevaluationSupport() {
             : item
         ),
       }));
+      setSuccessMessage(response?.message || "Évaluation support enregistrée.");
+      return true;
     } catch (error) {
-      setStatus(error.message || "Enregistrement impossible.");
+      setSuccessMessage("");
+      setErrorMessage(error.message || "Enregistrement impossible.");
+      return false;
+    }
+  };
+
+  const handleSaveAndContinue = async () => {
+    const saved = await saveEvaluation();
+    if (saved) {
+      goToStep(1);
+    }
+  };
+
+  const submitEvaluation = async () => {
+    if (!selectedSupportId) return;
+
+    try {
+      setErrorMessage("");
+      setSuccessMessage("");
+      const response = await submitAssociateSupportEvaluation(selectedSupportId, {
+        sections: associateSections,
+        note,
+      });
+      const nextSections = buildSectionsPayload(response?.associate_review?.sections || []);
+
+      setDetailData(response);
+      setAssociateSections(nextSections);
+      setNote(response?.associate_review?.note || "");
+      setListData((current) => ({
+        ...current,
+        items: (current?.items || []).map((item) =>
+          item.id === selectedSupportId
+            ? {
+                ...item,
+                associateScore: getOverallAverage(nextSections),
+                annotationSaved: true,
+              }
+            : item
+        ),
+      }));
+      setSuccessMessage(response?.message || "Évaluation transmise à la RH.");
+    } catch (error) {
+      setErrorMessage(error.message || "Transmission à la RH impossible.");
     }
   };
 
@@ -329,6 +404,10 @@ function AutoevaluationSupport() {
           <article className="rounded-xl bg-[#D4DADF] p-3">
             {errorMessage && items.length ? (
               <div className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-600">{errorMessage}</div>
+            ) : null}
+
+            {successMessage && items.length ? (
+              <div className="mb-3 rounded-lg bg-[#F1F8E8] px-3 py-2 text-sm font-semibold text-[#4C8A1F]">{successMessage}</div>
             ) : null}
 
             {isDetailLoading ? (
@@ -449,17 +528,41 @@ function AutoevaluationSupport() {
                       <p className="text-sm font-extrabold text-[#0F4A72]">Commentaire global associé</p>
                       <textarea
                         value={note}
-                        onChange={(event) => {
-                          setNote(event.target.value);
-                          setStatus("");
-                        }}
+                        onChange={(event) => setNote(event.target.value)}
                         placeholder="Votre lecture globale du service support..."
                         className="mt-3 min-h-[150px] w-full resize-none rounded-lg bg-[#ECEFF3] px-3 py-4 text-sm text-slate-700 outline-none placeholder:text-slate-500"
                       />
-                      <button onClick={saveEvaluation} className="mt-4 rounded-md bg-[#0C4B6C] px-5 py-2 text-sm font-bold text-white">
-                        Enregistrer
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => goToStep(-1)}
+                        disabled={isFirstStep}
+                        className="inline-flex items-center gap-2 rounded-md bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <ChevronLeft size={14} />
+                        Précédent
                       </button>
-                      {status ? <p className="mt-2 text-xs font-semibold text-[#0F4A72]">{status}</p> : null}
+
+                      {isLastStep ? (
+                        <button
+                          type="button"
+                          onClick={submitEvaluation}
+                          className="inline-flex items-center gap-2 rounded-md bg-[#0C4B6C] px-4 py-2 text-sm font-bold text-white"
+                        >
+                          Soumettre l'évaluation
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleSaveAndContinue}
+                          className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-sm font-bold text-white"
+                        >
+                          Sauvegarder et continuer
+                          <ChevronRight size={14} />
+                        </button>
+                      )}
                     </div>
                   </>
                 ) : (

@@ -124,3 +124,10 @@ export function saveAssociateSupportEvaluation(supportId, payload) {
     body: JSON.stringify(payload),
   })
 }
+
+export function submitAssociateSupportEvaluation(supportId, payload) {
+  return request(`/associate/support-evaluations/${supportId}/submit`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

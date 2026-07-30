@@ -20,6 +20,7 @@ const {
   saveAssociateManagerEvaluation,
   submitAssociateManagerEvaluationToRh,
   saveAssociateSupportEvaluation,
+  submitAssociateSupportEvaluation,
 } = require('../controllers/associateController');
 const { requireAuth } = require('../middleware/authMiddleware');
 const { requireAssociate } = require('../middleware/collaboratorMiddleware');
@@ -45,5 +46,6 @@ router.post('/manager-evaluations/:managerId/submit-rh', requireAuth, requireAss
 router.get('/support-evaluations', requireAuth, requireAssociate, getAssociateSupportEvaluations);
 router.get('/support-evaluations/:supportId', requireAuth, requireAssociate, getAssociateSupportEvaluation);
 router.put('/support-evaluations/:supportId', requireAuth, requireAssociate, saveAssociateSupportEvaluation);
+router.post('/support-evaluations/:supportId/submit', requireAuth, requireAssociate, submitAssociateSupportEvaluation);
 
 module.exports = router;

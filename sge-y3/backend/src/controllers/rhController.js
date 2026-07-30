@@ -402,17 +402,33 @@ function getPriorityStatus(finalScore, unjustifiedLowScores) {
   return 'À valider RH';
 }
 
+function isRhFinalizedStatus(status) {
+  const normalized = normalizeStatusText(status);
+  return normalized.includes('CLOTURE') || normalized.includes('VALIDE RH') || normalized.includes('TRANSMIS');
+}
+
+function isRhSubmittedStatus(status) {
+  return normalizeStatusText(status).includes('SOUMIS');
+}
+
 function getRhDisplayStatus(review, unjustifiedLowScores, finalScore) {
-  if (review.status === 'Clôture' || review.status === 'Validé RH' || review.status === "Transmis à l'associé") return 'Validé';
-  if (review.status === 'Soumis à la RH') return 'À valider RH';
+  if (isRhFinalizedStatus(review.status)) return 'Validé';
+  if (isRhSubmittedStatus(review.status)) return 'À valider RH';
   if (review.rh_validation_selected) return 'À valider RH';
   return getPriorityStatus(finalScore, unjustifiedLowScores);
 }
 
 function getAssistantRhDisplayStatus(instance) {
-  if (instance.status === 'Clôture' || instance.status === 'Validé RH' || instance.status === "Transmis à l'associé") return 'Valide';
+  if (isRhFinalizedStatus(instance.status)) return 'Valide';
   if (instance.rh_validation_selected) return 'À valider RH';
-  if (instance.status === 'Soumis à la RH') return 'À valider RH';
+  if (isRhSubmittedStatus(instance.status)) return 'À valider RH';
+  return 'En attente';
+}
+
+function getSupportRhDisplayStatus(instance) {
+  if (isRhFinalizedStatus(instance.status)) return 'Valide';
+  if (instance.rh_validation_selected) return 'À valider RH';
+  if (isRhSubmittedStatus(instance.status)) return 'À valider RH';
   return 'En attente';
 }
 
@@ -1785,6 +1801,76 @@ async function loadManagerRhSelfDataset(rhUserIds) {
   });
 }
 
+async function loadSupportRhDataset(rhUserIds) {
+  const recipientIds = Array.isArray(rhUserIds) ? rhUserIds.filter(Boolean) : [rhUserIds].filter(Boolean);
+  const instances = await EvaluationInstance.find({
+    cycle_label: getCurrentCycleLabel(),
+    template_type: 'support-self-evaluation',
+    submitted_to_user_ids: { $in: recipientIds },
+  }).select(
+    'evalue_id status submitted_at sections peer_review_sections peer_review_comment rh_validation_selected rh_validation_selected_at rh_validated_at'
+  );
+
+  const supportIds = instances.map((instance) => instance.evalue_id).filter(Boolean);
+  const supportUsers = supportIds.length
+    ? await User.find({ _id: { $in: supportIds } }).select('_id name first_name last_name grade department code_categorie email')
+    : [];
+  const supportUserById = new Map(supportUsers.map((user) => [String(user._id), user]));
+
+  return instances.map((instance) => {
+    const supportUser = supportUserById.get(String(instance.evalue_id));
+    const selfSections = normalizeSections(instance.sections || []);
+    const reviewSections = normalizeSections(instance.peer_review_sections || []);
+    const selfScore = getOverallAverageScore(selfSections);
+    const associateScore = getOverallAverageScore(reviewSections);
+    const finalScore =
+      typeof selfScore === 'number' && typeof associateScore === 'number'
+        ? Number((selfScore * 0.4 + associateScore * 0.6).toFixed(1))
+        : (associateScore ?? selfScore);
+    const effectiveStatus = instance.status || 'En attente';
+
+    return {
+      id: `support-self:${instance._id.toString()}`,
+      rawId: instance._id.toString(),
+      sourceType: 'support-self-evaluation',
+      memberId: supportUser?._id?.toString?.() || '',
+      name: supportUser?.name || 'Membre support',
+      role: supportUser ? getSupportRoleLabel(supportUser) : 'Support',
+      department: supportUser?.department || 'Service support',
+      managerName: 'Evaluation directe Associe',
+      selfScore,
+      scoreGlobal: null,
+      scoreGlobalCount: 0,
+      missionScore: null,
+      missionScoreCount: 0,
+      missionScoreDetails: [],
+      globalScoreDetails: [],
+      managerMissionScore: null,
+      managerMissionScoreCount: 0,
+      managerScore: associateScore,
+      finalScore,
+      rhValidationFinalScore: finalScore,
+      status: effectiveStatus,
+      submittedAt: instance.submitted_at || null,
+      unjustifiedLowScores: 0,
+      displayStatus: getSupportRhDisplayStatus(instance),
+      rhValidationSelected: Boolean(instance.rh_validation_selected || isRhSubmittedStatus(effectiveStatus)),
+      sectionSummaries: getReviewSectionSummaries(reviewSections.length ? reviewSections : selfSections),
+      commentSummary: instance.peer_review_comment || "Evaluation du service support par l'associé.",
+      gap: null,
+      evaluationTrail: [
+        buildSectionBreakdown(
+          selfSections,
+          'Auto-évaluation',
+          supportUser?.name || 'Membre support',
+          supportUser ? getSupportRoleLabel(supportUser) : 'Support',
+          instance.submitted_at || null
+        ),
+      ],
+    };
+  });
+}
+
 function buildDepartmentGroups(rows = []) {
   const groups = new Map();
 
@@ -1857,7 +1943,7 @@ function buildDepartmentGroups(rows = []) {
 async function getRhOverview(request, response) {
   const rhUserIds = await resolveRhQueueUserIds();
 
-  const [managerSelfEvaluations, evaluatedPopulation, reviewRows, assistantRhRows, managerRhRows] = await Promise.all([
+  const [managerSelfEvaluations, evaluatedPopulation, reviewRows, assistantRhRows, managerRhRows, supportRhRows] = await Promise.all([
     EvaluationInstance.find({
       cycle_label: getCurrentCycleLabel(),
       template_type: 'manager-self-evaluation',
@@ -1871,19 +1957,18 @@ async function getRhOverview(request, response) {
     loadRhReviewDataset(rhUserIds),
     loadAssistantRhSelfDataset(rhUserIds),
     loadManagerRhSelfDataset(rhUserIds),
+    loadSupportRhDataset(rhUserIds),
   ]);
 
-  const combinedReviewRows = dedupeRhRowsByMember([...reviewRows, ...assistantRhRows, ...managerRhRows]);
+  const combinedReviewRows = dedupeRhRowsByMember([...reviewRows, ...assistantRhRows, ...managerRhRows, ...supportRhRows]);
   const receivedCount =
-    combinedReviewRows.filter((item) => RH_RELEVANT_STATUSES.includes(item.status)).length +
-    managerSelfEvaluations.filter((item) => RH_RELEVANT_STATUSES.includes(item.status)).length;
+    combinedReviewRows.filter((item) => isRhSubmittedStatus(item.status) || isRhFinalizedStatus(item.status)).length +
+    managerSelfEvaluations.filter((item) => isRhSubmittedStatus(item.status) || isRhFinalizedStatus(item.status)).length;
   const totalEvaluatedPopulation = evaluatedPopulation.length;
-  const pendingRhItems = combinedReviewRows.filter((item) => item.status === 'Soumis à la RH');
-  const readySynthesesCount = combinedReviewRows.filter(
-    (item) => item.status === 'Validé RH' || item.status === "Transmis à l'associé" || item.status === 'Clôture'
-  ).length;
+  const pendingRhItems = combinedReviewRows.filter((item) => isRhSubmittedStatus(item.status) && !isRhFinalizedStatus(item.status));
+  const readySynthesesCount = combinedReviewRows.filter((item) => isRhFinalizedStatus(item.status)).length;
   const priorityRows = combinedReviewRows
-    .filter((row) => row.status === 'Soumis à la RH')
+    .filter((row) => isRhSubmittedStatus(row.status) && !isRhFinalizedStatus(row.status))
     .sort((left, right) => {
       if (right.unjustifiedLowScores !== left.unjustifiedLowScores) {
         return right.unjustifiedLowScores - left.unjustifiedLowScores;
@@ -1955,12 +2040,13 @@ async function getRhOverview(request, response) {
 
 async function getRhDepartmentEvaluations(request, response) {
   const rhUserIds = await resolveRhQueueUserIds();
-  const [rows, assistantRhRows, managerRhRows] = await Promise.all([
+  const [rows, assistantRhRows, managerRhRows, supportRhRows] = await Promise.all([
     loadRhReviewDataset(rhUserIds),
     loadAssistantRhSelfDataset(rhUserIds),
     loadManagerRhSelfDataset(rhUserIds),
+    loadSupportRhDataset(rhUserIds),
   ]);
-  const groups = buildDepartmentGroups(dedupeRhRowsByMember([...rows, ...assistantRhRows, ...managerRhRows]));
+  const groups = buildDepartmentGroups(dedupeRhRowsByMember([...rows, ...assistantRhRows, ...managerRhRows, ...supportRhRows]));
 
   return response.json({
     cycle_label: getCurrentCycleLabel(),
@@ -1971,12 +2057,13 @@ async function getRhDepartmentEvaluations(request, response) {
 async function getRhDepartmentEvaluationDetail(request, response) {
   const reviewId = String(request.params.reviewId || '').trim();
   const rhUserIds = await resolveRhQueueUserIds();
-  const [rows, assistantRhRows, managerRhRows] = await Promise.all([
+  const [rows, assistantRhRows, managerRhRows, supportRhRows] = await Promise.all([
     loadRhReviewDataset(rhUserIds),
     loadAssistantRhSelfDataset(rhUserIds),
     loadManagerRhSelfDataset(rhUserIds),
+    loadSupportRhDataset(rhUserIds),
   ]);
-  const item = [...rows, ...assistantRhRows, ...managerRhRows].find((row) => String(row.id) === reviewId);
+  const item = [...rows, ...assistantRhRows, ...managerRhRows, ...supportRhRows].find((row) => String(row.id) === reviewId);
 
   if (!item) {
     return response.status(404).json({
@@ -2012,12 +2099,15 @@ async function selectRhDepartmentEvaluation(request, response) {
 
 async function getRhValidations(request, response) {
   const rhUserIds = await resolveRhQueueUserIds();
-  const [rows, assistantRhRows, managerRhRows] = await Promise.all([
+  const [rows, assistantRhRows, managerRhRows, supportRhRows] = await Promise.all([
     loadRhReviewDataset(rhUserIds),
     loadAssistantRhSelfDataset(rhUserIds),
     loadManagerRhSelfDataset(rhUserIds),
+    loadSupportRhDataset(rhUserIds),
   ]);
-  const items = dedupeRhRowsByMember([...rows, ...assistantRhRows, ...managerRhRows].filter(isRhValidationQueueItem));
+  const items = dedupeRhRowsByMember(
+    [...rows, ...assistantRhRows, ...managerRhRows, ...supportRhRows].filter(isRhValidationQueueItem)
+  );
 
   return response.json({
     cycle_label: getCurrentCycleLabel(),
@@ -2043,7 +2133,12 @@ async function validateRhSelection(request, response) {
   const managerSelfIds = reviewIds
     .filter((id) => id.startsWith('manager-self:'))
     .map((id) => id.replace('manager-self:', ''));
-  const managerReviewIds = reviewIds.filter((id) => !id.startsWith('assistant-rh:') && !id.startsWith('manager-self:'));
+  const supportSelfIds = reviewIds
+    .filter((id) => id.startsWith('support-self:'))
+    .map((id) => id.replace('support-self:', ''));
+  const managerReviewIds = reviewIds.filter(
+    (id) => !id.startsWith('assistant-rh:') && !id.startsWith('manager-self:') && !id.startsWith('support-self:')
+  );
 
   const reviews = await ManagerMemberReview.find({
     _id: { $in: managerReviewIds },
@@ -2060,6 +2155,12 @@ async function validateRhSelection(request, response) {
     _id: { $in: managerSelfIds },
     cycle_label: getCurrentCycleLabel(),
     template_type: 'manager-self-evaluation',
+    submitted_to_user_ids: { $in: rhUserIds },
+  });
+  const supportInstances = await EvaluationInstance.find({
+    _id: { $in: supportSelfIds },
+    cycle_label: getCurrentCycleLabel(),
+    template_type: 'support-self-evaluation',
     submitted_to_user_ids: { $in: rhUserIds },
   });
   const assistantReviewMemberIds = assistantInstances.map((instance) => instance.evalue_id).filter(Boolean);
@@ -2089,6 +2190,12 @@ async function validateRhSelection(request, response) {
     instance.rh_validated_at = new Date();
   }
 
+  for (const instance of supportInstances) {
+    instance.status = 'Valide RH';
+    instance.rh_validation_selected = false;
+    instance.rh_validated_at = new Date();
+  }
+
   for (const review of assistantReviews) {
     review.status = 'Validé RH';
     review.rh_validation_selected = false;
@@ -2099,6 +2206,7 @@ async function validateRhSelection(request, response) {
     ...reviews.map((review) => review.save()),
     ...assistantInstances.map((instance) => instance.save()),
     ...managerInstances.map((instance) => instance.save()),
+    ...supportInstances.map((instance) => instance.save()),
     ...assistantReviews.map((review) => review.save()),
   ]);
 
@@ -2107,14 +2215,21 @@ async function validateRhSelection(request, response) {
   });
 }
 
-async function getRhSyntheses(request, response) {
+async function getAllRhReviewRows() {
   const rhUserIds = await resolveRhQueueUserIds();
-  const [rows, assistantRhRows, managerRhRows] = await Promise.all([
+  const [rows, assistantRhRows, managerRhRows, supportRhRows] = await Promise.all([
     loadRhReviewDataset(rhUserIds),
     loadAssistantRhSelfDataset(rhUserIds),
     loadManagerRhSelfDataset(rhUserIds),
+    loadSupportRhDataset(rhUserIds),
   ]);
-  const items = dedupeRhRowsByMember([...rows, ...assistantRhRows, ...managerRhRows]).filter((row) => row.status === 'Validé RH' || row.status === 'Clôture');
+
+  return dedupeRhRowsByMember([...rows, ...assistantRhRows, ...managerRhRows, ...supportRhRows]);
+}
+
+async function getRhSyntheses(request, response) {
+  const allRows = await getAllRhReviewRows();
+  const items = allRows.filter((row) => isRhFinalizedStatus(row.status));
 
   return response.json({
     cycle_label: getCurrentCycleLabel(),
@@ -2124,13 +2239,16 @@ async function getRhSyntheses(request, response) {
 
 async function submitRhSyntheses(request, response) {
   const rhUserIds = await resolveRhQueueUserIds();
-  const [rows, assistantRhRows, managerRhRows] = await Promise.all([
+  const [rows, assistantRhRows, managerRhRows, supportRhRows] = await Promise.all([
     loadRhReviewDataset(rhUserIds),
     loadAssistantRhSelfDataset(rhUserIds),
     loadManagerRhSelfDataset(rhUserIds),
+    loadSupportRhDataset(rhUserIds),
   ]);
 
-  const readyRows = dedupeRhRowsByMember([...rows, ...assistantRhRows, ...managerRhRows]).filter((row) => row.status === 'Validé RH' || row.status === 'Clôture');
+  const readyRows = dedupeRhRowsByMember([...rows, ...assistantRhRows, ...managerRhRows, ...supportRhRows]).filter((row) =>
+    isRhFinalizedStatus(row.status)
+  );
 
   if (!readyRows.length) {
     return response.json({
@@ -2141,7 +2259,12 @@ async function submitRhSyntheses(request, response) {
   }
 
   const managerReviewIds = readyRows
-    .filter((row) => !String(row.id || '').startsWith('assistant-rh:') && !String(row.id || '').startsWith('manager-self:'))
+    .filter(
+      (row) =>
+        !String(row.id || '').startsWith('assistant-rh:') &&
+        !String(row.id || '').startsWith('manager-self:') &&
+        !String(row.id || '').startsWith('support-self:')
+    )
     .map((row) => row.id)
     .filter(Boolean);
   const assistantInstanceIds = readyRows
@@ -2151,6 +2274,10 @@ async function submitRhSyntheses(request, response) {
   const managerInstanceIds = readyRows
     .filter((row) => String(row.id || '').startsWith('manager-self:'))
     .map((row) => String(row.id || '').replace('manager-self:', ''))
+    .filter(Boolean);
+  const supportInstanceIds = readyRows
+    .filter((row) => String(row.id || '').startsWith('support-self:'))
+    .map((row) => String(row.id || '').replace('support-self:', ''))
     .filter(Boolean);
 
   await Promise.all([
@@ -2170,6 +2297,12 @@ async function submitRhSyntheses(request, response) {
       ? EvaluationInstance.updateMany(
           { _id: { $in: managerInstanceIds } },
           { $set: { status: "Transmis à l'associé", submitted_at: new Date() } }
+        )
+      : Promise.resolve(),
+    supportInstanceIds.length
+      ? EvaluationInstance.updateMany(
+          { _id: { $in: supportInstanceIds } },
+          { $set: { status: 'Transmis a l associe', submitted_at: new Date() } }
         )
       : Promise.resolve(),
   ]);
@@ -3435,6 +3568,7 @@ module.exports = {
   createRhQuestionnaireSection,
   downloadRhReport,
   formatDepartmentLabel,
+  getAllRhReviewRows,
   getAssistantRhEvaluation,
   getRhCalibration,
   getRhCycles,
