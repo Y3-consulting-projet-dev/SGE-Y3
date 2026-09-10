@@ -10,6 +10,7 @@ const {
 } = require('../utils/evaluationHelpers');
 const { getCurrentCycleLabel } = require('../utils/activeCycle');
 const { buildCyclesForInstances, buildPeerReviewComments } = require('../utils/evaluationHistory');
+const { notifyInAppRecipients } = require('../utils/inAppNotifications');
 
 function toPersistenceSections(sections = []) {
   return sections.map((section) => ({
@@ -360,6 +361,19 @@ module.exports = {
     instance.submitted_at = new Date();
     instance.last_saved_at = new Date();
     await instance.save();
+
+    notifyInAppRecipients({
+      recipientIds: recipients.map((recipient) => recipient._id),
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: 'son auto-évaluation support',
+      cycleLabel: getCurrentCycleLabel(),
+      type: 'self_eval_submitted',
+      actorId: request.user._id,
+      entityType: 'EvaluationInstance',
+      entityId: instance._id,
+      targetSection: 'support-self-eval',
+    });
 
     return response.json({
       message: 'Auto-évaluation support soumise aux associés.',

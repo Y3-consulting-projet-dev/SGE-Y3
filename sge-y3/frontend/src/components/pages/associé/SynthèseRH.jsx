@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { Bell } from "lucide-react";
 import { getAssociateSyntheses } from "@/api/associateOverview";
+import NotificationBell from "@/components/common/NotificationBell";
 
 function formatScore(score) {
   return typeof score === "number" ? `${score.toFixed(1)}/5` : "--";
@@ -212,9 +212,7 @@ function SyntheseRH() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">Synthèses validées RH</h1>
         <div className="flex items-center gap-3">
-          <button onClick={() => window.alert("Notifications bientôt disponibles.")} className="rounded-full p-2 text-slate-500 hover:bg-slate-200/70">
-            <Bell size={16} />
-          </button>
+          <NotificationBell triggerClassName="rounded-full p-2 text-slate-500 hover:bg-slate-200/70" />
           <button onClick={() => window.print()} className="rounded-full bg-[#7EB83E] px-4 py-2 text-xs font-bold text-white hover:bg-[#73AB39]">
             Exporter les synthèses
           </button>

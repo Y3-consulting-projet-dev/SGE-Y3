@@ -2,11 +2,6 @@
 
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
 
-const reminders = [
-  { label: "Soumettre l'auto-évaluation", date: "18-04-2026" },
-  { label: "Entretien annuel Manager", date: "22-04-2026" },
-  { label: "Revue objectifs Q2", date: "30-04-2026" },
-];
 
 function formatProgressSubtitle(evaluation) {
   const completed = evaluation?.summary?.completedMissions || 0;
@@ -62,6 +57,13 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
   const globalProgress = evaluation?.summary?.globalProgress || 0;
   const progressWidth = clampProgress(globalProgress);
   const completedMissions = evaluation?.summary?.completedMissions || 0;
+  const isSelfEvaluationSubmitted =
+    evaluation?.evaluation?.status === "Soumis aux Managers" ||
+    evaluation?.evaluation?.status === "Soumis au Manager" ||
+    evaluation?.evaluation?.status === "Soumis à la RH";
+  const reminders = isSelfEvaluationSubmitted
+    ? []
+    : [{ label: "Soumettre l'auto-évaluation", note: "À faire" }];
 
   return (
     <div className="space-y-4">
@@ -72,7 +74,7 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
           ? "Auto-évaluation soumise au(x) manager(s). En attente de traitement."
           : evaluation?.evaluation?.status === "Soumis à la RH"
           ? "Auto-évaluation soumise à la RH. En attente de traitement."
-          : "Auto-évaluation en cours - à soumettre avant le 18/04/2026. Sauvegarde automatique activée"}
+          : "Auto-évaluation en cours. Vos modifications sont enregistrées automatiquement."}
       </div>
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(3,minmax(0,240px))] md:justify-between md:gap-5">
@@ -163,12 +165,16 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
           <article className="rounded-lg bg-white p-5">
             <h2 className="mb-4 text-[24px] font-bold leading-tight text-[#0F3A63]">Rappels & échéances</h2>
             <div className="space-y-3">
-              {reminders.map((item) => (
-                <div key={item.label} className="flex items-center justify-between gap-3 text-[12px]">
-                  <p className="font-semibold text-[#0F3A63]">{item.label}</p>
-                  <span className="font-bold text-[#F34D4D]">{item.date}</span>
-                </div>
-              ))}
+              {reminders.length ? (
+                reminders.map((item) => (
+                  <div key={item.label} className="flex items-center justify-between gap-3 text-[12px]">
+                    <p className="font-semibold text-[#0F3A63]">{item.label}</p>
+                    <span className="font-bold text-[#F34D4D]">{item.note}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-[12px] text-slate-500">Aucun rappel pour le moment.</p>
+              )}
             </div>
             <p className="mt-4 text-[11px] font-semibold text-[#0F3A63]">
               {completedMissions} mission(s) complétée(s) sur {evaluation?.summary?.totalMissions || 0}.

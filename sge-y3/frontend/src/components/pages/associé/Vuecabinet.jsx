@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import {
-  Bell,
+  ChevronsLeft,
   CircleHelp,
   FileStack,
   History,
@@ -17,10 +17,24 @@ import Monhistorique from "@/components/pages/associé/Monhistorique";
 import HistoriqueCabinet from "@/components/pages/associé/HistoriqueCabinet";
 import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
 import ProfilePanel from "@/components/profile/ProfilePanel";
+import NotificationBell from "@/components/common/NotificationBell";
 import logoY3 from "@/assets/logo-y3.png";
 import { saveCommitteeDecision } from "@/api/committee";
 import { getAssociateOverview } from "@/api/associateOverview";
 import { getDisplayName, getInitials } from "@/utils/userPresentation";
+
+const NOTIFICATION_SECTION_MAP = {
+  "rh-syntheses": "syntheses-rh",
+  "rh-self-eval": "syntheses-rh",
+  "rh-mission": "syntheses-rh",
+  "manager-mission": "autoeval-managers",
+  "associate-self-eval": "autoeval-associes",
+  "support-self-eval": "autoeval-support",
+};
+
+function resolveNotificationSection(link) {
+  return NOTIFICATION_SECTION_MAP[link] || "vue-cabinet";
+}
 
 const sideMenu = [
   {
@@ -137,10 +151,19 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
   return (
     <div className="min-h-screen bg-[#EDF1F5] text-[#0F3A63]">
       <div className="flex min-h-screen">
-        <aside className="w-full max-w-[248px] border-r border-slate-200 bg-[#F5F7FA] px-4 py-6">
-          <div className="mb-10">
-            <p className="text-4xl font-black tracking-tight text-[#0E4A6B]">SGE</p>
-            <img src={logoY3} alt="Y3" className="mt-2 h-16 w-auto object-contain" />
+        <aside className="relative w-full max-w-[248px] border-r border-slate-200 bg-[#F5F7FA] px-4 py-6">
+          <button
+            onClick={() => setActiveSection("vue-cabinet")}
+            disabled={activeSection === "vue-cabinet"}
+            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#E4E7EB] text-slate-500 shadow-sm hover:bg-slate-300/70 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Retour"
+            title="Retour"
+          >
+            <ChevronsLeft size={14} />
+          </button>
+
+          <div className="mb-10 flex items-center">
+            <img src={logoY3} alt="Y3" className="h-16 w-auto object-contain" />
           </div>
 
           <nav className="space-y-6">
@@ -192,9 +215,7 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
                 </div>
 
                 <div className="flex items-center gap-5">
-                  <button onClick={() => handleTopAction("Notifications")} className="text-slate-500 hover:text-[#0F3A63]">
-                    <Bell size={18} />
-                  </button>
+                  <NotificationBell onNavigate={(link) => setActiveSection(resolveNotificationSection(link))} />
                   <button onClick={() => handleTopAction("Aide")} className="text-slate-500 hover:text-[#0F3A63]">
                     <CircleHelp size={18} />
                   </button>

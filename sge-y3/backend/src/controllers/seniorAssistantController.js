@@ -16,6 +16,7 @@ const { buildMissionResultsPayload } = require('../utils/evaluationHistory');
 const { getCurrentCycleLabel } = require('../utils/activeCycle');
 const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
 const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
+const { notifyInAppRecipients } = require('../utils/inAppNotifications');
 
 function normalizeText(value = '') {
   return String(value || '').replace(/\s+/g, ' ').trim().toUpperCase();
@@ -1527,6 +1528,18 @@ async function submitMyAssistantMissionReview(request, response) {
     label: `la mission de ${assistant.name}`,
     cycleLabel: getCurrentCycleLabel(),
   });
+  notifyInAppRecipients({
+    recipientIds: review.submitted_to_user_ids,
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: `la mission de ${assistant.name}`,
+    cycleLabel: getCurrentCycleLabel(),
+    type: 'transmis',
+    actorId: request.user._id,
+    entityType: 'SeniorAssistantReview',
+    entityId: review._id,
+    targetSection: 'assistant-mission',
+  });
 
   return response.json({
     message: selectedManager
@@ -1617,6 +1630,18 @@ async function submitMyAssistantEvaluation(request, response) {
     submitterName: request.user.name,
     label: `l'évaluation de ${assistant.name}`,
     cycleLabel: getCurrentCycleLabel(),
+  });
+  notifyInAppRecipients({
+    recipientIds: review.submitted_to_user_ids,
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: `l'évaluation de ${assistant.name}`,
+    cycleLabel: getCurrentCycleLabel(),
+    type: 'transmis',
+    actorId: request.user._id,
+    entityType: 'SeniorAssistantReview',
+    entityId: review._id,
+    targetSection: 'assistant-self-eval',
   });
 
   return response.json({

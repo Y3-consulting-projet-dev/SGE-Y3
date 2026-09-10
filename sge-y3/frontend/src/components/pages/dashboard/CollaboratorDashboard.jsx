@@ -20,8 +20,19 @@ import Monhistorique from "@/components/pages/collaborator/Monhistorique";
 import Mondeveloppement from "@/components/pages/collaborator/Mondeveloppement";
 import Calendrier from "@/components/pages/collaborator/Calendrier";
 import ProfilePanel from "@/components/profile/ProfilePanel";
+import NotificationBell from "@/components/common/NotificationBell";
 import { getDisplayName } from "@/utils/userPresentation";
 import { getMyAssistantEvaluation, getMyAssistantResults } from "@/api/collaboratorEvaluation";
+
+const NOTIFICATION_SECTION_MAP = {
+  "assistant-self-eval": "self-evaluation",
+  "assistant-mission": "self-evaluation",
+  development: "development",
+};
+
+function resolveNotificationSection(link) {
+  return NOTIFICATION_SECTION_MAP[link] || "dashboard";
+}
 
 const menuGroups = [
   {
@@ -252,15 +263,18 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
     <div className="min-h-screen bg-[#EBEFF3] text-[#0E2B4F]">
       <div className="flex min-h-screen w-full">
         <aside className="relative min-h-screen w-full max-w-[280px] border-r border-slate-300/70 bg-[#F3F4F6] px-4 py-5">
-          <button className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#E4E7EB] text-slate-500 shadow-sm">
+          <button
+            onClick={() => setActiveSection("dashboard")}
+            disabled={activeSection === "dashboard"}
+            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#E4E7EB] text-slate-500 shadow-sm hover:bg-slate-300/70 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Retour"
+            title="Retour"
+          >
             <ChevronsLeft size={14} />
           </button>
 
-          <div className="mb-8 flex items-center gap-3">
-            <div className="leading-none text-4xl font-black tracking-tight text-[#0E4A6B]">
-              SGE
-              <img src={logoY3} alt="Y3" className="mt-2 h-20 w-auto scale-x-110 origin-left" />
-            </div>
+          <div className="mb-8 flex items-center">
+            <img src={logoY3} alt="Y3" className="h-16 w-auto" />
           </div>
 
           <div className="space-y-5 text-sm">
@@ -320,6 +334,7 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
               <h1 className="text-[34px] font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
               {activeSection === "dashboard" ? <p className="mt-1 text-sm text-slate-500">{displayName} - {user?.grade}</p> : null}
             </div>
+            <NotificationBell onNavigate={(link) => setActiveSection(resolveNotificationSection(link))} />
           </header>
 
           {renderMainContent()}

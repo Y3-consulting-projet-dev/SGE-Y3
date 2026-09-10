@@ -21,12 +21,22 @@ const { buildCyclesForInstances, resolveTemplateTypeForUser } = require('../util
 const { getCurrentCycleLabel } = require('../utils/activeCycle');
 const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
 const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
+const { notifyInAppRecipients } = require('../utils/inAppNotifications');
 const FULL_RH_EMAILS = ['isabella.beda@ycubeac.com'];
 const RH_DEPARTMENT_REGEX = /^RH$/i;
 const CAPITAL_HUMAIN_DEPARTMENT_REGEX = /^CAPITAL HUMAIN$/i;
 
 function normalizeText(value = '') {
   return String(value || '').replace(/\s+/g, ' ').trim().toUpperCase();
+}
+
+const ASSOCIATE_VALIDATED_STATUSES = ['Soumis a RH', 'Valide RH', 'Transmis a l associe', 'Cloture'];
+
+function missionHasAssociateRecipient(mission) {
+  return (mission?.recipients || []).some((recipient) => {
+    const grade = normalizeText(recipient.grade || '').replace(/[ÉÈÊË]/g, 'E');
+    return grade === 'ASSOCIE';
+  });
 }
 
 function getManagedDepartmentsForManager(department = '') {
@@ -854,8 +864,7 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
       ? await SeniorAssistantReview.find({
           cycle_label: getCurrentCycleLabel(),
           assistant_id: member._id,
-          submitted_to_user_ids: managerUser._id,
-        }).select('senior_id sections mission_reviews submitted_at status')
+        }).select('senior_id sections mission_reviews submitted_at status submitted_to_user_ids')
       : [];
 
   const seniorIds = seniorReviews.map((review) => review.senior_id).filter(Boolean);
@@ -881,28 +890,41 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
   for (const review of seniorReviews) {
     const seniorUser = seniorUserById.get(String(review.senior_id));
     const normalizedSeniorSections = normalizeSections(review.sections || []);
+    const wasFullReviewSubmittedToManager = (review.submitted_to_user_ids || []).some(
+      (id) => String(id) === String(managerUser._id)
+    );
 
-    payload.globalScores.push({
-      source: 'senior-review',
-      evaluatorName: seniorUser?.name || 'Senior',
-      evaluatorGrade: seniorUser?.grade || 'Senior',
-      finalScore: getOverallAverageScore(normalizedSeniorSections),
-      submittedAt: review.submitted_at || null,
-      sectionComments: normalizedSeniorSections
-        .filter((section) => String(section.comment || '').trim())
-        .map((section) => ({
-          sectionId: section.id,
-          title: section.title,
-          comment: String(section.comment || '').trim(),
-        })),
-      titleJustifications: getPageJustifications(normalizedSeniorSections),
-    });
+    if (wasFullReviewSubmittedToManager) {
+      payload.globalScores.push({
+        source: 'senior-review',
+        evaluatorName: seniorUser?.name || 'Senior',
+        evaluatorGrade: seniorUser?.grade || 'Senior',
+        finalScore: getOverallAverageScore(normalizedSeniorSections),
+        submittedAt: review.submitted_at || null,
+        sectionComments: normalizedSeniorSections
+          .filter((section) => String(section.comment || '').trim())
+          .map((section) => ({
+            sectionId: section.id,
+            title: section.title,
+            comment: String(section.comment || '').trim(),
+          })),
+        titleJustifications: getPageJustifications(normalizedSeniorSections),
+      });
+    }
 
     for (const missionReview of review.mission_reviews || []) {
       if (missionReview.status !== 'Transmise') {
         continue;
       }
-      if (!evaluableMissionIds.has(String(missionReview.mission_id || missionReview.id || '').trim())) {
+
+      const wasSubmittedByAssistantToManager = evaluableMissionIds.has(
+        String(missionReview.mission_id || missionReview.id || '').trim()
+      );
+      const wasSubmittedBySeniorToManager =
+        normalizeText(missionReview.recipient_name || '') === normalizeText(managerUser.name || '') &&
+        normalizeText(missionReview.recipient_department || '') === normalizeText(managerUser.department || '');
+
+      if (!wasSubmittedByAssistantToManager && !wasSubmittedBySeniorToManager) {
         continue;
       }
 
@@ -2054,6 +2076,18 @@ async function submitMyManagerEvaluation(request, response) {
       label: 'son auto-évaluation manager',
       cycleLabel: getCurrentCycleLabel(),
     });
+    notifyInAppRecipients({
+      recipientIds: instance.submitted_to_user_ids,
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: 'son auto-évaluation manager',
+      cycleLabel: getCurrentCycleLabel(),
+      type: 'self_eval_submitted',
+      actorId: request.user._id,
+      entityType: 'EvaluationInstance',
+      entityId: instance._id,
+      targetSection: 'manager-self-eval',
+    });
 
     return response.json({
       message: 'Evaluations par mission manager transmises à la RH et aux associés.',
@@ -2094,6 +2128,18 @@ async function submitMyManagerEvaluation(request, response) {
     submitterName: request.user.name,
     label: 'son auto-évaluation manager',
     cycleLabel: getCurrentCycleLabel(),
+  });
+  notifyInAppRecipients({
+    recipientIds: instance.submitted_to_user_ids,
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: 'son auto-évaluation manager',
+    cycleLabel: getCurrentCycleLabel(),
+    type: 'self_eval_submitted',
+    actorId: request.user._id,
+    entityType: 'EvaluationInstance',
+    entityId: instance._id,
+    targetSection: 'manager-self-eval',
   });
 
   return response.json({
@@ -2178,6 +2224,18 @@ async function submitMyManagerMissionEvaluation(request, response) {
     submitterName: request.user.name,
     label: `la mission manager "${mission.title}"`,
     cycleLabel: getCurrentCycleLabel(),
+  });
+  notifyInAppRecipients({
+    recipientIds: allRecipients.map((recipient) => recipient._id),
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: `la mission manager "${mission.title}"`,
+    cycleLabel: getCurrentCycleLabel(),
+    type: 'mission_submitted',
+    actorId: request.user._id,
+    entityType: 'EvaluationInstance',
+    entityId: instance._id,
+    targetSection: 'manager-mission',
   });
 
   return response.json({
@@ -2352,6 +2410,15 @@ module.exports = {
       getSelfEvaluationInstanceForMember(member),
       resolveRhRecipients(),
     ]);
+
+    const anyMissionNeedsAssociate = (selfEvaluationInstance?.mission_evaluations || []).some(missionHasAssociateRecipient);
+
+    if (anyMissionNeedsAssociate && !ASSOCIATE_VALIDATED_STATUSES.includes(selfEvaluationInstance?.status)) {
+      return response.status(400).json({
+        message: "En attente de la validation de l'associé avant transmission à la RH.",
+      });
+    }
+
     const sections = normalizeSections(review.sections);
     await syncManagerMissionReviews(review, request.user, selfEvaluationInstance);
     const missionAndScoreData = await buildManagerMissionAndGlobalInputs(request.user, member, selfEvaluationInstance, review);
@@ -2398,6 +2465,18 @@ module.exports = {
       submitterName: request.user.name,
       label: `l'évaluation de ${member.name}`,
       cycleLabel: getCurrentCycleLabel(),
+    });
+    notifyInAppRecipients({
+      recipientIds: review.submitted_to_user_ids,
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: `l'évaluation de ${member.name}`,
+      cycleLabel: getCurrentCycleLabel(),
+      type: 'transmis',
+      actorId: request.user._id,
+      entityType: 'ManagerMemberReview',
+      entityId: review._id,
+      targetSection: 'member-eval',
     });
 
     return response.json({
@@ -2497,6 +2576,16 @@ module.exports = {
       });
     }
 
+    const selfEvalMission = (selfEvaluationInstance?.mission_evaluations || []).find(
+      (mission) => mission.mission_id === missionId
+    );
+
+    if (missionHasAssociateRecipient(selfEvalMission) && !ASSOCIATE_VALIDATED_STATUSES.includes(selfEvaluationInstance?.status)) {
+      return response.status(400).json({
+        message: "En attente de la validation de l'associé sur cette mission avant transmission à la RH.",
+      });
+    }
+
     const hasIncompleteCriterion = (missionReview.criteria || []).some(
       (criterion) => criterion.score === null || criterion.score === undefined
     );
@@ -2541,6 +2630,18 @@ module.exports = {
       submitterName: request.user.name,
       label: `la mission de ${member.name}`,
       cycleLabel: getCurrentCycleLabel(),
+    });
+    notifyInAppRecipients({
+      recipientIds: review.submitted_to_user_ids,
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: `la mission de ${member.name}`,
+      cycleLabel: getCurrentCycleLabel(),
+      type: 'mission_submitted',
+      actorId: request.user._id,
+      entityType: 'ManagerMemberReview',
+      entityId: review._id,
+      targetSection: 'member-mission',
     });
 
     const missionAndScoreData = await buildManagerMissionAndGlobalInputs(request.user, member, selfEvaluationInstance, review);

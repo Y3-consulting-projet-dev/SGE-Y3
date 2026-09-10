@@ -1,4 +1,4 @@
-function MesobjectifsSenior({ missions = [], isLoading, errorMessage }) {
+function MesobjectifsSenior({ missions = [], isLoading, errorMessage, onOpenMission }) {
   if (isLoading) {
     return <section className="rounded-lg bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement des missions communes...</section>;
   }
@@ -19,7 +19,19 @@ function MesobjectifsSenior({ missions = [], isLoading, errorMessage }) {
   return (
     <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
       {missions.map((mission) => (
-        <article key={`${mission.assistantId}-${mission.title}-${mission.period}`} className="rounded-lg bg-white p-5 shadow-sm">
+        <article
+          key={`${mission.assistantId}-${mission.title}-${mission.period}`}
+          onClick={() => onOpenMission?.(mission)}
+          role={onOpenMission ? "button" : undefined}
+          tabIndex={onOpenMission ? 0 : undefined}
+          onKeyDown={(event) => {
+            if (onOpenMission && (event.key === "Enter" || event.key === " ")) {
+              event.preventDefault();
+              onOpenMission(mission);
+            }
+          }}
+          className={`rounded-lg bg-white p-5 shadow-sm ${onOpenMission ? "cursor-pointer transition hover:shadow-md hover:ring-1 hover:ring-[#8BC53F]" : ""}`}
+        >
           <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs font-bold text-[#79B742]">
@@ -34,6 +46,9 @@ function MesobjectifsSenior({ missions = [], isLoading, errorMessage }) {
             <p className="text-xs font-bold text-slate-500">Département</p>
             <p className="mt-1 text-sm font-bold text-[#0F3A63]">{mission.department}</p>
           </div>
+          {onOpenMission ? (
+            <p className="mt-3 text-xs font-bold text-[#2E5BC8]">Accéder à l'évaluation →</p>
+          ) : null}
         </article>
       ))}
     </section>

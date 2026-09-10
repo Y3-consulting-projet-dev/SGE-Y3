@@ -6,6 +6,7 @@ const AssociateManagerReview = require('../models/AssociateManagerReview');
 const Cycle = require('../models/Cycle');
 const matrixData = require('../data/competencyMatrix.generated.json');
 const { buildEvaluationTemplateForUser } = require('../utils/competencyMatrix');
+const { buildSimplePdfBuffer } = require('../utils/simplePdf');
 const {
   ALLOWED_GRADES,
   SUPPORT_EMAILS,
@@ -40,6 +41,7 @@ const { activateCycle, getCurrentCycleLabel } = require('../utils/activeCycle');
 const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
 const { fetchAssociateCommentsForManager } = require('./managerController');
 const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
+const { notifyInAppRecipients } = require('../utils/inAppNotifications');
 
 const RH_RELEVANT_STATUSES = ['Soumis a RH', 'Valide RH', 'Transmis a l associe', 'Cloture'];
 const QUESTIONNAIRE_SECTION_OPTIONS = [
@@ -2181,6 +2183,16 @@ async function submitRhSyntheses(request, response) {
     label: 'de nouvelles synthèses RH',
     cycleLabel: getCurrentCycleLabel(),
   });
+  notifyInAppRecipients({
+    recipientIds: associateRecipients.map((recipient) => recipient._id),
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: 'de nouvelles synthèses RH',
+    cycleLabel: getCurrentCycleLabel(),
+    type: 'rh_synthese_transmise',
+    actorId: request.user._id,
+    targetSection: 'rh-syntheses',
+  });
 
   return response.json({
     message: 'Les syntheses ont bien ete transmises a l associe.',
@@ -2593,6 +2605,18 @@ async function submitMyRhSelfEvaluation(request, response) {
     label: 'son auto-évaluation RH',
     cycleLabel: getCurrentCycleLabel(),
   });
+  notifyInAppRecipients({
+    recipientIds: instance.submitted_to_user_ids,
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: 'son auto-évaluation RH',
+    cycleLabel: getCurrentCycleLabel(),
+    type: 'self_eval_submitted',
+    actorId: request.user._id,
+    entityType: 'EvaluationInstance',
+    entityId: instance._id,
+    targetSection: 'rh-self-eval',
+  });
 
   return response.json({
     message: "Auto-evaluation RH soumise aux associes.",
@@ -2661,6 +2685,18 @@ async function submitMyRhSelfMissionEvaluation(request, response) {
     label: `la mission RH "${mission.title}"`,
     cycleLabel: getCurrentCycleLabel(),
   });
+  notifyInAppRecipients({
+    recipientIds: associateRecipients.map((recipient) => recipient._id),
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: `la mission RH "${mission.title}"`,
+    cycleLabel: getCurrentCycleLabel(),
+    type: 'mission_submitted',
+    actorId: request.user._id,
+    entityType: 'EvaluationInstance',
+    entityId: instance._id,
+    targetSection: 'rh-mission',
+  });
 
   return response.json({
     message: `Mission RH soumise a ${associateRecipients.map((recipient) => recipient.name).join(', ')}.`,
@@ -2716,6 +2752,18 @@ async function submitMyAssistantRhSelfEvaluation(request, response) {
     submitterName: request.user.name,
     label: 'son auto-évaluation Assistante RH',
     cycleLabel: getCurrentCycleLabel(),
+  });
+  notifyInAppRecipients({
+    recipientIds: instance.submitted_to_user_ids,
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: 'son auto-évaluation Assistante RH',
+    cycleLabel: getCurrentCycleLabel(),
+    type: 'self_eval_submitted',
+    actorId: request.user._id,
+    entityType: 'EvaluationInstance',
+    entityId: instance._id,
+    targetSection: 'assistant-rh-self-eval',
   });
 
   return response.json({
@@ -2923,56 +2971,6 @@ function buildCsvBuffer(headers = [], rows = []) {
     ...rows.map((row) => row.map(escapeCsvValue).join(';')),
   ];
   return Buffer.from(lines.join('\n'), 'utf8');
-}
-
-function escapePdfText(value = '') {
-  return String(value).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
-}
-
-function buildSimplePdfBuffer(title, lines = []) {
-  const pageHeight = 842;
-  const startY = 790;
-  const lineHeight = 16;
-  const contentLines = [
-    'BT',
-    '/F1 18 Tf',
-    `50 ${startY} Td`,
-    `(${escapePdfText(title)}) Tj`,
-    '/F1 10 Tf',
-  ];
-
-  lines.forEach((line, index) => {
-    const offset = index === 0 ? 28 : lineHeight;
-    contentLines.push(`0 -${offset} Td`);
-    contentLines.push(`(${escapePdfText(line)}) Tj`);
-  });
-
-  contentLines.push('ET');
-  const content = contentLines.join('\n');
-  const objects = [
-    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
-    '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
-    `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 ${pageHeight}] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`,
-    '4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
-    `5 0 obj\n<< /Length ${Buffer.byteLength(content, 'utf8')} >>\nstream\n${content}\nendstream\nendobj\n`,
-  ];
-
-  let body = '%PDF-1.4\n';
-  const offsets = [0];
-  objects.forEach((object) => {
-    offsets.push(Buffer.byteLength(body, 'utf8'));
-    body += object;
-  });
-
-  const xrefOffset = Buffer.byteLength(body, 'utf8');
-  body += `xref\n0 ${objects.length + 1}\n`;
-  body += '0000000000 65535 f \n';
-  offsets.slice(1).forEach((offset) => {
-    body += `${String(offset).padStart(10, '0')} 00000 n \n`;
-  });
-  body += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-
-  return Buffer.from(body, 'utf8');
 }
 
 async function buildRhReportExport(reportId, request) {

@@ -4,6 +4,7 @@ const {
   getMyAssistantEvaluation,
   getMyAssistantEvaluationHistory,
   getMyAssistantResults,
+  downloadMyAssistantResults,
   saveMyAssistantEvaluation,
   submitMyAssistantMissionEvaluation,
   submitMyAssistantEvaluation,
@@ -18,6 +19,7 @@ const router = express.Router();
 router.get('/evaluation/me', requireAuth, requireAssistant, getMyAssistantEvaluation);
 router.get('/evaluation/history', requireAuth, requireAssistant, getMyAssistantEvaluationHistory);
 router.get('/results/me', requireAuth, requireAssistant, getMyAssistantResults);
+router.get('/results/me/download', requireAuth, requireAssistant, downloadMyAssistantResults);
 router.put('/evaluation/me', requireAuth, requireAssistant, saveMyAssistantEvaluation);
 router.post('/evaluation/me/missions/submit', requireAuth, requireAssistant, submitMyAssistantMissionEvaluation);
 router.post('/evaluation/me/submit', requireAuth, requireAssistant, submitMyAssistantEvaluation);

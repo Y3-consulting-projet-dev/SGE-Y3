@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const { loadActiveCycle } = require('./utils/activeCycle');
 const authRoutes = require('./routes/authRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const collaboratorRoutes = require('./routes/collaboratorRoutes');
 const seniorRoutes = require('./routes/seniorRoutes');
 const managerRoutes = require('./routes/managerRoutes');
@@ -33,6 +34,7 @@ app.get('/api/health', (_request, response) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/collaborator', collaboratorRoutes);
 app.use('/api/senior', seniorRoutes);
 app.use('/api/manager', managerRoutes);

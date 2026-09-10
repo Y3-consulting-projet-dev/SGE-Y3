@@ -636,36 +636,37 @@ function AutoevaluationAssocie() {
                     <ChevronLeft size={14} />
                     Précédent
                   </button>
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      type="button"
-                      onClick={() => persistSelf(sections)}
-                      disabled={isSaving || isSubmitting}
-                      className="rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600 disabled:opacity-70"
-                    >
-                      {isSaving ? "Sauvegarde..." : "Enregistrer"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSubmit}
-                      disabled={isSaving || isSubmitting || selfData?.evaluation?.status === "Soumis aux Associes"}
-                      className="rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
-                    >
-                      {isSubmitting ? "Soumission..." : "Soumettre à l'autre associé"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSelfNextStep}
-                      disabled={
-                        Number(activeSectionId) === Number(sections[sections.length - 1]?.id) &&
-                        activePageIndex === (activeSection.pages?.length || 1) - 1
-                      }
-                      className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
-                    >
-                      Suivant
-                      <ChevronRight size={14} />
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSelfNextStep}
+                    disabled={
+                      Number(activeSectionId) === Number(sections[sections.length - 1]?.id) &&
+                      activePageIndex === (activeSection.pages?.length || 1) - 1
+                    }
+                    className="inline-flex items-center gap-2 rounded-md bg-[#76B82A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                  >
+                    Suivant
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+
+                <div className="mt-3 flex flex-wrap justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => persistSelf(sections)}
+                    disabled={isSaving || isSubmitting}
+                    className="rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600 disabled:opacity-70"
+                  >
+                    {isSaving ? "Sauvegarde..." : "Enregistrer"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={isSaving || isSubmitting || selfData?.evaluation?.status === "Soumis aux Associes"}
+                    className="rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                  >
+                    {isSubmitting ? "Soumission..." : "Soumettre à l'autre associé"}
+                  </button>
                 </div>
               </article>
             ) : null}

@@ -33,6 +33,7 @@ const {
 const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
 const { fetchAssociateCommentsForManager } = require('./managerController');
 const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
+const { notifyInAppRecipients } = require('../utils/inAppNotifications');
 
 function getInitials(name = '') {
   return String(name || '')
@@ -1147,7 +1148,7 @@ async function getAssociateOverview(_request, response) {
   const receivedCount = combinedRows.filter((item) => RH_RELEVANT_STATUSES.includes(item.status)).length;
   const totalPopulation = evaluatedPopulation.length;
   const readySyntheses = combinedRows.filter(
-    (row) => row.status === 'Validé RH' || row.status === `Transmis à l'associe` || row.status === 'Clôture'
+    (row) => row.status === 'Valide RH' || row.status === 'Transmis a l associe' || row.status === 'Cloture'
   );
   const readySyntheseIds = new Set(readySyntheses.map((row) => String(row.memberId || '')).filter(Boolean));
   const latestDecisionMap = buildDecisionMap(latestDecision);
@@ -1430,6 +1431,18 @@ module.exports = {
       label: 'son auto-évaluation associé',
       cycleLabel: getCurrentCycleLabel(),
     });
+    notifyInAppRecipients({
+      recipientIds: [recipient._id],
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: 'son auto-évaluation associé',
+      cycleLabel: getCurrentCycleLabel(),
+      type: 'self_eval_submitted',
+      actorId: request.user._id,
+      entityType: 'EvaluationInstance',
+      entityId: instance._id,
+      targetSection: 'associate-self-eval',
+    });
 
     return response.json({
       message: `Auto-évaluation associé soumise à ${recipient.name}.`,
@@ -1640,6 +1653,18 @@ module.exports = {
       label: `l'évaluation de ${submitter?.name || 'un collaborateur'}`,
       cycleLabel: getCurrentCycleLabel(),
     });
+    notifyInAppRecipients({
+      recipientIds: rhUsers.map((user) => user._id),
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: `l'évaluation de ${submitter?.name || 'un collaborateur'}`,
+      cycleLabel: getCurrentCycleLabel(),
+      type: 'transmis',
+      actorId: request.user._id,
+      entityType: 'EvaluationInstance',
+      entityId: instance._id,
+      targetSection: 'collaborator-eval-received',
+    });
 
     return response.json({
       message: `Évaluation transmise à la RH (${rhUsers.map((user) => user.name).join(', ')}).`,
@@ -1829,6 +1854,18 @@ module.exports = {
       label: `l'évaluation du manager ${manager.name}`,
       cycleLabel: getCurrentCycleLabel(),
     });
+    notifyInAppRecipients({
+      recipientIds: rhRecipientIds,
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: `l'évaluation du manager ${manager.name}`,
+      cycleLabel: getCurrentCycleLabel(),
+      type: 'transmis',
+      actorId: request.user._id,
+      entityType: 'AssociateManagerReview',
+      entityId: associateReview._id,
+      targetSection: 'manager-eval-received',
+    });
 
     return response.json({
       message: "Évaluation du manager transmise à la RH.",
@@ -1922,7 +1959,7 @@ module.exports = {
     ]);
 
     const items = [...rows, ...assistantRhRows]
-      .filter((row) => row.status === 'Validé RH' || row.status === `Transmis à l'associe` || row.status === 'Clôture')
+      .filter((row) => row.status === 'Valide RH' || row.status === 'Transmis a l associe' || row.status === 'Cloture')
       .map((row) => ({
         ...row,
         initials: getInitials(row.name),

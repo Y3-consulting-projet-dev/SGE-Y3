@@ -4,6 +4,8 @@ const EvaluationInstance = require('../models/EvaluationInstance');
 const ManagerMemberReview = require('../models/ManagerMemberReview');
 const SeniorAssistantReview = require('../models/SeniorAssistantReview');
 const { getOverallAverageScore } = require('../utils/evaluationHelpers');
+const { resolveRhQueueUserIds } = require('./rhController');
+const { notifyInAppRecipients } = require('../utils/inAppNotifications');
 
 
 const DEFAULT_CYCLE_LABEL = 'Cycle 2025-2026';
@@ -174,6 +176,20 @@ async function saveCommitteeDecision(request, response) {
     submitted_by: request.user?._id || null,
     submitted_by_name: submittedByName,
     submitted_at: new Date(),
+  });
+
+  const rhRecipientIds = await resolveRhQueueUserIds();
+  notifyInAppRecipients({
+    recipientIds: rhRecipientIds,
+    excludeUserId: request.user?._id || null,
+    submitterName: submittedByName,
+    label: 'la décision du comité',
+    cycleLabel: decision.cycle_label,
+    type: 'committee_decision',
+    actorId: request.user?._id || null,
+    entityType: 'CommitteeDecision',
+    entityId: decision._id,
+    targetSection: 'committee-decision',
   });
 
   return response.status(201).json({

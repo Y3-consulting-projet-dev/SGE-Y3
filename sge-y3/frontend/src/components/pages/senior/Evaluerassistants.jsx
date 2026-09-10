@@ -194,7 +194,39 @@ function MissionScoreRow({ criterion, onSelect }) {
   );
 }
 
-function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsError, selectedAssistantId, onAssistantChange }) {
+function ReadOnlyScoreRow({ criterion }) {
+  return (
+    <div className="rounded-md border border-[#E3EAF3] bg-[#F8FBFF] p-3">
+      <p className="text-[12px] font-semibold text-[#0F3A63]">
+        {criterion.themeCode ? `${criterion.themeCode}. ` : ""}
+        {criterion.label}
+      </p>
+      {criterion.statement ? <p className="mt-1 text-[11px] leading-5 text-slate-600">{criterion.statement}</p> : null}
+      <div className="mt-2 flex items-center gap-2">
+        {[1, 2, 3, 4, 5].map((score) => (
+          <span
+            key={score}
+            className={`inline-flex h-6 w-8 items-center justify-center rounded text-[12px] font-bold ${
+              criterion.score === score ? "bg-[#0B4C7A] text-white" : "bg-slate-100 text-slate-400"
+            }`}
+          >
+            {score}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Evaluerassistants({
+  assistants = [],
+  isLoadingAssistants,
+  assistantsError,
+  selectedAssistantId,
+  onAssistantChange,
+  initialMissionId = "",
+  onInitialMissionHandled,
+}) {
   const [reviewData, setReviewData] = useState(null);
   const [missionReviews, setMissionReviews] = useState([]);
   const [activeMissionId, setActiveMissionId] = useState("");
@@ -216,6 +248,7 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
   const [activeSeniorMissionView, setActiveSeniorMissionView] = useState("synthese");
   const [isMissionPickerOpen, setIsMissionPickerOpen] = useState(false);
   const [missionSearchQuery, setMissionSearchQuery] = useState("");
+  const [detailAssistantMission, setDetailAssistantMission] = useState(null);
   const missionPickerRef = useRef(null);
 
   useEffect(() => {
@@ -259,6 +292,19 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
       cancelled = true;
     };
   }, [selectedAssistantId]);
+
+  useEffect(() => {
+    if (!initialMissionId) return;
+
+    const targetMission = missionReviews.find((mission) => mission.id === initialMissionId);
+
+    if (targetMission) {
+      selectMission(targetMission);
+      setActiveSeniorMissionView("missions");
+      onInitialMissionHandled?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialMissionId, missionReviews]);
 
   const selectedAssistant = assistants.find((assistant) => assistant.id === selectedAssistantId) || assistants[0] || null;
   const managerRecipients = useMemo(() => reviewData?.submitted_to || [], [reviewData?.submitted_to]);
@@ -881,7 +927,16 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
                           <p className="text-[12px] font-bold text-[#0F3A63]">{mission.title}</p>
                           <p className="text-[12px] font-bold text-[#76B82A]">{getMissionAverage(mission.criteria || []) ?? "--"} / 5</p>
                         </div>
-                        <p className="mt-1 text-[11px] font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
+                        <div className="mt-1 flex items-center justify-between gap-3">
+                          <p className="text-[11px] font-semibold text-slate-500">{mission.period || "Période non renseignée"}</p>
+                          <button
+                            type="button"
+                            onClick={() => setDetailAssistantMission(mission)}
+                            className="text-[11px] font-bold text-[#2E5BC8] hover:underline"
+                          >
+                            Voir le détail
+                          </button>
+                        </div>
                       </div>
                     ))
                   ) : (
@@ -1238,6 +1293,62 @@ function Evaluerassistants({ assistants = [], isLoadingAssistants, assistantsErr
         <p className={`text-right text-[11px] font-semibold ${feedbackTone === "error" ? "text-[#A4252F]" : "text-[#76B82A]"}`}>
           {feedbackMessage}
         </p>
+      ) : null}
+
+      {detailAssistantMission ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 py-6">
+          <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-bold uppercase text-[#76B82A]">Auto-évaluation de l'assistant</p>
+                <h3 className="mt-1 text-[20px] font-black text-[#0F3A63]">{detailAssistantMission.title}</h3>
+                <p className="text-[12px] font-semibold text-slate-500">
+                  {detailAssistantMission.period || "Période non renseignée"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailAssistantMission(null)}
+                className="rounded-full bg-slate-100 px-3 py-1 text-[12px] font-bold text-slate-500 hover:bg-slate-200"
+              >
+                Fermer
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              {getMissionSections(getMissionCriteriaGroups(detailAssistantMission.criteria || [])).map((section) => (
+                <div key={section.id} className="rounded-lg border border-[#E6EDF5] p-3">
+                  <h4 className="text-[14px] font-bold text-[#0F3A63]">{section.title}</h4>
+                  {section.comment ? (
+                    <p className="mt-1 text-[12px] italic text-slate-600">« {section.comment} »</p>
+                  ) : null}
+                  <div className="mt-3 space-y-3">
+                    {section.groups.map((group) => (
+                      <div key={group.key} className="space-y-2">
+                        {group.pageTitle ? (
+                          <p className="text-[12px] font-semibold text-slate-500">{group.pageTitle}</p>
+                        ) : null}
+                        {(group.criteria || []).map((criterion) => (
+                          <ReadOnlyScoreRow key={criterion.id} criterion={criterion} />
+                        ))}
+                        {group.pageComment ? (
+                          <p className="text-[11px] italic text-slate-600">Justification : « {group.pageComment} »</p>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {detailAssistantMission.comment ? (
+                <div className="rounded-lg bg-[#F8FAFC] p-3">
+                  <h4 className="text-[12px] font-bold text-[#0F3A63]">Commentaire de l'assistant</h4>
+                  <p className="mt-1 text-[12px] text-slate-600">{detailAssistantMission.comment}</p>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
       ) : null}
     </section>
   );

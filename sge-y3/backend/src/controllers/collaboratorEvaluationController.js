@@ -15,6 +15,8 @@ const {
 const { buildMissionResultsPayload } = require('../utils/evaluationHistory');
 const { getCurrentCycleLabel } = require('../utils/activeCycle');
 const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
+const { notifyInAppRecipients } = require('../utils/inAppNotifications');
+const { buildSimplePdfBuffer } = require('../utils/simplePdf');
 const { SUPPORT_EMAILS } = require('../utils/userMapping');
 
 function normalizeText(value = '') {
@@ -1110,6 +1112,18 @@ async function submitMySelfMissionEvaluation(request, response, getOrCreateEvalu
     label: `la mission "${mission.title}"`,
     cycleLabel: getCurrentCycleLabel(),
   });
+  notifyInAppRecipients({
+    recipientIds: mission.recipients.map((recipient) => recipient.user_id),
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: `la mission "${mission.title}"`,
+    cycleLabel: getCurrentCycleLabel(),
+    type: 'mission_submitted',
+    actorId: request.user._id,
+    entityType: 'EvaluationInstance',
+    entityId: instance._id,
+    targetSection: 'assistant-mission',
+  });
 
   return response.json({
     message: `Mission soumise à ${mission.recipients.map((recipient) => recipient.name).join(', ')}.`,
@@ -1192,6 +1206,9 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
         }))
     );
     const mergedMissionRecipients = mergeManagerRecipients(managerRecipients.length ? managerRecipients : missionRecipients, []);
+    const resolvedEvaluationRecipients = isAssistantEvaluation
+      ? await resolveMissionRecipientsForAssistant(request.user)
+      : resolvedManagers;
     const submittedRecipientUsers = resolveSubmittedRecipientUsers(mergedMissionRecipients, resolvedEvaluationRecipients);
 
     await persistEvaluationInstance(instance, {
@@ -1210,6 +1227,18 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
       submitterName: request.user.name,
       label: 'son auto-évaluation',
       cycleLabel: getCurrentCycleLabel(),
+    });
+    notifyInAppRecipients({
+      recipientIds: submittedRecipientUsers.map((recipient) => recipient._id),
+      excludeUserId: request.user._id,
+      submitterName: request.user.name,
+      label: 'son auto-évaluation',
+      cycleLabel: getCurrentCycleLabel(),
+      type: 'self_eval_submitted',
+      actorId: request.user._id,
+      entityType: 'EvaluationInstance',
+      entityId: instance._id,
+      targetSection: 'assistant-self-eval',
     });
 
     return response.json({
@@ -1249,6 +1278,19 @@ async function submitMySelfEvaluation(request, response, getOrCreateEvaluation, 
       : resolvedManagers.map((manager) => manager.name),
     submitted_at: new Date(),
     last_saved_at: new Date(),
+  });
+
+  notifyInAppRecipients({
+    recipientIds: resolvedManagers.map((manager) => manager._id),
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: 'son auto-évaluation',
+    cycleLabel: getCurrentCycleLabel(),
+    type: 'self_eval_submitted',
+    actorId: request.user._id,
+    entityType: 'EvaluationInstance',
+    entityId: instance._id,
+    targetSection: 'assistant-self-eval',
   });
 
   return response.json({
@@ -1381,6 +1423,40 @@ async function getMyAssistantResults(request, response) {
   return response.json(await buildResultsPayloadForInstance(instance, request, { includeDepartmentComparison: true }));
 }
 
+async function downloadMyAssistantResults(request, response) {
+  const instance = await getOrCreateAssistantEvaluation(request.user);
+  const payload = await buildResultsPayloadForInstance(instance, request, { includeDepartmentComparison: true });
+  const displayName = [request.user.first_name, request.user.last_name].filter(Boolean).join(' ').trim() || request.user.name || '';
+
+  const lines = [
+    `Cycle : ${payload.cycle_label || ''}`,
+    `Statut : ${payload.status || ''}`,
+    `Score final : ${payload.kpis?.scoreFinal ?? 'N/A'}/5`,
+    '',
+    'Missions evaluees :',
+    ...(payload.missionScores.length
+      ? payload.missionScores.map(
+          (mission) => `- ${mission.title} (${mission.period || ''}) : ${mission.score ?? 'N/A'}/5`
+        )
+      : ['- Aucune mission evaluee.']),
+    '',
+    'Commentaires du Manager :',
+    ...(payload.managerComments.length
+      ? payload.managerComments.flatMap((comment) => [
+          `- ${comment.authorName} (${comment.authorGrade}) :`,
+          `  ${comment.comment}`,
+        ])
+      : ['- Aucun commentaire disponible.']),
+  ];
+
+  const buffer = buildSimplePdfBuffer(`Mes resultats - ${displayName}`, lines);
+  const filename = `mes-resultats-${(payload.cycle_label || 'cycle').replace(/\s+/g, '-').toLowerCase()}.pdf`;
+
+  response.setHeader('Content-Type', 'application/pdf');
+  response.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  return response.send(buffer);
+}
+
 async function getMyAssistantEvaluationHistory(request, response) {
   const instances = await EvaluationInstance.find({
     evalue_id: request.user._id,
@@ -1501,6 +1577,18 @@ async function submitMyDevelopment(request, response) {
     label: 'son plan de développement',
     cycleLabel: getCurrentCycleLabel(),
   });
+  notifyInAppRecipients({
+    recipientIds: [manager._id],
+    excludeUserId: request.user._id,
+    submitterName: request.user.name,
+    label: 'son plan de développement',
+    cycleLabel: getCurrentCycleLabel(),
+    type: 'development_submitted',
+    actorId: request.user._id,
+    entityType: 'EvaluationInstance',
+    entityId: instance._id,
+    targetSection: 'development',
+  });
 
   return response.json({
     message: `Plan de développement envoyé à ${manager.name}.`,
@@ -1521,6 +1609,7 @@ module.exports = {
   getMyAssistantEvaluation,
   getMyAssistantEvaluationHistory,
   getMyAssistantResults,
+  downloadMyAssistantResults,
   getMySeniorEvaluation,
   getMySeniorEvaluationHistory,
   saveMyAssistantEvaluation,

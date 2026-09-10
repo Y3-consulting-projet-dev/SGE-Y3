@@ -1,5 +1,8 @@
 import { useState } from "react";
 
+import { downloadMyAssistantResults } from "@/api/collaboratorEvaluation";
+import { useDownloadFile } from "@/hooks/useDownloadFile";
+
 function formatScore(score) {
   return typeof score === "number" ? score.toFixed(1) : "0.0";
 }
@@ -86,8 +89,8 @@ function buildLiveResults(evaluationData, resultsData) {
 }
 
 function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, isLoading, errorMessage }) {
-  const [reportDownloaded, setReportDownloaded] = useState(false);
   const [selectedRecipient, setSelectedRecipient] = useState(null);
+  const { downloadingId, error: downloadError, download } = useDownloadFile();
 
   if (isLoading) {
     return (
@@ -231,16 +234,14 @@ function Mesresultats({ evaluationData, missionEvaluations = [], resultsData, is
         </div>
 
           <button
-            onClick={() => {
-              setReportDownloaded(true);
-              window.print();
-            }}
-            className="mx-auto block rounded-md bg-[#76B82A] px-5 py-2 text-[12px] font-bold text-white hover:bg-[#6EAD28]"
+            onClick={() => download("mes-resultats", downloadMyAssistantResults)}
+            disabled={downloadingId === "mes-resultats"}
+            className="mx-auto block rounded-md bg-[#76B82A] px-5 py-2 text-[12px] font-bold text-white hover:bg-[#6EAD28] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Télécharger mon rapport PDF
+            {downloadingId === "mes-resultats" ? "Telechargement..." : "Télécharger mon rapport PDF"}
           </button>
-          {reportDownloaded ? (
-            <p className="text-center text-[11px] font-semibold text-[#76B82A]">Rapport lancé pour impression.</p>
+          {downloadError ? (
+            <p className="text-center text-[11px] font-semibold text-red-600">{downloadError}</p>
           ) : null}
       </section>
 

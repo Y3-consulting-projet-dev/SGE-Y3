@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { BarChart3, CalendarDays, FileBarChart2, FolderKanban, History, LayoutDashboard, LogOut, MessageSquare, Settings2, Users, X } from "lucide-react";
+import { BarChart3, CalendarDays, ChevronsLeft, FileBarChart2, FolderKanban, History, LayoutDashboard, LogOut, MessageSquare, Settings2, Users, X } from "lucide-react";
 import Monequipe from "@/components/pages/manager/Monequipe";
 import Evaluermonequipe from "@/components/pages/manager/Evaluermonequipe";
 import Objectifsequipe from "@/components/pages/manager/Objectifsequipe";
@@ -10,6 +10,7 @@ import Rapportsequipe from "@/components/pages/manager/Rapportsequipe";
 import CalendrierAssistants from "@/components/pages/collaborator/CalendrierAssistants";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import CommentairesRecus from "@/components/common/CommentairesRecus";
+import NotificationBell from "@/components/common/NotificationBell";
 import logoY3 from "@/assets/logo-y3.png";
 import { getDisplayName, getInitials } from "@/utils/userPresentation";
 import { getManagerMemberEvaluation, getManagerOverview, getManagerSelfEvaluation } from "@/api/managerOverview";
@@ -41,6 +42,16 @@ const sidebarSections = [
   { group: "Reporting", items: [{ key: "reports", label: "Rapports", icon: FileBarChart2 }] },
   { group: "Compte", items: [{ key: "profile", label: "Profil", icon: Settings2 }] },
 ];
+
+const NOTIFICATION_SECTION_MAP = {
+  "assistant-mission": "team",
+  "assistant-self-eval": "team",
+  development: "team",
+};
+
+function resolveNotificationSection(link) {
+  return NOTIFICATION_SECTION_MAP[link] || "overview";
+}
 
 function formatSubmissionDate(value) {
   if (!value) return "Soumise";
@@ -107,6 +118,15 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
       cancelled = true;
     };
   }, []);
+
+  async function refreshOverview() {
+    try {
+      const response = await getManagerOverview();
+      setOverviewData(response);
+    } catch (error) {
+      setOverviewError(error.message || "Chargement de la vue manager impossible.");
+    }
+  }
 
   useEffect(() => {
     if (activeSection !== "calendar") {
@@ -294,12 +314,19 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
   return (
     <div className="min-h-screen bg-[#EEF2F6] text-[#0E2B4F]">
       <div className="flex min-h-screen w-full">
-        <aside className="min-h-screen w-full max-w-[260px] border-r border-slate-200/80 bg-white px-5 py-6">
-          <div className="mb-8 flex items-center gap-3">
-            <div className="leading-none text-4xl font-black tracking-tight text-[#0E4A6B]">
-              SGE
-              <img src={logoY3} alt="Y3" className="mt-2 h-20 w-auto scale-x-110 origin-left" />
-            </div>
+        <aside className="relative min-h-screen w-full max-w-[260px] border-r border-slate-200/80 bg-white px-5 py-6">
+          <button
+            onClick={() => setActiveSection("overview")}
+            disabled={activeSection === "overview"}
+            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#EEF2F6] text-slate-500 shadow-sm hover:bg-slate-200/70 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Retour"
+            title="Retour"
+          >
+            <ChevronsLeft size={14} />
+          </button>
+
+          <div className="mb-8 flex items-center">
+            <img src={logoY3} alt="Y3" className="h-16 w-auto" />
           </div>
 
           <nav className="space-y-5 text-sm">
@@ -368,21 +395,24 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
               {activeSection === "overview" ? <p className="mt-1 text-sm text-slate-500">{displayName} - {user?.grade}</p> : null}
             </div>
 
-            {activeSection === "team-goals" ? (
-              <button
-                onClick={() => setCreateGoalSignal((value) => value + 1)}
-                className="rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-semibold text-white"
-              >
-                Créer un objectif
-              </button>
-            ) : activeSection === "overview" ? (
-              <button
-                onClick={() => setActiveSection("team")}
-                className="rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-semibold text-[#0B2F4F]"
-              >
-                Ouvrir l'équipe
-              </button>
-            ) : null}
+            <div className="flex items-center gap-4">
+              <NotificationBell onNavigate={(link) => setActiveSection(resolveNotificationSection(link))} />
+              {activeSection === "team-goals" ? (
+                <button
+                  onClick={() => setCreateGoalSignal((value) => value + 1)}
+                  className="rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-semibold text-white"
+                >
+                  Créer un objectif
+                </button>
+              ) : activeSection === "overview" ? (
+                <button
+                  onClick={() => setActiveSection("team")}
+                  className="rounded-full bg-[#8BC53F] px-5 py-2 text-sm font-semibold text-[#0B2F4F]"
+                >
+                  Ouvrir l'équipe
+                </button>
+              ) : null}
+            </div>
           </header>
 
           {activeSection === "overview" ? (
@@ -441,7 +471,10 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
       {selectedMember ? (
         <div
           className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#0B1F33]/60 px-4 py-6"
-          onClick={() => setSelectedMember(null)}
+          onClick={() => {
+            setSelectedMember(null);
+            refreshOverview();
+          }}
         >
           <section
             className="w-full max-w-6xl rounded-lg bg-[#EEF2F6] p-5 shadow-xl"
@@ -449,14 +482,17 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
           >
             <header className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
               <div>
-                <p className="text-xs font-bold text-[#79B742]">Evaluation Manager</p>
+                <p className="text-xs font-bold text-[#79B742]">Évaluation du collaborateur</p>
                 <h2 className="text-2xl font-black text-[#0F3A63]">{selectedMember.name}</h2>
                 <p className="text-sm font-semibold text-slate-500">
                   {selectedMember.role || selectedMember.grade} - {selectedMember.status || "En attente"}
                 </p>
               </div>
               <button
-                onClick={() => setSelectedMember(null)}
+                onClick={() => {
+                  setSelectedMember(null);
+                  refreshOverview();
+                }}
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#0F3A63] shadow-sm hover:bg-slate-100"
                 aria-label="Fermer la modal"
               >

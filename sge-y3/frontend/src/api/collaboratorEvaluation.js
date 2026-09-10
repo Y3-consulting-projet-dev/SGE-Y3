@@ -37,6 +37,32 @@ export function getMyAssistantResults() {
   return request("/collaborator/results/me");
 }
 
+export async function downloadMyAssistantResults() {
+  const session = loadSession();
+  const headers = {};
+
+  if (session?.token) {
+    headers.Authorization = `Bearer ${session.token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/collaborator/results/me/download`, {
+    method: "GET",
+    headers,
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || "Telechargement impossible.");
+  }
+
+  const blob = await response.blob();
+  const contentDisposition = response.headers.get("Content-Disposition") || "";
+  const quotedMatch = contentDisposition.match(/filename="([^"]+)"/i);
+  const filename = quotedMatch?.[1] || "mes-resultats.pdf";
+
+  return { blob, filename };
+}
+
 export function getMyAssistantEvaluationHistory() {
   return request("/collaborator/evaluation/history");
 }

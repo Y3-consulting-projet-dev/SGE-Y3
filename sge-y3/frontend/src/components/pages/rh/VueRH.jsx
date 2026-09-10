@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { BarChart2, LogOut, UserRound } from "lucide-react";
+import { BarChart2, ChevronsLeft, LogOut, UserRound } from "lucide-react";
 import logoY3 from "@/assets/logo-y3.png";
 import { rhMenuGroups } from "@/data/rhData";
 import TableauRH from "@/components/pages/rh/TableauRH";
@@ -18,10 +18,27 @@ import HistoriqueEquipe from "@/components/pages/rh/HistoriqueEquipe";
 import GestionCycles from "@/components/pages/rh/GestionCycles";
 import GestionCollaborateurs from "@/components/pages/rh/GestionCollaborateurs";
 import ComiteEvaluation from "@/components/pages/comite/ComiteEvaluation";
+import DecisionAssociesRH from "@/components/pages/comite/DecisionAssociesRH";
 import ProfilePanel from "@/components/profile/ProfilePanel";
+import NotificationBell from "@/components/common/NotificationBell";
 import { saveCommitteeDecision } from "@/api/committee";
 import { getDisplayName } from "@/utils/userPresentation";
 import { getRhReceivedComments, getAssistantRhEvaluationResult } from "@/api/rhOverview";
+
+const NOTIFICATION_SECTION_MAP = {
+  "manager-self-eval": "validations",
+  "manager-mission": "validations",
+  "member-eval": "validations",
+  "member-mission": "validations",
+  "assistant-rh-self-eval": "validations",
+  "collaborator-eval-received": "validations",
+  "manager-eval-received": "validations",
+  "committee-decision": "committee",
+};
+
+function resolveNotificationSection(link) {
+  return NOTIFICATION_SECTION_MAP[link] || "overview";
+}
 
 function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
@@ -312,15 +329,18 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
 
     if (activeSection === "committee") {
       return (
-        <ComiteEvaluation
-          readOnly={assistantMode}
-          initialDecisionScope="rh-final"
-          onSubmit={(decisions) => saveCommitteeDecision({ scope: "rh-final", cycle_label: "Cycle 2025-2026", decisions })}
-          submitLabel="Transmettre aux associés"
-          submittedLabel="Transmis aux associés"
-          successMessage="Classement des assistants, seniors et assistants managers transmis aux associés."
-          workflowText="La RH classe les assistants, seniors et assistants managers, puis transmet le classement aux associés pour décision du taux d'augmentation."
-        />
+        <div className="space-y-5">
+          <ComiteEvaluation
+            readOnly={assistantMode}
+            initialDecisionScope="rh-final"
+            onSubmit={(decisions) => saveCommitteeDecision({ scope: "rh-final", cycle_label: "Cycle 2025-2026", decisions })}
+            submitLabel="Transmettre aux associés"
+            submittedLabel="Transmis aux associés"
+            successMessage="Classement des assistants, seniors et assistants managers transmis aux associés."
+            workflowText="La RH classe les assistants, seniors et assistants managers, puis transmet le classement aux associés pour décision du taux d'augmentation."
+          />
+          <DecisionAssociesRH />
+        </div>
       );
     }
 
@@ -330,10 +350,19 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
   return (
     <div className="min-h-screen bg-[#EEF2F6] text-[#0E2B4F]">
       <div className="flex min-h-screen w-full">
-        <aside className="min-h-screen w-full max-w-[270px] border-r border-slate-200/80 bg-white px-5 py-6">
-          <div className="mb-8">
-            <p className="text-4xl font-black tracking-tight text-[#0E4A6B]">SGE</p>
-            <img src={logoY3} alt="Y3" className="mt-2 h-20 w-auto scale-x-110 origin-left" />
+        <aside className="relative min-h-screen w-full max-w-[270px] border-r border-slate-200/80 bg-white px-5 py-6">
+          <button
+            onClick={() => setActiveSection("overview")}
+            disabled={activeSection === "overview"}
+            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#EEF2F6] text-slate-500 shadow-sm hover:bg-slate-200/70 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Retour"
+            title="Retour"
+          >
+            <ChevronsLeft size={14} />
+          </button>
+
+          <div className="mb-8 flex items-center">
+            <img src={logoY3} alt="Y3" className="h-16 w-auto" />
           </div>
 
           <nav className="space-y-5 text-sm">
@@ -412,12 +441,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              {/* <button onClick={() => window.alert("Notifications RH bientôt disponibles.")} className="text-slate-500 hover:text-[#0F3A63]">
-                <Bell size={18} />
-              </button>
-              <button onClick={() => window.alert("Aide RH bientôt disponible.")} className="text-slate-500 hover:text-[#0F3A63]">
-                <CircleHelp size={18} />
-              </button> */}
+              <NotificationBell onNavigate={(link) => setActiveSection(resolveNotificationSection(link))} />
               {assistantMode ? (
                 <span className="rounded-full bg-[#E7EDF3] px-4 py-2 text-xs font-bold text-[#0F4A72]">
                   {activeSection === "reports" ? "Accès total" : "Accès restreint"}

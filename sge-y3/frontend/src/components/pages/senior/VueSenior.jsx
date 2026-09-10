@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { LogOut } from "lucide-react";
+import { ChevronsLeft, LogOut } from "lucide-react";
 import logoY3 from "@/assets/logo-y3.png";
 import { menuGroups } from "@/data/seniorData";
 import Vueensemble from "@/components/pages/senior/Vueensemble";
@@ -13,9 +13,19 @@ import HistoriqueAssistants from "@/components/pages/senior/HistoriqueAssistants
 import CalendrierAssistants from "@/components/pages/collaborator/CalendrierAssistants";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import CommentairesRecus from "@/components/common/CommentairesRecus";
+import NotificationBell from "@/components/common/NotificationBell";
 import { getDisplayName, getInitials } from "@/utils/userPresentation";
 import { addSeniorAssistantMission, getSeniorAssistantEvaluation, getSeniorAssistants, getSeniorCommonMissions, getSeniorOverview } from "@/api/seniorAssistants";
 import { getMySeniorEvaluation } from "@/api/seniorEvaluation";
+
+const NOTIFICATION_SECTION_MAP = {
+  "assistant-mission": "reviews",
+  "assistant-self-eval": "reviews",
+};
+
+function resolveNotificationSection(link) {
+  return NOTIFICATION_SECTION_MAP[link] || "overview";
+}
 
 function VueSenior({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
@@ -23,6 +33,7 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
   const [commonMissions, setCommonMissions] = useState([]);
   const [overviewData, setOverviewData] = useState(null);
   const [selectedAssistantId, setSelectedAssistantId] = useState("");
+  const [initialMissionId, setInitialMissionId] = useState("");
   const [assistantsError, setAssistantsError] = useState("");
   const [isLoadingAssistants, setIsLoadingAssistants] = useState(true);
   const [selfEvaluationData, setSelfEvaluationData] = useState(null);
@@ -161,10 +172,19 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
   return (
     <div className="min-h-screen bg-[#EEF2F6] text-[#0E2B4F]">
       <div className="flex min-h-screen w-full">
-        <aside className="min-h-screen w-full max-w-[270px] border-r border-slate-200/80 bg-white px-5 py-6">
-          <div className="mb-8">
-            <p className="text-4xl font-black tracking-tight text-[#0E4A6B]">SGE</p>
-            <img src={logoY3} alt="Y3" className="mt-2 h-20 w-auto scale-x-110 origin-left" />
+        <aside className="relative min-h-screen w-full max-w-[270px] border-r border-slate-200/80 bg-white px-5 py-6">
+          <button
+            onClick={() => setActiveSection("overview")}
+            disabled={activeSection === "overview"}
+            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#EEF2F6] text-slate-500 shadow-sm hover:bg-slate-200/70 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Retour"
+            title="Retour"
+          >
+            <ChevronsLeft size={14} />
+          </button>
+
+          <div className="mb-8 flex items-center">
+            <img src={logoY3} alt="Y3" className="h-16 w-auto" />
           </div>
 
           <nav className="space-y-5 text-sm">
@@ -218,6 +238,7 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
             </div>
 
             <div className="flex items-center gap-5">
+              <NotificationBell onNavigate={(link) => setActiveSection(resolveNotificationSection(link))} />
               <div className="flex items-center gap-2">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1F4A72] text-xs font-bold text-white">{initials}</div>
                 <div className="text-xs">
@@ -253,11 +274,22 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
               assistantsError={assistantsError}
               selectedAssistantId={selectedAssistantId}
               onAssistantChange={setSelectedAssistantId}
+              initialMissionId={initialMissionId}
+              onInitialMissionHandled={() => setInitialMissionId("")}
             />
           ) : activeSection === "results" ? (
             <MesresultatsSenior />
           ) : activeSection === "goals" ? (
-            <MesobjectifsSenior missions={commonMissions} isLoading={isLoadingAssistants} errorMessage={assistantsError} />
+            <MesobjectifsSenior
+              missions={commonMissions}
+              isLoading={isLoadingAssistants}
+              errorMessage={assistantsError}
+              onOpenMission={(mission) => {
+                setSelectedAssistantId(mission.assistantId);
+                setInitialMissionId(mission.missionId);
+                setActiveSection("reviews");
+              }}
+            />
           ) : activeSection === "self-evaluation" ? (
             <MonautoevaluationSenior user={user} />
           ) : activeSection === "calendar" ? (

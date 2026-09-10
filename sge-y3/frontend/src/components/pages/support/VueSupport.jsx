@@ -1,11 +1,20 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { ClipboardList, History, LayoutDashboard, LogOut, MessageSquare, Settings2 } from "lucide-react";
+import { ChevronsLeft, ClipboardList, History, LayoutDashboard, LogOut, MessageSquare, Settings2 } from "lucide-react";
 import logoY3 from "@/assets/logo-y3.png";
 import ProfilePanel from "@/components/profile/ProfilePanel";
+import NotificationBell from "@/components/common/NotificationBell";
 import MonautoevaluationSupport from "@/components/pages/support/MonautoevaluationSupport";
 import Monhistorique from "@/components/pages/support/Monhistorique";
 import { getDisplayName } from "@/utils/userPresentation";
 import { getSupportSelfEvaluation, saveSupportChiefComments, getReceivedSupportChiefComments } from "@/api/supportEvaluation";
+
+const NOTIFICATION_SECTION_MAP = {
+  "support-self-eval": "self-evaluation",
+};
+
+function resolveNotificationSection(link) {
+  return NOTIFICATION_SECTION_MAP[link] || "overview";
+}
 
 const supportMenu = [
   { key: "overview", label: "Vue support", icon: LayoutDashboard },
@@ -327,10 +336,19 @@ function VueSupport({ onLogout, onUserUpdate, user }) {
   return (
     <div className="min-h-screen bg-[#EEF2F6] text-[#0E2B4F]">
       <div className="flex min-h-screen w-full">
-        <aside className="min-h-screen w-full max-w-[260px] border-r border-slate-200/80 bg-white px-5 py-6">
-          <div className="mb-8">
-            <p className="text-4xl font-black tracking-tight text-[#0E4A6B]">SGE</p>
-            <img src={logoY3} alt="Y3" className="mt-2 h-16 w-auto object-contain" />
+        <aside className="relative min-h-screen w-full max-w-[260px] border-r border-slate-200/80 bg-white px-5 py-6">
+          <button
+            onClick={() => setActiveSection("overview")}
+            disabled={activeSection === "overview"}
+            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#EEF2F6] text-slate-500 shadow-sm hover:bg-slate-200/70 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Retour"
+            title="Retour"
+          >
+            <ChevronsLeft size={14} />
+          </button>
+
+          <div className="mb-8 flex items-center">
+            <img src={logoY3} alt="Y3" className="h-16 w-auto object-contain" />
           </div>
           <nav className="space-y-1 text-sm">
             {supportMenu.map((item) => {
@@ -359,11 +377,14 @@ function VueSupport({ onLogout, onUserUpdate, user }) {
         </aside>
 
         <main className="flex-1 p-5 md:p-8">
-          <header className="mb-6">
-            <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
-            <p className="mt-1 text-sm font-semibold text-slate-500">
-              {displayName} - Cycle 2025-2026 - Département support
-            </p>
+          <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                {displayName} - Cycle 2025-2026 - Département support
+              </p>
+            </div>
+            <NotificationBell onNavigate={(link) => setActiveSection(resolveNotificationSection(link))} />
           </header>
           {renderContent()}
         </main>
