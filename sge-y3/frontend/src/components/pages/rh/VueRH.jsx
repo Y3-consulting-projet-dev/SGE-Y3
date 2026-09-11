@@ -441,7 +441,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <NotificationBell onNavigate={(link) => setActiveSection(resolveNotificationSection(link))} />
+              <NotificationBell onNavigate={(notification) => setActiveSection(resolveNotificationSection(notification.link))} />
               {assistantMode ? (
                 <span className="rounded-full bg-[#E7EDF3] px-4 py-2 text-xs font-bold text-[#0F4A72]">
                   {activeSection === "reports" ? "Accès total" : "Accès restreint"}

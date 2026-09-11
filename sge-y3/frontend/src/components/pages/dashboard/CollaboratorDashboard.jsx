@@ -334,7 +334,7 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
               <h1 className="text-[34px] font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
               {activeSection === "dashboard" ? <p className="mt-1 text-sm text-slate-500">{displayName} - {user?.grade}</p> : null}
             </div>
-            <NotificationBell onNavigate={(link) => setActiveSection(resolveNotificationSection(link))} />
+            <NotificationBell onNavigate={(notification) => setActiveSection(resolveNotificationSection(notification.link))} />
           </header>
 
           {renderMainContent()}

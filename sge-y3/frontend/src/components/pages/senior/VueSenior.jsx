@@ -238,7 +238,15 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
             </div>
 
             <div className="flex items-center gap-5">
-              <NotificationBell onNavigate={(link) => setActiveSection(resolveNotificationSection(link))} />
+              <NotificationBell
+                onNavigate={(notification) => {
+                  const section = resolveNotificationSection(notification.link);
+                  setActiveSection(section);
+                  if (section === "reviews" && notification.actor_id) {
+                    setSelectedAssistantId(String(notification.actor_id));
+                  }
+                }}
+              />
               <div className="flex items-center gap-2">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1F4A72] text-xs font-bold text-white">{initials}</div>
                 <div className="text-xs">

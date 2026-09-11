@@ -384,7 +384,7 @@ function VueSupport({ onLogout, onUserUpdate, user }) {
                 {displayName} - Cycle 2025-2026 - Département support
               </p>
             </div>
-            <NotificationBell onNavigate={(link) => setActiveSection(resolveNotificationSection(link))} />
+            <NotificationBell onNavigate={(notification) => setActiveSection(resolveNotificationSection(notification.link))} />
           </header>
           {renderContent()}
         </main>

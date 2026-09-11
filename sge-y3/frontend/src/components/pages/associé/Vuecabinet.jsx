@@ -215,7 +215,7 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
                 </div>
 
                 <div className="flex items-center gap-5">
-                  <NotificationBell onNavigate={(link) => setActiveSection(resolveNotificationSection(link))} />
+                  <NotificationBell onNavigate={(notification) => setActiveSection(resolveNotificationSection(notification.link))} />
                   <button onClick={() => handleTopAction("Aide")} className="text-slate-500 hover:text-[#0F3A63]">
                     <CircleHelp size={18} />
                   </button>

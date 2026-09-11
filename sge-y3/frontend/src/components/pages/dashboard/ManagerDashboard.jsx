@@ -396,7 +396,16 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
             </div>
 
             <div className="flex items-center gap-4">
-              <NotificationBell onNavigate={(link) => setActiveSection(resolveNotificationSection(link))} />
+              <NotificationBell
+                onNavigate={(notification) => {
+                  const section = resolveNotificationSection(notification.link);
+                  setActiveSection(section);
+                  if (section === "team" && notification.actor_id) {
+                    const member = members.find((item) => item.id === String(notification.actor_id));
+                    if (member) openMemberEvaluation(member);
+                  }
+                }}
+              />
               {activeSection === "team-goals" ? (
                 <button
                   onClick={() => setCreateGoalSignal((value) => value + 1)}

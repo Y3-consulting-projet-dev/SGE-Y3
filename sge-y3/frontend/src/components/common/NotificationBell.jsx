@@ -1,7 +1,7 @@
 import { Bell } from "lucide-react";
 
 import { useNotifications } from "@/hooks/useNotifications";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 function formatRelativeTime(dateString) {
   const date = new Date(dateString);
@@ -24,7 +24,7 @@ export default function NotificationBell({ onNavigate, triggerClassName = "text-
       markRead(notification._id);
     }
     if (notification.link && typeof onNavigate === "function") {
-      onNavigate(notification.link);
+      onNavigate(notification);
     }
   };
 
@@ -58,17 +58,18 @@ export default function NotificationBell({ onNavigate, triggerClassName = "text-
             <p className="px-4 py-6 text-center text-sm text-slate-500">Aucune notification pour le moment.</p>
           ) : (
             notifications.map((notification) => (
-              <button
-                key={notification._id}
-                type="button"
-                onClick={() => handleNotificationClick(notification)}
-                className={`block w-full border-b border-foreground/5 px-4 py-3 text-left text-sm last:border-b-0 hover:bg-foreground/5 ${
-                  notification.is_read ? "text-slate-500" : "font-medium text-[#0F3A63]"
-                }`}
-              >
-                <p>{notification.message}</p>
-                <p className="mt-1 text-xs text-slate-400">{formatRelativeTime(notification.created_at)}</p>
-              </button>
+              <PopoverClose key={notification._id} asChild>
+                <button
+                  type="button"
+                  onClick={() => handleNotificationClick(notification)}
+                  className={`block w-full border-b border-foreground/5 px-4 py-3 text-left text-sm last:border-b-0 hover:bg-foreground/5 ${
+                    notification.is_read ? "text-slate-500" : "font-medium text-[#0F3A63]"
+                  }`}
+                >
+                  <p>{notification.message}</p>
+                  <p className="mt-1 text-xs text-slate-400">{formatRelativeTime(notification.created_at)}</p>
+                </button>
+              </PopoverClose>
             ))
           )}
         </div>
