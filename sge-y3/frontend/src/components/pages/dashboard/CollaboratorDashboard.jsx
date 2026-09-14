@@ -2,6 +2,7 @@
 import {
   CalendarDays,
   ChevronsLeft,
+  ChevronsRight,
   ClipboardList,
   History,
   LayoutDashboard,
@@ -23,6 +24,7 @@ import ProfilePanel from "@/components/profile/ProfilePanel";
 import NotificationBell from "@/components/common/NotificationBell";
 import { getDisplayName } from "@/utils/userPresentation";
 import { getMyAssistantEvaluation, getMyAssistantResults } from "@/api/collaboratorEvaluation";
+import { useActiveCycle } from "@/hooks/useActiveCycle";
 
 const NOTIFICATION_SECTION_MAP = {
   "assistant-self-eval": "self-evaluation",
@@ -62,6 +64,8 @@ const menuGroups = [
 
 function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("dashboard");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const cycleLabel = useActiveCycle();
   const [evaluationData, setEvaluationData] = useState(null);
   const [evaluationError, setEvaluationError] = useState("");
   const [isLoadingEvaluation, setIsLoadingEvaluation] = useState(true);
@@ -262,25 +266,33 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
   return (
     <div className="min-h-screen bg-[#EBEFF3] text-[#0E2B4F]">
       <div className="flex min-h-screen w-full">
-        <aside className="relative min-h-screen w-full max-w-[280px] border-r border-slate-300/70 bg-[#F3F4F6] px-4 py-5">
+        <aside
+          className={`relative min-h-screen w-full border-r border-slate-300/70 bg-[#F3F4F6] px-4 py-5 transition-all duration-200 ${
+            isSidebarCollapsed ? "max-w-[88px]" : "max-w-[280px]"
+          }`}
+        >
           <button
-            onClick={() => setActiveSection("dashboard")}
-            disabled={activeSection === "dashboard"}
-            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#E4E7EB] text-slate-500 shadow-sm hover:bg-slate-300/70 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Retour"
-            title="Retour"
+            onClick={() => setIsSidebarCollapsed((value) => !value)}
+            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#E4E7EB] text-slate-500 shadow-sm hover:bg-slate-300/70"
+            aria-label={isSidebarCollapsed ? "Déplier le menu" : "Replier le menu"}
+            title={isSidebarCollapsed ? "Déplier le menu" : "Replier le menu"}
           >
-            <ChevronsLeft size={14} />
+            {isSidebarCollapsed ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
           </button>
 
-          <div className="mb-8 flex items-center">
-            <img src={logoY3} alt="Y3" className="h-16 w-auto" />
+          <div className={`mb-8 flex items-center ${isSidebarCollapsed ? "justify-center" : "gap-2"}`}>
+            <img src={logoY3} alt="Y3" className={isSidebarCollapsed ? "h-10 w-auto" : "h-16 w-auto"} />
+            {isSidebarCollapsed ? null : (
+              <p className="text-xs font-bold leading-tight text-[#0F3A63]">Système de gestion des évaluations</p>
+            )}
           </div>
 
           <div className="space-y-5 text-sm">
             {menuGroups.map((group) => (
               <div key={group.title}>
-                <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">{group.title}</p>
+                {isSidebarCollapsed ? null : (
+                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">{group.title}</p>
+                )}
                 <div className="space-y-1">
                   {group.items.map((item) => {
                     const Icon = item.icon;
@@ -289,15 +301,16 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
                       <button
                         key={item.key}
                         onClick={() => setActiveSection(item.key)}
+                        title={isSidebarCollapsed ? item.label : undefined}
                         className={`w-full rounded-md px-3 py-2 text-left text-sm transition ${
                           isActive
                             ? "bg-[#D8E3EC] font-semibold text-[#0E4A6B] shadow-sm"
                             : "text-[#0F3A63] hover:bg-slate-200/70"
                         }`}
                       >
-                        <span className="flex items-center gap-2">
+                        <span className={`flex items-center gap-2 ${isSidebarCollapsed ? "justify-center" : ""}`}>
                           <Icon size={15} />
-                          {item.label}
+                          {isSidebarCollapsed ? null : item.label}
                         </span>
                       </button>
                     );
@@ -307,24 +320,33 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
             ))}
           </div>
 
-          <div className="absolute bottom-16 left-4 right-4 rounded-xl bg-white px-3 py-3 shadow-sm">
-            <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#8BC53F] text-xs font-extrabold text-white">
+          <div
+            className={`absolute bottom-16 left-4 right-4 rounded-xl bg-white px-3 py-3 shadow-sm ${
+              isSidebarCollapsed ? "flex justify-center px-2" : ""
+            }`}
+          >
+            <div className={`flex items-center gap-2 ${isSidebarCollapsed ? "justify-center" : ""}`}>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#8BC53F] text-xs font-extrabold text-white">
                 <User size={15} />
               </div>
-              <div>
-                <p className="text-xs font-semibold text-[#0F3A63]">{displayName}</p>
-                <p className="text-xs text-slate-500">{user?.grade}</p>
-              </div>
+              {isSidebarCollapsed ? null : (
+                <div>
+                  <p className="text-xs font-semibold text-[#0F3A63]">{displayName}</p>
+                  <p className="text-xs text-slate-500">{user?.grade}</p>
+                </div>
+              )}
             </div>
           </div>
 
           <button
             onClick={onLogout}
-            className="absolute bottom-5 left-4 flex items-center gap-2 text-left text-sm font-medium text-[#0F3A63] hover:text-[#0E4A6B]"
+            title={isSidebarCollapsed ? "Déconnexion" : undefined}
+            className={`absolute bottom-5 left-4 flex items-center gap-2 text-left text-sm font-medium text-[#0F3A63] hover:text-[#0E4A6B] ${
+              isSidebarCollapsed ? "right-4 justify-center" : ""
+            }`}
           >
             <LogOut size={14} />
-            Déconnexion
+            {isSidebarCollapsed ? null : "Déconnexion"}
           </button>
         </aside>
 
@@ -332,7 +354,7 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
           <header className="mb-5 flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="text-[34px] font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
-              {activeSection === "dashboard" ? <p className="mt-1 text-sm text-slate-500">{displayName} - {user?.grade}</p> : null}
+              {activeSection === "dashboard" ? <p className="mt-1 text-sm text-slate-500">{displayName} - {user?.grade} - {cycleLabel}</p> : null}
             </div>
             <NotificationBell onNavigate={(notification) => setActiveSection(resolveNotificationSection(notification.link))} />
           </header>

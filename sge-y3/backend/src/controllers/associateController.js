@@ -57,15 +57,19 @@ function normalizeText(value = '') {
 }
 
 function isRhDepartment(user) {
-  return normalizeText(user?.department) === 'RH';
-}
+  const department = normalizeText(user?.department);
+  const inRhDepartment = department === 'RH' || department === 'CAPITAL HUMAIN';
 
-function isCapitalHumainDepartment(user) {
-  return normalizeText(user?.department) === 'CAPITAL HUMAIN';
+  if (!inRhDepartment) {
+    return false;
+  }
+
+  // L'assistante RH (grade "Assistant") est revue en interne par la RH, pas par les associés.
+  return normalizeText(user?.grade) !== 'ASSISTANT';
 }
 
 function isAssociateManagerEvaluationTarget(user) {
-  if (!user || isCapitalHumainDepartment(user)) {
+  if (!user) {
     return false;
   }
 
@@ -1672,14 +1676,16 @@ module.exports = {
     });
   },
   async getAssociateManagerEvaluations(request, response) {
-    const managers = await User.find({
-      is_active: true,
-      $or: [
-        { code_categorie: { $in: ['10B', '10C'] } },
-        { department: /^RH$/i },
-      ],
-      $nor: [{ department: /^CAPITAL HUMAIN$/i }],
-    }).select('_id name grade department code_categorie');
+    const managers = (
+      await User.find({
+        is_active: true,
+        $or: [
+          { code_categorie: { $in: ['10B', '10C'] } },
+          { department: /^RH$/i },
+          { department: /^CAPITAL HUMAIN$/i },
+        ],
+      }).select('_id name grade department code_categorie')
+    ).filter(isAssociateManagerEvaluationTarget);
     const managersById = new Map(managers.map((manager) => [String(manager._id), manager]));
     const managerIds = managers.map((manager) => manager._id);
     const managerSelfEvaluations = await EvaluationInstance.find({

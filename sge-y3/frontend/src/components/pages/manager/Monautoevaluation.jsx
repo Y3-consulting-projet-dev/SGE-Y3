@@ -1691,20 +1691,20 @@ function Monautoevaluation() {
                           <div className="flex flex-wrap items-center gap-3">
                             <button
                               type="button"
-                              onClick={handleSubmitMission}
-                              disabled={isSaving || isSubmitting || activeMission.status === "Soumise"}
-                              className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
-                            >
-                              {isSubmitting ? "Soumission..." : "Soumettre la mission"}
-                            </button>
-                            <button
-                              type="button"
                               onClick={() => persistMissionEvaluations(missionEvaluations)}
                               disabled={isSaving || isSubmitting}
                               className="inline-flex items-center gap-2 rounded-md bg-[#79B742] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
                             >
                               {isSaving ? "Sauvegarde..." : "Enregistrer la mission"}
                               <ChevronRight size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleSubmitMission}
+                              disabled={isSaving || isSubmitting || activeMission.status === "Soumise"}
+                              className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
+                            >
+                              {isSubmitting ? "Soumission..." : "Soumettre la mission"}
                             </button>
                           </div>
                         )}

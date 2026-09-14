@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { BarChart2, ChevronsLeft, LogOut, UserRound } from "lucide-react";
+import { BarChart2, ChevronsLeft, ChevronsRight, LogOut, UserRound } from "lucide-react";
 import logoY3 from "@/assets/logo-y3.png";
 import { rhMenuGroups } from "@/data/rhData";
 import TableauRH from "@/components/pages/rh/TableauRH";
@@ -24,6 +24,7 @@ import NotificationBell from "@/components/common/NotificationBell";
 import { saveCommitteeDecision } from "@/api/committee";
 import { getDisplayName } from "@/utils/userPresentation";
 import { getRhReceivedComments, getAssistantRhEvaluationResult } from "@/api/rhOverview";
+import { useActiveCycle } from "@/hooks/useActiveCycle";
 
 const NOTIFICATION_SECTION_MAP = {
   "manager-self-eval": "validations",
@@ -42,6 +43,8 @@ function resolveNotificationSection(link) {
 
 function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const cycleLabel = useActiveCycle();
   const [selectedAssistantRh, setSelectedAssistantRh] = useState(null);
   const [receivedComments, setReceivedComments] = useState([]);
   const [isLoadingReceived, setIsLoadingReceived] = useState(false);
@@ -171,7 +174,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
       return (
         <div className="space-y-4">
           <p className="text-[12px] font-semibold text-slate-500">
-            Cycle 2025-2026 - Notes attribuées par la RH à l'issue de l'évaluation de votre auto-évaluation
+            {cycleLabel} - Notes attribuées par la RH à l'issue de l'évaluation de votre auto-évaluation
           </p>
 
           {isLoadingResult ? (
@@ -333,7 +336,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
           <ComiteEvaluation
             readOnly={assistantMode}
             initialDecisionScope="rh-final"
-            onSubmit={(decisions) => saveCommitteeDecision({ scope: "rh-final", cycle_label: "Cycle 2025-2026", decisions })}
+            onSubmit={(decisions) => saveCommitteeDecision({ scope: "rh-final", cycle_label: cycleLabel, decisions })}
             submitLabel="Transmettre aux associés"
             submittedLabel="Transmis aux associés"
             successMessage="Classement des assistants, seniors et assistants managers transmis aux associés."
@@ -350,25 +353,33 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
   return (
     <div className="min-h-screen bg-[#EEF2F6] text-[#0E2B4F]">
       <div className="flex min-h-screen w-full">
-        <aside className="relative min-h-screen w-full max-w-[270px] border-r border-slate-200/80 bg-white px-5 py-6">
+        <aside
+          className={`relative min-h-screen w-full border-r border-slate-200/80 bg-white px-5 py-6 transition-all duration-200 ${
+            isSidebarCollapsed ? "max-w-[88px]" : "max-w-[270px]"
+          }`}
+        >
           <button
-            onClick={() => setActiveSection("overview")}
-            disabled={activeSection === "overview"}
-            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#EEF2F6] text-slate-500 shadow-sm hover:bg-slate-200/70 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Retour"
-            title="Retour"
+            onClick={() => setIsSidebarCollapsed((value) => !value)}
+            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#EEF2F6] text-slate-500 shadow-sm hover:bg-slate-200/70"
+            aria-label={isSidebarCollapsed ? "Déplier le menu" : "Replier le menu"}
+            title={isSidebarCollapsed ? "Déplier le menu" : "Replier le menu"}
           >
-            <ChevronsLeft size={14} />
+            {isSidebarCollapsed ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
           </button>
 
-          <div className="mb-8 flex items-center">
-            <img src={logoY3} alt="Y3" className="h-16 w-auto" />
+          <div className={`mb-8 flex items-center ${isSidebarCollapsed ? "justify-center" : "gap-2"}`}>
+            <img src={logoY3} alt="Y3" className={isSidebarCollapsed ? "h-10 w-auto" : "h-16 w-auto"} />
+            {isSidebarCollapsed ? null : (
+              <p className="text-xs font-bold leading-tight text-[#0F3A63]">Système de gestion des évaluations</p>
+            )}
           </div>
 
           <nav className="space-y-5 text-sm">
             {rhMenuGroups.map((group) => (
               <div key={group.title}>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">{group.title}</p>
+                {isSidebarCollapsed ? null : (
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">{group.title}</p>
+                )}
                 <div className="space-y-1">
                   {group.items.map((item) => {
                     const Icon = item.icon;
@@ -377,13 +388,14 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
                       <button
                         key={item.key}
                         onClick={() => setActiveSection(item.key)}
+                        title={isSidebarCollapsed ? item.label : undefined}
                         className={`w-full rounded-md px-3 py-2 text-left transition ${
                           isActive ? "bg-[#DDE6EE] font-semibold text-[#0E4A6B]" : "text-[#0F3A63] hover:bg-slate-100"
                         }`}
                       >
-                        <span className="flex items-center gap-2">
+                        <span className={`flex items-center gap-2 ${isSidebarCollapsed ? "justify-center" : ""}`}>
                           <Icon size={15} />
-                          {item.label}
+                          {isSidebarCollapsed ? null : item.label}
                         </span>
                       </button>
                     );
@@ -393,17 +405,20 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
             ))}
             {assistantMode && (
               <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Mes résultats</p>
+                {isSidebarCollapsed ? null : (
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Mes résultats</p>
+                )}
                 <div className="space-y-1">
                   <button
                     onClick={() => setActiveSection("my-results")}
+                    title={isSidebarCollapsed ? "Mes résultats" : undefined}
                     className={`w-full rounded-md px-3 py-2 text-left transition ${
                       activeSection === "my-results" ? "bg-[#DDE6EE] font-semibold text-[#0E4A6B]" : "text-[#0F3A63] hover:bg-slate-100"
                     }`}
                   >
-                    <span className="flex items-center gap-2">
+                    <span className={`flex items-center gap-2 ${isSidebarCollapsed ? "justify-center" : ""}`}>
                       <BarChart2 size={15} />
-                      Mes résultats
+                      {isSidebarCollapsed ? null : "Mes résultats"}
                     </span>
                   </button>
                 </div>
@@ -411,24 +426,29 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
             )}
           </nav>
 
-          <div className="mt-10 rounded-xl bg-[#F3F4F6] px-3 py-3 shadow-sm">
-            <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#8BC53F] text-white">
+          <div className={`mt-10 rounded-xl bg-[#F3F4F6] px-3 py-3 shadow-sm ${isSidebarCollapsed ? "flex justify-center px-2" : ""}`}>
+            <div className={`flex items-center gap-2 ${isSidebarCollapsed ? "justify-center" : ""}`}>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#8BC53F] text-white">
                 <UserRound size={15} />
               </div>
-              <div>
-                <p className="text-xs font-bold text-[#0F3A63]">{displayName}</p>
-                <p className="text-xs text-slate-500">{assistantMode ? "Assistante RH" : user?.grade || user?.department || "RH"}</p>
-              </div>
+              {isSidebarCollapsed ? null : (
+                <div>
+                  <p className="text-xs font-bold text-[#0F3A63]">{displayName}</p>
+                  <p className="text-xs text-slate-500">{assistantMode ? "Assistante RH" : user?.grade || user?.department || "RH"}</p>
+                </div>
+              )}
             </div>
           </div>
 
           <button
             onClick={onLogout}
-            className="mt-6 flex items-center gap-2 text-left text-sm font-medium text-[#0F3A63] hover:text-[#0E4A6B]"
+            title={isSidebarCollapsed ? "Déconnexion" : undefined}
+            className={`mt-6 flex items-center gap-2 text-left text-sm font-medium text-[#0F3A63] hover:text-[#0E4A6B] ${
+              isSidebarCollapsed ? "justify-center" : ""
+            }`}
           >
             <LogOut size={14} />
-            Déconnexion
+            {isSidebarCollapsed ? null : "Déconnexion"}
           </button>
         </aside>
 
@@ -437,7 +457,7 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
             <div>
               <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
               <p className="mt-1 text-sm font-semibold text-slate-500">
-                {assistantMode ? "Cycle 2025-2026 - Consultation RH et gestion des questions" : "Cycle 2025-2026 - Pilotage des évaluations"}
+                {assistantMode ? `${cycleLabel} - Consultation RH et gestion des questions` : `${cycleLabel} - Pilotage des évaluations`}
               </p>
             </div>
             <div className="flex items-center gap-4">

@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import {
   ChevronsLeft,
+  ChevronsRight,
   CircleHelp,
   FileStack,
   History,
@@ -25,12 +26,18 @@ import { getDisplayName, getInitials } from "@/utils/userPresentation";
 
 const NOTIFICATION_SECTION_MAP = {
   "rh-syntheses": "syntheses-rh",
-  "rh-self-eval": "syntheses-rh",
-  "rh-mission": "syntheses-rh",
+  "rh-self-eval": "autoeval-managers",
+  "rh-mission": "autoeval-managers",
   "manager-mission": "autoeval-managers",
+  "assistant-mission": "autoeval-managers",
+  "assistant-self-eval": "autoeval-managers",
   "associate-self-eval": "autoeval-associes",
   "support-self-eval": "autoeval-support",
 };
+
+// Ces notifications concernent une évaluation reçue directement (mission d'assistant/senior
+// avec l'associé en co-destinataire), affichée dans le sous-onglet "Reçues" plutôt que "Managers".
+const RECEIVED_EVALUATION_LINKS = new Set(["assistant-mission", "assistant-self-eval"]);
 
 function resolveNotificationSection(link) {
   return NOTIFICATION_SECTION_MAP[link] || "vue-cabinet";
@@ -51,7 +58,7 @@ const sideMenu = [
   {
     title: "Managers",
     items: [
-      { key: "autoeval-managers", label: "Evaluation Managers", icon: UsersRound },
+      { key: "autoeval-managers", label: "Évaluation des collaborateurs", icon: UsersRound },
       { key: "autoeval-associes", label: "Auto-évaluation Associés", icon: UsersRound },
       { key: "autoeval-support", label: "Evaluation support", icon: UsersRound },
     ],
@@ -80,6 +87,9 @@ const defaultOverview = {
 
 function Vuecabinet({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("vue-cabinet");
+  const [initialManagerId, setInitialManagerId] = useState("");
+  const [initialReceivedId, setInitialReceivedId] = useState("");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [overview, setOverview] = useState(defaultOverview);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState("");
@@ -91,7 +101,7 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
   const pageTitle = useMemo(() => {
     if (activeSection === "syntheses-rh") return "Synthèses validées RH";
     if (activeSection === "committee") return "Comité d'évaluation";
-    if (activeSection === "autoeval-managers") return "Evaluation Managers";
+    if (activeSection === "autoeval-managers") return "Évaluation des collaborateurs";
     if (activeSection === "autoeval-associes") return "Auto-évaluation Associés";
     if (activeSection === "autoeval-support") return "Evaluation Support";
     if (activeSection === "history") return "Mon historique";
@@ -151,25 +161,33 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
   return (
     <div className="min-h-screen bg-[#EDF1F5] text-[#0F3A63]">
       <div className="flex min-h-screen">
-        <aside className="relative w-full max-w-[248px] border-r border-slate-200 bg-[#F5F7FA] px-4 py-6">
+        <aside
+          className={`relative w-full border-r border-slate-200 bg-[#F5F7FA] px-4 py-6 transition-all duration-200 ${
+            isSidebarCollapsed ? "max-w-[88px]" : "max-w-[248px]"
+          }`}
+        >
           <button
-            onClick={() => setActiveSection("vue-cabinet")}
-            disabled={activeSection === "vue-cabinet"}
-            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#E4E7EB] text-slate-500 shadow-sm hover:bg-slate-300/70 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Retour"
-            title="Retour"
+            onClick={() => setIsSidebarCollapsed((value) => !value)}
+            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#E4E7EB] text-slate-500 shadow-sm hover:bg-slate-300/70"
+            aria-label={isSidebarCollapsed ? "Déplier le menu" : "Replier le menu"}
+            title={isSidebarCollapsed ? "Déplier le menu" : "Replier le menu"}
           >
-            <ChevronsLeft size={14} />
+            {isSidebarCollapsed ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
           </button>
 
-          <div className="mb-10 flex items-center">
-            <img src={logoY3} alt="Y3" className="h-16 w-auto object-contain" />
+          <div className={`mb-10 flex items-center ${isSidebarCollapsed ? "justify-center" : "gap-2"}`}>
+            <img src={logoY3} alt="Y3" className={isSidebarCollapsed ? "h-10 w-auto object-contain" : "h-16 w-auto object-contain"} />
+            {isSidebarCollapsed ? null : (
+              <p className="text-xs font-bold leading-tight text-[#0F3A63]">Système de gestion des évaluations</p>
+            )}
           </div>
 
           <nav className="space-y-6">
             {sideMenu.map((group) => (
               <div key={group.title}>
-                <p className="mb-2 text-xs font-medium text-slate-500">{group.title}</p>
+                {isSidebarCollapsed ? null : (
+                  <p className="mb-2 text-xs font-medium text-slate-500">{group.title}</p>
+                )}
                 <div className="space-y-1">
                   {group.items.map((item) => {
                     const Icon = item.icon;
@@ -178,13 +196,14 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
                       <button
                         key={item.key}
                         onClick={() => setActiveSection(item.key)}
+                        title={isSidebarCollapsed ? item.label : undefined}
                         className={`w-full rounded-md px-2 py-2 text-left text-sm ${
                           isActive ? "bg-[#C9D8E6] font-semibold text-[#0E4A6B]" : "text-[#0F3A63] hover:bg-slate-200/60"
                         }`}
                       >
-                        <span className="flex items-center gap-2">
+                        <span className={`flex items-center gap-2 ${isSidebarCollapsed ? "justify-center" : ""}`}>
                           <Icon size={14} />
-                          {item.label}
+                          {isSidebarCollapsed ? null : item.label}
                         </span>
                       </button>
                     );
@@ -196,10 +215,13 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
 
           <button
             onClick={onLogout}
-            className="mt-16 flex items-center gap-2 text-sm font-semibold text-[#0F3A63] hover:text-[#0E4A6B]"
+            title={isSidebarCollapsed ? "Déconnexion" : undefined}
+            className={`mt-16 flex items-center gap-2 text-sm font-semibold text-[#0F3A63] hover:text-[#0E4A6B] ${
+              isSidebarCollapsed ? "justify-center" : ""
+            }`}
           >
             <LogOut size={14} />
-            Déconnexion
+            {isSidebarCollapsed ? null : "Déconnexion"}
           </button>
         </aside>
 
@@ -215,7 +237,20 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
                 </div>
 
                 <div className="flex items-center gap-5">
-                  <NotificationBell onNavigate={(notification) => setActiveSection(resolveNotificationSection(notification.link))} />
+                  <NotificationBell
+                    onNavigate={(notification) => {
+                      const section = resolveNotificationSection(notification.link);
+                      setActiveSection(section);
+                      if (section !== "autoeval-managers") {
+                        return;
+                      }
+                      if (RECEIVED_EVALUATION_LINKS.has(notification.link) && notification.entity_id) {
+                        setInitialReceivedId(String(notification.entity_id));
+                      } else if (notification.actor_id) {
+                        setInitialManagerId(String(notification.actor_id));
+                      }
+                    }}
+                  />
                   <button onClick={() => handleTopAction("Aide")} className="text-slate-500 hover:text-[#0F3A63]">
                     <CircleHelp size={18} />
                   </button>
@@ -286,7 +321,7 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
               workflowText="Les assistants, seniors, assistants managers et membres du service support classés par la RH restent dans leurs bulles. Les associés ajoutent ensuite uniquement la RH et les managers / senior managers, saisissent leur taux, puis envoient le tout à la RH."
             />
           ) : activeSection === "autoeval-managers" ? (
-            <Autoevamanager />
+            <Autoevamanager initialManagerId={initialManagerId} initialReceivedId={initialReceivedId} />
           ) : activeSection === "autoeval-associes" ? (
             <AutoevaluationAssocie />
           ) : activeSection === "autoeval-support" ? (

@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { ChevronsLeft, ClipboardList, History, LayoutDashboard, LogOut, MessageSquare, Settings2 } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, ClipboardList, History, LayoutDashboard, LogOut, MessageSquare, Settings2 } from "lucide-react";
 import logoY3 from "@/assets/logo-y3.png";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import NotificationBell from "@/components/common/NotificationBell";
@@ -7,6 +7,7 @@ import MonautoevaluationSupport from "@/components/pages/support/Monautoevaluati
 import Monhistorique from "@/components/pages/support/Monhistorique";
 import { getDisplayName } from "@/utils/userPresentation";
 import { getSupportSelfEvaluation, saveSupportChiefComments, getReceivedSupportChiefComments } from "@/api/supportEvaluation";
+import { useActiveCycle } from "@/hooks/useActiveCycle";
 
 const NOTIFICATION_SECTION_MAP = {
   "support-self-eval": "self-evaluation",
@@ -26,6 +27,8 @@ const supportMenu = [
 
 function VueSupport({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const cycleLabel = useActiveCycle();
   const [commentsTab, setCommentsTab] = useState("sent");
 
   const [chiefComments, setChiefComments] = useState([]);
@@ -336,19 +339,25 @@ function VueSupport({ onLogout, onUserUpdate, user }) {
   return (
     <div className="min-h-screen bg-[#EEF2F6] text-[#0E2B4F]">
       <div className="flex min-h-screen w-full">
-        <aside className="relative min-h-screen w-full max-w-[260px] border-r border-slate-200/80 bg-white px-5 py-6">
+        <aside
+          className={`relative min-h-screen w-full border-r border-slate-200/80 bg-white px-5 py-6 transition-all duration-200 ${
+            isSidebarCollapsed ? "max-w-[88px]" : "max-w-[260px]"
+          }`}
+        >
           <button
-            onClick={() => setActiveSection("overview")}
-            disabled={activeSection === "overview"}
-            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#EEF2F6] text-slate-500 shadow-sm hover:bg-slate-200/70 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Retour"
-            title="Retour"
+            onClick={() => setIsSidebarCollapsed((value) => !value)}
+            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#EEF2F6] text-slate-500 shadow-sm hover:bg-slate-200/70"
+            aria-label={isSidebarCollapsed ? "Déplier le menu" : "Replier le menu"}
+            title={isSidebarCollapsed ? "Déplier le menu" : "Replier le menu"}
           >
-            <ChevronsLeft size={14} />
+            {isSidebarCollapsed ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
           </button>
 
-          <div className="mb-8 flex items-center">
-            <img src={logoY3} alt="Y3" className="h-16 w-auto object-contain" />
+          <div className={`mb-8 flex items-center ${isSidebarCollapsed ? "justify-center" : "gap-2"}`}>
+            <img src={logoY3} alt="Y3" className={isSidebarCollapsed ? "h-10 w-auto object-contain" : "h-16 w-auto object-contain"} />
+            {isSidebarCollapsed ? null : (
+              <p className="text-xs font-bold leading-tight text-[#0F3A63]">Système de gestion des évaluations</p>
+            )}
           </div>
           <nav className="space-y-1 text-sm">
             {supportMenu.map((item) => {
@@ -358,21 +367,28 @@ function VueSupport({ onLogout, onUserUpdate, user }) {
                 <button
                   key={item.key}
                   onClick={() => setActiveSection(item.key)}
+                  title={isSidebarCollapsed ? item.label : undefined}
                   className={`w-full rounded-md px-3 py-2 text-left ${
                     isActive ? "bg-[#DDE6EE] font-semibold text-[#0E4A6B]" : "text-[#0F3A63] hover:bg-slate-100"
                   }`}
                 >
-                  <span className="flex items-center gap-2">
+                  <span className={`flex items-center gap-2 ${isSidebarCollapsed ? "justify-center" : ""}`}>
                     <Icon size={15} />
-                    {item.label}
+                    {isSidebarCollapsed ? null : item.label}
                   </span>
                 </button>
               );
             })}
           </nav>
-          <button onClick={onLogout} className="mt-10 flex items-center gap-2 text-sm font-semibold text-[#0F3A63]">
+          <button
+            onClick={onLogout}
+            title={isSidebarCollapsed ? "Deconnexion" : undefined}
+            className={`mt-10 flex items-center gap-2 text-sm font-semibold text-[#0F3A63] ${
+              isSidebarCollapsed ? "justify-center" : ""
+            }`}
+          >
             <LogOut size={14} />
-            Deconnexion
+            {isSidebarCollapsed ? null : "Deconnexion"}
           </button>
         </aside>
 
@@ -381,7 +397,7 @@ function VueSupport({ onLogout, onUserUpdate, user }) {
             <div>
               <h1 className="text-3xl font-black tracking-tight text-[#0F3A63]">{pageTitle}</h1>
               <p className="mt-1 text-sm font-semibold text-slate-500">
-                {displayName} - Cycle 2025-2026 - Département support
+                {displayName} - {cycleLabel} - Département support
               </p>
             </div>
             <NotificationBell onNavigate={(notification) => setActiveSection(resolveNotificationSection(notification.link))} />

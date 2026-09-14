@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const User = require('../models/User');
+const { getActiveCycle } = require('../utils/activeCycle');
 const {
   ALLOWED_GRADES,
   getCategoryFromGrade,
@@ -165,9 +166,15 @@ async function updatePassword(request, response) {
   });
 }
 
+async function getActiveCycleInfo(_request, response) {
+  const cycle = getActiveCycle();
+  return response.json({ cycle });
+}
+
 module.exports = {
   buildAuthResponse,
   login,
   updatePassword,
   updateProfile,
+  getActiveCycleInfo,
 };

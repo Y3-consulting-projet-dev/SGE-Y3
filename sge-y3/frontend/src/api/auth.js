@@ -38,6 +38,10 @@ async function request(path, options = {}) {
   return data;
 }
 
+export async function getActiveCycle() {
+  return request("/auth/active-cycle");
+}
+
 export async function updateProfile(payload) {
   return request("/auth/me/profile", {
     method: "PUT",

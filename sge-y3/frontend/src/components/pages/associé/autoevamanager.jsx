@@ -276,7 +276,7 @@ function getSectionProgress(section) {
   return Math.round((answeredThemes / totalThemes) * 100);
 }
 
-function Autoevamanager() {
+function Autoevamanager({ initialManagerId = "", initialReceivedId = "" } = {}) {
   const [listData, setListData] = useState(null);
   const [detailData, setDetailData] = useState(null);
   const [selectedManagerId, setSelectedManagerId] = useState("");
@@ -314,7 +314,16 @@ function Autoevamanager() {
         if (cancelled) return;
         setListData(response);
         setReceivedEvaluations(receivedResponse?.items || []);
-        setSelectedManagerId(response?.items?.[0]?.id || "");
+        const hasInitialManager =
+          initialManagerId && (response?.items || []).some((item) => item.id === initialManagerId);
+        setSelectedManagerId(hasInitialManager ? initialManagerId : response?.items?.[0]?.id || "");
+
+        const hasInitialReceived =
+          initialReceivedId && (receivedResponse?.items || []).some((item) => item.id === initialReceivedId);
+        if (hasInitialReceived) {
+          setActiveView("received");
+          setSelectedReceivedId(initialReceivedId);
+        }
       } catch (error) {
         if (!cancelled) {
           setErrorMessage(error.message || "Chargement des managers impossible.");
@@ -415,6 +424,27 @@ function Autoevamanager() {
   }, [activeView, receivedEvaluations, selectedReceivedId]);
 
   const items = useMemo(() => listData?.items || [], [listData?.items]);
+  const groupedItems = useMemo(() => {
+    const groupOrder = ["Senior manager", "Manager", "RH"];
+    const groups = new Map();
+
+    items.forEach((item) => {
+      const department = String(item.department || "").trim().toUpperCase();
+      const groupLabel = department === "RH" || department === "CAPITAL HUMAIN" ? "RH" : item.grade || "Autres";
+
+      if (!groups.has(groupLabel)) {
+        groups.set(groupLabel, []);
+      }
+
+      groups.get(groupLabel).push(item);
+    });
+
+    return [...groups.entries()].sort(([left], [right]) => {
+      const leftIndex = groupOrder.indexOf(left);
+      const rightIndex = groupOrder.indexOf(right);
+      return (leftIndex === -1 ? groupOrder.length : leftIndex) - (rightIndex === -1 ? groupOrder.length : rightIndex);
+    });
+  }, [items]);
   const selectedManager = items.find((item) => item.id === selectedManagerId) || null;
   const selfMissions = detailData?.self_evaluation?.missions || [];
   const receivedMissionsTotal = receivedEvaluations.reduce(
@@ -857,7 +887,7 @@ function Autoevamanager() {
           <div>
             <aside className="rounded-xl bg-[#F4F7FB] p-4">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-base font-extrabold text-[#0F3A63]">Sélection du manager</h2>
+                <h2 className="text-base font-extrabold text-[#0F3A63]">Sélection du profil</h2>
                 <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#0F4A72]">
                   {items.length} profil(s)
                 </span>
@@ -870,10 +900,14 @@ function Autoevamanager() {
                   onChange={(event) => setSelectedManagerId(event.target.value)}
                   className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-[#0F3A63] outline-none"
                 >
-                  {items.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name} - {item.department}
-                    </option>
+                  {groupedItems.map(([groupLabel, groupItems]) => (
+                    <optgroup key={groupLabel} label={groupLabel}>
+                      {groupItems.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name} - {item.department}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </label>
