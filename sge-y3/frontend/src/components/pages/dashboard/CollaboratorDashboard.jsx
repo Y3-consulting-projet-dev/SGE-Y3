@@ -30,6 +30,7 @@ const NOTIFICATION_SECTION_MAP = {
   "assistant-self-eval": "self-evaluation",
   "assistant-mission": "self-evaluation",
   development: "development",
+  "self-evaluation-reminder": "self-evaluation",
 };
 
 function resolveNotificationSection(link) {
@@ -65,7 +66,7 @@ const menuGroups = [
 function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("dashboard");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const cycleLabel = useActiveCycle();
+  const { cycleLabel, endDate: cycleEndDate } = useActiveCycle();
   const [evaluationData, setEvaluationData] = useState(null);
   const [evaluationError, setEvaluationError] = useState("");
   const [isLoadingEvaluation, setIsLoadingEvaluation] = useState(true);
@@ -199,7 +200,14 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
         return <section className="rounded-lg bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">{evaluationError}</section>;
       }
 
-      return <MonTableauDeBord evaluation={evaluationData} onContinue={() => setActiveSection("self-evaluation")} isLoading={isLoadingEvaluation} />;
+      return (
+        <MonTableauDeBord
+          evaluation={evaluationData}
+          onContinue={() => setActiveSection("self-evaluation")}
+          isLoading={isLoadingEvaluation}
+          cycleEndDate={cycleEndDate}
+        />
+      );
     }
 
     if (activeSection === "self-evaluation") {

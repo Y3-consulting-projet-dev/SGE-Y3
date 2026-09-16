@@ -35,6 +35,7 @@ const NOTIFICATION_SECTION_MAP = {
   "collaborator-eval-received": "validations",
   "manager-eval-received": "validations",
   "committee-decision": "committee",
+  "self-evaluation-reminder": "self-evaluation-rh",
 };
 
 function resolveNotificationSection(link) {
@@ -44,7 +45,7 @@ function resolveNotificationSection(link) {
 function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const cycleLabel = useActiveCycle();
+  const { cycleLabel, endDate: cycleEndDate } = useActiveCycle();
   const [selectedAssistantRh, setSelectedAssistantRh] = useState(null);
   const [receivedComments, setReceivedComments] = useState([]);
   const [isLoadingReceived, setIsLoadingReceived] = useState(false);
@@ -112,7 +113,11 @@ function VueRH({ assistantMode = false, onLogout, onUserUpdate, user }) {
     }
 
     if (activeSection === "self-evaluation-rh") {
-      return assistantMode ? <MonautoevaluationAssistanteRH /> : <MonautoevaluationRH />;
+      return assistantMode ? (
+        <MonautoevaluationAssistanteRH cycleEndDate={cycleEndDate} />
+      ) : (
+        <MonautoevaluationRH cycleEndDate={cycleEndDate} />
+      );
     }
 
     if (activeSection === "questionnaire") {

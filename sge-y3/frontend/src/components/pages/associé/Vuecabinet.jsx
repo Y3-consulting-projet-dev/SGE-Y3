@@ -21,8 +21,10 @@ import ProfilePanel from "@/components/profile/ProfilePanel";
 import NotificationBell from "@/components/common/NotificationBell";
 import logoY3 from "@/assets/logo-y3.png";
 import { saveCommitteeDecision } from "@/api/committee";
-import { getAssociateOverview } from "@/api/associateOverview";
+import { getAssociateOverview, getAssociateSelfEvaluation } from "@/api/associateOverview";
 import { getDisplayName, getInitials } from "@/utils/userPresentation";
+import { useActiveCycle } from "@/hooks/useActiveCycle";
+import DeadlineBanner from "@/components/common/DeadlineBanner";
 
 const NOTIFICATION_SECTION_MAP = {
   "rh-syntheses": "syntheses-rh",
@@ -33,6 +35,7 @@ const NOTIFICATION_SECTION_MAP = {
   "assistant-self-eval": "autoeval-managers",
   "associate-self-eval": "autoeval-associes",
   "support-self-eval": "autoeval-support",
+  "self-evaluation-reminder": "autoeval-associes",
 };
 
 // Ces notifications concernent une évaluation reçue directement (mission d'assistant/senior
@@ -87,12 +90,14 @@ const defaultOverview = {
 
 function Vuecabinet({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("vue-cabinet");
+  const { endDate: cycleEndDate } = useActiveCycle();
   const [initialManagerId, setInitialManagerId] = useState("");
   const [initialReceivedId, setInitialReceivedId] = useState("");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [overview, setOverview] = useState(defaultOverview);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState("");
+  const [selfEvaluationStatus, setSelfEvaluationStatus] = useState("");
   const displayName = getDisplayName(user);
   const initials = getInitials(user);
   const profileKey = [user?.id, user?.email, user?.first_name, user?.last_name, user?.grade, user?.department].join("|");
@@ -157,6 +162,20 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
       isMounted = false;
     };
   }, [activeSection]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getAssociateSelfEvaluation()
+      .then((data) => {
+        if (isMounted) setSelfEvaluationStatus(data?.evaluation?.status || "");
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#EDF1F5] text-[#0F3A63]">
@@ -264,6 +283,14 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
                 </div>
               </header>
 
+              <div className="mb-8">
+                <DeadlineBanner
+                  isSubmitted={selfEvaluationStatus === "Soumis aux Associés" || selfEvaluationStatus === "Soumis aux Associes"}
+                  submittedMessage="Mon auto-évaluation a déjà été soumise à l'autre associé."
+                  endDate={cycleEndDate}
+                />
+              </div>
+
               <section className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {overview.stats.map((card) => (
                   <article key={card.title} className="rounded-lg bg-[#0D496A] p-4 text-white">
@@ -323,7 +350,7 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
           ) : activeSection === "autoeval-managers" ? (
             <Autoevamanager initialManagerId={initialManagerId} initialReceivedId={initialReceivedId} />
           ) : activeSection === "autoeval-associes" ? (
-            <AutoevaluationAssocie />
+            <AutoevaluationAssocie cycleEndDate={cycleEndDate} />
           ) : activeSection === "autoeval-support" ? (
             <AutoevaluationSupport />
           ) : activeSection === "history" ? (

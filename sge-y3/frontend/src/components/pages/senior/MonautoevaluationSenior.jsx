@@ -9,6 +9,7 @@ import {
 } from "@/api/seniorEvaluation";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
 import { getDisplayName } from "@/utils/userPresentation";
+import DeadlineBanner from "@/components/common/DeadlineBanner";
 
 const gradingHelp = [
   { level: "1", text: "Insuffisant - objectif non atteint", color: "text-[#FF7A00]" },
@@ -268,7 +269,7 @@ function MissionScoreRow({ criterion, onSelect, onRemove }) {
   );
 }
 
-function MonautoevaluationSenior({ user }) {
+function MonautoevaluationSenior({ user, cycleEndDate }) {
   const [evaluationData, setEvaluationData] = useState(null);
   const [sections, setSections] = useState([]);
   const [missionEvaluations, setMissionEvaluations] = useState([]);
@@ -886,8 +887,19 @@ function MonautoevaluationSenior({ user }) {
     );
   }
 
+  const isSeniorEvaluationSubmitted = Boolean(
+    evaluationData?.evaluation?.status &&
+      !["Brouillon", "En cours"].includes(evaluationData.evaluation.status)
+  );
+
   return (
     <section className="space-y-4">
+      <DeadlineBanner
+        isSubmitted={isSeniorEvaluationSubmitted}
+        submittedMessage={`Auto-évaluation soumise (${evaluationData?.evaluation?.status}). En attente de traitement.`}
+        endDate={cycleEndDate}
+      />
+
       <div className="rounded-lg bg-[#DCECCB] px-4 py-3 text-sm font-semibold text-[#184D2E]">
         Le Senior s'évalue désormais uniquement par mission. Les commentaires de section sont obligatoires.
       </div>

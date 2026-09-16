@@ -1,6 +1,7 @@
 ﻿import { CheckCircle2, CircleDashed } from "lucide-react";
 
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
+import DeadlineBanner from "@/components/common/DeadlineBanner";
 
 
 function formatProgressSubtitle(evaluation) {
@@ -29,7 +30,7 @@ function getEvaluationStatusLabel(status) {
   return "En cours";
 }
 
-function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
+function MonTableauDeBord({ evaluation, onContinue, isLoading, cycleEndDate }) {
   const topCards = [
     {
       title: "Auto-évaluation",
@@ -65,17 +66,16 @@ function MonTableauDeBord({ evaluation, onContinue, isLoading }) {
     ? []
     : [{ label: "Soumettre l'auto-évaluation", note: "À faire" }];
 
+  const submittedMessage =
+    evaluation?.evaluation?.status === "Soumis aux Managers"
+      ? "Auto-évaluation soumise aux managers concernés. En attente de retour."
+      : evaluation?.evaluation?.status === "Soumis au Manager"
+      ? "Auto-évaluation soumise au(x) manager(s). En attente de traitement."
+      : "Auto-évaluation soumise à la RH. En attente de traitement.";
+
   return (
     <div className="space-y-4">
-      <div className="rounded-sm bg-[#BFE2B9] px-3 py-2 text-[11px] font-semibold text-[#114F35]">
-        {evaluation?.evaluation?.status === "Soumis aux Managers"
-          ? "Auto-évaluation soumise aux managers concernés. En attente de retour."
-          : evaluation?.evaluation?.status === "Soumis au Manager"
-          ? "Auto-évaluation soumise au(x) manager(s). En attente de traitement."
-          : evaluation?.evaluation?.status === "Soumis à la RH"
-          ? "Auto-évaluation soumise à la RH. En attente de traitement."
-          : "Auto-évaluation en cours. Vos modifications sont enregistrées automatiquement."}
-      </div>
+      <DeadlineBanner isSubmitted={isSelfEvaluationSubmitted} submittedMessage={submittedMessage} endDate={cycleEndDate} />
 
       <section className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(3,minmax(0,240px))] md:justify-between md:gap-5">
         {topCards.map((card) => (

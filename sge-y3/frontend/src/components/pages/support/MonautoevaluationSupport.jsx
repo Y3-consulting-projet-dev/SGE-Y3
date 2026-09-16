@@ -6,6 +6,7 @@ import {
   saveSupportSelfEvaluation,
   submitSupportSelfEvaluation,
 } from "@/api/supportEvaluation";
+import DeadlineBanner from "@/components/common/DeadlineBanner";
 
 function getSupportRoleKey(user) {
   return user?.grade || "Service support";
@@ -66,12 +67,13 @@ function ScoreButtons({ value, onChange }) {
   );
 }
 
-function MonautoevaluationSupport({ user }) {
+function MonautoevaluationSupport({ user, cycleEndDate }) {
   const roleKey = getSupportRoleKey(user);
   const [sections, setSections] = useState([]);
   const [activeSectionId, setActiveSectionId] = useState("");
   const [pageIndexes, setPageIndexes] = useState({});
   const [status, setStatus] = useState("");
+  const [evaluationStatus, setEvaluationStatus] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [customTitre, setCustomTitre] = useState("");
   const [customLabel, setCustomLabel] = useState("");
@@ -91,6 +93,7 @@ function MonautoevaluationSupport({ user }) {
         if (cancelled) return;
         setSections(nextSections);
         setActiveSectionId(nextSections[0]?.id || "");
+        setEvaluationStatus(response?.evaluation?.status || "");
       } catch (error) {
         if (!cancelled) setStatus(error.message || "Chargement impossible.");
       } finally {
@@ -282,6 +285,7 @@ function MonautoevaluationSupport({ user }) {
       const response = await submitSupportSelfEvaluation();
       const nextSections = response?.evaluation?.sections || sections;
       setSections(nextSections);
+      setEvaluationStatus(response?.evaluation?.status || "Soumis aux Associes");
       setStatus(response.message || "Auto-évaluation support soumise directement aux associés.");
     } catch (error) {
       setStatus(error.message || "Soumission impossible.");
@@ -307,6 +311,12 @@ function MonautoevaluationSupport({ user }) {
 
   return (
     <section className="space-y-5">
+      <DeadlineBanner
+        isSubmitted={evaluationStatus === "Soumis aux Associes"}
+        submittedMessage="Auto-évaluation soumise aux associés. En attente de traitement."
+        endDate={cycleEndDate}
+      />
+
       <article className="rounded-xl bg-white p-5 shadow-sm">
         <p className="text-xs font-bold uppercase text-slate-400">Département support</p>
         <h2 className="mt-1 text-2xl font-black text-[#0F3A63]">Mon auto-évaluation</h2>

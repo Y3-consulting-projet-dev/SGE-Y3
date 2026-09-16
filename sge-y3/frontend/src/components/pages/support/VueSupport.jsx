@@ -11,6 +11,7 @@ import { useActiveCycle } from "@/hooks/useActiveCycle";
 
 const NOTIFICATION_SECTION_MAP = {
   "support-self-eval": "self-evaluation",
+  "self-evaluation-reminder": "self-evaluation",
 };
 
 function resolveNotificationSection(link) {
@@ -28,7 +29,7 @@ const supportMenu = [
 function VueSupport({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const cycleLabel = useActiveCycle();
+  const { cycleLabel, endDate: cycleEndDate } = useActiveCycle();
   const [commentsTab, setCommentsTab] = useState("sent");
 
   const [chiefComments, setChiefComments] = useState([]);
@@ -116,7 +117,7 @@ function VueSupport({ onLogout, onUserUpdate, user }) {
 
   const renderContent = () => {
     if (activeSection === "self-evaluation") {
-      return <MonautoevaluationSupport user={user} />;
+      return <MonautoevaluationSupport user={user} cycleEndDate={cycleEndDate} />;
     }
 
     if (activeSection === "history") {

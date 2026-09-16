@@ -33,6 +33,7 @@ const {
   saveAssistantRhEvaluation,
   saveMyRhSelfEvaluation,
   selectRhDepartmentEvaluation,
+  sendSelfEvaluationReminder,
   submitMyAssistantRhSelfEvaluation,
   submitAssistantRhEvaluation,
   submitRhSyntheses,
@@ -81,5 +82,6 @@ router.get('/cycles', requireAuth, requireRh, getRhCycles);
 router.post('/cycles', requireAuth, requireRh, createRhCycle);
 router.get('/my-evaluation-result', requireAuth, requireRh, getMyAssistantRhEvaluationResult);
 router.get('/received-comments', requireAuth, requireRh, getRhReceivedChiefComments);
+router.post('/reminders/self-evaluation', requireAuth, requireRh, sendSelfEvaluationReminder);
 
 module.exports = router;

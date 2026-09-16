@@ -40,7 +40,7 @@ const {
 const { activateCycle, getCurrentCycleLabel } = require('../utils/activeCycle');
 const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
 const { fetchAssociateCommentsForManager } = require('./managerController');
-const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
+const { notifySubmissionRecipients, notifyReminderRecipients } = require('../utils/submissionNotifications');
 const { notifyInAppRecipients } = require('../utils/inAppNotifications');
 
 const RH_RELEVANT_STATUSES = ['Soumis a RH', 'Valide RH', 'Transmis a l associe', 'Cloture'];
@@ -3184,6 +3184,67 @@ async function getMyRhEvaluationHistory(request, response) {
   return response.json({ cycles });
 }
 
+const SELF_EVALUATION_NOT_SUBMITTED_STATUSES = ['Brouillon', 'En cours', 'En attente'];
+
+async function sendSelfEvaluationReminder(request, response) {
+  const cycle = getCurrentCycleLabel();
+  const users = await User.find({ is_active: true }).select('_id name email grade department code_categorie');
+
+  const usersWithTemplate = users
+    .map((user) => ({ user, resolved: resolveTemplateTypeForUser(user, { supportEmails: SUPPORT_EMAILS }) }))
+    .filter((entry) => entry.resolved);
+
+  const instances = await EvaluationInstance.find({
+    cycle_label: cycle,
+    evalue_id: { $in: usersWithTemplate.map((entry) => entry.user._id) },
+  }).select('evalue_id template_type status');
+
+  const instanceByKey = new Map(
+    instances.map((instance) => [`${instance.evalue_id}:${instance.template_type}`, instance])
+  );
+
+  const pendingUsers = usersWithTemplate
+    .filter(({ user, resolved }) => {
+      const instance = instanceByKey.get(`${String(user._id)}:${resolved.templateType}`);
+      return !instance || SELF_EVALUATION_NOT_SUBMITTED_STATUSES.includes(instance.status);
+    })
+    .map((entry) => entry.user)
+    .filter((user) => String(user._id) !== String(request.user._id));
+
+  if (!pendingUsers.length) {
+    return response.json({
+      message: "Tout le monde a deja soumis son auto-evaluation pour ce cycle.",
+      remindedCount: 0,
+    });
+  }
+
+  const reminderMessage = `Rappel de la RH (${request.user.name}) : la date limite du cycle ${cycle} approche. Merci de finaliser et de soumettre votre auto-evaluation des que possible.`;
+  const recipientIds = pendingUsers.map((user) => user._id);
+
+  notifyReminderRecipients({
+    recipientIds,
+    senderName: request.user.name,
+    message: reminderMessage,
+    cycleLabel: cycle,
+  });
+
+  notifyInAppRecipients({
+    recipientIds,
+    submitterName: request.user.name,
+    label: reminderMessage,
+    cycleLabel: cycle,
+    type: 'self_evaluation_reminder',
+    actorId: request.user._id,
+    targetSection: 'self-evaluation-reminder',
+    messageOverride: reminderMessage,
+  });
+
+  return response.json({
+    message: `Rappel envoye a ${pendingUsers.length} personne(s) n'ayant pas encore soumis leur auto-evaluation.`,
+    remindedCount: pendingUsers.length,
+  });
+}
+
 async function listAllMembersForRh(request, response) {
   const members = await User.find({
     is_active: true,
@@ -3407,6 +3468,7 @@ module.exports = {
   saveMyAssistantRhSelfEvaluation,
   saveMyRhSelfEvaluation,
   selectRhDepartmentEvaluation,
+  sendSelfEvaluationReminder,
   SUPPORT_EMAILS,
   submitAssistantRhEvaluation,
   submitMyAssistantRhSelfEvaluation,

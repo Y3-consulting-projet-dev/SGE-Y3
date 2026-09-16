@@ -19,7 +19,11 @@ const {
 } = require('../utils/evaluationHelpers');
 const { buildCyclesForInstances, resolveTemplateTypeForUser } = require('../utils/evaluationHistory');
 const { getCurrentCycleLabel } = require('../utils/activeCycle');
-const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
+const {
+  fetchManagerCommentsForMember,
+  getOrCreateAssistantEvaluation,
+  getOrCreateSeniorEvaluation,
+} = require('./collaboratorEvaluationController');
 const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
 const { notifyInAppRecipients } = require('../utils/inAppNotifications');
 const FULL_RH_EMAILS = ['isabella.beda@ycubeac.com'];
@@ -356,6 +360,14 @@ async function getSelfEvaluationInstanceForMember(member) {
     cycle_label: getCurrentCycleLabel(),
     template_type: getExpectedTemplateType(member),
   }).select('status submitted_at sections submitted_to_user_ids mission_evaluations anonymous_feedback chief_comments development_wishes development_training_requests development_status development_submitted_at development_submitted_to_user_id development_submitted_to_name development_training_decision development_training_manager_comment development_training_decided_at');
+}
+
+async function getOrCreateSelfEvaluationInstanceForMember(member) {
+  const getOrCreate = getExpectedTemplateType(member) === 'assistant-self-evaluation'
+    ? getOrCreateAssistantEvaluation
+    : getOrCreateSeniorEvaluation;
+
+  return getOrCreate(member);
 }
 
 function buildSelfEvaluationPayload(instance) {
@@ -1011,7 +1023,7 @@ async function getOrCreateManagerMemberReview(managerUser, member) {
       manager_id: managerUser._id,
       member_id: member._id,
       member_department: evaluationDepartment,
-      status: 'En cours',
+      status: 'Brouillon',
       sections: toPersistenceSections(templateSections),
       last_saved_at: new Date(),
     });
@@ -1891,7 +1903,7 @@ async function addMissionToManagerMember(request, response) {
   const evaluationDepartment = resolveEvaluationDepartmentForManagerReview(request.user, member);
   const [review, selfEvaluationInstance, rhRecipients] = await Promise.all([
     getOrCreateManagerMemberReview(request.user, member),
-    getSelfEvaluationInstanceForMember(member),
+    getOrCreateSelfEvaluationInstanceForMember(member),
     resolveRhRecipients(),
   ]);
 
@@ -2579,6 +2591,12 @@ module.exports = {
     const selfEvalMission = (selfEvaluationInstance?.mission_evaluations || []).find(
       (mission) => mission.mission_id === missionId
     );
+
+    if (selfEvalMission && selfEvalMission.status !== 'Soumise') {
+      return response.status(400).json({
+        message: `En attente de l'auto-évaluation de cette mission par ${member.name} avant transmission à la RH.`,
+      });
+    }
 
     if (missionHasAssociateRecipient(selfEvalMission) && !ASSOCIATE_VALIDATED_STATUSES.includes(selfEvaluationInstance?.status)) {
       return response.status(400).json({

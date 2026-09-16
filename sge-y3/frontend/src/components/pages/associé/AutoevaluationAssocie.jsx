@@ -10,6 +10,7 @@ import {
   submitReceivedAssociateEvaluationToRh,
 } from "@/api/associateOverview";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
+import DeadlineBanner from "@/components/common/DeadlineBanner";
 
 function getPageProgress(page) {
   const themes = page?.themes || [];
@@ -93,7 +94,7 @@ function formatAssociateStatus(status = "") {
     .replaceAll("Associe", "Associé");
 }
 
-function AutoevaluationAssocie() {
+function AutoevaluationAssocie({ cycleEndDate }) {
   const [activeTab, setActiveTab] = useState("self");
   const [selfData, setSelfData] = useState(null);
   const [sections, setSections] = useState([]);
@@ -477,6 +478,14 @@ function AutoevaluationAssocie() {
           <p className="mt-2 text-xs font-semibold opacity-80">{receivedList.length} évaluation(s) à traiter</p>
         </button>
       </section>
+
+      {activeTab === "self" ? (
+        <DeadlineBanner
+          isSubmitted={selfData?.evaluation?.status === "Soumis aux Associes"}
+          submittedMessage="Auto-évaluation soumise à l'autre associé. En attente de traitement."
+          endDate={cycleEndDate}
+        />
+      ) : null}
 
       {feedbackMessage ? (
         <div className={`rounded-md px-4 py-3 text-sm font-semibold ${feedbackTone === "error" ? "bg-[#FDEBEC] text-[#B93840]" : "bg-[#DCECCB] text-[#184D2E]"}`}>

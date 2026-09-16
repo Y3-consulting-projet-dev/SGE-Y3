@@ -7,6 +7,7 @@ const MESSAGE_TEMPLATES = {
   transmis: ({ submitterName, label }) => `${submitterName} a transmis ${label}.`,
   rh_synthese_transmise: ({ submitterName, label }) => `${submitterName} a transmis ${label}.`,
   committee_decision: ({ submitterName, label }) => `${submitterName} a transmis ${label}.`,
+  self_evaluation_reminder: ({ label }) => label || 'Rappel : merci de finaliser votre auto-evaluation.',
 };
 
 async function notifyInAppRecipients({

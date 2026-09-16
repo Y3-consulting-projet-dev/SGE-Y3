@@ -22,6 +22,7 @@ import { useActiveCycle } from "@/hooks/useActiveCycle";
 const NOTIFICATION_SECTION_MAP = {
   "assistant-mission": "reviews",
   "assistant-self-eval": "reviews",
+  "self-evaluation-reminder": "self-evaluation",
 };
 
 function resolveNotificationSection(link) {
@@ -31,7 +32,7 @@ function resolveNotificationSection(link) {
 function VueSenior({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const cycleLabel = useActiveCycle();
+  const { cycleLabel, endDate: cycleEndDate } = useActiveCycle();
   const [assistants, setAssistants] = useState([]);
   const [commonMissions, setCommonMissions] = useState([]);
   const [overviewData, setOverviewData] = useState(null);
@@ -314,7 +315,7 @@ function VueSenior({ onLogout, onUserUpdate, user }) {
               }}
             />
           ) : activeSection === "self-evaluation" ? (
-            <MonautoevaluationSenior user={user} />
+            <MonautoevaluationSenior user={user} cycleEndDate={cycleEndDate} />
           ) : activeSection === "calendar" ? (
             isLoadingSelfEvaluation ? (
               <section className="rounded-lg bg-white p-5 text-sm font-semibold text-slate-500 shadow-sm">Chargement de mon calendrier...</section>

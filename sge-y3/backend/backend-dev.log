@@ -1,0 +1,158 @@
+
+> backend@1.0.0 dev
+> nodemon src/app.js
+
+[33m[nodemon] 3.1.14[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[32m[nodemon] starting `node src/app.js`[39m
+◇ injected env (10) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+✅ MongoDB connecté : sge_y3
+Serveur backend démarre sur le port 5000
+(node:24352) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
+TypeError: Cannot read properties of null (reading 'mission_evaluations')
+    at addMissionToManagerMember (C:\Users\mariam.dala\Documents\SGE-Y3\sge-y3\backend\src\controllers\managerController.js:1903:32)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+TypeError: Cannot read properties of null (reading 'mission_evaluations')
+    at addMissionToManagerMember (C:\Users\mariam.dala\Documents\SGE-Y3\sge-y3\backend\src\controllers\managerController.js:1903:32)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+TypeError: Cannot read properties of null (reading 'mission_evaluations')
+    at addMissionToManagerMember (C:\Users\mariam.dala\Documents\SGE-Y3\sge-y3\backend\src\controllers\managerController.js:1903:32)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+TypeError: Cannot read properties of null (reading 'mission_evaluations')
+    at addMissionToManagerMember (C:\Users\mariam.dala\Documents\SGE-Y3\sge-y3\backend\src\controllers\managerController.js:1903:32)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+TypeError: Cannot read properties of null (reading 'mission_evaluations')
+    at addMissionToManagerMember (C:\Users\mariam.dala\Documents\SGE-Y3\sge-y3\backend\src\controllers\managerController.js:1903:32)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+TypeError: Cannot read properties of null (reading 'mission_evaluations')
+    at addMissionToManagerMember (C:\Users\mariam.dala\Documents\SGE-Y3\sge-y3\backend\src\controllers\managerController.js:1903:32)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+TypeError: Cannot read properties of null (reading 'mission_evaluations')
+    at addMissionToManagerMember (C:\Users\mariam.dala\Documents\SGE-Y3\sge-y3\backend\src\controllers\managerController.js:1903:32)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+TypeError: Cannot read properties of null (reading 'mission_evaluations')
+    at addMissionToManagerMember (C:\Users\mariam.dala\Documents\SGE-Y3\sge-y3\backend\src\controllers\managerController.js:1903:32)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+TypeError: Cannot read properties of null (reading 'mission_evaluations')
+    at addMissionToManagerMember (C:\Users\mariam.dala\Documents\SGE-Y3\sge-y3\backend\src\controllers\managerController.js:1903:32)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+TypeError: Cannot read properties of null (reading 'mission_evaluations')
+    at addMissionToManagerMember (C:\Users\mariam.dala\Documents\SGE-Y3\sge-y3\backend\src\controllers\managerController.js:1903:32)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/app.js`[39m
+◇ injected env (10) from .env // tip: ⌘ override existing { override: true }
+✅ MongoDB connecté : sge_y3
+Serveur backend démarre sur le port 5000
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/app.js`[39m
+◇ injected env (10) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+✅ MongoDB connecté : sge_y3
+Serveur backend démarre sur le port 5000
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/app.js`[39m
+◇ injected env (10) from .env // tip: ⌘ enable debugging { debug: true }
+✅ MongoDB connecté : sge_y3
+Serveur backend démarre sur le port 5000
+TypeError: Cannot read properties of null (reading 'mission_evaluations')
+    at addMissionToManagerMember (C:\Users\mariam.dala\Documents\SGE-Y3\sge-y3\backend\src\controllers\managerController.js:1915:32)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/app.js`[39m
+◇ injected env (10) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+✅ MongoDB connecté : sge_y3
+Serveur backend démarre sur le port 5000
+[mailer] SMTP non configure - email ignore (destinataire: isabella.beda@ycubeac.com, objet: SGE - Stéphane Audrey GNAHOUA a soumis la mission de Mamadou Habib BA)
+[mailer] SMTP non configure - email ignore (destinataire: fatoumata.ouattara@ycubeac.com, objet: SGE - Stéphane Audrey GNAHOUA a soumis la mission de Mamadou Habib BA)
+(node:10856) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[mailer] SMTP non configure - email ignore (destinataire: yves.dodo@ycubeac.com, objet: SGE - Isabella BEDA a soumis de nouvelles synthèses RH)
+[mailer] SMTP non configure - email ignore (destinataire: georges.yaoyao@ycubeac.com, objet: SGE - Isabella BEDA a soumis de nouvelles synthèses RH)
+(node:10856) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/app.js`[39m
+◇ injected env (10) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+✅ MongoDB connecté : sge_y3
+Serveur backend démarre sur le port 5000
+[mailer] SMTP non configure - email ignore (destinataire: stephane.gnahoua@ycubeac.com, objet: SGE - Mamadou Habib BA a soumis la mission "mission")
+[mailer] SMTP non configure - email ignore (destinataire: augustin.kpantche@ycubeac.com, objet: SGE - Nagnon-Ya Charlotte Soung COULIBALY épouse DOWO a soumis la mission "Mission test guard")
+[mailer] SMTP non configure - email ignore (destinataire: isabella.beda@ycubeac.com, objet: SGE - Augustin Pheaugbay KPANTCHE a soumis la mission de Nagnon-Ya Charlotte Soung COULIBALY épouse DOWO)
+[mailer] SMTP non configure - email ignore (destinataire: fatoumata.ouattara@ycubeac.com, objet: SGE - Augustin Pheaugbay KPANTCHE a soumis la mission de Nagnon-Ya Charlotte Soung COULIBALY épouse DOWO)
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/app.js`[39m
+◇ injected env (10) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+✅ MongoDB connecté : sge_y3
+Serveur backend démarre sur le port 5000
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/app.js`[39m
+◇ injected env (10) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+✅ MongoDB connecté : sge_y3
+Serveur backend démarre sur le port 5000
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/app.js`[39m
+◇ injected env (10) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+✅ MongoDB connecté : sge_y3
+Serveur backend démarre sur le port 5000
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/app.js`[39m
+◇ injected env (10) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+✅ MongoDB connecté : sge_y3
+Serveur backend démarre sur le port 5000
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/app.js`[39m
+◇ injected env (10) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+✅ MongoDB connecté : sge_y3
+Serveur backend démarre sur le port 5000
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/app.js`[39m
+◇ injected env (10) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+✅ MongoDB connecté : sge_y3
+Serveur backend démarre sur le port 5000
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/app.js`[39m
+◇ injected env (10) from .env // tip: ⌘ enable debugging { debug: true }
+✅ MongoDB connecté : sge_y3
+Serveur backend démarre sur le port 5000
+[mailer] SMTP non configure - email ignore (destinataire: axelle.amani@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: habib.ba@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: makany.toure@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: charlotte.coulibaly@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: adele.creppy@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: esther.dao@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: odette.djaa@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: yves.dodo@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: paul.gbaou@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: stephane.gnahoua@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: fleur.nguessan@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: elise.guessennd@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: porthela.kakou@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: ibrahim.kamissoko@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: candice.konan@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: orlane.kone@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: kader.kone@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: ezechiel.konko@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: augustin.kpantche@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: yasmine.kouadio@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: carla.ndraman@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: roxanne.ngoran@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: bintou.ongoiba@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: elyse.ouanto@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: aziz.ouattara@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: wilfried.oulai@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: revita.oule@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: gedeon.otchoumou@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: ange.sande@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: stephanie.taki@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: myriam.tielou@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: lamine.toure@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: georges.yaoyao@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: louise.yao@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: fatoumata.ouattara@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: amelie.kouadio@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: yves.akole@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: karl.ble@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: peggy.gnahore@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))
+[mailer] SMTP non configure - email ignore (destinataire: affoussatou.diakite@ycubeac.com, objet: SGE - Rappel : auto-evaluation en attente (cycle Cycle 2026-2028))

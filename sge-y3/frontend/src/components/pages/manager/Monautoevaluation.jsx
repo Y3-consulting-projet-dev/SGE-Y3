@@ -8,6 +8,7 @@ import {
   submitManagerSelfEvaluation,
 } from "@/api/managerOverview";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
+import DeadlineBanner from "@/components/common/DeadlineBanner";
 
 function getPageProgress(page) {
   const themes = page?.themes || [];
@@ -267,7 +268,7 @@ function SectionBadge({ progress }) {
   return <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">À faire</span>;
 }
 
-function Monautoevaluation() {
+function Monautoevaluation({ cycleEndDate }) {
   const [evaluationData, setEvaluationData] = useState(null);
   const [activeView, setActiveView] = useState("missions");
   const [activeMissionView, setActiveMissionView] = useState("synthese");
@@ -892,6 +893,12 @@ function Monautoevaluation() {
       <p className="text-xs font-semibold text-slate-400">
         {evaluationData.manager.name} - {evaluationData.manager.grade} - {evaluationData.evaluation.cycle_label}
       </p>
+
+      <DeadlineBanner
+        isSubmitted={evaluationData.evaluation.status === "Soumis a RH"}
+        submittedMessage="Auto-évaluation soumise à la RH. En attente de traitement."
+        endDate={cycleEndDate}
+      />
 
       <div className="rounded-sm bg-[#DCECCB] px-4 py-3 text-xs font-semibold text-[#1E5B34]">
         Cette auto-évaluation globale est transmise à la RH. Les missions soumises sont partagées à la RH et aux associés.

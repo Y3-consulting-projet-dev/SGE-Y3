@@ -226,6 +226,12 @@ export function submitRhSyntheses() {
   });
 }
 
+export function sendSelfEvaluationReminder() {
+  return request("/rh/reminders/self-evaluation", {
+    method: "POST",
+  });
+}
+
 export function getMyRhEvaluationHistory() {
   return request("/rh/evaluation/history");
 }

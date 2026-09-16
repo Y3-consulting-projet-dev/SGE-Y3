@@ -9,6 +9,7 @@ import {
   submitRhSelfEvaluation,
 } from "@/api/rhOverview";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
+import DeadlineBanner from "@/components/common/DeadlineBanner";
 
 function getPageProgress(page) {
   const themes = page?.themes || [];
@@ -140,7 +141,7 @@ function getWorkflowDefaults(assistantMode) {
   };
 }
 
-function MonautoevaluationRH({ assistantMode = false }) {
+function MonautoevaluationRH({ assistantMode = false, cycleEndDate }) {
   const [evaluationData, setEvaluationData] = useState(null);
   const [sections, setSections] = useState([]);
   const [activeSectionId, setActiveSectionId] = useState(1);
@@ -375,8 +376,20 @@ function MonautoevaluationRH({ assistantMode = false }) {
     Number(activeSectionId) === Number(sections[sections.length - 1]?.id) &&
     activePageIndex === (activeSection.pages?.length || 1) - 1;
 
+  const isRhEvaluationSubmitted =
+    evaluationData.evaluation.status === "Soumis aux Associés" ||
+    evaluationData.evaluation.status === "Soumis aux Associes" ||
+    evaluationData.evaluation.status === "Soumis à la RH" ||
+    evaluationData.evaluation.status === "Soumis a RH";
+
   return (
     <div className="space-y-4">
+      <DeadlineBanner
+        isSubmitted={isRhEvaluationSubmitted}
+        submittedMessage={`Auto-évaluation soumise (${evaluationData.evaluation.status}). En attente de traitement.`}
+        endDate={cycleEndDate}
+      />
+
       <div className="rounded-sm bg-[#DCECCB] px-4 py-3 text-xs font-semibold text-[#1E5B34]">
         {workflow.introMessage}
       </div>

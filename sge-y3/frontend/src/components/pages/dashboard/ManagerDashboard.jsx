@@ -15,6 +15,7 @@ import logoY3 from "@/assets/logo-y3.png";
 import { getDisplayName, getInitials } from "@/utils/userPresentation";
 import { getManagerMemberEvaluation, getManagerOverview, getManagerSelfEvaluation } from "@/api/managerOverview";
 import { useActiveCycle } from "@/hooks/useActiveCycle";
+import DeadlineBanner from "@/components/common/DeadlineBanner";
 
 const sidebarSections = [
   {
@@ -48,6 +49,7 @@ const NOTIFICATION_SECTION_MAP = {
   "assistant-mission": "team",
   "assistant-self-eval": "team",
   development: "team",
+  "self-evaluation-reminder": "self-evaluation",
 };
 
 function resolveNotificationSection(link) {
@@ -62,7 +64,7 @@ function formatSubmissionDate(value) {
 function ManagerDashboard({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const cycleLabel = useActiveCycle();
+  const { cycleLabel, endDate: cycleEndDate } = useActiveCycle();
   const [searchTerm, setSearchTerm] = useState("");
   const [relanceMessage, setRelanceMessage] = useState("");
   const [createGoalSignal, setCreateGoalSignal] = useState(0);
@@ -198,15 +200,26 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
       return <section className="rounded-lg bg-white p-5 text-sm font-semibold text-red-600 shadow-sm">{overviewError}</section>;
     }
 
+    const isManagerSelfEvaluationSubmitted = Boolean(
+      summary.selfEvaluationStatus &&
+        !["En attente", "Brouillon", "En cours"].includes(summary.selfEvaluationStatus)
+    );
+
     return (
       <>
-        <div className="mb-7 border-l-4 border-[#7CB342] bg-[#DCECCB] px-4 py-3 text-sm font-semibold text-[#184D2E]">
-          {isLoadingOverview
-            ? "Chargement de la vue d'ensemble..."
-            : summary.selfEvaluationStatus === "Soumis aux Managers" || summary.selfEvaluationStatus === "Soumis au Manager"
-              ? "Mon auto-évaluation a déjà été soumise."
-              : "Mon auto-évaluation est en attente."}
-        </div>
+        {isLoadingOverview ? (
+          <div className="mb-7 border-l-4 border-[#7CB342] bg-[#DCECCB] px-4 py-3 text-sm font-semibold text-[#184D2E]">
+            Chargement de la vue d'ensemble...
+          </div>
+        ) : (
+          <div className="mb-7">
+            <DeadlineBanner
+              isSubmitted={isManagerSelfEvaluationSubmitted}
+              submittedMessage={`Mon auto-évaluation a déjà été soumise (${summary.selfEvaluationStatus}).`}
+              endDate={cycleEndDate}
+            />
+          </div>
+        )}
 
 
         <section className="mb-7 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -460,7 +473,7 @@ function ManagerDashboard({ onLogout, onUserUpdate, user }) {
           ) : activeSection === "team-history" ? (
             <HistoriqueEquipe members={members} isLoading={isLoadingOverview} errorMessage={overviewError} />
           ) : activeSection === "self-evaluation" ? (
-            <Monautoevaluation />
+            <Monautoevaluation cycleEndDate={cycleEndDate} />
           ) : activeSection === "history" ? (
             <Monhistorique />
           ) : activeSection === "calendar" ? (

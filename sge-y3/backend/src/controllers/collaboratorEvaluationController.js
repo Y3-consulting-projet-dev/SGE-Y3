@@ -1606,6 +1606,8 @@ async function submitMyDevelopment(request, response) {
 module.exports = {
   buildManagerCommentText,
   fetchManagerCommentsForMember,
+  getOrCreateAssistantEvaluation,
+  getOrCreateSeniorEvaluation,
   getMyAssistantEvaluation,
   getMyAssistantEvaluationHistory,
   getMyAssistantResults,
