@@ -177,30 +177,33 @@ function formatChiefComments(items = []) {
 }
 
 async function getOrCreateSupportSelfEvaluation(user) {
-  let instance = await EvaluationInstance.findOne({
+  const templateSections = cloneSupportSections(user);
+  const query = {
     cycle_label: getCurrentCycleLabel(),
     evalue_id: user._id,
     template_type: 'support-self-evaluation',
-  });
+  };
 
-  const templateSections = cloneSupportSections(user);
+  // findOneAndUpdate + upsert est atomique : evite la collision d'index unique
+  // qu'un findOne suivi d'un create() separe peut produire sous concurrence.
+  let instance = await EvaluationInstance.findOneAndUpdate(
+    query,
+    {
+      $setOnInsert: {
+        ...query,
+        status: 'En cours',
+        submitted_to_role: 'associate',
+        sections: toPersistenceSections(templateSections),
+        last_saved_at: new Date(),
+      },
+    },
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+  );
 
-  if (!instance) {
-    instance = await EvaluationInstance.create({
-      cycle_label: getCurrentCycleLabel(),
-      evalue_id: user._id,
-      status: 'En cours',
-      template_type: 'support-self-evaluation',
-      submitted_to_role: 'associate',
-      sections: toPersistenceSections(templateSections),
-      last_saved_at: new Date(),
-    });
-  } else {
-    const syncedSections = mergeSectionsWithTemplate(instance.sections || [], templateSections);
-    instance.sections = toPersistenceSections(normalizeSections(syncedSections));
-    instance.last_saved_at = new Date();
-    await instance.save();
-  }
+  const syncedSections = mergeSectionsWithTemplate(instance.sections || [], templateSections);
+  instance.sections = toPersistenceSections(normalizeSections(syncedSections));
+  instance.last_saved_at = new Date();
+  await instance.save();
 
   return instance;
 }

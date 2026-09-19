@@ -295,31 +295,32 @@ function getReceivedEvaluationScore(instance) {
 }
 
 async function getOrCreateAssociateSelfEvaluation(user) {
-  let instance = await EvaluationInstance.findOne({
+  const templateSections = cloneSectionsForAssociate(user);
+  const query = {
     cycle_label: getCurrentCycleLabel(),
     evalue_id: user._id,
     template_type: 'associate-self-evaluation',
-  });
+  };
 
-  const templateSections = cloneSectionsForAssociate(user);
+  let instance = await EvaluationInstance.findOneAndUpdate(
+    query,
+    {
+      $setOnInsert: {
+        ...query,
+        status: 'En cours',
+        submitted_to_role: 'associate',
+        sections: toPersistenceSections(templateSections),
+        last_saved_at: new Date(),
+      },
+    },
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+  );
 
-  if (!instance) {
-    instance = await EvaluationInstance.create({
-      cycle_label: getCurrentCycleLabel(),
-      evalue_id: user._id,
-      status: 'En cours',
-      template_type: 'associate-self-evaluation',
-      submitted_to_role: 'associate',
-      sections: toPersistenceSections(templateSections),
-      last_saved_at: new Date(),
-    });
-  } else {
-    const currentSections = normalizeSections(instance.sections || []);
-    if (!currentSections.length) {
-      instance.sections = toPersistenceSections(templateSections);
-      instance.last_saved_at = new Date();
-      await instance.save();
-    }
+  const currentSections = normalizeSections(instance.sections || []);
+  if (!currentSections.length) {
+    instance.sections = toPersistenceSections(templateSections);
+    instance.last_saved_at = new Date();
+    await instance.save();
   }
 
   return instance;
@@ -738,12 +739,6 @@ function toAssociateMissionCriteria(criteria = []) {
 }
 
 async function getOrCreateAssociateManagerReview(associateUser, managerUser, managerSelfEvaluation) {
-  let review = await AssociateManagerReview.findOne({
-    cycle_label: getCurrentCycleLabel(),
-    associate_id: associateUser._id,
-    manager_id: managerUser._id,
-  });
-
   const templateSections = cloneSectionsForManager(managerUser);
   const availableMissions = getAssociateManagerAvailableMissions(managerSelfEvaluation, associateUser._id)
     .map((mission) => ({
@@ -756,18 +751,25 @@ async function getOrCreateAssociateManagerReview(associateUser, managerUser, man
       last_saved_at: null,
     }));
 
-  if (!review) {
-    review = await AssociateManagerReview.create({
-      cycle_label: getCurrentCycleLabel(),
-      associate_id: associateUser._id,
-      manager_id: managerUser._id,
-      manager_department: managerUser.department || '',
-      sections: toPersistenceSections(templateSections),
-      mission_reviews: availableMissions,
-      last_saved_at: new Date(),
-    });
-    return review;
-  }
+  const query = {
+    cycle_label: getCurrentCycleLabel(),
+    associate_id: associateUser._id,
+    manager_id: managerUser._id,
+  };
+
+  let review = await AssociateManagerReview.findOneAndUpdate(
+    query,
+    {
+      $setOnInsert: {
+        ...query,
+        manager_department: managerUser.department || '',
+        sections: toPersistenceSections(templateSections),
+        mission_reviews: availableMissions,
+        last_saved_at: new Date(),
+      },
+    },
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+  );
 
   const existingMissionById = new Map(normalizeMissionReviews(review.mission_reviews || []).map((mission) => [mission.mission_id, mission]));
   review.mission_reviews = availableMissions.map((mission) => existingMissionById.get(mission.mission_id) || mission);

@@ -1,0 +1,40 @@
+
+> backend@1.0.0 dev
+> nodemon src/app.js
+
+[33m[nodemon] 3.1.14[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[32m[nodemon] starting `node src/app.js`[39m
+◇ injected env (10) from .env // tip: ⌘ override existing { override: true }
+✅ MongoDB connecté : sge_y3
+Serveur backend démarre sur le port 5000
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/app.js`[39m
+◇ injected env (10) from .env // tip: ⌘ suppress logs { quiet: true }
+✅ MongoDB connecté : sge_y3
+Serveur backend démarre sur le port 5000
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/app.js`[39m
+◇ injected env (10) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+✅ MongoDB connecté : sge_y3
+Serveur backend démarre sur le port 5000
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/app.js`[39m
+◇ injected env (10) from .env // tip: ⌘ override existing { override: true }
+✅ MongoDB connecté : sge_y3
+Serveur backend démarre sur le port 5000
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node src/app.js`[39m
+◇ injected env (10) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+✅ MongoDB connecté : sge_y3
+Serveur backend démarre sur le port 5000
+[mailer] SMTP non configure - email ignore (destinataire: isabella.beda@ycubeac.com, objet: SGE - Stéphane Audrey GNAHOUA a soumis la mission manager "mission 1")
+[mailer] SMTP non configure - email ignore (destinataire: yves.dodo@ycubeac.com, objet: SGE - Stéphane Audrey GNAHOUA a soumis la mission manager "mission 1")
+[mailer] SMTP non configure - email ignore (destinataire: fatoumata.ouattara@ycubeac.com, objet: SGE - Stéphane Audrey GNAHOUA a soumis la mission manager "mission 1")
+(node:15724) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[mailer] SMTP non configure - email ignore (destinataire: yves.dodo@ycubeac.com, objet: SGE - Mamadou Habib BA a soumis la mission "mission")
+(node:15724) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
+[31m[nodemon] app crashed - waiting for file changes before starting...[39m

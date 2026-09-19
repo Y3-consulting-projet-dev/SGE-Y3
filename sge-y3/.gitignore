@@ -1,0 +1,2 @@
+# Fichier de variables d'environnement pour docker-compose (contient des secrets)
+.env

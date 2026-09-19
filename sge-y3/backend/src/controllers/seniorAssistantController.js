@@ -623,26 +623,32 @@ async function getAssistantForSenior(seniorUser, assistantId) {
 }
 
 async function getOrCreateSeniorAssistantReview(seniorUser, assistant) {
-  let review = await SeniorAssistantReview.findOne({
+  const evaluationDepartment = resolveEvaluationDepartmentForSeniorReview(seniorUser, assistant);
+  const templateSections = cloneAssistantTemplateForDepartment(evaluationDepartment);
+  const query = {
     cycle_label: getCurrentCycleLabel(),
     senior_id: seniorUser._id,
     assistant_id: assistant._id,
-  });
+  };
 
-  const evaluationDepartment = resolveEvaluationDepartmentForSeniorReview(seniorUser, assistant);
-  const templateSections = cloneAssistantTemplateForDepartment(evaluationDepartment);
+  // findOneAndUpdate + upsert est atomique : evite la collision d'index unique
+  // qu'un findOne suivi d'un create() separe peut produire sous concurrence
+  // (ex: le senior et l'assistant ouvrent leurs pages respectives en meme temps).
+  let review = await SeniorAssistantReview.findOneAndUpdate(
+    query,
+    {
+      $setOnInsert: {
+        ...query,
+        assistant_department: evaluationDepartment,
+        status: 'En cours',
+        sections: toPersistenceSections(templateSections),
+        last_saved_at: new Date(),
+      },
+    },
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+  );
 
-  if (!review) {
-    review = await SeniorAssistantReview.create({
-      cycle_label: getCurrentCycleLabel(),
-      senior_id: seniorUser._id,
-      assistant_id: assistant._id,
-      assistant_department: evaluationDepartment,
-      status: 'En cours',
-      sections: toPersistenceSections(templateSections),
-      last_saved_at: new Date(),
-    });
-  } else if (shouldResetToCurrentTemplate(review, templateSections)) {
+  if (shouldResetToCurrentTemplate(review, templateSections)) {
     review.sections = toPersistenceSections(templateSections);
     review.assistant_department = evaluationDepartment;
     review.last_saved_at = new Date();
@@ -655,24 +661,27 @@ async function getOrCreateSeniorAssistantReview(seniorUser, assistant) {
 }
 
 async function getOrCreateAssistantEvaluationInstance(assistant) {
-  let instance = await EvaluationInstance.findOne({
+  const templateSections = cloneAssistantTemplateForDepartment(assistant.department);
+  const query = {
     evalue_id: assistant._id,
     cycle_label: getCurrentCycleLabel(),
     template_type: 'assistant-self-evaluation',
-  });
+  };
 
-  const templateSections = cloneAssistantTemplateForDepartment(assistant.department);
+  let instance = await EvaluationInstance.findOneAndUpdate(
+    query,
+    {
+      $setOnInsert: {
+        ...query,
+        status: 'En cours',
+        sections: toPersistenceSections(templateSections),
+        last_saved_at: new Date(),
+      },
+    },
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+  );
 
-  if (!instance) {
-    instance = await EvaluationInstance.create({
-      cycle_label: getCurrentCycleLabel(),
-      evalue_id: assistant._id,
-      status: 'En cours',
-      template_type: 'assistant-self-evaluation',
-      sections: toPersistenceSections(templateSections),
-      last_saved_at: new Date(),
-    });
-  } else if (shouldResetToCurrentTemplate(instance, templateSections)) {
+  if (shouldResetToCurrentTemplate(instance, templateSections)) {
     instance.sections = toPersistenceSections(templateSections);
     instance.last_saved_at = new Date();
     await instance.save();

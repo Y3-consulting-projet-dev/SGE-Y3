@@ -435,25 +435,28 @@ function formatSentChiefCommentsForUser(feedbackItems = [], targetUser) {
 }
 
 async function getOrCreateManagerSelfEvaluation(user) {
-  let instance = await EvaluationInstance.findOne({
+  const templateSections = cloneManagerSelfTemplate(user);
+  const query = {
     evalue_id: user._id,
     cycle_label: getCurrentCycleLabel(),
     template_type: 'manager-self-evaluation',
-  });
+  };
 
-  const templateSections = cloneManagerSelfTemplate(user);
+  let instance = await EvaluationInstance.findOneAndUpdate(
+    query,
+    {
+      $setOnInsert: {
+        ...query,
+        status: 'En cours',
+        submitted_to_role: 'rh',
+        sections: toPersistenceSections(templateSections),
+        last_saved_at: new Date(),
+      },
+    },
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+  );
 
-  if (!instance) {
-    instance = await EvaluationInstance.create({
-      cycle_label: getCurrentCycleLabel(),
-      evalue_id: user._id,
-      status: 'En cours',
-      template_type: 'manager-self-evaluation',
-      submitted_to_role: 'rh',
-      sections: toPersistenceSections(templateSections),
-      last_saved_at: new Date(),
-    });
-  } else if (shouldResetToCurrentTemplate(instance, templateSections)) {
+  if (shouldResetToCurrentTemplate(instance, templateSections)) {
     instance.sections = toPersistenceSections(templateSections);
     instance.last_saved_at = new Date();
     await instance.save();
@@ -1008,26 +1011,29 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
 }
 
 async function getOrCreateManagerMemberReview(managerUser, member) {
-  let review = await ManagerMemberReview.findOne({
+  const evaluationDepartment = resolveEvaluationDepartmentForManagerReview(managerUser, member);
+  const templateSections = cloneTemplateForMember(member, evaluationDepartment);
+  const query = {
     cycle_label: getCurrentCycleLabel(),
     manager_id: managerUser._id,
     member_id: member._id,
-  });
+  };
 
-  const evaluationDepartment = resolveEvaluationDepartmentForManagerReview(managerUser, member);
-  const templateSections = cloneTemplateForMember(member, evaluationDepartment);
+  let review = await ManagerMemberReview.findOneAndUpdate(
+    query,
+    {
+      $setOnInsert: {
+        ...query,
+        member_department: evaluationDepartment,
+        status: 'Brouillon',
+        sections: toPersistenceSections(templateSections),
+        last_saved_at: new Date(),
+      },
+    },
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+  );
 
-  if (!review) {
-    review = await ManagerMemberReview.create({
-      cycle_label: getCurrentCycleLabel(),
-      manager_id: managerUser._id,
-      member_id: member._id,
-      member_department: evaluationDepartment,
-      status: 'Brouillon',
-      sections: toPersistenceSections(templateSections),
-      last_saved_at: new Date(),
-    });
-  } else if (shouldResetToCurrentTemplate(review, templateSections)) {
+  if (shouldResetToCurrentTemplate(review, templateSections)) {
     review.sections = toPersistenceSections(templateSections);
     review.member_department = evaluationDepartment;
     review.last_saved_at = new Date();

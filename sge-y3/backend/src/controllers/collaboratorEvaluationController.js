@@ -872,24 +872,31 @@ async function getOrCreateSeniorEvaluation(user) {
 }
 
 async function getOrCreateSelfEvaluation(user, templateType, cloneTemplate) {
-  let instance = await EvaluationInstance.findOne({
+  const templateSections = cloneTemplate(user);
+  const query = {
     evalue_id: user._id,
     cycle_label: getCurrentCycleLabel(),
     template_type: templateType,
-  });
+  };
 
-  const templateSections = cloneTemplate(user);
+  // findOneAndUpdate + upsert est atomique côté MongoDB : contrairement à un
+  // findOne suivi d'un create() séparé, deux requêtes concurrentes ne peuvent
+  // pas toutes les deux tenter une création et violer l'index unique
+  // (cycle_label, evalue_id, template_type).
+  let instance = await EvaluationInstance.findOneAndUpdate(
+    query,
+    {
+      $setOnInsert: {
+        ...query,
+        status: 'En cours',
+        sections: toPersistenceSections(templateSections),
+        last_saved_at: new Date(),
+      },
+    },
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+  );
 
-  if (!instance) {
-    instance = await EvaluationInstance.create({
-      cycle_label: getCurrentCycleLabel(),
-      evalue_id: user._id,
-      status: 'En cours',
-      template_type: templateType,
-      sections: toPersistenceSections(templateSections),
-      last_saved_at: new Date(),
-    });
-  } else if (shouldResetToCurrentTemplate(instance, templateSections)) {
+  if (shouldResetToCurrentTemplate(instance, templateSections)) {
     await persistEvaluationInstance(instance, {
       sections: toPersistenceSections(templateSections),
       last_saved_at: new Date(),

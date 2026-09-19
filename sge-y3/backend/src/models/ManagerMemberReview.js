@@ -120,7 +120,10 @@ const managerMemberReviewSchema = new mongoose.Schema(
   }
 );
 
-managerMemberReviewSchema.index({ cycle_label: 1, manager_id: 1, member_id: 1 }, { unique: true });
+managerMemberReviewSchema.index(
+  { cycle_label: 1, manager_id: 1, member_id: 1, template_type: 1 },
+  { unique: true }
+);
 
 [
   'Soumis a RH',

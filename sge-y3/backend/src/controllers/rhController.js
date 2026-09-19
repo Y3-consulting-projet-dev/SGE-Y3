@@ -299,25 +299,28 @@ async function resolveRhQueueUserIds() {
 async function getOrCreateRhSelfEvaluation(user, options = {}) {
   const templateType = options.templateType || 'rh-self-evaluation';
   const submittedToRole = options.submittedToRole || 'associate';
-  let instance = await EvaluationInstance.findOne({
+  const templateSections = cloneRhSelfTemplate(user);
+  const query = {
     evalue_id: user._id,
     cycle_label: getCurrentCycleLabel(),
     template_type: templateType,
-  });
+  };
 
-  const templateSections = cloneRhSelfTemplate(user);
+  let instance = await EvaluationInstance.findOneAndUpdate(
+    query,
+    {
+      $setOnInsert: {
+        ...query,
+        status: 'En cours',
+        submitted_to_role: submittedToRole,
+        sections: toPersistenceSections(templateSections),
+        last_saved_at: new Date(),
+      },
+    },
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+  );
 
-  if (!instance) {
-    instance = await EvaluationInstance.create({
-      cycle_label: getCurrentCycleLabel(),
-      evalue_id: user._id,
-      status: 'En cours',
-      template_type: templateType,
-      submitted_to_role: submittedToRole,
-      sections: toPersistenceSections(templateSections),
-      last_saved_at: new Date(),
-    });
-  } else if (shouldResetToCurrentTemplate(instance, templateSections)) {
+  if (shouldResetToCurrentTemplate(instance, templateSections)) {
     instance.sections = toPersistenceSections(templateSections);
     instance.last_saved_at = new Date();
     await instance.save();
@@ -2364,29 +2367,37 @@ async function getAssistantRhMemberForRh(rhUser, memberId) {
 }
 
 async function getOrCreateAssistantRhReview(rhUser, member) {
-  let review = await ManagerMemberReview.findOne({
+  const templateSections = cloneRhSelfTemplate(member);
+  // Remarque : l'index unique de ManagerMemberReview est (cycle_label, manager_id,
+  // member_id) et ne comprend PAS template_type. Le filtre ci-dessous reproduit a
+  // l'identique le comportement historique (find puis create), rendu atomique ;
+  // il ne corrige pas un eventuel conflit avec un ManagerMemberReview "manager"
+  // classique portant le meme (cycle_label, manager_id, member_id) mais un autre
+  // template_type - ce cas prea-existant est hors perimetre de ce correctif.
+  const query = {
     cycle_label: getCurrentCycleLabel(),
     manager_id: rhUser._id,
     member_id: member._id,
     template_type: 'rh-assistant-evaluation',
-  });
+  };
 
-  const templateSections = cloneRhSelfTemplate(member);
+  let review = await ManagerMemberReview.findOneAndUpdate(
+    query,
+    {
+      $setOnInsert: {
+        ...query,
+        member_department: member.department || 'CAPITAL HUMAIN',
+        status: 'En cours',
+        submitted_to_user_ids: [rhUser._id],
+        submitted_to_names: [rhUser.name],
+        sections: toPersistenceSections(templateSections),
+        last_saved_at: new Date(),
+      },
+    },
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+  );
 
-  if (!review) {
-    review = await ManagerMemberReview.create({
-      cycle_label: getCurrentCycleLabel(),
-      manager_id: rhUser._id,
-      member_id: member._id,
-      member_department: member.department || 'CAPITAL HUMAIN',
-      status: 'En cours',
-      template_type: 'rh-assistant-evaluation',
-      submitted_to_user_ids: [rhUser._id],
-      submitted_to_names: [rhUser.name],
-      sections: toPersistenceSections(templateSections),
-      last_saved_at: new Date(),
-    });
-  } else if (shouldResetToCurrentTemplate(review, templateSections)) {
+  if (shouldResetToCurrentTemplate(review, templateSections)) {
     review.sections = toPersistenceSections(templateSections);
     review.last_saved_at = new Date();
     await review.save();
