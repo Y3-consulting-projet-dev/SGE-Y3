@@ -8,10 +8,12 @@ import {
   LayoutDashboard,
   LineChart,
   LogOut,
+  Menu,
   Settings2,
   Target,
   TrendingUp,
   User,
+  X,
 } from "lucide-react";
 import logoY3 from "@/assets/logo-y3.png";
 import MonTableauDeBord from "@/components/pages/collaborator/Collaboratordashboard";
@@ -66,6 +68,7 @@ const menuGroups = [
 function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("dashboard");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { cycleLabel, endDate: cycleEndDate } = useActiveCycle();
   const [evaluationData, setEvaluationData] = useState(null);
   const [evaluationError, setEvaluationError] = useState("");
@@ -273,15 +276,44 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
 
   return (
     <div className="min-h-screen bg-[#EBEFF3] text-[#0E2B4F]">
+      <div className="flex items-center justify-between border-b border-slate-300/70 bg-[#F3F4F6] px-4 py-3 md:hidden">
+        <div className="flex items-center gap-2">
+          <img src={logoY3} alt="Y3" className="h-8 w-auto" />
+          <p className="text-xs font-bold leading-tight text-[#0F3A63]">Système de gestion des évaluations</p>
+        </div>
+        <button
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-600 hover:bg-slate-200/70"
+          aria-label="Ouvrir le menu"
+        >
+          <Menu size={20} />
+        </button>
+      </div>
+
       <div className="flex min-h-screen w-full">
+        {isMobileMenuOpen ? (
+          <div
+            className="fixed inset-0 z-30 bg-black/30 md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+        ) : null}
+
         <aside
-          className={`relative min-h-screen w-full border-r border-slate-300/70 bg-[#F3F4F6] px-4 py-5 transition-all duration-200 ${
-            isSidebarCollapsed ? "max-w-[88px]" : "max-w-[280px]"
-          }`}
+          className={`fixed inset-y-0 left-0 z-40 min-h-screen w-[280px] transform border-r border-slate-300/70 bg-[#F3F4F6] px-4 py-5 transition-transform duration-200 md:relative md:z-auto md:w-full md:translate-x-0 md:transition-all ${
+            isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          } ${isSidebarCollapsed ? "md:max-w-[88px]" : "md:max-w-[280px]"}`}
         >
           <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#E4E7EB] text-slate-500 shadow-sm hover:bg-slate-300/70 md:hidden"
+            aria-label="Fermer le menu"
+          >
+            <X size={14} />
+          </button>
+          <button
             onClick={() => setIsSidebarCollapsed((value) => !value)}
-            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#E4E7EB] text-slate-500 shadow-sm hover:bg-slate-300/70"
+            className="absolute right-3 top-3 z-20 hidden h-7 w-7 items-center justify-center rounded-full bg-[#E4E7EB] text-slate-500 shadow-sm hover:bg-slate-300/70 md:inline-flex"
             aria-label={isSidebarCollapsed ? "Déplier le menu" : "Replier le menu"}
             title={isSidebarCollapsed ? "Déplier le menu" : "Replier le menu"}
           >
@@ -308,7 +340,10 @@ function CollaboratorDashboard({ onLogout, onUserUpdate, user }) {
                     return (
                       <button
                         key={item.key}
-                        onClick={() => setActiveSection(item.key)}
+                        onClick={() => {
+                          setActiveSection(item.key);
+                          setIsMobileMenuOpen(false);
+                        }}
                         title={isSidebarCollapsed ? item.label : undefined}
                         className={`w-full rounded-md px-3 py-2 text-left text-sm transition ${
                           isActive

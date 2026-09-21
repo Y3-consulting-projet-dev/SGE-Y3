@@ -7,8 +7,10 @@ import {
   History,
   LayoutDashboard,
   LogOut,
+  Menu,
   Settings2,
   UsersRound,
+  X,
 } from "lucide-react";
 import SyntheseRH from "@/components/pages/associé/SynthèseRH";
 import Autoevamanager from "@/components/pages/associé/autoevamanager";
@@ -94,6 +96,7 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
   const [initialManagerId, setInitialManagerId] = useState("");
   const [initialReceivedId, setInitialReceivedId] = useState("");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [overview, setOverview] = useState(defaultOverview);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState("");
@@ -179,15 +182,44 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
 
   return (
     <div className="min-h-screen bg-[#EDF1F5] text-[#0F3A63]">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-[#F5F7FA] px-4 py-3 md:hidden">
+        <div className="flex items-center gap-2">
+          <img src={logoY3} alt="Y3" className="h-8 w-auto object-contain" />
+          <p className="text-xs font-bold leading-tight text-[#0F3A63]">Système de gestion des évaluations</p>
+        </div>
+        <button
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-600 hover:bg-slate-200/60"
+          aria-label="Ouvrir le menu"
+        >
+          <Menu size={20} />
+        </button>
+      </div>
+
       <div className="flex min-h-screen">
+        {isMobileMenuOpen ? (
+          <div
+            className="fixed inset-0 z-30 bg-black/30 md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+        ) : null}
+
         <aside
-          className={`relative w-full border-r border-slate-200 bg-[#F5F7FA] px-4 py-6 transition-all duration-200 ${
-            isSidebarCollapsed ? "max-w-[88px]" : "max-w-[248px]"
-          }`}
+          className={`fixed inset-y-0 left-0 z-40 min-h-screen w-[248px] transform border-r border-slate-200 bg-[#F5F7FA] px-4 py-6 transition-transform duration-200 md:relative md:z-auto md:w-full md:translate-x-0 md:transition-all ${
+            isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          } ${isSidebarCollapsed ? "md:max-w-[88px]" : "md:max-w-[248px]"}`}
         >
           <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#E4E7EB] text-slate-500 shadow-sm hover:bg-slate-300/70 md:hidden"
+            aria-label="Fermer le menu"
+          >
+            <X size={14} />
+          </button>
+          <button
             onClick={() => setIsSidebarCollapsed((value) => !value)}
-            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#E4E7EB] text-slate-500 shadow-sm hover:bg-slate-300/70"
+            className="absolute right-3 top-3 z-20 hidden h-7 w-7 items-center justify-center rounded-full bg-[#E4E7EB] text-slate-500 shadow-sm hover:bg-slate-300/70 md:inline-flex"
             aria-label={isSidebarCollapsed ? "Déplier le menu" : "Replier le menu"}
             title={isSidebarCollapsed ? "Déplier le menu" : "Replier le menu"}
           >
@@ -214,7 +246,10 @@ function Vuecabinet({ onLogout, onUserUpdate, user }) {
                     return (
                       <button
                         key={item.key}
-                        onClick={() => setActiveSection(item.key)}
+                        onClick={() => {
+                          setActiveSection(item.key);
+                          setIsMobileMenuOpen(false);
+                        }}
                         title={isSidebarCollapsed ? item.label : undefined}
                         className={`w-full rounded-md px-2 py-2 text-left text-sm ${
                           isActive ? "bg-[#C9D8E6] font-semibold text-[#0E4A6B]" : "text-[#0F3A63] hover:bg-slate-200/60"

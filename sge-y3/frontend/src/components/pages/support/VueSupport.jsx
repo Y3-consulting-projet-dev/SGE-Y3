@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { ChevronsLeft, ChevronsRight, ClipboardList, History, LayoutDashboard, LogOut, MessageSquare, Settings2 } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, ClipboardList, History, LayoutDashboard, LogOut, Menu, MessageSquare, Settings2, X } from "lucide-react";
 import logoY3 from "@/assets/logo-y3.png";
 import ProfilePanel from "@/components/profile/ProfilePanel";
 import NotificationBell from "@/components/common/NotificationBell";
@@ -29,6 +29,7 @@ const supportMenu = [
 function VueSupport({ onLogout, onUserUpdate, user }) {
   const [activeSection, setActiveSection] = useState("overview");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { cycleLabel, endDate: cycleEndDate } = useActiveCycle();
   const [commentsTab, setCommentsTab] = useState("sent");
 
@@ -339,15 +340,44 @@ function VueSupport({ onLogout, onUserUpdate, user }) {
 
   return (
     <div className="min-h-screen bg-[#EEF2F6] text-[#0E2B4F]">
+      <div className="flex items-center justify-between border-b border-slate-200/80 bg-white px-4 py-3 md:hidden">
+        <div className="flex items-center gap-2">
+          <img src={logoY3} alt="Y3" className="h-8 w-auto object-contain" />
+          <p className="text-xs font-bold leading-tight text-[#0F3A63]">Système de gestion des évaluations</p>
+        </div>
+        <button
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100"
+          aria-label="Ouvrir le menu"
+        >
+          <Menu size={20} />
+        </button>
+      </div>
+
       <div className="flex min-h-screen w-full">
+        {isMobileMenuOpen ? (
+          <div
+            className="fixed inset-0 z-30 bg-black/30 md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+        ) : null}
+
         <aside
-          className={`relative min-h-screen w-full border-r border-slate-200/80 bg-white px-5 py-6 transition-all duration-200 ${
-            isSidebarCollapsed ? "max-w-[88px]" : "max-w-[260px]"
-          }`}
+          className={`fixed inset-y-0 left-0 z-40 min-h-screen w-[260px] transform border-r border-slate-200/80 bg-white px-5 py-6 transition-transform duration-200 md:relative md:z-auto md:w-full md:translate-x-0 md:transition-all ${
+            isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          } ${isSidebarCollapsed ? "md:max-w-[88px]" : "md:max-w-[260px]"}`}
         >
           <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#EEF2F6] text-slate-500 shadow-sm hover:bg-slate-200/70 md:hidden"
+            aria-label="Fermer le menu"
+          >
+            <X size={14} />
+          </button>
+          <button
             onClick={() => setIsSidebarCollapsed((value) => !value)}
-            className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#EEF2F6] text-slate-500 shadow-sm hover:bg-slate-200/70"
+            className="absolute right-3 top-3 z-20 hidden h-7 w-7 items-center justify-center rounded-full bg-[#EEF2F6] text-slate-500 shadow-sm hover:bg-slate-200/70 md:inline-flex"
             aria-label={isSidebarCollapsed ? "Déplier le menu" : "Replier le menu"}
             title={isSidebarCollapsed ? "Déplier le menu" : "Replier le menu"}
           >
@@ -367,7 +397,10 @@ function VueSupport({ onLogout, onUserUpdate, user }) {
               return (
                 <button
                   key={item.key}
-                  onClick={() => setActiveSection(item.key)}
+                  onClick={() => {
+                    setActiveSection(item.key);
+                    setIsMobileMenuOpen(false);
+                  }}
                   title={isSidebarCollapsed ? item.label : undefined}
                   className={`w-full rounded-md px-3 py-2 text-left ${
                     isActive ? "bg-[#DDE6EE] font-semibold text-[#0E4A6B]" : "text-[#0F3A63] hover:bg-slate-100"
