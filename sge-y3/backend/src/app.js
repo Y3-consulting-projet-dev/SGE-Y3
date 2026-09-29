@@ -1,9 +1,9 @@
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
+// const dotenv = require('dotenv');
 
-const connectDB = require('./config/db');
-const { loadActiveCycle } = require('./utils/activeCycle');
+// const connectDB = require('./config/db');
+// const { loadActiveCycle } = require('./utils/activeCycle');
 const authRoutes = require('./routes/authRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const collaboratorRoutes = require('./routes/collaboratorRoutes');
@@ -14,10 +14,10 @@ const rhRoutes = require('./routes/rhRoutes');
 const associateRoutes = require('./routes/associateRoutes');
 const supportRoutes = require('./routes/supportRoutes');
 
-dotenv.config();
+// dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+// const PORT = process.env.PORT || 5000;
 
 app.use(
   cors({
@@ -55,12 +55,14 @@ app.use((error, _request, response, _next) => {
   });
 });
 
-const startServer = async () => {
-  await connectDB();
-  await loadActiveCycle();
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Serveur backend démarre sur le port ${PORT}`);
-  });
-};
+module.exports = app;
 
-startServer();
+// const startServer = async () => {
+//   await connectDB();
+//   await loadActiveCycle();
+//   app.listen(PORT, '0.0.0.0', () => {
+//     console.log(`Serveur backend démarre sur le port ${PORT}`);
+//   });
+// };
+
+// startServer();

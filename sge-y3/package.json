@@ -1,0 +1,19 @@
+{
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.20.3",
+    "@types/supertest": "^7.2.1",
+    "jsdom": "^30.0.1",
+    "mongodb-memory-server": "^11.2.0",
+    "supertest": "^7.2.2",
+    "vitest": "^5.0.1"
+  },
+  "scripts": {
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "mongoose": "^9.10.1"
+  }
+}

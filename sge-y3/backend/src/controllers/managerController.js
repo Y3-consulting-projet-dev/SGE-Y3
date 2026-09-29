@@ -2061,7 +2061,7 @@ async function submitMyManagerEvaluation(request, response) {
       });
     }
 
-    instance.status = 'Soumis à la RH';
+    instance.status = 'Soumis a RH';
     instance.submitted_to_role = 'rh';
     instance.submitted_to_user_ids = rhRecipients.map((recipient) => recipient._id);
     instance.submitted_to_names = rhRecipients.map((recipient) => recipient.name);
@@ -2114,7 +2114,7 @@ async function submitMyManagerEvaluation(request, response) {
   }
 
   instance.sections = toPersistenceSections(sections);
-  instance.status = 'Soumis à la RH';
+  instance.status = 'Soumis a RH';
   instance.submitted_to_role = 'rh';
   instance.submitted_to_user_ids = rhRecipients.map((recipient) => recipient._id);
   instance.submitted_to_names = rhRecipients.map((recipient) => recipient.name);

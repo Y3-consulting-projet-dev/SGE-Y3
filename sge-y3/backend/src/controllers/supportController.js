@@ -303,7 +303,7 @@ module.exports = {
   async getReceivedSupportChiefComments(request, response) {
     const userId = String(request.user._id);
     const instances = await EvaluationInstance.find({
-      cycle_label: CURRENT_CYCLE_LABEL,
+      cycle_label: getCurrentCycleLabel(),
       'chief_comments.target_user_id': request.user._id,
     }).select('chief_comments');
 
