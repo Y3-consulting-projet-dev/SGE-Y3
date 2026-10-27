@@ -1,8 +1,12 @@
 # =============================================================================
 # SGE-Y3 — pile de production complète (MongoDB + API Node + Caddy/React)
 #
-# Cible : Coolify (une seule resource "Docker Compose", base directory /sge-y3)
+# Cible : Coolify (une seule resource "Docker Compose", base directory /deploy)
 # ou tout hôte Docker Compose v2.
+#
+# Ce fichier vit dans deploy/ : les contextes de build pointent donc vers
+# ../sge-y3/backend et ../sge-y3/frontend (chemins résolus par rapport à ce
+# fichier), et les images gardent leurs Dockerfiles à côté de leur code.
 #
 # Aucun port n'est publié sur l'hôte : chaque service n'expose son port qu'au
 # réseau interne Docker. Le trafic public entre par le reverse proxy de Coolify
@@ -45,7 +49,7 @@ services:
   # ---------------------------------------------------------------------------
   backend:
     build:
-      context: ./backend
+      context: ../sge-y3/backend
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
@@ -88,7 +92,7 @@ services:
   # ---------------------------------------------------------------------------
   web:
     build:
-      context: ./frontend
+      context: ../sge-y3/frontend
       dockerfile: Dockerfile
       args:
         # "/api" => le bundle appelle l'API sur la même origine

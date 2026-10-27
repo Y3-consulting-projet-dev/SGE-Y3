@@ -100,14 +100,3 @@ docker-compose.override.yml
 *.bak
 *.orig
 *.rej
-
-# ==========================
-# Déploiement (branche deploy)
-# ==========================
-# Le modèle de variables d'environnement est versionné, les fichiers réels non.
-!.env.production.example
-!**/.env.example
-
-# État local des conteneurs / sauvegardes
-deploy-state/
-backups/

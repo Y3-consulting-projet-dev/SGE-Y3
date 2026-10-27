@@ -1,6 +1,6 @@
 # Déploiement SGE-Y3 (Coolify / Docker Compose)
 
-Branche : **`deploy`**. Tout le nécessaire de déploiement est dans `sge-y3/`.
+Branche : **`deploy`**. Tout le nécessaire de déploiement est regroupé dans `deploy/`.
 
 ## 1. Architecture des conteneurs
 
@@ -39,21 +39,26 @@ Principes retenus :
 
 | Fichier | Rôle |
 |---|---|
-| `sge-y3/docker-compose.yml` | Pile complète : `mongo`, `backend`, `web` ; healthchecks, volumes, réseau interne |
-| `sge-y3/docker-compose.local.yml` | Surcharge de test local (publie `localhost:8080`) — **non utilisée en production** |
+| `deploy/docker-compose.yml` | Pile complète : `mongo`, `backend`, `web` ; healthchecks, volumes, réseau interne |
+| `deploy/docker-compose.local.yml` | Surcharge de test local (publie `localhost:8080`) — **non utilisée en production** |
 | `sge-y3/backend/Dockerfile` | Image API multi-étapes, `npm ci --omit=dev`, utilisateur `node`, `HEALTHCHECK` |
 | `sge-y3/backend/.dockerignore` | Exclut `node_modules`, `.env*`, tests ad-hoc |
 | `sge-y3/frontend/Dockerfile` | Étape 1 : build Vite ; étape 2 : Caddy + `dist` |
 | `sge-y3/frontend/Caddyfile` | SPA + `reverse_proxy /api/* → backend:5000`, en-têtes, cache, `/healthz` |
 | `sge-y3/frontend/.dockerignore` | Exclut `node_modules`, `dist`, `.env*` |
-| `sge-y3/.env.production.example` | Modèle de variables d'environnement (aucun secret réel) |
-| `sge-y3/DEPLOIEMENT.md` | Ce document |
+| `deploy/.env.production.example` | Modèle de variables d'environnement (aucun secret réel) |
+| `deploy/DEPLOIEMENT.md` | Ce document |
+
+> Les `Dockerfile` et `.dockerignore` restent volontairement **à côté de leur
+> code** (`sge-y3/backend/`, `sge-y3/frontend/`) : c'est le contexte de build.
+> Le compose y accède via `context: ../sge-y3/backend` et `../sge-y3/frontend`
+> (chemins résolus par rapport à `deploy/docker-compose.yml`).
 
 ## 3. Prérequis
 
 - Un serveur Coolify fonctionnel (v4+) avec Docker et son reverse proxy.
-- Le dépôt `Y3-consulting-projet-dev/SGE-Y3` accessible depuis Coolify
-  (GitHub App ou déploiement par clé).
+- Le dépôt `davidagoua/SGE-Y3` (fork contenant la branche `deploy`) accessible
+  depuis Coolify (GitHub App ou déploiement par clé).
 - Un domaine (ou sous-domaine) pointant vers le serveur Coolify.
 
 ## 4. Déploiement sur Coolify — pas à pas
@@ -61,14 +66,14 @@ Principes retenus :
 1. **Créer la resource**
    - Coolify → *Projects* → votre projet → **+ New Resource** → **Docker Compose**
      (ou *Public Repository* puis type « Docker Compose »).
-   - Dépôt : `https://github.com/Y3-consulting-projet-dev/SGE-Y3`
+   - Dépôt : `https://github.com/davidagoua/SGE-Y3`
    - Branche : **`deploy`**
-   - *Base Directory* : **`/sge-y3`**
+   - *Base Directory* : **`/deploy`**
    - *Docker Compose Location* : **`/docker-compose.yml`**
 
 2. **Variables d'environnement**
    - Onglet *Environment Variables*, vue **Developer**, bouton **Paste .env** :
-     collez le contenu de `sge-y3/.env.production.example` après avoir remplacé
+     collez le contenu de `deploy/.env.production.example` après avoir remplacé
      les `CHANGE_ME_*`.
    - Génération des secrets :
      ```bash
@@ -138,7 +143,7 @@ Principes retenus :
 ## 6. Test local avant de pousser en production
 
 ```bash
-cd sge-y3
+cd deploy
 cp .env.production.example .env.production   # puis remplacer les CHANGE_ME_*
 docker compose -f docker-compose.yml -f docker-compose.local.yml \
   --env-file .env.production up -d --build

@@ -1,0 +1,12 @@
+# Secrets réels : jamais versionnés
+.env
+.env.*
+.env.local
+# Le modèle est versionné
+!.env.production.example
+!*.env.example
+
+# État local / sauvegardes
+deploy-state/
+backups/
+*.log
