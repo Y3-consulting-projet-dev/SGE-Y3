@@ -1,0 +1,16 @@
+# =============================================================================
+# Surcharge Docker Compose pour tester la pile EN LOCAL.
+#
+# Elle publie uniquement le port du service web sur l'hôte (8080) pour pouvoir
+# ouvrir http://localhost:8080. La production (Coolify) n'utilise PAS ce fichier :
+# aucun port n'y est publié, le trafic passe par le reverse proxy de Coolify.
+#
+# Usage :
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml \
+#     --env-file .env.production up -d --build
+# =============================================================================
+
+services:
+  web:
+    ports:
+      - "8080:80"

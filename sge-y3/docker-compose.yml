@@ -1,0 +1,121 @@
+# =============================================================================
+# SGE-Y3 — pile de production complète (MongoDB + API Node + Caddy/React)
+#
+# Cible : Coolify (une seule resource "Docker Compose", base directory /sge-y3)
+# ou tout hôte Docker Compose v2.
+#
+# Aucun port n'est publié sur l'hôte : chaque service n'expose son port qu'au
+# réseau interne Docker. Le trafic public entre par le reverse proxy de Coolify
+# (Traefik) puis est reçu par le service "web" (Caddy), qui sert la SPA et
+# proxifie /api/* vers "backend".
+#
+#   Internet ──TLS──> Traefik (Coolify) ──HTTP:80──> web (Caddy) ──HTTP:5000──> backend ──TCP:27017──> mongo
+#
+# Les variables sont à définir dans Coolify (Environment Variables) à partir de
+# .env.production.example. Aucune valeur secrète n'est stockée dans ce fichier.
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Base de données
+  # ---------------------------------------------------------------------------
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?MONGO_ROOT_USER est requis}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?MONGO_ROOT_PASSWORD est requis}
+      MONGO_INITDB_DATABASE: sge_y3
+    volumes:
+      # Données persistantes : conservé entre les déploiements
+      - mongo-data:/data/db
+    expose:
+      - "27017"
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --username \"$$MONGO_INITDB_ROOT_USERNAME\" --password \"$$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --eval \"quit(db.adminCommand({ ping: 1 }).ok ? 0 : 2)\""]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - sge
+
+  # ---------------------------------------------------------------------------
+  # API REST (Express + Mongoose)
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "5000"
+      MONGO_URI: ${MONGO_URI:?MONGO_URI est requis}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET est requis}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+      # CORS : les appels du navigateur sont de même origine via Caddy.
+      # Laisser vide, ou renseigner l'URL publique EXACTE (sans slash final).
+      FRONTEND_URL: ${FRONTEND_URL:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    volumes:
+      # Persiste les personnalisations du questionnaire RH
+      # (backend/src/data/rhQuestionnaire.custom.json) entre les redéploiements.
+      # Le volume est initialisé depuis l'image au premier démarrage.
+      - backend-data:/app/src/data
+    expose:
+      - "5000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - sge
+
+  # ---------------------------------------------------------------------------
+  # Frontend : bundle React servi par Caddy + reverse proxy /api
+  # C'est le seul service exposé à l'extérieur (via le proxy de Coolify).
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # "/api" => le bundle appelle l'API sur la même origine
+        VITE_API_URL: ${VITE_API_URL:-/api}
+    restart: unless-stopped
+    environment:
+      # Coolify injecte ici le domaine public et crée la route Traefik.
+      # Peut rester vide si le domaine est ajouté depuis l'interface Coolify.
+      SERVICE_FQDN_WEB: ${SERVICE_FQDN_WEB:-}
+    expose:
+      - "80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - sge
+
+volumes:
+  mongo-data:
+  backend-data:
+
+networks:
+  sge:
+    driver: bridge

@@ -1,0 +1,59 @@
+# =============================================================================
+# SGE-Y3 — Caddyfile de production
+#
+# Rôle : servir le bundle React (SPA) et proxifier /api/* vers le backend Node.
+# Le TLS est terminé en amont par le reverse proxy de Coolify (Traefik) : Caddy
+# n'écoute donc qu'en HTTP sur :80 et ne gère ni certificat ni redirection HTTPS.
+# =============================================================================
+
+{
+	admin off
+	auto_https off
+}
+
+:80 {
+	# Journalisation vers stdout (visible dans Coolify > Logs)
+	log {
+		output stdout
+		format console
+	}
+
+	encode zstd gzip
+
+	# En-têtes de sécurité de base. HSTS est posé ici pour le cas où le proxy
+	# amont transmet déjà le HTTPS ; il est ignoré en HTTP simple.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		-Server
+	}
+
+	# Sonde de santé du conteneur (docker-compose / Coolify)
+	respond /healthz 200
+
+	# --- API REST : reverse proxy vers le backend Node -----------------------
+	handle /api/* {
+		reverse_proxy backend:5000
+	}
+
+	# --- SPA React -----------------------------------------------------------
+	# L'application n'embarque pas de routeur : toutes les URL inconnues
+	# retombent sur index.html.
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	# Assets versionnés par Vite (empreinte dans le nom) : cache long
+	@immutable path /assets/*
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+	# HTML : jamais mis en cache, pour que les nouveaux déploiements soient vus
+	header / Cache-Control "no-store, must-revalidate"
+	header /index.html Cache-Control "no-store, must-revalidate"
+}
