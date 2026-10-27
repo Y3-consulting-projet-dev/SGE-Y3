@@ -2,7 +2,7 @@
 
 # =============================================================================
 # SGE-Y3 — image de production du frontend (SPA React buildée + Caddy)
-# Contexte de build : ./frontend  (docker-compose.yml, service "web")
+# Contexte de build : ./sge-y3/frontend  (deploy/docker-compose.yml, service "web")
 #
 # Le frontend est compilé ici (Vite) puis servi par Caddy, qui joue en plus le
 # rôle de reverse proxy pour l'API : le navigateur ne parle qu'à une seule
@@ -18,9 +18,14 @@ WORKDIR /app
 
 # L'URL de l'API est figée dans le bundle par Vite au moment du build.
 # "/api" => requêtes relatives à l'origine publique, routées par Caddy vers
-# le service "backend". Surchargeable via le build-arg VITE_API_URL.
-ARG VITE_API_URL=/api
-ENV VITE_API_URL=$VITE_API_URL
+# le service "backend".
+#
+# ATTENTION : Coolify transmet systématiquement --build-arg VITE_API_URL. Si la
+# variable n'est pas définie côté Coolify, le build-arg arrive VIDE et écraserait
+# la valeur par défaut ; le bundle retomberait alors sur la vieille IP LAN codée
+# dans src/api/apiBase.js. D'où le fallback explicite ci-dessous.
+ARG VITE_API_URL=
+ENV VITE_API_URL=${VITE_API_URL:-/api}
 
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund

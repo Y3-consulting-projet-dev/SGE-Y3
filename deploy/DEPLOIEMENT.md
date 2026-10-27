@@ -51,8 +51,12 @@ Principes retenus :
 
 > Les `Dockerfile` et `.dockerignore` restent volontairement **à côté de leur
 > code** (`sge-y3/backend/`, `sge-y3/frontend/`) : c'est le contexte de build.
-> Le compose y accède via `context: ../sge-y3/backend` et `../sge-y3/frontend`
-> (chemins résolus par rapport à `deploy/docker-compose.yml`).
+> 
+> ⚠️ **Chemins des contextes** : Coolify lance `docker compose` avec
+> `--project-directory <racine du dépôt>` ; cette option fait résoudre **tous**
+> les chemins relatifs depuis la racine du dépôt, pas depuis `deploy/`. Les
+> contextes sont donc `./sge-y3/backend` et `./sge-y3/frontend`. En local, il
+> faut lancer les commandes avec la même option (voir §6).
 
 ## 3. Prérequis
 
@@ -70,6 +74,8 @@ Principes retenus :
    - Branche : **`deploy`**
    - *Base Directory* : **`/deploy`**
    - *Docker Compose Location* : **`/docker-compose.yml`**
+   - Coolify exécutera `docker compose --project-directory <racine du dépôt>` :
+     c'est ce qui rend les contextes `./sge-y3/...` corrects.
 
 2. **Variables d'environnement**
    - Onglet *Environment Variables*, vue **Developer**, bouton **Paste .env** :
@@ -91,6 +97,8 @@ Principes retenus :
      (sans slash final) : Coolify crée la route automatiquement.
    - Ne mappez **jamais** de domaine sur `backend` ni sur `mongo`. Le trafic
      API passe par `web` (`/api/*`).
+   - Si la route ne se crée pas automatiquement, utilisez la variante avec port
+     explicite : `SERVICE_FQDN_WEB_80=https://sge.votre-domaine.com`.
 
 4. **Déployer**
    - Cliquez sur *Deploy*. Coolify construit `backend` et `frontend`
@@ -135,24 +143,25 @@ Principes retenus :
 | `JWT_EXPIRES_IN` | non | `24h` | Durée de vie des jetons |
 | `FRONTEND_URL` | non | vide | Origines CORS autorisées (vide = même origine, rien à faire) |
 | `SMTP_HOST/PORT/SECURE/USER/PASS/FROM` | non | vides | Notifications e-mail ; sans `SMTP_HOST`, les envois sont ignorés |
-| `VITE_API_URL` | non | `/api` | Build-arg du frontend (chemin de l'API compilé dans le bundle) |
+| `VITE_API_URL` | non | `/api` | Build-arg du frontend (chemin de l'API compilé dans le bundle). Coolify transmet toujours ce build-arg : s'il est vide, le Dockerfile retombe sur `/api` |
 
 > Les variables `MONGO_ROOT_*` ne sont appliquées qu'à la **création** du volume
 > `mongo-data`. Les modifier après coup n'a aucun effet sur une base existante.
 
 ## 6. Test local avant de pousser en production
 
+À lancer **depuis la racine du dépôt** (le `--project-directory .` reproduit
+exactement la façon dont Coolify appelle Compose) :
+
 ```bash
-cd deploy
-cp .env.production.example .env.production   # puis remplacer les CHANGE_ME_*
-docker compose -f docker-compose.yml -f docker-compose.local.yml \
-  --env-file .env.production up -d --build
-# → http://localhost:8080
-docker compose -f docker-compose.yml -f docker-compose.local.yml \
-  --env-file .env.production logs -f web backend
-# arrêt + suppression des données de test
-docker compose -f docker-compose.yml -f docker-compose.local.yml \
-  --env-file .env.production down -v
+cd <racine-du-dépôt>
+cp deploy/.env.production.example deploy/.env.production   # remplacer les CHANGE_ME_*
+
+DC="docker compose --project-directory . -f deploy/docker-compose.yml -f deploy/docker-compose.local.yml --env-file deploy/.env.production"
+
+$DC up -d --build          # → http://localhost:8080
+$DC logs -f web backend
+$DC down -v                # arrêt + suppression des données de test
 ```
 
 ## 7. Exploitation
@@ -186,6 +195,7 @@ Activez aussi les sauvegardes planifiées de Coolify sur le volume `mongo-data`.
 | Symptôme | Cause probable | Action |
 |---|---|---|
 | Le déploiement s'arrête : `JWT_SECRET est requis` | Variable manquante | Renseigner la variable dans Coolify puis redéployer |
+| `unable to prepare context: path "/artifacts/..." not found` | Contexte de build résolu depuis la racine du dépôt (`--project-directory`) | Garder `context: ./sge-y3/...` (jamais `../`) ; en local, passer `--project-directory .` |
 | `MongoServerError: Authentication failed` | `MONGO_URI` incohérent avec `MONGO_ROOT_*`, ou volume créé avec d'autres identifiants | Aligner les valeurs ; sinon recréer le volume (perte de données) |
 | 502 Bad Gateway sur `/` | `web` pas encore *healthy*, ou domaine mappé sur `backend` | Vérifier les logs `web` ; le domaine doit pointer sur `web` port 80 |
 | 502 sur `/api/*` uniquement | `backend` en échec (Mongo, variables) | `docker logs <backend>` ; healthcheck `/api/health` |

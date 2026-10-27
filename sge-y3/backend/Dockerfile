@@ -2,7 +2,7 @@
 
 # =============================================================================
 # SGE-Y3 — image de production du backend (API Express + Mongoose)
-# Contexte de build : ./backend  (docker-compose.yml, service "backend")
+# Contexte de build : ./sge-y3/backend  (deploy/docker-compose.yml, service "backend")
 # =============================================================================
 
 # -----------------------------------------------------------------------------

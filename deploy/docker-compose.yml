@@ -4,10 +4,14 @@
 # Cible : Coolify (une seule resource "Docker Compose", base directory /deploy)
 # ou tout hôte Docker Compose v2.
 #
-# Ce fichier vit dans deploy/ : les contextes de build pointent donc vers
-# ../sge-y3/backend et ../sge-y3/frontend (chemins résolus par rapport à ce
-# fichier), et les images gardent leurs Dockerfiles à côté de leur code.
+# IMPORTANT — chemins des contextes de build :
+# Coolify lance `docker compose --project-directory <racine-du-dépôt>`, et cette
+# option fait résoudre TOUS les chemins relatifs depuis la racine du dépôt (et
+# non depuis ce fichier). Les contextes sont donc écrits en ./sge-y3/backend et
+# ./sge-y3/frontend, et il faut lancer localement avec la même option :
 #
+#   docker compose --project-directory . -f deploy/docker-compose.yml ...
+# =============================================================================
 # Aucun port n'est publié sur l'hôte : chaque service n'expose son port qu'au
 # réseau interne Docker. Le trafic public entre par le reverse proxy de Coolify
 # (Traefik) puis est reçu par le service "web" (Caddy), qui sert la SPA et
@@ -49,7 +53,7 @@ services:
   # ---------------------------------------------------------------------------
   backend:
     build:
-      context: ../sge-y3/backend
+      context: ./sge-y3/backend
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
@@ -92,7 +96,7 @@ services:
   # ---------------------------------------------------------------------------
   web:
     build:
-      context: ../sge-y3/frontend
+      context: ./sge-y3/frontend
       dockerfile: Dockerfile
       args:
         # "/api" => le bundle appelle l'API sur la même origine
