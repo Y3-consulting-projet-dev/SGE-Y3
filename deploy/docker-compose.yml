@@ -1,32 +1,4 @@
-# =============================================================================
-# SGE-Y3 — pile de production complète (MongoDB + API Node + Caddy/React)
-#
-# Cible : Coolify (une seule resource "Docker Compose", base directory /deploy)
-# ou tout hôte Docker Compose v2.
-#
-# IMPORTANT — chemins des contextes de build :
-# Coolify lance `docker compose --project-directory <racine-du-dépôt>`, et cette
-# option fait résoudre TOUS les chemins relatifs depuis la racine du dépôt (et
-# non depuis ce fichier). Les contextes sont donc écrits en ./sge-y3/backend et
-# ./sge-y3/frontend, et il faut lancer localement avec la même option :
-#
-#   docker compose --project-directory . -f deploy/docker-compose.yml ...
-# =============================================================================
-# Aucun port n'est publié sur l'hôte : chaque service n'expose son port qu'au
-# réseau interne Docker. Le trafic public entre par le reverse proxy de Coolify
-# (Traefik) puis est reçu par le service "web" (Caddy), qui sert la SPA et
-# proxifie /api/* vers "backend".
-#
-#   Internet ──TLS──> Traefik (Coolify) ──HTTP:80──> web (Caddy) ──HTTP:5000──> backend ──TCP:27017──> mongo
-#
-# Les variables sont à définir dans Coolify (Environment Variables) à partir de
-# .env.production.example. Aucune valeur secrète n'est stockée dans ce fichier.
-# =============================================================================
-
 services:
-  # ---------------------------------------------------------------------------
-  # Base de données
-  # ---------------------------------------------------------------------------
   mongo:
     image: mongo:7
     restart: unless-stopped
@@ -35,7 +7,6 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?MONGO_ROOT_PASSWORD est requis}
       MONGO_INITDB_DATABASE: sge_y3
     volumes:
-      # Données persistantes : conservé entre les déploiements
       - mongo-data:/data/db
     expose:
       - "27017"
@@ -48,9 +19,6 @@ services:
     networks:
       - sge
 
-  # ---------------------------------------------------------------------------
-  # API REST (Express + Mongoose)
-  # ---------------------------------------------------------------------------
   backend:
     build:
       context: ./sge-y3/backend
@@ -62,8 +30,6 @@ services:
       MONGO_URI: ${MONGO_URI:?MONGO_URI est requis}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET est requis}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
-      # CORS : les appels du navigateur sont de même origine via Caddy.
-      # Laisser vide, ou renseigner l'URL publique EXACTE (sans slash final).
       FRONTEND_URL: ${FRONTEND_URL:-}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
@@ -72,9 +38,6 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
     volumes:
-      # Persiste les personnalisations du questionnaire RH
-      # (backend/src/data/rhQuestionnaire.custom.json) entre les redéploiements.
-      # Le volume est initialisé depuis l'image au premier démarrage.
       - backend-data:/app/src/data
     expose:
       - "5000"
@@ -90,21 +53,14 @@ services:
     networks:
       - sge
 
-  # ---------------------------------------------------------------------------
-  # Frontend : bundle React servi par Caddy + reverse proxy /api
-  # C'est le seul service exposé à l'extérieur (via le proxy de Coolify).
-  # ---------------------------------------------------------------------------
   web:
     build:
       context: ./sge-y3/frontend
       dockerfile: Dockerfile
       args:
-        # "/api" => le bundle appelle l'API sur la même origine
         VITE_API_URL: ${VITE_API_URL:-/api}
     restart: unless-stopped
     environment:
-      # Coolify injecte ici le domaine public et crée la route Traefik.
-      # Peut rester vide si le domaine est ajouté depuis l'interface Coolify.
       SERVICE_FQDN_WEB: ${SERVICE_FQDN_WEB:-}
     expose:
       - "80"
