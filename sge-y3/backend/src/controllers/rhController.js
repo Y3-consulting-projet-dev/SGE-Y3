@@ -2191,7 +2191,7 @@ async function validateRhSelection(request, response) {
   }
 
   for (const instance of supportInstances) {
-    instance.status = 'Valide RH';
+    instance.status = 'Validé RH';
     instance.rh_validation_selected = false;
     instance.rh_validated_at = new Date();
   }

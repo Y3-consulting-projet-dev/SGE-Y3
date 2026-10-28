@@ -715,7 +715,7 @@ async function fetchManagerCommentsForMember(cycleLabel, memberId) {
   const managerReviews = await ManagerMemberReview.find({
     cycle_label: cycleLabel,
     member_id: memberId,
-    status: { $in: ['Valide RH', `Transmis à l'associé`, 'Clôture'] },
+    status: { $in: ['Validé RH', 'Valide RH', `Transmis à l'associé`, 'Clôture'] },
   }).select('manager_id submitted_at sections mission_reviews status');
 
   const managerIds = managerReviews.map((review) => review.manager_id).filter(Boolean);
@@ -1028,7 +1028,7 @@ async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
 
   const SUBMITTED_STATUSES = [
     'Soumis aux Managers', 'Soumis au Manager', 'Soumis a RH',
-    'Valide RH', 'Transmis a l associe', 'En correction', 'Cloture',
+    'Validé RH', 'Valide RH', 'Transmis a l associe', 'En correction', 'Cloture',
   ];
   const preserveStatus = SUBMITTED_STATUSES.includes(instance.status);
   const newStatus = preserveStatus ? instance.status : (summary.globalProgress === 0 ? 'Brouillon' : 'En cours');
@@ -1271,7 +1271,7 @@ async function buildResultsPayloadForInstance(instance, request, { includeDepart
   const managerReviews = await ManagerMemberReview.find({
     cycle_label: instance.cycle_label,
     member_id: request.user._id,
-    status: { $in: ['Valide RH', `Transmis à l'associé`, 'Clôture'] },
+    status: { $in: ['Validé RH', 'Valide RH', `Transmis à l'associé`, 'Clôture'] },
   }).select('manager_id submitted_at sections mission_reviews status');
   const managerIds = managerReviews.map((review) => review.manager_id).filter(Boolean);
   const managerUsers = managerIds.length

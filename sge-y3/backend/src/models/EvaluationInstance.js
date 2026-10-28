@@ -132,7 +132,7 @@ const evaluationInstanceSchema = new mongoose.Schema(
     status: {
       type: String,
       default: 'En cours',
-      enum: ['Brouillon', 'En cours', 'Soumis au Manager', 'Soumis aux Managers', 'Soumis a RH', 'Soumis aux Associes', 'Valide RH', 'Transmis a l associe', 'En correction', 'Cloture'],
+      enum: ['Brouillon', 'En cours', 'Soumis au Manager', 'Soumis aux Managers', 'Soumis a RH', 'Soumis aux Associes', 'Validé RH', 'Valide RH', 'Transmis a l associe', 'En correction', 'Cloture'],
     },
     template_type: { type: String, default: 'assistant-self-evaluation', trim: true },
     submitted_to_role: { type: String, default: 'admin', trim: true },
