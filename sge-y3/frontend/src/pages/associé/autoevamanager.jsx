@@ -760,18 +760,9 @@ function Autoevamanager() {
       }
 
       setIsReceivedSaving(true);
-      const savedResponse = await saveReceivedAssociateEvaluationComment(selectedReceivedId, {
+      const response = await submitReceivedAssociateEvaluationToRh(selectedReceivedId, {
         sections: receivedSections,
       });
-      const savedMissions = savedResponse.evaluation?.missions || receivedMissions;
-      const savedSections = ensureReceivedSectionsForMissions(
-        hydrateReceivedSections(savedResponse.peerReview?.sections || [], savedMissions),
-        savedMissions
-      );
-      setReceivedDetail(savedResponse);
-      setReceivedSections(savedSections);
-
-      const response = await submitReceivedAssociateEvaluationToRh(selectedReceivedId);
       const responseMissions = response.evaluation?.missions || receivedMissions;
       const responseSections = ensureReceivedSectionsForMissions(
         hydrateReceivedSections(response.peerReview?.sections || [], responseMissions),

@@ -1583,9 +1583,35 @@ module.exports = {
       return response.status(404).json({ message: "Évaluation collaborateur introuvable pour cet associé." });
     }
 
+    // Lancées tôt pour ne pas attendre ces lectures après la validation.
+    const submitterPromise = User.findById(instance.evalue_id).select('_id name first_name last_name grade department');
+    const rhUsersPromise = resolveRhQueueUserIds().then((rhUserIds) =>
+      rhUserIds.length ? User.find({ _id: { $in: rhUserIds } }).select('_id name') : []
+    );
+    submitterPromise.catch(() => {});
+    rhUsersPromise.catch(() => {});
+
+    // Les sections envoyées avec la transmission sont enregistrées dans la même requête.
+    const rawSections = Array.isArray(request.body?.sections) ? request.body.sections : null;
+    if (rawSections) {
+      const incomingSections = normalizeSections(rawSections);
+      if (incomingSections.length) {
+        instance.peer_review_sections = toPersistenceSections(incomingSections);
+        instance.peer_review_comment = String(request.body?.comment || '').trim();
+        instance.peer_review_comment_by_user_id = request.user._id;
+        instance.peer_review_comment_by_name =
+          [request.user?.first_name, request.user?.last_name].filter(Boolean).join(' ').trim() || request.user?.name || '';
+        instance.peer_review_comment_saved_at = new Date();
+      }
+    }
+    const rejectSubmission = async (payload) => {
+      if (instance.isModified()) await instance.save();
+      return response.status(400).json(payload);
+    };
+
     const peerReviewSections = getAssociatePeerReviewSections(instance, null, request.user._id);
     if (!peerReviewSections.length) {
-      return response.status(400).json({
+      return rejectSubmission({
         message: "L'évaluation de l'associé doit être enregistrée avant la transmission à la RH.",
       });
     }
@@ -1596,7 +1622,7 @@ module.exports = {
 
     const missingAnswers = validateSectionsForSubmit(reviewSectionsToValidate);
     if (missingAnswers.length) {
-      return response.status(400).json({
+      return rejectSubmission({
         message: "Toutes les questions doivent être renseignées avant la transmission à la RH.",
         missingAnswers,
       });
@@ -1604,19 +1630,16 @@ module.exports = {
 
     const missingComments = validateSectionCommentsForSubmit(reviewSectionsToValidate, 3);
     if (missingComments.length) {
-      return response.status(400).json({
+      return rejectSubmission({
         message: "Un commentaire d'au moins 3 caractères est obligatoire pour chaque section avant la transmission à la RH.",
         missingComments,
       });
     }
 
-    const rhUserIds = await resolveRhQueueUserIds();
-    const rhUsers = rhUserIds.length
-      ? await User.find({ _id: { $in: rhUserIds } }).select('_id name')
-      : [];
+    const [rhUsers, submitter] = await Promise.all([rhUsersPromise, submitterPromise]);
 
     if (!rhUsers.length) {
-      return response.status(400).json({
+      return rejectSubmission({
         message: "Aucun destinataire RH n'est disponible pour cette transmission.",
       });
     }
@@ -1630,10 +1653,10 @@ module.exports = {
     instance.submitted_to_names = [request.user.name, ...rhUsers.map((user) => user.name)].filter(Boolean);
     instance.submitted_at = new Date();
     instance.last_saved_at = new Date();
-    await instance.save();
-
-    const submitter = await User.findById(instance.evalue_id).select('_id name first_name last_name grade department');
-    const missionResults = await buildAssociateMissionResults(instance, submitter, request.user._id);
+    const [, missionResults] = await Promise.all([
+      instance.save(),
+      buildAssociateMissionResults(instance, submitter, request.user._id),
+    ]);
 
     notifySubmissionRecipients({
       recipientIds: rhUsers.map((user) => user._id),

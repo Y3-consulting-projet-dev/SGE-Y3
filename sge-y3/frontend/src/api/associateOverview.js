@@ -82,9 +82,10 @@ export function saveReceivedAssociateEvaluationComment(evaluationId, payload) {
   });
 }
 
-export function submitReceivedAssociateEvaluationToRh(evaluationId) {
+export function submitReceivedAssociateEvaluationToRh(evaluationId, payload) {
   return request(`/associate/received-evaluations/${evaluationId}/submit-rh`, {
     method: "POST",
+    ...(payload ? { body: JSON.stringify(payload) } : {}),
   });
 }
 
