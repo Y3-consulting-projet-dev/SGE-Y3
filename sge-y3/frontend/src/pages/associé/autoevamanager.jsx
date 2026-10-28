@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   getAssociateManagerEvaluation,
@@ -298,6 +298,8 @@ function Autoevamanager() {
   const [receivedActionMessage, setReceivedActionMessage] = useState("");
   const [receivedActionType, setReceivedActionType] = useState("info");
   const [isReceivedSaving, setIsReceivedSaving] = useState(false);
+  // Verrou synchrone : bloque un double-clic avant que isReceivedSaving ne soit rendu.
+  const isSubmittingReceivedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -745,7 +747,8 @@ function Autoevamanager() {
   };
 
   const submitReceivedEvaluationToRh = async () => {
-    if (!selectedReceivedId) return;
+    if (!selectedReceivedId || isSubmittingReceivedRef.current) return;
+    isSubmittingReceivedRef.current = true;
 
     try {
       const missingComments = getMissingReceivedSectionComments();
@@ -789,6 +792,7 @@ function Autoevamanager() {
       setReceivedActionMessage(message);
       setReceivedActionType("error");
     } finally {
+      isSubmittingReceivedRef.current = false;
       setIsReceivedSaving(false);
     }
   };

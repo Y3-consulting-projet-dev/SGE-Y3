@@ -1132,7 +1132,7 @@ async function getAssociateOverview(_request, response) {
       EvaluationInstance.find({
         cycle_label: getCurrentCycleLabel(),
         template_type: { $in: ['manager-self-evaluation', 'rh-self-evaluation'] },
-        status: { $in: ['Soumis à RH', 'Validé RH', 'Clôture'] },
+        status: { $in: ['Soumis à RH', 'Validé RH', 'Valide RH', 'Clôture'] },
         submitted_at: { $ne: null },
       }).select('evalue_id submitted_at sections'),
       User.find({
@@ -1149,7 +1149,7 @@ async function getAssociateOverview(_request, response) {
   const receivedCount = combinedRows.filter((item) => RH_RELEVANT_STATUSES.includes(item.status)).length;
   const totalPopulation = evaluatedPopulation.length;
   const readySyntheses = combinedRows.filter(
-    (row) => row.status === 'Validé RH' || row.status === `Transmis à l'associe` || row.status === 'Clôture'
+    (row) => row.status === 'Validé RH' || row.status === 'Valide RH' || row.status === `Transmis à l'associe` || row.status === 'Clôture'
   );
   const readySyntheseIds = new Set(readySyntheses.map((row) => String(row.memberId || '')).filter(Boolean));
   const latestDecisionMap = buildDecisionMap(latestDecision);
@@ -1562,6 +1562,11 @@ module.exports = {
     });
   },
   async submitReceivedAssociateEvaluationToRh(request, response) {
+    // TODO: retirer après mesure
+    const timerLabel = `submit-rh ${request.params.evaluationId}`;
+    console.time(timerLabel);
+    response.on('finish', () => console.timeEnd(timerLabel));
+
     const instance = await EvaluationInstance.findOne({
       _id: request.params.evaluationId,
       cycle_label: getCurrentCycleLabel(),
@@ -1647,6 +1652,8 @@ module.exports = {
     const submittedToIds = new Map();
     [request.user._id, ...rhUsers.map((user) => user._id)].forEach((id) => submittedToIds.set(String(id), id));
 
+    // Évite de renvoyer l'e-mail aux RH si l'évaluation leur a déjà été transmise.
+    const wasAlreadySubmittedToRh = instance.status === 'Soumis a RH';
     instance.status = 'Soumis a RH';
     instance.submitted_to_role = 'rh';
     instance.submitted_to_user_ids = Array.from(submittedToIds.values());
@@ -1658,13 +1665,15 @@ module.exports = {
       buildAssociateMissionResults(instance, submitter, request.user._id),
     ]);
 
-    notifySubmissionRecipients({
-      recipientIds: rhUsers.map((user) => user._id),
-      excludeUserId: request.user._id,
-      submitterName: request.user.name,
-      label: `l'évaluation de ${submitter?.name || 'un collaborateur'}`,
-      cycleLabel: getCurrentCycleLabel(),
-    });
+    if (!wasAlreadySubmittedToRh) {
+      notifySubmissionRecipients({
+        recipientIds: rhUsers.map((user) => user._id),
+        excludeUserId: request.user._id,
+        submitterName: request.user.name,
+        label: `l'évaluation de ${submitter?.name || 'un collaborateur'}`,
+        cycleLabel: getCurrentCycleLabel(),
+      });
+    }
 
     return response.json({
       message: `Évaluation transmise à la RH (${rhUsers.map((user) => user.name).join(', ')}).`,
@@ -2023,7 +2032,7 @@ module.exports = {
     ]);
 
     const items = [...rows, ...assistantRhRows]
-      .filter((row) => row.status === 'Validé RH' || row.status === `Transmis à l'associe` || row.status === 'Clôture')
+      .filter((row) => row.status === 'Validé RH' || row.status === 'Valide RH' || row.status === `Transmis à l'associe` || row.status === 'Clôture')
       .map((row) => ({
         ...row,
         initials: getInitials(row.name),

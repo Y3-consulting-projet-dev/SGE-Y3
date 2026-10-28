@@ -41,7 +41,7 @@ const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationContr
 const { fetchAssociateCommentsForManager } = require('./managerController');
 const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
 
-const RH_RELEVANT_STATUSES = ['Soumis à la RH', 'Validé RH', "Transmis à l'associé", 'Clôture'];
+const RH_RELEVANT_STATUSES = ['Soumis à la RH', 'Validé RH', 'Valide RH', "Transmis à l'associé", 'Clôture'];
 const QUESTIONNAIRE_SECTION_OPTIONS = [
   { value: 'SAVOIR FAIRE', label: 'SAVOIR FAIRE' },
   { value: 'SAVOIR ETRE', label: 'SAVOIR ETRE' },
@@ -1428,7 +1428,7 @@ async function loadRhReviewDataset(rhUserIds) {
         : finalScore;
     const hasSubmittedManagerMission = (review?.mission_reviews || []).some((mission) => mission.status === 'Soumise à la RH');
     const effectiveStatus =
-      review?.status === 'Soumis à la RH' || review?.status === 'Validé RH' || review?.status === "Transmis à l'associé" || review?.status === 'Clôture'
+      review?.status === 'Soumis à la RH' || review?.status === 'Validé RH' || review?.status === 'Valide RH' || review?.status === "Transmis à l'associé" || review?.status === 'Clôture'
         ? review.status
         : hasSubmittedManagerMission
           ? 'Soumis à la RH'
@@ -1655,6 +1655,7 @@ async function loadAssistantRhSelfDataset(rhUserIds) {
     const reviewHasBeenSubmitted =
       review?.status === 'Soumis à la RH' ||
       review?.status === 'Validé RH' ||
+      review?.status === 'Valide RH' ||
       review?.status === "Transmis à l'associé" ||
       review?.status === 'Clôture';
     const effectiveStatus = reviewHasBeenSubmitted ? review.status : instance.status;

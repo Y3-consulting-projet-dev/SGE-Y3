@@ -2,7 +2,7 @@
 import { getRhDepartmentEvaluationDetail, getRhDepartmentEvaluations, selectRhDepartmentEvaluation } from "@/api/rhOverview";
 
 function statusClass(status) {
-  if (status === "Valide" || status === "Pret Associe" || status === "Prêt Associé") return "bg-[#DDECCF] text-[#4E8B1B]";
+  if (status === "Validé" || status === "Valide" || status === "Pret Associe" || status === "Prêt Associé") return "bg-[#DDECCF] text-[#4E8B1B]";
   if (status === "Ecart a arbitrer" || status === "Ecart à arbitrer") return "bg-[#F9DFDF] text-[#B63232]";
   if (status === "A completer" || status === "À compléter") return "bg-[#FFF2CC] text-[#8A6810]";
   return "bg-[#E7EDF3] text-[#0F4A72]";
@@ -491,7 +491,7 @@ function EvaluationsDepartementRH() {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  disabled={selectedMember.rhValidationSelected || selectedMember.status === "Valide" || selectedMember.status === "Pret Associe" || !selectedMember.id || selectedMember.id.startsWith("pending-") || isSelecting}
+                  disabled={selectedMember.rhValidationSelected || selectedMember.status === "Validé" || selectedMember.status === "Valide" || selectedMember.status === "Pret Associe" || !selectedMember.id || selectedMember.id.startsWith("pending-") || isSelecting}
                   onClick={handleSelectForValidation}
                   className="rounded-full bg-[#E7EDF3] px-4 py-2 text-xs font-bold text-[#0F4A72] disabled:cursor-not-allowed disabled:opacity-60"
                 >

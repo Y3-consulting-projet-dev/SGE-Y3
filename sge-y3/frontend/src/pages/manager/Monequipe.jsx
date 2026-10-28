@@ -4,7 +4,7 @@ function formatEvalStatus(status = "") {
   if (status === "Soumis a RH") return "Soumise";
   if (status === "Soumis aux Managers" || status === "Soumis au Manager") return "Soumise";
   if (status === "En cours") return "En cours";
-  if (status === "Valide RH") return "Soumise";
+  if (status === "Validé RH" || status === "Valide RH") return "Soumise";
   return "En attente";
 }
 

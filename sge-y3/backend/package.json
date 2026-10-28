@@ -7,7 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
-    "seed:users": "node src/scripts/importUsers.js"
+    "seed:users": "node src/scripts/importUsers.js",
+    "migrate:valide-rh": "node src/scripts/migrateValideRh.js"
   },
   "keywords": [],
   "author": "",
