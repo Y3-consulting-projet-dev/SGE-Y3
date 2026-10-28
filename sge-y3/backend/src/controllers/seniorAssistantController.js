@@ -14,7 +14,6 @@ const {
 } = require('../utils/evaluationHelpers');
 const { buildMissionResultsPayload } = require('../utils/evaluationHistory');
 const { getCurrentCycleLabel } = require('../utils/activeCycle');
-const { createOrFind } = require('../utils/createOrFind');
 const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
 const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
 
@@ -623,18 +622,17 @@ async function getAssistantForSenior(seniorUser, assistantId) {
 }
 
 async function getOrCreateSeniorAssistantReview(seniorUser, assistant) {
-  const filter = {
+  let review = await SeniorAssistantReview.findOne({
     cycle_label: getCurrentCycleLabel(),
     senior_id: seniorUser._id,
     assistant_id: assistant._id,
-  };
-  let review = await SeniorAssistantReview.findOne(filter);
+  });
 
   const evaluationDepartment = resolveEvaluationDepartmentForSeniorReview(seniorUser, assistant);
   const templateSections = cloneAssistantTemplateForDepartment(evaluationDepartment);
 
   if (!review) {
-    review = await createOrFind(SeniorAssistantReview, filter, {
+    review = await SeniorAssistantReview.create({
       cycle_label: getCurrentCycleLabel(),
       senior_id: seniorUser._id,
       assistant_id: assistant._id,
@@ -656,17 +654,16 @@ async function getOrCreateSeniorAssistantReview(seniorUser, assistant) {
 }
 
 async function getOrCreateAssistantEvaluationInstance(assistant) {
-  const filter = {
+  let instance = await EvaluationInstance.findOne({
     evalue_id: assistant._id,
     cycle_label: getCurrentCycleLabel(),
     template_type: 'assistant-self-evaluation',
-  };
-  let instance = await EvaluationInstance.findOne(filter);
+  });
 
   const templateSections = cloneAssistantTemplateForDepartment(assistant.department);
 
   if (!instance) {
-    instance = await createOrFind(EvaluationInstance, filter, {
+    instance = await EvaluationInstance.create({
       cycle_label: getCurrentCycleLabel(),
       evalue_id: assistant._id,
       status: 'En cours',

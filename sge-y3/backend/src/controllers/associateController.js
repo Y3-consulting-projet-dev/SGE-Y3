@@ -25,7 +25,6 @@ const {
 } = require('./rhController');
 const { getSupportRoleLabel } = require('../utils/userMapping');
 const { getCurrentCycleLabel } = require('../utils/activeCycle');
-const { createOrFind } = require('../utils/createOrFind');
 const {
   buildCyclesForInstances,
   buildPeerReviewComments,
@@ -291,17 +290,16 @@ function getReceivedEvaluationScore(instance) {
 }
 
 async function getOrCreateAssociateSelfEvaluation(user) {
-  const filter = {
+  let instance = await EvaluationInstance.findOne({
     cycle_label: getCurrentCycleLabel(),
     evalue_id: user._id,
     template_type: 'associate-self-evaluation',
-  };
-  let instance = await EvaluationInstance.findOne(filter);
+  });
 
   const templateSections = cloneSectionsForAssociate(user);
 
   if (!instance) {
-    instance = await createOrFind(EvaluationInstance, filter, {
+    instance = await EvaluationInstance.create({
       cycle_label: getCurrentCycleLabel(),
       evalue_id: user._id,
       status: 'En cours',
@@ -736,12 +734,11 @@ function toAssociateMissionCriteria(criteria = []) {
 }
 
 async function getOrCreateAssociateManagerReview(associateUser, managerUser, managerSelfEvaluation) {
-  const filter = {
+  let review = await AssociateManagerReview.findOne({
     cycle_label: getCurrentCycleLabel(),
     associate_id: associateUser._id,
     manager_id: managerUser._id,
-  };
-  let review = await AssociateManagerReview.findOne(filter);
+  });
 
   const templateSections = cloneSectionsForManager(managerUser);
   const availableMissions = getAssociateManagerAvailableMissions(managerSelfEvaluation, associateUser._id)
@@ -756,7 +753,7 @@ async function getOrCreateAssociateManagerReview(associateUser, managerUser, man
     }));
 
   if (!review) {
-    review = await createOrFind(AssociateManagerReview, filter, {
+    review = await AssociateManagerReview.create({
       cycle_label: getCurrentCycleLabel(),
       associate_id: associateUser._id,
       manager_id: managerUser._id,

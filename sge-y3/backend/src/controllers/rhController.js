@@ -37,7 +37,6 @@ const {
   resolveTemplateTypeForUser,
 } = require('../utils/evaluationHistory');
 const { activateCycle, getCurrentCycleLabel } = require('../utils/activeCycle');
-const { createOrFind } = require('../utils/createOrFind');
 const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
 const { fetchAssociateCommentsForManager } = require('./managerController');
 const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
@@ -298,17 +297,16 @@ async function resolveRhQueueUserIds() {
 async function getOrCreateRhSelfEvaluation(user, options = {}) {
   const templateType = options.templateType || 'rh-self-evaluation';
   const submittedToRole = options.submittedToRole || 'associate';
-  const filter = {
+  let instance = await EvaluationInstance.findOne({
     evalue_id: user._id,
     cycle_label: getCurrentCycleLabel(),
     template_type: templateType,
-  };
-  let instance = await EvaluationInstance.findOne(filter);
+  });
 
   const templateSections = cloneRhSelfTemplate(user);
 
   if (!instance) {
-    instance = await createOrFind(EvaluationInstance, filter, {
+    instance = await EvaluationInstance.create({
       cycle_label: getCurrentCycleLabel(),
       evalue_id: user._id,
       status: 'En cours',
@@ -2488,18 +2486,17 @@ async function getAssistantRhMemberForRh(rhUser, memberId) {
 }
 
 async function getOrCreateAssistantRhReview(rhUser, member) {
-  const filter = {
+  let review = await ManagerMemberReview.findOne({
     cycle_label: getCurrentCycleLabel(),
     manager_id: rhUser._id,
     member_id: member._id,
     template_type: 'rh-assistant-evaluation',
-  };
-  let review = await ManagerMemberReview.findOne(filter);
+  });
 
   const templateSections = cloneRhSelfTemplate(member);
 
   if (!review) {
-    review = await createOrFind(ManagerMemberReview, filter, {
+    review = await ManagerMemberReview.create({
       cycle_label: getCurrentCycleLabel(),
       manager_id: rhUser._id,
       member_id: member._id,

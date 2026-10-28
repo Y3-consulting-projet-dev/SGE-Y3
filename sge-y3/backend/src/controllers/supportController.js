@@ -9,7 +9,6 @@ const {
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
 const { getCurrentCycleLabel } = require('../utils/activeCycle');
-const { createOrFind } = require('../utils/createOrFind');
 const { buildCyclesForInstances, buildPeerReviewComments } = require('../utils/evaluationHistory');
 
 function toPersistenceSections(sections = []) {
@@ -177,17 +176,16 @@ function formatChiefComments(items = []) {
 }
 
 async function getOrCreateSupportSelfEvaluation(user) {
-  const filter = {
+  let instance = await EvaluationInstance.findOne({
     cycle_label: getCurrentCycleLabel(),
     evalue_id: user._id,
     template_type: 'support-self-evaluation',
-  };
-  let instance = await EvaluationInstance.findOne(filter);
+  });
 
   const templateSections = cloneSupportSections(user);
 
   if (!instance) {
-    instance = await createOrFind(EvaluationInstance, filter, {
+    instance = await EvaluationInstance.create({
       cycle_label: getCurrentCycleLabel(),
       evalue_id: user._id,
       status: 'En cours',
