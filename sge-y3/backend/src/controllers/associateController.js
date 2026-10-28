@@ -1589,7 +1589,7 @@ module.exports = {
     }
 
     // Lancées tôt pour ne pas attendre ces lectures après la validation.
-    const submitterPromise = User.findById(instance.evalue_id).select('_id name first_name last_name grade department');
+    const submitterPromise = User.findById(instance.evalue_id).select('_id name first_name last_name grade department').exec();
     const rhUsersPromise = resolveRhQueueUserIds().then((rhUserIds) =>
       rhUserIds.length ? User.find({ _id: { $in: rhUserIds } }).select('_id name') : []
     );
