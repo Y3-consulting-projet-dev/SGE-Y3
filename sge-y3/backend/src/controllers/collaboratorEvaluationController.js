@@ -14,6 +14,7 @@ const {
 } = require('../utils/evaluationHelpers');
 const { buildMissionResultsPayload } = require('../utils/evaluationHistory');
 const { getCurrentCycleLabel } = require('../utils/activeCycle');
+const { createOrFind } = require('../utils/createOrFind');
 const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
 const { SUPPORT_EMAILS } = require('../utils/userMapping');
 
@@ -871,16 +872,17 @@ async function getOrCreateSeniorEvaluation(user) {
 }
 
 async function getOrCreateSelfEvaluation(user, templateType, cloneTemplate) {
-  let instance = await EvaluationInstance.findOne({
+  const filter = {
     evalue_id: user._id,
     cycle_label: getCurrentCycleLabel(),
     template_type: templateType,
-  });
+  };
+  let instance = await EvaluationInstance.findOne(filter);
 
   const templateSections = cloneTemplate(user);
 
   if (!instance) {
-    instance = await EvaluationInstance.create({
+    instance = await createOrFind(EvaluationInstance, filter, {
       cycle_label: getCurrentCycleLabel(),
       evalue_id: user._id,
       status: 'En cours',

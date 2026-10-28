@@ -19,6 +19,7 @@ const {
 } = require('../utils/evaluationHelpers');
 const { buildCyclesForInstances, resolveTemplateTypeForUser } = require('../utils/evaluationHistory');
 const { getCurrentCycleLabel } = require('../utils/activeCycle');
+const { createOrFind } = require('../utils/createOrFind');
 const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
 const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
 const FULL_RH_EMAILS = ['isabella.beda@ycubeac.com'];
@@ -413,16 +414,17 @@ function formatSentChiefCommentsForUser(feedbackItems = [], targetUser) {
 }
 
 async function getOrCreateManagerSelfEvaluation(user) {
-  let instance = await EvaluationInstance.findOne({
+  const filter = {
     evalue_id: user._id,
     cycle_label: getCurrentCycleLabel(),
     template_type: 'manager-self-evaluation',
-  });
+  };
+  let instance = await EvaluationInstance.findOne(filter);
 
   const templateSections = cloneManagerSelfTemplate(user);
 
   if (!instance) {
-    instance = await EvaluationInstance.create({
+    instance = await createOrFind(EvaluationInstance, filter, {
       cycle_label: getCurrentCycleLabel(),
       evalue_id: user._id,
       status: 'En cours',
@@ -976,17 +978,18 @@ async function buildManagerMissionAndGlobalInputs(managerUser, member, selfEvalu
 }
 
 async function getOrCreateManagerMemberReview(managerUser, member) {
-  let review = await ManagerMemberReview.findOne({
+  const filter = {
     cycle_label: getCurrentCycleLabel(),
     manager_id: managerUser._id,
     member_id: member._id,
-  });
+  };
+  let review = await ManagerMemberReview.findOne(filter);
 
   const evaluationDepartment = resolveEvaluationDepartmentForManagerReview(managerUser, member);
   const templateSections = cloneTemplateForMember(member, evaluationDepartment);
 
   if (!review) {
-    review = await ManagerMemberReview.create({
+    review = await createOrFind(ManagerMemberReview, filter, {
       cycle_label: getCurrentCycleLabel(),
       manager_id: managerUser._id,
       member_id: member._id,
