@@ -8,7 +8,7 @@ import {
   submitManagerSelfEvaluation,
 } from "@/api/managerOverview";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
-import { sendNotificationEmail } from "@/services/notifications";
+import { missionEvaluationLabel, sendNotificationEmail } from "@/services/notifications";
 
 function getPageProgress(page) {
   const themes = page?.themes || [];
@@ -827,6 +827,7 @@ function Monautoevaluation() {
             email: recipient.email,
             name: recipient.name,
             assistantName,
+            evaluationLabel: missionEvaluationLabel(activeMission?.title),
           })
         )
       );

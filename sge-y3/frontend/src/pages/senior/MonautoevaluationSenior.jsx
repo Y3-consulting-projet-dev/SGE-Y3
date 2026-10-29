@@ -9,7 +9,7 @@ import {
 } from "@/api/seniorEvaluation";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
 import { getDisplayName } from "@/utils/userPresentation";
-import { sendNotificationEmail } from "@/services/notifications";
+import { missionEvaluationLabel, sendNotificationEmail } from "@/services/notifications";
 
 const gradingHelp = [
   { level: "1", text: "Insuffisant - objectif non atteint", color: "text-[#FF7A00]" },
@@ -818,6 +818,7 @@ function MonautoevaluationSenior({ user }) {
             email: recipient.email,
             name: recipient.name,
             assistantName,
+            evaluationLabel: missionEvaluationLabel(missionToNotify?.title),
           })
         )
       );

@@ -8,7 +8,7 @@ import {
   submitMyAssistantMissionEvaluation,
 } from "@/api/collaboratorEvaluation";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
-import { sendNotificationEmail } from "@/services/notifications";
+import { missionEvaluationLabel, sendNotificationEmail } from "@/services/notifications";
 
 const gradingHelp = [
   {
@@ -1126,6 +1126,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
             email: recipient.email,
             name: recipient.name,
             assistantName,
+            evaluationLabel: missionEvaluationLabel(missionToNotify?.title),
           })
         )
       );
