@@ -190,7 +190,8 @@ function GestionCollaborateurs() {
       <section className="rounded-xl bg-white p-5 shadow-sm">
         <h2 className="text-xl font-extrabold text-[#0F3A63]">Creer un collaborateur</h2>
         <p className="mt-1 text-sm font-semibold text-slate-500">
-          Le mot de passe par defaut sera Ycube@c2026. Le collaborateur pourra le modifier depuis son profil.
+          Le mot de passe par defaut sera Ycube@c2026. Le collaborateur pourra le modifier depuis son profil, et devra
+          conserver son code de secours personnel a sa premiere connexion.
         </p>
 
         <form onSubmit={handleCreateSubmit} className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">

@@ -88,4 +88,10 @@ const startServer = async () => {
   });
 };
 
-startServer();
+// Démarre seulement quand ce fichier est lancé directement (node src/app.js, nodemon, Docker) ;
+// les tests importent l'application sans ouvrir le port.
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = { app, startServer };

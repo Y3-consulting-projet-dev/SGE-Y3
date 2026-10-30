@@ -65,6 +65,28 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // Code de secours : seul le hachage bcrypt est stocké, jamais le code en clair.
+    recovery_code_hash: {
+      type: String,
+      default: null,
+    },
+    recovery_code_created_at: {
+      type: Date,
+      default: null,
+    },
+    // Date à laquelle l'utilisateur a confirmé avoir conservé son code.
+    recovery_code_confirmed_at: {
+      type: Date,
+      default: null,
+    },
+    recovery_failed_attempts: {
+      type: Number,
+      default: 0,
+    },
+    recovery_locked_until: {
+      type: Date,
+      default: null,
+    },
   },
   {
     collection: 'users',

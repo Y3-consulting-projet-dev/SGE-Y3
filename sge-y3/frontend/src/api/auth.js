@@ -22,6 +22,32 @@ export async function resetPassword(payload) {
   });
 }
 
+export async function getAuthConfig() {
+  return request("/auth/config");
+}
+
+export async function recoverWithCode(email, code) {
+  return request("/auth/recover", {
+    method: "POST",
+    body: JSON.stringify({ email, code }),
+  });
+}
+
+export async function createRecoveryCode() {
+  return request("/auth/me/recovery-code", { method: "POST" });
+}
+
+export async function confirmRecoveryCode() {
+  return request("/auth/me/recovery-code/confirm", { method: "POST" });
+}
+
+export async function regenerateRecoveryCode(currentPassword) {
+  return request("/auth/me/recovery-code/regenerate", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword }),
+  });
+}
+
 function getAuthToken() {
   const session = loadSession();
   return session?.token || null;
@@ -53,6 +79,8 @@ async function request(path, options = {}) {
 }
 
 export const SESSION_EXPIRED_EVENT = "sge-session-expired";
+export const SECURITY_STEP_EVENT = "sge-security-step-required";
+const SECURITY_STEP_CODES = ["RECOVERY_CODE_REQUIRED"];
 
 // fetch partagé par les modules d'API : une réponse 401 à une requête authentifiée
 // signifie que la session a expiré ou a été révoquée (ex. mot de passe modifié).
@@ -68,6 +96,14 @@ export async function authFetch(url, options = {}) {
         detail: { message: data.message || "Votre session a expiré. Veuillez vous reconnecter." },
       })
     );
+  }
+
+  // Étape obligatoire en attente : code de secours non conservé.
+  if (response.status === 403 && sentToken) {
+    const data = await response.clone().json().catch(() => ({}));
+    if (SECURITY_STEP_CODES.includes(data.code)) {
+      window.dispatchEvent(new CustomEvent(SECURITY_STEP_EVENT, { detail: { code: data.code } }));
+    }
   }
 
   return response;

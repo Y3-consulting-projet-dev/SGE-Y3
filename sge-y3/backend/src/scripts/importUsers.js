@@ -13,12 +13,12 @@ const {
   normalizeEmail,
   normalizeText,
 } = require('../utils/userMapping');
+const { DEFAULT_PASSWORD } = require('../utils/passwordPolicy');
 
 dotenv.config({
   path: path.resolve(__dirname, '../../.env'),
 });
 
-const DEFAULT_PASSWORD = 'Ycube@c2026';
 const DEFAULT_CSV_PATH = path.resolve(
   __dirname,
   '../../../../../../REGISTRE DU PERSONNEL (1).csv'

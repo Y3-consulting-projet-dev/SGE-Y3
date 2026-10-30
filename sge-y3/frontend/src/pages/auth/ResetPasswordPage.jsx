@@ -30,7 +30,8 @@ function ResetPasswordPage({ token, onDone }) {
       setIsSubmitting(true);
       setErrorMessage("");
       const response = await resetPassword({ token, newPassword, confirmPassword });
-      onDone?.(response.message || "Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter.");
+      // Le backend renvoie une nouvelle session : l'utilisateur est connecté directement.
+      onDone?.(response.message || "Mot de passe réinitialisé avec succès.", response.token ? response : null);
     } catch (error) {
       setErrorMessage(error.message || "Réinitialisation impossible pour le moment.");
     } finally {

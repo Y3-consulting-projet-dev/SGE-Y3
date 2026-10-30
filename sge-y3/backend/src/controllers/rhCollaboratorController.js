@@ -8,8 +8,8 @@ const {
   normalizeEmail,
   normalizeText,
 } = require('../utils/userMapping');
+const { DEFAULT_PASSWORD } = require('../utils/passwordPolicy');
 
-const DEFAULT_PASSWORD = 'Ycube@c2026';
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DUPLICATE_EMAIL_MESSAGE = 'Cet email est deja utilise.';
 

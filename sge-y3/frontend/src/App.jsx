@@ -1,7 +1,15 @@
 ﻿import { lazy, Suspense, useEffect, useState } from "react";
 import LoginPage from "@/pages/auth/LoginPage";
+import RecoveryCodePage from "@/pages/auth/RecoveryCodePage";
 import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
-import { clearSession, loadSession, loginUser, saveSession, SESSION_EXPIRED_EVENT } from "@/api/auth";
+import {
+  clearSession,
+  loadSession,
+  loginUser,
+  saveSession,
+  SECURITY_STEP_EVENT,
+  SESSION_EXPIRED_EVENT,
+} from "@/api/auth";
 
 const ManagerDashboard = lazy(() => import("@/pages/dashboard/ManagerDashboard"));
 const CollaboratorDashboard = lazy(() => import("@/pages/dashboard/CollaboratorDashboard"));
@@ -136,6 +144,24 @@ function App() {
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
   }, []);
 
+  // Le backend signale que le code de secours n'a pas été conservé (ex. session ouverte avant sa mise en place).
+  useEffect(() => {
+    const handleSecurityStep = () => {
+      const session = loadSession();
+      if (session?.user) {
+        saveSession({ ...session, user: { ...session.user, recovery_code_required: true } });
+      }
+      setAuthState((current) =>
+        current.currentUser
+          ? { ...current, currentUser: { ...current.currentUser, recovery_code_required: true } }
+          : current
+      );
+    };
+
+    window.addEventListener(SECURITY_STEP_EVENT, handleSecurityStep);
+    return () => window.removeEventListener(SECURITY_STEP_EVENT, handleSecurityStep);
+  }, []);
+
   const { isAuthenticated, userRole, currentUser } = authState;
 
   const handleLogout = () => {
@@ -169,16 +195,31 @@ function App() {
     return (
       <ResetPasswordPage
         token={resetToken}
-        onDone={(message) => {
-          setLoginMessage(message);
+        onDone={(message, session) => {
           setResetToken("");
+          if (session) {
+            applySession(session);
+          } else {
+            setLoginMessage(message);
+          }
         }}
       />
     );
   }
 
   if (!isAuthenticated) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} initialMessage={loginMessage} />;
+    return (
+      <LoginPage
+        onLoginSuccess={handleLoginSuccess}
+        onRecovered={(token) => setResetToken(token)}
+        initialMessage={loginMessage}
+      />
+    );
+  }
+
+  // Étape obligatoire : conserver son code de secours avant d'accéder à l'application.
+  if (currentUser?.recovery_code_required) {
+    return <RecoveryCodePage onDone={applySession} onLogout={handleLogout} />;
   }
 
   let dashboard = <ManagerDashboard user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;

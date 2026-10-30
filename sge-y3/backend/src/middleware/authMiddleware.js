@@ -1,6 +1,21 @@
 const jwt = require('jsonwebtoken');
 
 const User = require('../models/User');
+const { isRecoveryCodeMode } = require('../utils/passwordPolicy');
+
+// Routes accessibles tant que le code de secours n'a pas été conservé.
+const RECOVERY_CODE_ROUTES = ['/api/auth/me/password', '/api/auth/me/recovery-code', '/api/auth/me/recovery-code/confirm'];
+
+function getPendingSecurityStep(user, path) {
+  if (isRecoveryCodeMode() && !user.recovery_code_confirmed_at && !RECOVERY_CODE_ROUTES.includes(path)) {
+    return {
+      code: 'RECOVERY_CODE_REQUIRED',
+      message: 'Vous devez conserver votre code de secours avant de continuer.',
+    };
+  }
+
+  return null;
+}
 
 async function requireAuth(request, response, next) {
   const header = request.headers.authorization || '';
@@ -31,6 +46,11 @@ async function requireAuth(request, response, next) {
         message: 'Votre mot de passe a été modifié. Veuillez vous reconnecter.',
         code: 'SESSION_REVOKED',
       });
+    }
+
+    const pendingStep = getPendingSecurityStep(user, `${request.baseUrl}${request.path}`.replace(/\/+$/, ''));
+    if (pendingStep) {
+      return response.status(403).json(pendingStep);
     }
 
     request.user = user;

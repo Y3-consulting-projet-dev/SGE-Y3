@@ -78,15 +78,24 @@ Avec Coolify, ouvrir le terminal du conteneur `backend` et lancer `node src/scri
 
 ## 4 bis. Configuration de « Mot de passe oublié »
 
-La page de connexion permet maintenant de réinitialiser son mot de passe par un lien envoyé par e-mail. Variables à renseigner dans l'environnement de production :
+Par défaut (`PASSWORD_RESET_MODE=recovery_code`), « Mot de passe oublié » fonctionne **sans e-mail** : chaque utilisateur possède un code de secours personnel, affiché une seule fois, qu'il conserve lui-même. Il saisit son e-mail et ce code pour choisir un nouveau mot de passe.
+
+**⚠️ Effet visible à la prochaine connexion de chaque utilisateur :** s'il n'a pas encore de code de secours, l'écran « Votre code de secours » s'affiche ; il ne peut pas continuer sans cocher « J'ai conservé mon code en lieu sûr ». Les sessions déjà ouvertes au moment du déploiement sont redirigées vers cet écran au premier appel. Prévenir les utilisateurs avant la mise en production.
+
+La connexion avec le mot de passe par défaut `Ycube@c2026` reste autorisée : chacun peut le changer quand il le souhaite depuis son profil.
+
+Les événements (code généré, régénéré, utilisé, échec, blocage) sont enregistrés dans la collection MongoDB `security_events` (compte, IP, date ; jamais le code). Aucune migration n'est nécessaire : les nouveaux champs des utilisateurs sont créés à la première utilisation.
+
+Variables d'environnement :
 
 | Variable | Valeur | Sans elle |
 |---|---|---|
-| `FRONTEND_URL` | Adresse publique du site, sans slash final (ex. `https://sge.exemple.com`). Si plusieurs adresses sont séparées par des virgules, la **première** sert à construire le lien. | Aucun lien n'est envoyé ; une erreur `FRONTEND_URL non configuré` apparaît dans les logs du backend. |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Serveur d'envoi des e-mails. | Les e-mails ne partent pas (avertissement dans les logs). |
-| `TRUST_PROXY` | Nombre de proxys devant le backend. Avec Coolify (Traefik) puis Caddy : `2`. | La limite de 10 demandes / 15 min par adresse IP est **désactivée** (avertissement `[rateLimit]` dans les logs). Le reste fonctionne. |
+| `PASSWORD_RESET_MODE` | `recovery_code` (par défaut) ou `email`. | Mode `recovery_code`. |
+| `TRUST_PROXY` | Nombre de proxys devant le backend. Avec Coolify (Traefik) puis Caddy : `2`. | La limite de 10 demandes / 15 min par adresse IP est **désactivée** (avertissement `[rateLimit]` dans les logs). La limite par compte (5 échecs → blocage 15 min) reste active. |
+| `FRONTEND_URL` | Adresse publique du site, sans slash final (ex. `https://sge.exemple.com`). | En mode `email` uniquement : aucun lien n'est envoyé (erreur dans les logs). |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Serveur d'envoi des e-mails. | En mode `email` uniquement : les e-mails ne partent pas. |
 
-`FRONTEND_URL` sert aussi d'origine autorisée (CORS) : elle doit correspondre exactement à l'adresse tapée dans le navigateur.
+`FRONTEND_URL` sert aussi d'origine autorisée (CORS) : si elle est renseignée, elle doit correspondre exactement à l'adresse tapée dans le navigateur.
 
 **Pour que `TRUST_PROXY=2` donne la vraie IP du client**, Caddy doit faire confiance au proxy Traefik placé devant lui. Sinon, il remplace l'en-tête `X-Forwarded-For` par l'IP de Traefik, et tous les utilisateurs partagent alors la même limite. Ajouter dans le bloc global de `sge-y3/frontend/Caddyfile`, puis reconstruire `web` :
 ```

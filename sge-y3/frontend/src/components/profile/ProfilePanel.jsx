@@ -1,6 +1,7 @@
 ﻿import { useState } from "react";
 import { Eye, EyeOff, Power } from "lucide-react";
 import { updatePassword, updateProfile } from "@/api/auth";
+import RecoveryCodeSection from "@/components/profile/RecoveryCodeSection";
 import { departmentOptions, getDisplayName, getInitials, gradeOptions } from "@/utils/userPresentation";
 
 function createInfoForm(user) {
@@ -319,6 +320,8 @@ function ProfilePanel({ user, onLogout, onUserUpdate }) {
                 </button>
               </div>
             </section>
+
+            <RecoveryCodeSection />
           </>
         )}
       </div>

@@ -1,6 +1,6 @@
-﻿import { useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { requestPasswordReset } from "@/api/auth";
+import { getAuthConfig, recoverWithCode, requestPasswordReset } from "@/api/auth";
 import AuthLayout from "@/pages/auth/AuthLayout";
 
 const inputClassName =
@@ -10,7 +10,104 @@ const submitClassName =
 const linkClassName =
   "cursor-pointer text-xs font-semibold text-[#0E4A6B] underline underline-offset-2 hover:text-[#76B82A]";
 
-function ForgotPasswordForm({ initialEmail, onBack }) {
+// Mode « recovery_code » : e-mail + code de secours, puis passage direct à « Nouveau mot de passe ».
+function RecoveryCodeForm({ initialEmail, onBack, onRecovered }) {
+  const [email, setEmail] = useState(initialEmail);
+  const [code, setCode] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!email.trim() || !code.trim()) {
+      setErrorMessage("Veuillez renseigner votre e-mail et votre code de secours.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setErrorMessage("");
+      const response = await recoverWithCode(email.trim(), code);
+      onRecovered?.(response.resetToken);
+    } catch (error) {
+      setErrorMessage(error.message || "Vérification impossible pour le moment.");
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form className="mx-auto max-w-[400px] space-y-7" onSubmit={handleSubmit}>
+      <p className="text-sm leading-6 text-[#27415B]">
+        Saisissez l'e-mail de votre compte et le code de secours que vous avez conservé. Vous pourrez ensuite choisir un
+        nouveau mot de passe.
+      </p>
+
+      <input
+        type="email"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        placeholder="EMAIL"
+        autoComplete="username"
+        required
+        className={inputClassName}
+      />
+
+      <input
+        type="text"
+        value={code}
+        onChange={(event) => setCode(event.target.value)}
+        placeholder="CODE DE SECOURS (XXXX-XXXX-XXXX-XXXX)"
+        autoComplete="off"
+        autoCapitalize="characters"
+        spellCheck={false}
+        required
+        className={`${inputClassName} font-mono uppercase`}
+      />
+
+      {errorMessage ? (
+        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{errorMessage}</p>
+      ) : null}
+
+      <button type="submit" disabled={isSubmitting} className={submitClassName}>
+        {isSubmitting ? "Vérification..." : "Continuer"}
+      </button>
+
+      <div className="text-center">
+        <button type="button" onClick={onBack} className={linkClassName}>
+          Retour à la connexion
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function ForgotPasswordForm({ initialEmail, onBack, onRecovered }) {
+  const [mode, setMode] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    getAuthConfig()
+      .then((config) => !cancelled && setMode(config.passwordResetMode || "recovery_code"))
+      .catch(() => !cancelled && setMode("recovery_code"));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!mode) {
+    return <p className="text-center text-sm text-[#5F6B7A]">Chargement...</p>;
+  }
+
+  if (mode === "email") {
+    return <EmailResetForm initialEmail={initialEmail} onBack={onBack} />;
+  }
+
+  return <RecoveryCodeForm initialEmail={initialEmail} onBack={onBack} onRecovered={onRecovered} />;
+}
+
+// Mode « email » (PASSWORD_RESET_MODE=email) : lien de réinitialisation envoyé par e-mail.
+function EmailResetForm({ initialEmail, onBack }) {
   const [email, setEmail] = useState(initialEmail);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -73,7 +170,7 @@ function ForgotPasswordForm({ initialEmail, onBack }) {
   );
 }
 
-function LoginPage({ onLoginSuccess, initialMessage = "" }) {
+function LoginPage({ onLoginSuccess, onRecovered, initialMessage = "" }) {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -107,7 +204,11 @@ function LoginPage({ onLoginSuccess, initialMessage = "" }) {
   if (isForgotPassword) {
     return (
       <AuthLayout title="MOT DE PASSE OUBLIÉ">
-        <ForgotPasswordForm initialEmail={email} onBack={() => setIsForgotPassword(false)} />
+        <ForgotPasswordForm
+          initialEmail={email}
+          onBack={() => setIsForgotPassword(false)}
+          onRecovered={onRecovered}
+        />
       </AuthLayout>
     );
   }

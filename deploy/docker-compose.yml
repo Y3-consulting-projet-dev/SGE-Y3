@@ -33,6 +33,7 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
       FRONTEND_URL: ${FRONTEND_URL:-}
       TRUST_PROXY: ${TRUST_PROXY:-}
+      PASSWORD_RESET_MODE: ${PASSWORD_RESET_MODE:-recovery_code}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_SECURE: ${SMTP_SECURE:-false}
