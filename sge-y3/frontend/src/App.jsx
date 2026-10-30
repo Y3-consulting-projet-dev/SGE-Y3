@@ -1,6 +1,7 @@
-﻿import { lazy, Suspense, useState } from "react";
+﻿import { lazy, Suspense, useEffect, useState } from "react";
 import LoginPage from "@/pages/auth/LoginPage";
-import { clearSession, loadSession, loginUser, saveSession } from "@/api/auth";
+import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
+import { clearSession, loadSession, loginUser, saveSession, SESSION_EXPIRED_EVENT } from "@/api/auth";
 
 const ManagerDashboard = lazy(() => import("@/pages/dashboard/ManagerDashboard"));
 const CollaboratorDashboard = lazy(() => import("@/pages/dashboard/CollaboratorDashboard"));
@@ -74,6 +75,21 @@ function getDashboardRole(user) {
   return user?.role || "manager";
 }
 
+// Lien reçu par email (?reset_token=...) : lu une seule fois, puis retiré de l'URL et de l'historique.
+function readResetTokenFromUrl() {
+  const url = new URL(window.location.href);
+  const token = url.searchParams.get("reset_token");
+
+  if (token) {
+    url.searchParams.delete("reset_token");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
+  return token || "";
+}
+
+const initialResetToken = readResetTokenFromUrl();
+
 function getInitialAuthState() {
   const session = loadSession();
 
@@ -102,6 +118,23 @@ function LoadingView() {
 
 function App() {
   const [authState, setAuthState] = useState(getInitialAuthState);
+  const [resetToken, setResetToken] = useState(initialResetToken);
+  const [loginMessage, setLoginMessage] = useState("");
+
+  // Session expirée ou révoquée (ex. mot de passe modifié ailleurs) : retour à la connexion.
+  useEffect(() => {
+    const handleSessionExpired = (event) => {
+      setLoginMessage(event.detail?.message || "");
+      setAuthState({
+        isAuthenticated: false,
+        userRole: "manager",
+        currentUser: null,
+      });
+    };
+
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+  }, []);
 
   const { isAuthenticated, userRole, currentUser } = authState;
 
@@ -132,8 +165,20 @@ function App() {
     applySession(session);
   };
 
+  if (resetToken) {
+    return (
+      <ResetPasswordPage
+        token={resetToken}
+        onDone={(message) => {
+          setLoginMessage(message);
+          setResetToken("");
+        }}
+      />
+    );
+  }
+
   if (!isAuthenticated) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+    return <LoginPage onLoginSuccess={handleLoginSuccess} initialMessage={loginMessage} />;
   }
 
   let dashboard = <ManagerDashboard user={currentUser} onLogout={handleLogout} onUserUpdate={handleSessionRefresh} />;

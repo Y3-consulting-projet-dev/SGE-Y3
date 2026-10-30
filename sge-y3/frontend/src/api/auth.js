@@ -8,6 +8,20 @@ export async function loginUser(credentials) {
   });
 }
 
+export async function requestPasswordReset(email) {
+  return request("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPassword(payload) {
+  return request("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 function getAuthToken() {
   const session = loadSession();
   return session?.token || null;
@@ -24,7 +38,7 @@ async function request(path, options = {}) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await authFetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers,
   });
@@ -36,6 +50,27 @@ async function request(path, options = {}) {
   }
 
   return data;
+}
+
+export const SESSION_EXPIRED_EVENT = "sge-session-expired";
+
+// fetch partagé par les modules d'API : une réponse 401 à une requête authentifiée
+// signifie que la session a expiré ou a été révoquée (ex. mot de passe modifié).
+export async function authFetch(url, options = {}) {
+  const response = await fetch(url, options);
+  const sentToken = Boolean(options.headers?.Authorization);
+
+  if (response.status === 401 && sentToken) {
+    const data = await response.clone().json().catch(() => ({}));
+    clearSession();
+    window.dispatchEvent(
+      new CustomEvent(SESSION_EXPIRED_EVENT, {
+        detail: { message: data.message || "Votre session a expiré. Veuillez vous reconnecter." },
+      })
+    );
+  }
+
+  return response;
 }
 
 export async function updateProfile(payload) {

@@ -1,4 +1,4 @@
-﻿import { loadSession } from "@/api/auth";
+﻿import { authFetch, loadSession } from "@/api/auth";
 
 import { API_BASE_URL } from "./apiBase";
 
@@ -49,7 +49,7 @@ export async function getCommitteeParticipants(scope = "collaborators") {
     headers.Authorization = `Bearer ${session.token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}/committee/participants?scope=${encodeURIComponent(scope)}`, {
+  const response = await authFetch(`${API_BASE_URL}/committee/participants?scope=${encodeURIComponent(scope)}`, {
     headers,
   });
   const data = await response.json().catch(() => ({}));
@@ -73,7 +73,7 @@ export async function saveCommitteeDecision(payload) {
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/committee/decisions`, {
+    const response = await authFetch(`${API_BASE_URL}/committee/decisions`, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
@@ -119,7 +119,7 @@ export async function getLatestCommitteeDecision(scope = "associate-final") {
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/committee/decisions/latest?scope=${encodeURIComponent(scope)}`, {
+    const response = await authFetch(`${API_BASE_URL}/committee/decisions/latest?scope=${encodeURIComponent(scope)}`, {
       headers,
     });
     const data = await response.json().catch(() => ({}));

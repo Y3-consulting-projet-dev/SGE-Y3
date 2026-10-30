@@ -1,4 +1,4 @@
-﻿import { loadSession } from "@/api/auth";
+﻿import { authFetch, loadSession } from "@/api/auth";
 import { API_BASE_URL } from "./apiBase";
 
 async function request(path, options = {}) {
@@ -12,7 +12,7 @@ async function request(path, options = {}) {
     headers.Authorization = `Bearer ${session.token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await authFetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers,
   });

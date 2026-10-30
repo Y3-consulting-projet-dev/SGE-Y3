@@ -95,6 +95,10 @@ function ProfilePanel({ user, onLogout, onUserUpdate }) {
       setIsSavingPassword(true);
       setPasswordStatus("");
       const result = await updatePassword(passwordForm);
+      // Le backend révoque les autres sessions et renvoie un nouveau jeton pour celle-ci.
+      if (result.token) {
+        onUserUpdate?.(result);
+      }
       setPasswordForm({
         currentPassword: "",
         newPassword: "",

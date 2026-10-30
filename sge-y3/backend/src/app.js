@@ -37,6 +37,16 @@ app.use(
     exposedHeaders: ['Content-Disposition', 'Content-Type'],
   })
 );
+// Nombre de proxys de confiance devant le backend (ex. 2 pour Traefik + Caddy), pour connaître l'IP réelle du client.
+function parseTrustProxy(value) {
+  const raw = String(value || '').trim();
+  if (!raw || raw === 'false') return false;
+  if (raw === 'true') return true;
+  if (/^\d+$/.test(raw)) return Number(raw);
+  return raw;
+}
+app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
+
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
@@ -68,7 +78,12 @@ app.use((error, _request, response, _next) => {
 const startServer = async () => {
   await connectDB();
   await loadActiveCycle();
-  app.listen(PORT, '0.0.0.0', () => {
+  // Express 5 transmet l'erreur d'écoute (ex. port déjà utilisé) au callback.
+  app.listen(PORT, '0.0.0.0', (error) => {
+    if (error) {
+      console.error(`❌ Impossible de démarrer le serveur sur le port ${PORT} : ${error.message}`);
+      process.exit(1);
+    }
     console.log(`Serveur backend démarre sur le port ${PORT}`);
   });
 };

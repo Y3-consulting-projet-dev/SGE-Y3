@@ -50,4 +50,8 @@ async function sendMail({ to, subject, text }) {
   }
 }
 
-module.exports = { sendMail };
+function isMailerConfigured() {
+  return Boolean(getTransporter());
+}
+
+module.exports = { sendMail, isMailerConfigured };

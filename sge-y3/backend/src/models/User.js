@@ -47,6 +47,24 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    // Réinitialisation du mot de passe : seule l'empreinte SHA-256 du jeton est stockée.
+    password_reset_token_hash: {
+      type: String,
+      default: null,
+    },
+    password_reset_expires_at: {
+      type: Date,
+      default: null,
+    },
+    password_reset_requested_at: {
+      type: Date,
+      default: null,
+    },
+    // Les jetons de session émis avant cette date sont refusés (voir authMiddleware).
+    password_changed_at: {
+      type: Date,
+      default: null,
+    },
   },
   {
     collection: 'users',

@@ -22,6 +22,17 @@ async function requireAuth(request, response, next) {
       });
     }
 
+    // iat est en secondes : un jeton émis dans la même seconde que le changement reste valide.
+    const passwordChangedAtSeconds = user.password_changed_at
+      ? Math.floor(user.password_changed_at.getTime() / 1000)
+      : 0;
+    if (passwordChangedAtSeconds && payload.iat < passwordChangedAtSeconds) {
+      return response.status(401).json({
+        message: 'Votre mot de passe a été modifié. Veuillez vous reconnecter.',
+        code: 'SESSION_REVOKED',
+      });
+    }
+
     request.user = user;
     request.auth = payload;
     return next();

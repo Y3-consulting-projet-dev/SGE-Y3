@@ -76,6 +76,32 @@ Sortie attendue : `trouvé(s)` / `modifié(s)` par collection, puis un total.
 
 Avec Coolify, ouvrir le terminal du conteneur `backend` et lancer `node src/scripts/migrateValideRh.js --dry-run`, puis la même commande sans `--dry-run`.
 
+## 4 bis. Configuration de « Mot de passe oublié »
+
+La page de connexion permet maintenant de réinitialiser son mot de passe par un lien envoyé par e-mail. Variables à renseigner dans l'environnement de production :
+
+| Variable | Valeur | Sans elle |
+|---|---|---|
+| `FRONTEND_URL` | Adresse publique du site, sans slash final (ex. `https://sge.exemple.com`). Si plusieurs adresses sont séparées par des virgules, la **première** sert à construire le lien. | Aucun lien n'est envoyé ; une erreur `FRONTEND_URL non configuré` apparaît dans les logs du backend. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Serveur d'envoi des e-mails. | Les e-mails ne partent pas (avertissement dans les logs). |
+| `TRUST_PROXY` | Nombre de proxys devant le backend. Avec Coolify (Traefik) puis Caddy : `2`. | La limite de 10 demandes / 15 min par adresse IP est **désactivée** (avertissement `[rateLimit]` dans les logs). Le reste fonctionne. |
+
+`FRONTEND_URL` sert aussi d'origine autorisée (CORS) : elle doit correspondre exactement à l'adresse tapée dans le navigateur.
+
+**Pour que `TRUST_PROXY=2` donne la vraie IP du client**, Caddy doit faire confiance au proxy Traefik placé devant lui. Sinon, il remplace l'en-tête `X-Forwarded-For` par l'IP de Traefik, et tous les utilisateurs partagent alors la même limite. Ajouter dans le bloc global de `sge-y3/frontend/Caddyfile`, puis reconstruire `web` :
+```
+{
+	admin off
+	auto_https off
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+```
+Ce réglage n'a pas été testé (Docker indisponible sur le poste de développement) : vérifier après déploiement, en faisant 11 demandes de réinitialisation depuis un même poste, que la 11ᵉ renvoie « Trop de demandes… », et qu'un autre poste n'est pas bloqué.
+
+**Sessions :** après une réinitialisation ou un changement de mot de passe, les sessions déjà ouvertes de l'utilisateur sont fermées ; il doit se reconnecter sur ses autres appareils.
+
 ## 5. Tests après le déploiement
 
 Ouvrir les logs du backend dans un terminal à part :
