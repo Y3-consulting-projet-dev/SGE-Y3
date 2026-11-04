@@ -117,7 +117,24 @@ function GestionCollaborateurs() {
         email: collaborator.email || "",
         grade: collaborator.grade || "",
         department: collaborator.department || "",
+        secondary_departments: collaborator.secondary_departments || [],
       }
+    );
+  }
+
+  function addSecondaryDepartment(collaborator, department) {
+    const current = getDraft(collaborator).secondary_departments;
+    if (department && !current.includes(department)) {
+      updateDraftField(collaborator, "secondary_departments", [...current, department]);
+    }
+  }
+
+  function removeSecondaryDepartment(collaborator, department) {
+    const current = getDraft(collaborator).secondary_departments;
+    updateDraftField(
+      collaborator,
+      "secondary_departments",
+      current.filter((item) => item !== department)
     );
   }
 
@@ -136,7 +153,8 @@ function GestionCollaborateurs() {
       draft.last_name !== (collaborator.last_name || "") ||
       draft.email !== (collaborator.email || "") ||
       draft.grade !== (collaborator.grade || "") ||
-      draft.department !== (collaborator.department || "")
+      draft.department !== (collaborator.department || "") ||
+      [...draft.secondary_departments].sort().join("|") !== [...(collaborator.secondary_departments || [])].sort().join("|")
     );
   }
 
@@ -315,7 +333,7 @@ function GestionCollaborateurs() {
           <p className="mt-4 text-sm font-semibold text-red-600">{loadError}</p>
         ) : (
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-left text-sm">
+            <table className="w-full min-w-[1300px] text-left text-sm">
               <thead className="bg-white text-xs uppercase text-slate-500">
                 <tr>
                   <th className="px-4 py-3">Prenom</th>
@@ -323,6 +341,9 @@ function GestionCollaborateurs() {
                   <th className="px-4 py-3">Email</th>
                   <th className="px-4 py-3">Grade</th>
                   <th className="px-4 py-3">Departement</th>
+                  <th className="px-4 py-3" title="Le superieur apparait aussi dans la liste des superieurs des assistants de ces departements.">
+                    Departements secondaires
+                  </th>
                   <th className="px-4 py-3">Statut</th>
                   <th className="px-4 py-3">Action</th>
                 </tr>
@@ -385,6 +406,44 @@ function GestionCollaborateurs() {
                           </select>
                         </td>
                         <td className="px-4 py-3">
+                          <div className="flex min-w-[200px] flex-col gap-2">
+                            {draft.secondary_departments.length ? (
+                              <div className="flex flex-wrap gap-1">
+                                {draft.secondary_departments.map((department) => (
+                                  <span
+                                    key={department}
+                                    className="inline-flex items-center gap-1 rounded-full bg-[#E7EDF3] px-2 py-1 text-[11px] font-bold text-[#0F3A63]"
+                                  >
+                                    {department}
+                                    <button
+                                      type="button"
+                                      onClick={() => removeSecondaryDepartment(collaborator, department)}
+                                      className="text-slate-500 hover:text-red-600"
+                                      aria-label={`Retirer ${department}`}
+                                    >
+                                      x
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                            <select
+                              value=""
+                              onChange={(event) => addSecondaryDepartment(collaborator, event.target.value)}
+                              className="h-9 w-full rounded-lg border border-[#D6E1EF] bg-white px-2 text-xs font-semibold text-[#0F3A63] outline-none"
+                            >
+                              <option value="">Ajouter...</option>
+                              {departmentOptions
+                                .filter((department) => department !== draft.department && !draft.secondary_departments.includes(department))
+                                .map((department) => (
+                                  <option key={department} value={department}>
+                                    {department}
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
                           {collaborator.is_active ? (
                             <span className="rounded-full bg-[#E7F4DD] px-3 py-1 text-xs font-bold text-[#3F8F2F]">Actif</span>
                           ) : (
@@ -416,7 +475,7 @@ function GestionCollaborateurs() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={7} className="px-4 py-6 text-center text-sm font-semibold text-slate-500">
+                    <td colSpan={8} className="px-4 py-6 text-center text-sm font-semibold text-slate-500">
                       Aucun collaborateur trouve.
                     </td>
                   </tr>

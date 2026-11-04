@@ -31,6 +31,21 @@ function getManagerDepartmentsForDepartment(department = '') {
   return normalized ? [normalized] : [];
 }
 
+const MIXED_DEPARTMENT = 'AUDIT & EXPERTISE COMPTABLE';
+const MIXED_DEPARTMENT_PARTS = ['AUDIT', 'EXPERTISE COMPTABLE'];
+
+// Départements dont les supérieurs sont proposés pour les missions : le département mixte
+// fonctionne dans les deux sens (ses supérieurs sont aussi proposés en AUDIT et en EXPERTISE COMPTABLE).
+function getMissionDepartmentsForDepartment(department = '') {
+  const departments = getManagerDepartmentsForDepartment(department);
+
+  if (departments.some((item) => MIXED_DEPARTMENT_PARTS.includes(item)) && !departments.includes(MIXED_DEPARTMENT)) {
+    departments.push(MIXED_DEPARTMENT);
+  }
+
+  return departments;
+}
+
 function isAssociateRecipient(recipient = {}) {
   const category = String(recipient.code_categorie || '').trim().toUpperCase();
   const grade = normalizeText(recipient.grade || '').replace(/[ÉÈÊË]/g, 'E');
@@ -54,23 +69,26 @@ async function resolveManagersForAssistant(user) {
 }
 
 async function resolveMissionRecipientsForAssistant(user) {
-  const targetDepartments = getManagerDepartmentsForDepartment(user.department);
+  const targetDepartments = getMissionDepartmentsForDepartment(user.department);
 
   if (!targetDepartments.length) {
     return [];
   }
 
+  const superiorCategories = ['9A', '9B', '10B', '10C'];
+
   return User.find({
     is_active: true,
     $or: [
-      { code_categorie: { $in: ['9A', '9B', '10B', '10C'] }, department: { $in: targetDepartments } },
+      { code_categorie: { $in: superiorCategories }, department: { $in: targetDepartments } },
+      { code_categorie: { $in: superiorCategories }, secondary_departments: { $in: targetDepartments } },
       { code_categorie: '11' },
       { grade: 'Associé' },
       { grade: 'Associe' },
     ],
   })
     .sort({ last_name: 1, first_name: 1 })
-    .select('_id name first_name last_name grade department code_categorie email');
+    .select('_id name first_name last_name grade department secondary_departments code_categorie email');
 }
 
 function getCommentSuperiorCategories(user) {
@@ -170,14 +188,19 @@ async function resolveRecipientsForInstance(instance, user) {
   return resolveManagersForAssistant(user);
 }
 
-function buildRecipientOptions(recipients = [], user) {
-  const targetDepartments = getManagerDepartmentsForDepartment(user?.department);
+function buildRecipientOptions(recipients = [], user, targetDepartments = getManagerDepartmentsForDepartment(user?.department)) {
   const groupedRecipientIds = new Set();
 
   const departmentGroups = targetDepartments.map((department) => {
-    const users = recipients.filter(
-      (recipient) => String(recipient.department || '').trim().toUpperCase() === String(department || '').trim().toUpperCase()
-    );
+    const groupDepartment = normalizeText(department);
+    // Rattaché au groupe par son département principal ou par un département secondaire ; une seule fois au total.
+    const users = recipients.filter((recipient) => {
+      const recipientId = String(recipient._id || recipient.id || '');
+      const belongsToGroup =
+        normalizeText(recipient.department) === groupDepartment ||
+        (recipient.secondary_departments || []).some((item) => normalizeText(item) === groupDepartment);
+      return belongsToGroup && !groupedRecipientIds.has(recipientId);
+    });
     users.forEach((recipient) => groupedRecipientIds.add(String(recipient._id || recipient.id || '')));
 
     return {
@@ -198,13 +221,15 @@ function buildRecipientOptions(recipients = [], user) {
   const ungroupedAssociates = recipients.filter(
     (recipient) => isAssociateRecipient(recipient) && !groupedRecipientIds.has(String(recipient._id || recipient.id || ''))
   );
+  // Le groupe du département principal est toujours présent ; les groupes supplémentaires seulement s'ils ont des membres.
+  const visibleGroups = departmentGroups.filter((group, index) => index === 0 || group.users.length);
 
   if (!ungroupedAssociates.length) {
-    return departmentGroups;
+    return visibleGroups;
   }
 
   return [
-    ...departmentGroups,
+    ...visibleGroups,
     {
       department: 'Associés',
       users: ungroupedAssociates.map((recipient) => ({
@@ -798,7 +823,13 @@ async function buildEvaluationPayload(instance, user) {
         department: manager.department,
         code_categorie: manager.code_categorie,
       })),
-      recipient_options: buildRecipientOptions(missionRecipients, user),
+      recipient_options: buildRecipientOptions(
+        missionRecipients,
+        user,
+        instance?.template_type === 'assistant-self-evaluation'
+          ? getMissionDepartmentsForDepartment(user.department)
+          : getManagerDepartmentsForDepartment(user.department)
+      ),
       submitted_to_managers: instance.submitted_to_managers || [],
       comment_targets: commentTargets,
     },
@@ -1517,6 +1548,9 @@ async function submitMyDevelopment(request, response) {
 }
 
 module.exports = {
+  buildRecipientOptions,
+  getMissionDepartmentsForDepartment,
+  resolveMissionRecipientsForAssistant,
   buildManagerCommentText,
   fetchManagerCommentsForMember,
   getMyAssistantEvaluation,

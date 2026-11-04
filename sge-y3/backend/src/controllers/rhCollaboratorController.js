@@ -32,13 +32,27 @@ function escapeRegExp(value = '') {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// Absent de la requête : null (inchangé). Sinon : liste normalisée, sans doublon ni département principal.
+function readSecondaryDepartments(value, department) {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  return [...new Set(value.map((item) => normalizeDepartment(item)).filter(Boolean))].filter(
+    (item) => item !== department
+  );
+}
+
 function readCollaboratorPayload(request) {
+  const department = normalizeDepartment(request.body?.department);
+
   return {
     firstName: normalizeText(request.body?.first_name),
     lastName: normalizeText(request.body?.last_name),
     email: normalizeEmail(request.body?.email),
     grade: normalizeText(request.body?.grade),
-    department: normalizeDepartment(request.body?.department),
+    department,
+    secondaryDepartments: readSecondaryDepartments(request.body?.secondary_departments, department),
   };
 }
 
@@ -108,7 +122,7 @@ async function createCollaborator(request, response) {
     return undefined;
   }
 
-  const { firstName, lastName, email, grade, department } = payload;
+  const { firstName, lastName, email, grade, department, secondaryDepartments } = payload;
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
@@ -126,6 +140,7 @@ async function createCollaborator(request, response) {
       last_name: lastName,
       grade,
       department,
+      secondary_departments: secondaryDepartments || [],
       is_active: true,
       code_categorie: getCategoryFromGrade(grade),
     });
@@ -160,7 +175,7 @@ async function updateCollaborator(request, response) {
     return undefined;
   }
 
-  const { firstName, lastName, email, grade, department } = payload;
+  const { firstName, lastName, email, grade, department, secondaryDepartments } = payload;
   const duplicatedEmail = await User.findOne({ email, _id: { $ne: targetUser._id } });
 
   if (duplicatedEmail) {
@@ -174,6 +189,12 @@ async function updateCollaborator(request, response) {
   targetUser.grade = grade;
   targetUser.code_categorie = getCategoryFromGrade(grade);
   targetUser.department = department;
+  if (secondaryDepartments) {
+    targetUser.secondary_departments = secondaryDepartments;
+  } else {
+    // Le département principal ne peut pas être aussi secondaire.
+    targetUser.secondary_departments = (targetUser.secondary_departments || []).filter((item) => item !== department);
+  }
 
   try {
     await targetUser.save();

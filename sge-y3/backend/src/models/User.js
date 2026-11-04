@@ -38,6 +38,11 @@ const userSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    // Départements où ce supérieur intervient aussi : il apparaît dans les listes de supérieurs de leurs assistants.
+    secondary_departments: {
+      type: [String],
+      default: [],
+    },
     is_active: {
       type: Boolean,
       default: true,
@@ -106,6 +111,7 @@ userSchema.methods.toSafeObject = function toSafeObject() {
     first_name: this.first_name,
     grade: this.grade,
     department: this.department,
+    secondary_departments: this.secondary_departments || [],
     is_active: this.is_active,
     code_categorie: this.code_categorie,
   };
