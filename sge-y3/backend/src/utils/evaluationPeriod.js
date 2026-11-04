@@ -93,14 +93,21 @@ function extractPeriodDates(periodText) {
   return dates;
 }
 
-// Message d'erreur si une date de la mission sort de la période évaluée, sinon ''.
-// Une mission sans date reste acceptée (« Période non renseignée »).
+// Message d'erreur si la mission n'a pas de date de début et de fin, ou si une date sort de la période évaluée, sinon ''.
 function validateMissionPeriod(periodText, cyclePeriod, missionTitle = '') {
   const dates = extractPeriodDates(periodText);
   const missionLabel = missionTitle ? ` « ${missionTitle} »` : '';
 
   if (dates === null) {
     return `Les dates de la mission${missionLabel} sont invalides.`;
+  }
+
+  if (dates.length !== 2) {
+    return `Renseignez la date de début et la date de fin de la mission${missionLabel}.`;
+  }
+
+  if (dates[1] < dates[0]) {
+    return `La date de fin de la mission${missionLabel} doit être postérieure ou égale à la date de début.`;
   }
 
   const startDate = toIsoDate(cyclePeriod?.start_date);

@@ -118,7 +118,10 @@ describe('règle de la période évaluée', () => {
 
   test('dates de mission : bornes incluses, hors période refusée', () => {
     assert.equal(validateMissionPeriod('Du 01-10-2025 au 30-09-2026', PERIOD_2025), '');
-    assert.equal(validateMissionPeriod('Période non renseignée', PERIOD_2025), '');
+    assert.match(validateMissionPeriod('Période non renseignée', PERIOD_2025), /date de début et la date de fin/);
+    assert.match(validateMissionPeriod('', PERIOD_2025), /date de début et la date de fin/);
+    assert.match(validateMissionPeriod('À partir du 01-10-2025', PERIOD_2025), /date de début et la date de fin/);
+    assert.match(validateMissionPeriod('Du 31-10-2025 au 01-10-2025', PERIOD_2025), /postérieure ou égale/);
     assert.match(validateMissionPeriod('Du 30-09-2025 au 15-10-2025', PERIOD_2025), /1er octobre 2025 au 30 septembre 2026/);
     assert.ok(validateMissionPeriod('Du 15-09-2026 au 01-10-2026', PERIOD_2025));
     assert.ok(validateMissionPeriod('Du 31-02-2026 au 01-03-2026', PERIOD_2025));

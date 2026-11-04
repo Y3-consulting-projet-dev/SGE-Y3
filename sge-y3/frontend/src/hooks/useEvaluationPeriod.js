@@ -38,8 +38,9 @@ export function useEvaluationPeriod() {
     ? `du ${formatFrenchDate(period.start_date)} au ${formatFrenchDate(period.end_date)}`
     : "";
 
-  // Message d'erreur si une date saisie sort de la période, sinon "".
+  // Message d'erreur si une date manque ou sort de la période, sinon "".
   function validateMissionDates(startDate, endDate) {
+    if (!startDate || !endDate) return "Renseignez la date de début et la date de fin de la mission.";
     if (!period) return "";
     const outOfRange = [startDate, endDate].some(
       (value) => value && (value < period.start_date || value > period.end_date)
