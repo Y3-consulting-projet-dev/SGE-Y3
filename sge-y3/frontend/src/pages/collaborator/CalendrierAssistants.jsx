@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PlusCircle, X } from "lucide-react";
 import Calendrier from "@/pages/collaborator/Calendrier";
+import { useEvaluationPeriod } from "@/hooks/useEvaluationPeriod";
 
 function getAssistantMissions(evaluationData) {
   return (
@@ -31,6 +32,7 @@ function AssignerMissionModal({ assistants, assignMission, assignLabel, onClose 
   const [selectedId, setSelectedId] = useState("");
   const [title, setTitle] = useState("");
   const [startDate, setStartDate] = useState("");
+  const evaluationPeriod = useEvaluationPeriod();
   const [endDate, setEndDate] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
@@ -56,6 +58,11 @@ function AssignerMissionModal({ assistants, assignMission, assignLabel, onClose 
     }
     if (startDate && endDate && endDate < startDate) {
       setFeedback({ tone: "error", message: "La date de fin doit être postérieure ou égale à la date de début." });
+      return;
+    }
+    const periodMessage = evaluationPeriod.validateMissionDates(startDate, endDate);
+    if (periodMessage) {
+      setFeedback({ tone: "error", message: periodMessage });
       return;
     }
 
@@ -131,6 +138,8 @@ function AssignerMissionModal({ assistants, assignMission, assignLabel, onClose 
               <input
                 type="date"
                 value={startDate}
+                min={evaluationPeriod.minDate}
+                max={evaluationPeriod.maxDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-[#0F3A63] outline-none focus:border-[#001871]"
               />
@@ -140,7 +149,8 @@ function AssignerMissionModal({ assistants, assignMission, assignLabel, onClose 
               <input
                 type="date"
                 value={endDate}
-                min={startDate || undefined}
+                min={startDate || evaluationPeriod.minDate}
+                max={evaluationPeriod.maxDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-[#0F3A63] outline-none focus:border-[#001871]"
               />

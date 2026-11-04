@@ -13,7 +13,8 @@ const {
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
 const { buildMissionResultsPayload } = require('../utils/evaluationHistory');
-const { getCurrentCycleLabel } = require('../utils/activeCycle');
+const { getActiveEvaluationPeriod, getCurrentCycleLabel } = require('../utils/activeCycle');
+const { findMissionPeriodError } = require('../utils/evaluationPeriod');
 const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
 const { SUPPORT_EMAILS } = require('../utils/userMapping');
 
@@ -973,7 +974,10 @@ async function saveMySelfEvaluation(request, response, getOrCreateEvaluation) {
   }
 
   let missionEvaluations = rawMissionEvaluations ? normalizeMissionEvaluations(rawMissionEvaluations) : null;
-  const missionValidationMessage = missionEvaluations ? validateMissionEvaluations(missionEvaluations) : '';
+  const missionValidationMessage = missionEvaluations
+    ? validateMissionEvaluations(missionEvaluations) ||
+      findMissionPeriodError(missionEvaluations, instance.mission_evaluations, getActiveEvaluationPeriod())
+    : '';
 
   if (missionValidationMessage) {
     return response.status(400).json({

@@ -12,6 +12,7 @@ const committeeRoutes = require('./routes/committeeRoutes');
 const rhRoutes = require('./routes/rhRoutes');
 const associateRoutes = require('./routes/associateRoutes');
 const supportRoutes = require('./routes/supportRoutes');
+const cycleRoutes = require('./routes/cycleRoutes');
 
 dotenv.config();
 
@@ -62,6 +63,7 @@ app.use('/api/committee', committeeRoutes);
 app.use('/api/rh', rhRoutes);
 app.use('/api/associate', associateRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/cycles', cycleRoutes);
 
 app.use((error, _request, response, _next) => {
   console.error(error);

@@ -18,7 +18,8 @@ const {
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
 const { buildCyclesForInstances, resolveTemplateTypeForUser } = require('../utils/evaluationHistory');
-const { getCurrentCycleLabel } = require('../utils/activeCycle');
+const { getActiveEvaluationPeriod, getCurrentCycleLabel } = require('../utils/activeCycle');
+const { findMissionPeriodError, validateMissionPeriod } = require('../utils/evaluationPeriod');
 const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
 const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
 const FULL_RH_EMAILS = ['isabella.beda@ycubeac.com'];
@@ -1788,6 +1789,12 @@ async function addMyManagerMissionEvaluation(request, response) {
     });
   }
 
+  const periodMessage = validateMissionPeriod(period, getActiveEvaluationPeriod(), title);
+
+  if (periodMessage) {
+    return response.status(400).json({ message: periodMessage });
+  }
+
   const [instance, rhRecipients, teamMembers, associateRecipients] = await Promise.all([
     getOrCreateManagerSelfEvaluation(request.user),
     resolveRhRecipients(),
@@ -1858,6 +1865,12 @@ async function addMissionToManagerMember(request, response) {
     return response.status(400).json({
       message: 'Le titre de la mission est requis.',
     });
+  }
+
+  const periodMessage = validateMissionPeriod(period, getActiveEvaluationPeriod(), title);
+
+  if (periodMessage) {
+    return response.status(400).json({ message: periodMessage });
   }
 
   const member = await getMemberForManager(request.user, request.params.memberId);
@@ -1992,6 +2005,14 @@ async function saveMyManagerEvaluation(request, response) {
     resolveManagerTeamMembers(request.user),
     resolveAssociateRecipients(),
   ]);
+  const missionPeriodMessage = missionEvaluations
+    ? findMissionPeriodError(missionEvaluations, instance.mission_evaluations, getActiveEvaluationPeriod())
+    : '';
+
+  if (missionPeriodMessage) {
+    return response.status(400).json({ message: missionPeriodMessage });
+  }
+
   const summary = getEvaluationSummary(sections);
 
   if (rawSections?.length) {

@@ -10,6 +10,7 @@ import {
   submitManagerMemberEvaluation,
 } from "@/api/managerOverview";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
+import { useEvaluationPeriod } from "@/hooks/useEvaluationPeriod";
 
 function getSourceBadgeLabel(page) {
   if (page?.source_label) return page.source_label;
@@ -273,6 +274,7 @@ function Evaluermonequipe({ member }) {
   const [missionReviews, setMissionReviews] = useState([]);
   const [missionTitle, setMissionTitle] = useState("");
   const [missionStartDate, setMissionStartDate] = useState("");
+  const evaluationPeriod = useEvaluationPeriod();
   const [missionEndDate, setMissionEndDate] = useState("");
   const [savedComments, setSavedComments] = useState({});
   const [feedbackMessage, setFeedbackMessage] = useState("");
@@ -626,6 +628,13 @@ function Evaluermonequipe({ member }) {
       return;
     }
 
+    const periodMessage = evaluationPeriod.validateMissionDates(missionStartDate, missionEndDate);
+    if (periodMessage) {
+      setFeedbackTone("error");
+      setFeedbackMessage(periodMessage);
+      return;
+    }
+
     try {
       setIsSaving(true);
       setFeedbackMessage("");
@@ -885,6 +894,8 @@ function Evaluermonequipe({ member }) {
                     <input
                       type="date"
                       value={missionStartDate}
+                      min={evaluationPeriod.minDate}
+                      max={evaluationPeriod.maxDate}
                       onChange={(event) => setMissionStartDate(event.target.value)}
                       className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0F3A63] outline-none"
                     />
@@ -893,7 +904,8 @@ function Evaluermonequipe({ member }) {
                     <label className="mb-1 block text-[12px] font-bold text-[#0F3A63]">Date de fin</label>
                     <input
                       type="date"
-                      min={missionStartDate || undefined}
+                      min={missionStartDate || evaluationPeriod.minDate}
+                      max={evaluationPeriod.maxDate}
                       value={missionEndDate}
                       onChange={(event) => setMissionEndDate(event.target.value)}
                       className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0F3A63] outline-none"

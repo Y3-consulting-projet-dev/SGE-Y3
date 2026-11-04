@@ -1,14 +1,24 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { createRhCycle, getRhCycles } from "@/api/rhOverview";
+import { resetActiveEvaluationPeriod } from "@/api/evaluationPeriod";
 import { formatCommentDate } from "@/utils/historiqueUtils";
+
+// La période évaluée va toujours du 1er octobre N au 30 septembre N+1 (règle vérifiée aussi par le serveur).
+function getFiscalPeriod(startYear) {
+  return {
+    startDate: `${startYear}-10-01`,
+    endDate: `${startYear + 1}-09-30`,
+    label: `Cycle ${startYear}-${startYear + 1}`,
+    description: `du 1er octobre ${startYear} au 30 septembre ${startYear + 1}`,
+  };
+}
 
 function GestionCycles() {
   const [cycles, setCycles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startYear, setStartYear] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -40,34 +50,30 @@ function GestionCycles() {
     };
   }, []);
 
-  const previewLabel = useMemo(() => {
-    const start = startDate ? new Date(startDate) : null;
-    const end = endDate ? new Date(endDate) : null;
+  // Exercices proposés : de l'an dernier à l'an prochain, sauf ceux déjà lancés.
+  const yearOptions = useMemo(() => {
+    const existingLabels = new Set(cycles.map((cycle) => cycle.label));
+    const currentYear = new Date().getFullYear();
+    return [currentYear - 1, currentYear, currentYear + 1]
+      .map((year) => ({ year, ...getFiscalPeriod(year) }))
+      .filter((option) => !existingLabels.has(option.label));
+  }, [cycles]);
 
-    if (!start || !end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-      return "";
-    }
-
-    return `Cycle ${start.getFullYear()}-${end.getFullYear()}`;
-  }, [startDate, endDate]);
+  const selectedPeriod = startYear ? getFiscalPeriod(Number(startYear)) : null;
+  const previewLabel = selectedPeriod?.label || "";
 
   async function handleSubmit(event) {
     event.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
 
-    if (!startDate || !endDate) {
-      setErrorMessage("Veuillez renseigner une date de début et une date de fin.");
-      return;
-    }
-
-    if (new Date(startDate) >= new Date(endDate)) {
-      setErrorMessage("La date de début doit être antérieure à la date de fin.");
+    if (!selectedPeriod) {
+      setErrorMessage("Veuillez choisir l'exercice à évaluer.");
       return;
     }
 
     const confirmed = window.confirm(
-      `Lancer ${previewLabel} ? Toutes les nouvelles évaluations seront créées dans ce cycle et le cycle précédent basculera dans l'historique.`
+      `Lancer ${previewLabel} (${selectedPeriod.description}) ? Toutes les nouvelles évaluations seront créées dans ce cycle et le cycle précédent basculera dans l'historique.`
     );
 
     if (!confirmed) {
@@ -76,10 +82,10 @@ function GestionCycles() {
 
     try {
       setIsSubmitting(true);
-      const response = await createRhCycle({ start_date: startDate, end_date: endDate });
+      const response = await createRhCycle({ start_date: selectedPeriod.startDate, end_date: selectedPeriod.endDate });
+      resetActiveEvaluationPeriod();
       setSuccessMessage(`${response?.cycle?.label || previewLabel} est maintenant le cycle actif.`);
-      setStartDate("");
-      setEndDate("");
+      setStartYear("");
       const refreshed = await getRhCycles();
       setCycles(refreshed?.cycles || []);
     } catch (error) {
@@ -94,32 +100,31 @@ function GestionCycles() {
       <section className="rounded-xl bg-white p-5 shadow-sm">
         <h2 className="text-xl font-extrabold text-[#0F3A63]">Lancer une nouvelle saison</h2>
         <p className="mt-1 text-sm font-semibold text-slate-500">
-          Définissez la période du nouveau cycle d'évaluation. Le libellé est généré automatiquement à partir des dates.
+          La période évaluée va toujours du 1er octobre au 30 septembre de l'année suivante. Choisissez l'exercice : les dates sont fixées automatiquement.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-4 flex flex-wrap items-end gap-4">
           <div>
-            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Date de début</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(event) => setStartDate(event.target.value)}
+            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Exercice évalué</label>
+            <select
+              value={startYear}
+              onChange={(event) => setStartYear(event.target.value)}
               className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-[#0F3A63]"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Date de fin</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(event) => setEndDate(event.target.value)}
-              className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-[#0F3A63]"
-            />
+            >
+              <option value="">Choisir…</option>
+              {yearOptions.map((option) => (
+                <option key={option.year} value={option.year}>
+                  {option.label} — {option.description}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="flex-1">
             {previewLabel ? (
               <p className="text-sm font-semibold text-slate-500">
                 Libellé généré : <span className="font-extrabold text-[#0F3A63]">{previewLabel}</span>
+                <br />
+                Période évaluée : <span className="font-extrabold text-[#0F3A63]">{selectedPeriod.description}</span>
               </p>
             ) : null}
           </div>

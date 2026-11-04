@@ -8,6 +8,7 @@ import {
   submitManagerSelfEvaluation,
 } from "@/api/managerOverview";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
+import { useEvaluationPeriod } from "@/hooks/useEvaluationPeriod";
 import { missionEvaluationLabel, sendNotificationEmail } from "@/services/notifications";
 
 function getPageProgress(page) {
@@ -281,6 +282,7 @@ function Monautoevaluation() {
   const [missionPageIndexes, setMissionPageIndexes] = useState({});
   const [missionTitle, setMissionTitle] = useState("");
   const [missionStartDate, setMissionStartDate] = useState("");
+  const evaluationPeriod = useEvaluationPeriod();
   const [missionEndDate, setMissionEndDate] = useState("");
   const [selectedAssociateValues, setSelectedAssociateValues] = useState([]);
   const [selectedAssociateValue, setSelectedAssociateValue] = useState("");
@@ -657,6 +659,13 @@ function Monautoevaluation() {
     if (missionEndDate < missionStartDate) {
       setFeedbackTone("error");
       setFeedbackMessage("La date de fin doit être postérieure ou égale à la date de début.");
+      return;
+    }
+
+    const periodMessage = evaluationPeriod.validateMissionDates(missionStartDate, missionEndDate);
+    if (periodMessage) {
+      setFeedbackTone("error");
+      setFeedbackMessage(periodMessage);
       return;
     }
 
@@ -1253,6 +1262,8 @@ function Monautoevaluation() {
                       <input
                         type="date"
                         value={missionStartDate}
+                        min={evaluationPeriod.minDate}
+                        max={evaluationPeriod.maxDate}
                         onChange={(event) => setMissionStartDate(event.target.value)}
                         className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-3 text-sm text-[#0F3A63] outline-none"
                       />
@@ -1262,7 +1273,8 @@ function Monautoevaluation() {
                       <input
                         type="date"
                         value={missionEndDate}
-                        min={missionStartDate || undefined}
+                        min={missionStartDate || evaluationPeriod.minDate}
+                        max={evaluationPeriod.maxDate}
                         onChange={(event) => setMissionEndDate(event.target.value)}
                         className="mt-2 w-full rounded-md border border-slate-200 bg-white px-3 py-3 text-sm text-[#0F3A63] outline-none"
                       />

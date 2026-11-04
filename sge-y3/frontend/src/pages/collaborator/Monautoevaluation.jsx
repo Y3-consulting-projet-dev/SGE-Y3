@@ -8,6 +8,7 @@ import {
   submitMyAssistantMissionEvaluation,
 } from "@/api/collaboratorEvaluation";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
+import { useEvaluationPeriod } from "@/hooks/useEvaluationPeriod";
 import { missionEvaluationLabel, sendNotificationEmail } from "@/services/notifications";
 
 const gradingHelp = [
@@ -525,6 +526,7 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
   const [missionPageIndexes, setMissionPageIndexes] = useState({});
   const [missionTitle, setMissionTitle] = useState("");
   const [missionStartDate, setMissionStartDate] = useState("");
+  const evaluationPeriod = useEvaluationPeriod();
   const [missionEndDate, setMissionEndDate] = useState("");
   const [selectedRecipientValue, setSelectedRecipientValue] = useState("");
   const [selectedRecipientValues, setSelectedRecipientValues] = useState([]);
@@ -916,6 +918,12 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
 
     if (missionStartDate && missionEndDate && missionEndDate < missionStartDate) {
       setScopedFeedback("addMission", "error", "La date de fin doit être postérieure ou égale à la date de début.");
+      return;
+    }
+
+    const periodMessage = evaluationPeriod.validateMissionDates(missionStartDate, missionEndDate);
+    if (periodMessage) {
+      setScopedFeedback("addMission", "error", periodMessage);
       return;
     }
 
@@ -1330,6 +1338,8 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
             <input
               type="date"
               value={missionStartDate}
+              min={evaluationPeriod.minDate}
+              max={evaluationPeriod.maxDate}
               onChange={(event) => {
                 setMissionStartDate(event.target.value);
                 clearScopedFeedback("addMission");
@@ -1340,7 +1350,8 @@ function Monautoevaluation({ evaluationData, onEvaluationChange, onMissionEvalua
             <input
               type="date"
               value={missionEndDate}
-              min={missionStartDate || undefined}
+              min={missionStartDate || evaluationPeriod.minDate}
+              max={evaluationPeriod.maxDate}
               onChange={(event) => {
                 setMissionEndDate(event.target.value);
                 clearScopedFeedback("addMission");

@@ -13,7 +13,8 @@ const {
   validateSectionsForSubmit,
 } = require('../utils/evaluationHelpers');
 const { buildMissionResultsPayload } = require('../utils/evaluationHistory');
-const { getCurrentCycleLabel } = require('../utils/activeCycle');
+const { getActiveEvaluationPeriod, getCurrentCycleLabel } = require('../utils/activeCycle');
+const { validateMissionPeriod } = require('../utils/evaluationPeriod');
 const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
 const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
 
@@ -1378,6 +1379,12 @@ async function addMissionToAssistant(request, response) {
     return response.status(400).json({
       message: 'Le nom de la mission est requis.',
     });
+  }
+
+  const periodMessage = validateMissionPeriod(period, getActiveEvaluationPeriod(), title);
+
+  if (periodMessage) {
+    return response.status(400).json({ message: periodMessage });
   }
 
   const assistant = await getAssistantForSenior(request.user, request.params.assistantId);

@@ -37,6 +37,7 @@ const {
   resolveTemplateTypeForUser,
 } = require('../utils/evaluationHistory');
 const { activateCycle, getCurrentCycleLabel } = require('../utils/activeCycle');
+const { validateCyclePeriod } = require('../utils/evaluationPeriod');
 const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
 const { fetchAssociateCommentsForManager } = require('./managerController');
 const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
@@ -3400,18 +3401,16 @@ async function getRhCycles(_request, response) {
 }
 
 async function createRhCycle(request, response) {
-  const startDate = new Date(request.body?.start_date);
-  const endDate = new Date(request.body?.end_date);
+  // Seule une période 1er octobre N → 30 septembre N+1 est acceptée.
+  const { period, message } = validateCyclePeriod(request.body?.start_date, request.body?.end_date);
 
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    return response.status(400).json({ message: 'Veuillez renseigner une date de début et une date de fin valides.' });
+  if (message) {
+    return response.status(400).json({ message });
   }
 
-  if (startDate >= endDate) {
-    return response.status(400).json({ message: 'La date de début doit être antérieure à la date de fin.' });
-  }
-
-  const label = `Cycle ${startDate.getFullYear()}-${endDate.getFullYear()}`;
+  const startDate = new Date(period.start_date);
+  const endDate = new Date(period.end_date);
+  const label = period.label;
 
   try {
     await Cycle.updateMany({ is_active: true }, { is_active: false });

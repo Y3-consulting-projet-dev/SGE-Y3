@@ -8,6 +8,7 @@ import {
   submitMySeniorMissionEvaluation,
 } from "@/api/seniorEvaluation";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
+import { useEvaluationPeriod } from "@/hooks/useEvaluationPeriod";
 import { getDisplayName } from "@/utils/userPresentation";
 import { missionEvaluationLabel, sendNotificationEmail } from "@/services/notifications";
 
@@ -278,6 +279,7 @@ function MonautoevaluationSenior({ user }) {
   const [missionPageIndexes, setMissionPageIndexes] = useState({});
   const [missionTitle, setMissionTitle] = useState("");
   const [missionStartDate, setMissionStartDate] = useState("");
+  const evaluationPeriod = useEvaluationPeriod();
   const [missionEndDate, setMissionEndDate] = useState("");
   const [selectedRecipientValue, setSelectedRecipientValue] = useState("");
   const [selectedRecipientValues, setSelectedRecipientValues] = useState([]);
@@ -610,7 +612,13 @@ function MonautoevaluationSenior({ user }) {
     }
 
     if (missionStartDate && missionEndDate && missionEndDate < missionStartDate) {
-      setScopedFeedback("addMission", "error", "La date de fin doit ?tre post?rieure ou ?gale ? la date de d?but.");
+      setScopedFeedback("addMission", "error", "La date de fin doit être postérieure ou égale à la date de début.");
+      return;
+    }
+
+    const periodMessage = evaluationPeriod.validateMissionDates(missionStartDate, missionEndDate);
+    if (periodMessage) {
+      setScopedFeedback("addMission", "error", periodMessage);
       return;
     }
 
@@ -984,6 +992,8 @@ function MonautoevaluationSenior({ user }) {
               <input
                 type="date"
                 value={missionStartDate}
+                min={evaluationPeriod.minDate}
+                max={evaluationPeriod.maxDate}
                 onChange={(event) => {
                   setMissionStartDate(event.target.value);
                   clearScopedFeedback("addMission");
@@ -993,7 +1003,8 @@ function MonautoevaluationSenior({ user }) {
               <div className="text-[11px] font-semibold text-slate-500">Date de fin</div>
               <input
                 type="date"
-                min={missionStartDate || undefined}
+                min={missionStartDate || evaluationPeriod.minDate}
+                max={evaluationPeriod.maxDate}
                 value={missionEndDate}
                 onChange={(event) => {
                   setMissionEndDate(event.target.value);
