@@ -101,6 +101,35 @@ describe('supérieurs proposés pour les missions d\'assistant', () => {
     assert.equal(roxanne.department, 'AUDIT', 'le département principal reste affiché');
   });
 
+  test('supérieur proposé en plus aux assistants d\'EXPERTISE COMPTABLE, sans département secondaire', async () => {
+    const roxanne = await User.create({
+      email: 'roxanne.ngoran@ycubeac.com',
+      password: Buffer.from(await bcrypt.hash(PASSWORD, 10), 'utf8'),
+      name: 'Roxanne N\'GORAN',
+      first_name: 'Roxanne',
+      last_name: 'N\'GORAN',
+      grade: 'Assistant manager',
+      code_categorie: '9B',
+      department: 'AUDIT',
+    });
+
+    try {
+      const ecRecipients = await resolveMissionRecipientsForAssistant(users.assistantEc);
+      assert.ok(emailsOf(ecRecipients).includes(roxanne.email), 'visible pour les assistants d\'EXPERTISE COMPTABLE');
+
+      const groups = buildRecipientOptions(ecRecipients, users.assistantEc, getMissionDepartmentsForDepartment('EXPERTISE COMPTABLE'));
+      const ecGroup = groups.find((group) => group.department === 'EXPERTISE COMPTABLE');
+      assert.ok(ecGroup.users.some((user) => user.email === roxanne.email), 'rangée dans le groupe EXPERTISE COMPTABLE');
+      assert.equal(groups.flatMap((group) => group.users).filter((user) => user.email === roxanne.email).length, 1);
+
+      const conseilAssistant = await createUser('assistant-conseil-2', { grade: 'Assistant', code_categorie: '8C', department: 'CONSEIL FINANCIER' });
+      const conseilRecipients = await resolveMissionRecipientsForAssistant(conseilAssistant);
+      assert.ok(!emailsOf(conseilRecipients).includes(roxanne.email), 'pas proposée aux autres départements');
+    } finally {
+      await User.deleteOne({ _id: roxanne._id });
+    }
+  });
+
   test('assistant d\'un autre département : liste inchangée', async () => {
     const assistantConseil = await createUser('assistant-conseil', { grade: 'Assistant', code_categorie: '8C', department: 'CONSEIL FINANCIER' });
     const recipients = await resolveMissionRecipientsForAssistant(assistantConseil);

@@ -47,6 +47,21 @@ function getMissionDepartmentsForDepartment(department = '') {
   return departments;
 }
 
+// Supérieurs proposés en plus aux assistants d'un département, sans y être rattachés
+// (ils interviennent seulement sur certains dossiers de ce département).
+const EXTRA_MISSION_SUPERIORS = {
+  'EXPERTISE COMPTABLE': ['roxanne.ngoran@ycubeac.com'],
+};
+
+function getExtraMissionSuperiorEmails(targetDepartments = []) {
+  return [...new Set(targetDepartments.flatMap((department) => EXTRA_MISSION_SUPERIORS[normalizeText(department)] || []))];
+}
+
+function isExtraMissionSuperiorFor(recipient = {}, department = '') {
+  const email = String(recipient.email || '').trim().toLowerCase();
+  return Boolean(email) && (EXTRA_MISSION_SUPERIORS[normalizeText(department)] || []).includes(email);
+}
+
 function isAssociateRecipient(recipient = {}) {
   const category = String(recipient.code_categorie || '').trim().toUpperCase();
   const grade = normalizeText(recipient.grade || '').replace(/[ÉÈÊË]/g, 'E');
@@ -77,12 +92,14 @@ async function resolveMissionRecipientsForAssistant(user) {
   }
 
   const superiorCategories = ['9A', '9B', '10B', '10C'];
+  const extraSuperiorEmails = getExtraMissionSuperiorEmails(targetDepartments);
 
   return User.find({
     is_active: true,
     $or: [
       { code_categorie: { $in: superiorCategories }, department: { $in: targetDepartments } },
       { code_categorie: { $in: superiorCategories }, secondary_departments: { $in: targetDepartments } },
+      ...(extraSuperiorEmails.length ? [{ email: { $in: extraSuperiorEmails } }] : []),
       { code_categorie: '11' },
       { grade: 'Associé' },
       { grade: 'Associe' },
@@ -194,12 +211,14 @@ function buildRecipientOptions(recipients = [], user, targetDepartments = getMan
 
   const departmentGroups = targetDepartments.map((department) => {
     const groupDepartment = normalizeText(department);
-    // Rattaché au groupe par son département principal ou par un département secondaire ; une seule fois au total.
+    // Rattaché au groupe par son département principal, un département secondaire ou la liste des supérieurs
+    // proposés en plus ; une seule fois au total.
     const users = recipients.filter((recipient) => {
       const recipientId = String(recipient._id || recipient.id || '');
       const belongsToGroup =
         normalizeText(recipient.department) === groupDepartment ||
-        (recipient.secondary_departments || []).some((item) => normalizeText(item) === groupDepartment);
+        (recipient.secondary_departments || []).some((item) => normalizeText(item) === groupDepartment) ||
+        isExtraMissionSuperiorFor(recipient, department);
       return belongsToGroup && !groupedRecipientIds.has(recipientId);
     });
     users.forEach((recipient) => groupedRecipientIds.add(String(recipient._id || recipient.id || '')));
