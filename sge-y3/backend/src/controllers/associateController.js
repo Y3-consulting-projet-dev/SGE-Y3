@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const EvaluationInstance = require('../models/EvaluationInstance');
+const { createOrFindExisting } = require('../utils/createOrFindExisting');
 const CommitteeDecision = require('../models/CommitteeDecision');
 const AssociateManagerReview = require('../models/AssociateManagerReview');
 const ManagerMemberReview = require('../models/ManagerMemberReview');
@@ -299,7 +300,7 @@ async function getOrCreateAssociateSelfEvaluation(user) {
   const templateSections = cloneSectionsForAssociate(user);
 
   if (!instance) {
-    instance = await EvaluationInstance.create({
+    instance = await createOrFindExisting(EvaluationInstance, {
       cycle_label: getCurrentCycleLabel(),
       evalue_id: user._id,
       status: 'En cours',
@@ -753,7 +754,7 @@ async function getOrCreateAssociateManagerReview(associateUser, managerUser, man
     }));
 
   if (!review) {
-    review = await AssociateManagerReview.create({
+    review = await createOrFindExisting(AssociateManagerReview, {
       cycle_label: getCurrentCycleLabel(),
       associate_id: associateUser._id,
       manager_id: managerUser._id,

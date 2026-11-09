@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const SeniorAssistantReview = require('../models/SeniorAssistantReview');
 const EvaluationInstance = require('../models/EvaluationInstance');
+const { createOrFindExisting } = require('../utils/createOrFindExisting');
 const { buildEvaluationTemplateForUser } = require('../utils/competencyMatrix');
 const {
   getAverageScore,
@@ -633,7 +634,7 @@ async function getOrCreateSeniorAssistantReview(seniorUser, assistant) {
   const templateSections = cloneAssistantTemplateForDepartment(evaluationDepartment);
 
   if (!review) {
-    review = await SeniorAssistantReview.create({
+    review = await createOrFindExisting(SeniorAssistantReview, {
       cycle_label: getCurrentCycleLabel(),
       senior_id: seniorUser._id,
       assistant_id: assistant._id,
@@ -664,7 +665,7 @@ async function getOrCreateAssistantEvaluationInstance(assistant) {
   const templateSections = cloneAssistantTemplateForDepartment(assistant.department);
 
   if (!instance) {
-    instance = await EvaluationInstance.create({
+    instance = await createOrFindExisting(EvaluationInstance, {
       cycle_label: getCurrentCycleLabel(),
       evalue_id: assistant._id,
       status: 'En cours',

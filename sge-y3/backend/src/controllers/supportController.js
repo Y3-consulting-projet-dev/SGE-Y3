@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const EvaluationInstance = require('../models/EvaluationInstance');
+const { createOrFindExisting } = require('../utils/createOrFindExisting');
 const { buildEvaluationTemplateForUser } = require('../utils/competencyMatrix');
 const {
   getEvaluationSummary,
@@ -185,7 +186,7 @@ async function getOrCreateSupportSelfEvaluation(user) {
   const templateSections = cloneSupportSections(user);
 
   if (!instance) {
-    instance = await EvaluationInstance.create({
+    instance = await createOrFindExisting(EvaluationInstance, {
       cycle_label: getCurrentCycleLabel(),
       evalue_id: user._id,
       status: 'En cours',

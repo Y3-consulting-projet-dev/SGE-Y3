@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const EvaluationInstance = require('../models/EvaluationInstance');
+const { createOrFindExisting } = require('../utils/createOrFindExisting');
 const ManagerMemberReview = require('../models/ManagerMemberReview');
 const SeniorAssistantReview = require('../models/SeniorAssistantReview');
 const AssociateManagerReview = require('../models/AssociateManagerReview');
@@ -423,7 +424,7 @@ async function getOrCreateManagerSelfEvaluation(user) {
   const templateSections = cloneManagerSelfTemplate(user);
 
   if (!instance) {
-    instance = await EvaluationInstance.create({
+    instance = await createOrFindExisting(EvaluationInstance, {
       cycle_label: getCurrentCycleLabel(),
       evalue_id: user._id,
       status: 'En cours',
@@ -987,7 +988,7 @@ async function getOrCreateManagerMemberReview(managerUser, member) {
   const templateSections = cloneTemplateForMember(member, evaluationDepartment);
 
   if (!review) {
-    review = await ManagerMemberReview.create({
+    review = await createOrFindExisting(ManagerMemberReview, {
       cycle_label: getCurrentCycleLabel(),
       manager_id: managerUser._id,
       member_id: member._id,

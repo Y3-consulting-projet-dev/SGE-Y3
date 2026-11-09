@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const EvaluationInstance = require('../models/EvaluationInstance');
+const { createOrFindExisting } = require('../utils/createOrFindExisting');
 const ManagerMemberReview = require('../models/ManagerMemberReview');
 const SeniorAssistantReview = require('../models/SeniorAssistantReview');
 const AssociateManagerReview = require('../models/AssociateManagerReview');
@@ -307,7 +308,7 @@ async function getOrCreateRhSelfEvaluation(user, options = {}) {
   const templateSections = cloneRhSelfTemplate(user);
 
   if (!instance) {
-    instance = await EvaluationInstance.create({
+    instance = await createOrFindExisting(EvaluationInstance, {
       cycle_label: getCurrentCycleLabel(),
       evalue_id: user._id,
       status: 'En cours',
@@ -2498,7 +2499,7 @@ async function getOrCreateAssistantRhReview(rhUser, member) {
   const templateSections = cloneRhSelfTemplate(member);
 
   if (!review) {
-    review = await ManagerMemberReview.create({
+    review = await createOrFindExisting(ManagerMemberReview, {
       cycle_label: getCurrentCycleLabel(),
       manager_id: rhUser._id,
       member_id: member._id,

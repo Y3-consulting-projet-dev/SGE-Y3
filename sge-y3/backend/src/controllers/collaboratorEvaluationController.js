@@ -1,4 +1,5 @@
 const EvaluationInstance = require('../models/EvaluationInstance');
+const { createOrFindExisting } = require('../utils/createOrFindExisting');
 const ManagerMemberReview = require('../models/ManagerMemberReview');
 const User = require('../models/User');
 const { cloneAssistantEvaluationTemplate } = require('../utils/assistantEvaluationTemplate');
@@ -931,7 +932,7 @@ async function getOrCreateSelfEvaluation(user, templateType, cloneTemplate) {
   const templateSections = cloneTemplate(user);
 
   if (!instance) {
-    instance = await EvaluationInstance.create({
+    instance = await createOrFindExisting(EvaluationInstance, {
       cycle_label: getCurrentCycleLabel(),
       evalue_id: user._id,
       status: 'En cours',
