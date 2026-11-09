@@ -5,6 +5,7 @@ const {
   createRecoveryCode,
   forgotPassword,
   getAuthConfig,
+  getMe,
   login,
   recoverWithCode,
   regenerateRecoveryCode,
@@ -29,6 +30,7 @@ router.post('/login', login);
 router.post('/forgot-password', passwordResetLimiter, forgotPassword);
 router.post('/recover', passwordResetLimiter, recoverWithCode);
 router.post('/reset-password', passwordResetLimiter, resetPassword);
+router.get('/me', requireAuth, getMe);
 router.put('/me/profile', requireAuth, updateProfile);
 router.put('/me/password', requireAuth, updatePassword);
 router.post('/me/recovery-code', requireAuth, createRecoveryCode);

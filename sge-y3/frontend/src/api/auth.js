@@ -33,6 +33,10 @@ export async function recoverWithCode(email, code) {
   });
 }
 
+export async function getCurrentUser() {
+  return request("/auth/me");
+}
+
 export async function createRecoveryCode() {
   return request("/auth/me/recovery-code", { method: "POST" });
 }

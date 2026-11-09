@@ -54,6 +54,20 @@ function buildAuthResponse(user) {
   };
 }
 
+// Fiche à jour de l'utilisateur connecté (ex. département modifié par la RH depuis la connexion).
+function getMe(request, response) {
+  const { user } = request;
+
+  return response.json({
+    user: {
+      ...user.toSafeObject(),
+      role: getRoleFromGrade(user.grade),
+      permission_role: getPermissionRole(user),
+      ...getSecurityRequirements(user),
+    },
+  });
+}
+
 function canEditGradeAndDepartment(user) {
   const department = normalizeDepartment(user?.department);
   return department === 'RH' || department === 'CAPITAL HUMAIN';
@@ -457,6 +471,7 @@ module.exports = {
   createRecoveryCode,
   forgotPassword,
   getAuthConfig,
+  getMe,
   getSecurityRequirements,
   login,
   recoverWithCode,

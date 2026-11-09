@@ -73,3 +73,22 @@ test('chargements simultanés de l\'auto-évaluation à la première connexion d
   responses.forEach((response, index) => assert.equal(response.status, 200, bodies[index].message));
   assert.equal(await EvaluationInstance.countDocuments({ evalue_id: assistant._id }), 1);
 });
+
+test('GET /api/auth/me renvoie la fiche à jour (département modifié après la connexion)', async () => {
+  const user = await User.findOne({ email: 'assistant@exemple.test' });
+  const login = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: user.email, password: PASSWORD }),
+  }).then((response) => response.json());
+  assert.equal(login.user.department, 'AUDIT');
+
+  await User.updateOne({ _id: user._id }, { $set: { department: 'EXPERTISE COMPTABLE' } });
+
+  const response = await fetch(`${baseUrl}/api/auth/me`, { headers: { Authorization: `Bearer ${login.token}` } });
+  const body = await response.json();
+  assert.equal(response.status, 200, body.message);
+  assert.equal(body.user.department, 'EXPERTISE COMPTABLE');
+  assert.equal(body.user.role, login.user.role);
+  assert.equal(body.user.password, undefined, 'jamais de mot de passe');
+});

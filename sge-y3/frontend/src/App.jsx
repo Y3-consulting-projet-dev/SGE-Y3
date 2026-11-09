@@ -4,6 +4,7 @@ import RecoveryCodePage from "@/pages/auth/RecoveryCodePage";
 import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
 import {
   clearSession,
+  getCurrentUser,
   loadSession,
   loginUser,
   saveSession,
@@ -160,6 +161,31 @@ function App() {
 
     window.addEventListener(SECURITY_STEP_EVENT, handleSecurityStep);
     return () => window.removeEventListener(SECURITY_STEP_EVENT, handleSecurityStep);
+  }, []);
+
+  // Au chargement, la fiche enregistrée à la connexion est remplacée par celle du serveur
+  // (ex. département ou grade modifié par la RH depuis), sans avoir à se reconnecter.
+  useEffect(() => {
+    if (!loadSession()?.token) return undefined;
+    let cancelled = false;
+
+    getCurrentUser()
+      .then(({ user }) => {
+        const session = loadSession();
+        if (cancelled || !user || !session?.token) return;
+        const nextUser = { ...session.user, ...user };
+        saveSession({ ...session, user: nextUser });
+        setAuthState((current) =>
+          current.isAuthenticated
+            ? { ...current, userRole: getDashboardRole(nextUser), currentUser: nextUser }
+            : current
+        );
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const { isAuthenticated, userRole, currentUser } = authState;
