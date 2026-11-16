@@ -67,8 +67,73 @@ async function resolveManagersForDepartment(department) {
     .select('_id name first_name last_name grade department');
 }
 
+const MANAGER_CATEGORIES = ['10B', '10C'];
+const MANAGER_GRADES = ['MANAGER', 'SENIOR MANAGER'];
+
+// Managers déjà choisis par l'assistant dans les missions qu'il a soumises à ce Senior.
+async function resolveManagersChosenInAssistantMissions(seniorUser, assistant) {
+  if (!assistant?._id) {
+    return [];
+  }
+
+  const missions = await getAssistantSubmittedMissionsForSenior(assistant._id, seniorUser);
+  const chosenIds = new Set();
+
+  missions.forEach((mission) => {
+    (mission.recipients || []).forEach((recipient) => {
+      const recipientId = recipient.user_id?.toString?.() || String(recipient.user_id || '');
+      if (recipientId && MANAGER_GRADES.includes(normalizeText(recipient.grade || ''))) {
+        chosenIds.add(recipientId);
+      }
+    });
+  });
+
+  if (!chosenIds.size) {
+    return [];
+  }
+
+  return User.find({
+    _id: { $in: [...chosenIds] },
+    is_active: true,
+    code_categorie: { $in: MANAGER_CATEGORIES },
+  })
+    .sort({ last_name: 1, first_name: 1 })
+    .select('_id name first_name last_name grade department');
+}
+
+// Liste des managers proposés au Senior / Assistant manager.
+// On garde la liste habituelle et on y ajoute, sans rien retirer :
+//  - les managers choisis par l'assistant dans ses missions (placés en tête de liste) ;
+//  - les managers des deux départements quand l'assistant ou le Senior est « AUDIT & EXPERTISE COMPTABLE ».
 async function resolveManagersForSeniorReview(seniorUser, assistant) {
-  return resolveManagersForDepartment(resolveEvaluationDepartmentForSeniorReview(seniorUser, assistant));
+  const departments = new Set([
+    ...getManagerDepartmentsForDepartment(resolveEvaluationDepartmentForSeniorReview(seniorUser, assistant)),
+    ...getManagerDepartmentsForDepartment(assistant?.department),
+    ...getManagerDepartmentsForDepartment(seniorUser?.department),
+  ]);
+
+  const [chosenManagers, departmentManagers] = await Promise.all([
+    resolveManagersChosenInAssistantMissions(seniorUser, assistant),
+    departments.size
+      ? User.find({
+          is_active: true,
+          code_categorie: { $in: MANAGER_CATEGORIES },
+          department: { $in: [...departments] },
+        })
+          .sort({ last_name: 1, first_name: 1 })
+          .select('_id name first_name last_name grade department')
+      : [],
+  ]);
+
+  const seen = new Set();
+  return [...chosenManagers, ...departmentManagers].filter((manager) => {
+    const key = String(manager._id);
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
 }
 
 async function resolveHierarchyRecipientsForAssistant(assistant, departmentOverride = '') {
