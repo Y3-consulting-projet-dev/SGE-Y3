@@ -24,6 +24,7 @@ const {
 } = require('../controllers/associateController');
 const { requireAuth } = require('../middleware/authMiddleware');
 const { requireAssociate } = require('../middleware/collaboratorMiddleware');
+const { requireSelfEvaluationOpen } = require('../middleware/selfEvaluationDeadline');
 
 const router = express.Router();
 
@@ -31,8 +32,8 @@ router.get('/overview', requireAuth, requireAssociate, getAssociateOverview);
 router.get('/syntheses', requireAuth, requireAssociate, getAssociateSyntheses);
 router.get('/self-evaluation', requireAuth, requireAssociate, getAssociateSelfEvaluation);
 router.get('/self-evaluation/history', requireAuth, requireAssociate, getMyAssociateEvaluationHistory);
-router.put('/self-evaluation', requireAuth, requireAssociate, saveAssociateSelfEvaluation);
-router.post('/self-evaluation/submit', requireAuth, requireAssociate, submitAssociateSelfEvaluation);
+router.put('/self-evaluation', requireAuth, requireAssociate, requireSelfEvaluationOpen, saveAssociateSelfEvaluation);
+router.post('/self-evaluation/submit', requireAuth, requireAssociate, requireSelfEvaluationOpen, submitAssociateSelfEvaluation);
 router.get('/cabinet-members', requireAuth, requireAssociate, listCabinetMembers);
 router.get('/cabinet-members/:memberId/history', requireAuth, requireAssociate, getCabinetMemberHistory);
 router.get('/received-evaluations', requireAuth, requireAssociate, getReceivedAssociateEvaluations);

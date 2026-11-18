@@ -21,14 +21,15 @@ const {
 } = require('../controllers/seniorAssistantController');
 const { requireAuth } = require('../middleware/authMiddleware');
 const { requireSenior } = require('../middleware/collaboratorMiddleware');
+const { requireSelfEvaluationOpen } = require('../middleware/selfEvaluationDeadline');
 
 const router = express.Router();
 
 router.get('/evaluation/me', requireAuth, requireSenior, getMySeniorEvaluation);
 router.get('/evaluation/history', requireAuth, requireSenior, getMySeniorEvaluationHistory);
-router.put('/evaluation/me', requireAuth, requireSenior, saveMySeniorEvaluation);
-router.post('/evaluation/me/missions/submit', requireAuth, requireSenior, submitMySeniorMissionEvaluation);
-router.post('/evaluation/me/submit', requireAuth, requireSenior, submitMySeniorEvaluation);
+router.put('/evaluation/me', requireAuth, requireSenior, requireSelfEvaluationOpen, saveMySeniorEvaluation);
+router.post('/evaluation/me/missions/submit', requireAuth, requireSenior, requireSelfEvaluationOpen, submitMySeniorMissionEvaluation);
+router.post('/evaluation/me/submit', requireAuth, requireSenior, requireSelfEvaluationOpen, submitMySeniorEvaluation);
 router.get('/overview', requireAuth, requireSenior, getMySeniorOverview);
 router.get('/assistants', requireAuth, requireSenior, listMyAssistants);
 router.get('/missions-commones', requireAuth, requireSenior, listMyCommonMissions);

@@ -20,6 +20,7 @@ const {
 } = require('../controllers/managerController');
 const { requireAuth } = require('../middleware/authMiddleware');
 const { requireManager } = require('../middleware/collaboratorMiddleware');
+const { requireSelfEvaluationOpen } = require('../middleware/selfEvaluationDeadline');
 
 const router = express.Router();
 
@@ -27,10 +28,10 @@ router.get('/overview', requireAuth, requireManager, getManagerOverview);
 router.get('/team-report', requireAuth, requireManager, getManagerTeamReport);
 router.get('/self-evaluation', requireAuth, requireManager, getMyManagerEvaluation);
 router.get('/self-evaluation/history', requireAuth, requireManager, getMyManagerEvaluationHistory);
-router.post('/self-evaluation/missions', requireAuth, requireManager, addMyManagerMissionEvaluation);
-router.put('/self-evaluation', requireAuth, requireManager, saveMyManagerEvaluation);
-router.post('/self-evaluation/missions/submit', requireAuth, requireManager, submitMyManagerMissionEvaluation);
-router.post('/self-evaluation/submit', requireAuth, requireManager, submitMyManagerEvaluation);
+router.post('/self-evaluation/missions', requireAuth, requireManager, requireSelfEvaluationOpen, addMyManagerMissionEvaluation);
+router.put('/self-evaluation', requireAuth, requireManager, requireSelfEvaluationOpen, saveMyManagerEvaluation);
+router.post('/self-evaluation/missions/submit', requireAuth, requireManager, requireSelfEvaluationOpen, submitMyManagerMissionEvaluation);
+router.post('/self-evaluation/submit', requireAuth, requireManager, requireSelfEvaluationOpen, submitMyManagerEvaluation);
 router.get('/members/:memberId/evaluation', requireAuth, requireManager, getManagerMemberEvaluation);
 router.get('/members/:memberId/history', requireAuth, requireManager, getTeamMemberHistoryForManager);
 router.put('/members/:memberId/evaluation', requireAuth, requireManager, saveManagerMemberEvaluation);

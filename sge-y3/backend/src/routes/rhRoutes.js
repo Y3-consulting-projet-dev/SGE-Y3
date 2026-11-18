@@ -44,19 +44,20 @@ const {
 } = require('../controllers/rhController');
 const { requireAuth } = require('../middleware/authMiddleware');
 const { requireRh } = require('../middleware/collaboratorMiddleware');
+const { requireSelfEvaluationOpen } = require('../middleware/selfEvaluationDeadline');
 
 const router = express.Router();
 
 router.get('/overview', requireAuth, requireRh, getRhOverview);
 router.get('/assistant-self-evaluation', requireAuth, requireRh, getMyAssistantRhSelfEvaluation);
-router.put('/assistant-self-evaluation', requireAuth, requireRh, saveMyAssistantRhSelfEvaluation);
-router.post('/assistant-self-evaluation/submit', requireAuth, requireRh, submitMyAssistantRhSelfEvaluation);
+router.put('/assistant-self-evaluation', requireAuth, requireRh, requireSelfEvaluationOpen, saveMyAssistantRhSelfEvaluation);
+router.post('/assistant-self-evaluation/submit', requireAuth, requireRh, requireSelfEvaluationOpen, submitMyAssistantRhSelfEvaluation);
 router.get('/assistant-evaluations/:memberId', requireAuth, requireRh, getAssistantRhEvaluation);
 router.put('/assistant-evaluations/:memberId', requireAuth, requireRh, saveAssistantRhEvaluation);
 router.post('/assistant-evaluations/:memberId/submit', requireAuth, requireRh, submitAssistantRhEvaluation);
 router.get('/self-evaluation', requireAuth, requireRh, getMyRhSelfEvaluation);
-router.put('/self-evaluation', requireAuth, requireRh, saveMyRhSelfEvaluation);
-router.post('/self-evaluation/submit', requireAuth, requireRh, submitMyRhSelfEvaluation);
+router.put('/self-evaluation', requireAuth, requireRh, requireSelfEvaluationOpen, saveMyRhSelfEvaluation);
+router.post('/self-evaluation/submit', requireAuth, requireRh, requireSelfEvaluationOpen, submitMyRhSelfEvaluation);
 router.get('/evaluation/history', requireAuth, requireRh, getMyRhEvaluationHistory);
 router.get('/team/members', requireAuth, requireRh, listAllMembersForRh);
 router.get('/team/:memberId/history', requireAuth, requireRh, getRhTeamMemberHistory);
