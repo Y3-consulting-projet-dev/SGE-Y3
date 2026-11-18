@@ -249,6 +249,10 @@ export function createRhCycle(payload) {
   });
 }
 
+export function updateRhSelfEvaluationDeadline(payload) {
+  return request("/rh/cycles/active/self-evaluation-deadline", { method: "PUT", body: JSON.stringify(payload) });
+}
+
 export function getRhReceivedComments() {
   return request("/rh/received-comments");
 }

@@ -13,6 +13,7 @@ const {
   downloadRhReport,
   getRhCalibration,
   getRhCycles,
+  updateRhSelfEvaluationDeadline,
   getRhDepartmentEvaluationDetail,
   getRhDepartmentEvaluations,
   getAssistantRhEvaluation,
@@ -82,6 +83,7 @@ router.get('/syntheses', requireAuth, requireRh, getRhSyntheses);
 router.post('/syntheses/submit', requireAuth, requireRh, submitRhSyntheses);
 router.get('/cycles', requireAuth, requireRh, getRhCycles);
 router.post('/cycles', requireAuth, requireRh, createRhCycle);
+router.put('/cycles/active/self-evaluation-deadline', requireAuth, requireRh, updateRhSelfEvaluationDeadline);
 router.get('/my-evaluation-result', requireAuth, requireRh, getMyAssistantRhEvaluationResult);
 router.get('/received-comments', requireAuth, requireRh, getRhReceivedChiefComments);
 router.get('/collaborators/:userId/anonymous-comments', requireAuth, requireRh, getRhCollaboratorAnonymousComments);

@@ -39,6 +39,7 @@ const {
 } = require('../utils/evaluationHistory');
 const { activateCycle, getCurrentCycleLabel } = require('../utils/activeCycle');
 const { validateCyclePeriod } = require('../utils/evaluationPeriod');
+const { isSelfEvaluationClosed } = require('../middleware/selfEvaluationDeadline');
 const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
 const { fetchAssociateCommentsForManager } = require('./managerController');
 const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
@@ -3392,6 +3393,8 @@ function serializeCycle(cycle) {
     start_date: cycle.start_date,
     end_date: cycle.end_date,
     is_active: cycle.is_active,
+    self_evaluation_deadline: cycle.self_evaluation_deadline || null,
+    self_evaluation_closed: isSelfEvaluationClosed(cycle.self_evaluation_deadline ? new Date(cycle.self_evaluation_deadline) : null),
   };
 }
 
@@ -3432,6 +3435,41 @@ async function createRhCycle(request, response) {
 
     throw error;
   }
+}
+
+// Corps : { action: 'close_now' } | { action: 'schedule', date: 'AAAA-MM-JJ' } | { action: 'reopen' }.
+// Une date programmée bloque à partir de 00:00 (heure d'Abidjan, UTC) ce jour-là.
+async function updateRhSelfEvaluationDeadline(request, response) {
+  const action = String(request.body?.action || '').trim();
+  let deadline;
+
+  if (action === 'close_now') {
+    deadline = new Date();
+  } else if (action === 'reopen') {
+    deadline = null;
+  } else if (action === 'schedule') {
+    const date = String(request.body?.date || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(new Date(`${date}T00:00:00.000Z`).getTime())) {
+      return response.status(400).json({ message: 'Veuillez choisir une date valide.' });
+    }
+    deadline = new Date(`${date}T00:00:00.000Z`);
+  } else {
+    return response.status(400).json({ message: 'Action inconnue.' });
+  }
+
+  const cycle = await Cycle.findOneAndUpdate({ is_active: true }, { $set: { self_evaluation_deadline: deadline } }, { new: true });
+  if (!cycle) {
+    return response.status(404).json({ message: 'Aucun cycle actif.' });
+  }
+
+  const message =
+    action === 'reopen'
+      ? 'Les auto-évaluations sont rouvertes.'
+      : action === 'close_now'
+      ? 'Les auto-évaluations sont bloquées à partir de maintenant.'
+      : `Les auto-évaluations seront bloquées à partir du ${deadline.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}.`;
+
+  return response.json({ message, cycle: serializeCycle(cycle) });
 }
 
 async function getMyAssistantRhEvaluationResult(request, response) {
@@ -3573,6 +3611,7 @@ module.exports = {
   getAssistantRhEvaluation,
   getRhCalibration,
   getRhCycles,
+  updateRhSelfEvaluationDeadline,
   getRhDepartmentEvaluationDetail,
   getRhDepartmentEvaluations,
   getMyAssistantRhSelfEvaluation,
