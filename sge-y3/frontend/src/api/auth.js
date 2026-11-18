@@ -84,11 +84,35 @@ async function request(path, options = {}) {
 
 export const SESSION_EXPIRED_EVENT = "sge-session-expired";
 export const SECURITY_STEP_EVENT = "sge-security-step-required";
+export const SELF_EVALUATION_CLOSED_EVENT = "sge-self-evaluation-closed";
 const SECURITY_STEP_CODES = ["RECOVERY_CODE_REQUIRED"];
+
+// Routes d'enregistrement et de soumission des auto-évaluations (bloquées par le serveur après la date limite).
+const SELF_EVALUATION_WRITE_ROUTE =
+  /\/api\/(collaborator\/(evaluation|development)\/me|senior\/evaluation\/me|manager\/self-evaluation|associate\/self-evaluation|rh\/(assistant-)?self-evaluation|support\/self-evaluation)(\/|\?|$)/;
+
+let selfEvaluationClosedMessage = "";
+
+// Période close : aucune requête d'enregistrement ou de soumission d'auto-évaluation n'est plus envoyée.
+export function setSelfEvaluationClosed(message) {
+  selfEvaluationClosedMessage = message || "";
+}
+
+function isSelfEvaluationWriteRequest(url, options = {}) {
+  const method = String(options.method || "GET").toUpperCase();
+  return method !== "GET" && SELF_EVALUATION_WRITE_ROUTE.test(String(url));
+}
 
 // fetch partagé par les modules d'API : une réponse 401 à une requête authentifiée
 // signifie que la session a expiré ou a été révoquée (ex. mot de passe modifié).
 export async function authFetch(url, options = {}) {
+  if (selfEvaluationClosedMessage && isSelfEvaluationWriteRequest(url, options)) {
+    return new Response(JSON.stringify({ message: selfEvaluationClosedMessage, self_evaluation_closed: true }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   const response = await fetch(url, options);
   const sentToken = Boolean(options.headers?.Authorization);
 
@@ -107,6 +131,11 @@ export async function authFetch(url, options = {}) {
     const data = await response.clone().json().catch(() => ({}));
     if (SECURITY_STEP_CODES.includes(data.code)) {
       window.dispatchEvent(new CustomEvent(SECURITY_STEP_EVENT, { detail: { code: data.code } }));
+    }
+    // Période d'auto-évaluation close pendant que la page était ouverte.
+    if (data.self_evaluation_closed) {
+      setSelfEvaluationClosed(data.message);
+      window.dispatchEvent(new CustomEvent(SELF_EVALUATION_CLOSED_EVENT, { detail: { message: data.message } }));
     }
   }
 

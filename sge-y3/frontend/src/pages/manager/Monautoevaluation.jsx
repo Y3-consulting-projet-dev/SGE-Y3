@@ -9,6 +9,8 @@ import {
 } from "@/api/managerOverview";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
 import { useEvaluationPeriod } from "@/hooks/useEvaluationPeriod";
+import { useSelfEvaluationLock } from "@/hooks/useSelfEvaluationLock";
+import SelfEvaluationLockBanner from "@/components/evaluation/SelfEvaluationLockBanner";
 import { missionEvaluationLabel, sendNotificationEmail } from "@/services/notifications";
 
 function getPageProgress(page) {
@@ -209,7 +211,7 @@ function normalizeSearchValue(value = "") {
     .toLowerCase();
 }
 
-function ScoreSelector({ selected, onSelect }) {
+function ScoreSelector({ selected, onSelect, disabled = false }) {
   return (
     <div className="space-y-2">
       <div className="flex overflow-hidden rounded-md border border-slate-200">
@@ -218,7 +220,8 @@ function ScoreSelector({ selected, onSelect }) {
             key={score}
             type="button"
             onClick={() => onSelect(score)}
-            className={`h-8 w-10 border-r border-slate-200 text-xs font-semibold last:border-r-0 ${
+            disabled={disabled}
+            className={`h-8 w-10 border-r border-slate-200 text-xs font-semibold last:border-r-0 disabled:cursor-not-allowed ${
               score === selected ? "bg-[#003B63] text-white" : "bg-slate-100 text-[#0F3A63]"
             }`}
           >
@@ -283,6 +286,8 @@ function Monautoevaluation() {
   const [missionTitle, setMissionTitle] = useState("");
   const [missionStartDate, setMissionStartDate] = useState("");
   const evaluationPeriod = useEvaluationPeriod();
+  const selfEvaluationLock = useSelfEvaluationLock();
+  const isReadOnly = selfEvaluationLock.isClosed;
   const [missionEndDate, setMissionEndDate] = useState("");
   const [selectedAssociateValues, setSelectedAssociateValues] = useState([]);
   const [selectedAssociateValue, setSelectedAssociateValue] = useState("");
@@ -610,6 +615,8 @@ function Monautoevaluation() {
     successMessage = "Auto-évaluation manager enregistrée.",
     nextMissionEvaluations = missionEvaluations
   ) {
+    if (isReadOnly) return null;
+
     try {
       setIsSaving(true);
       setFeedbackMessage("");
@@ -774,6 +781,11 @@ function Monautoevaluation() {
   }
 
   async function handleSaveAndContinue() {
+    if (isReadOnly) {
+      goToStep(1);
+      return;
+    }
+
     if (String(activeSection?.comment || "").trim().length < 3) {
       setFeedbackTone("error");
       setFeedbackMessage("Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
@@ -785,6 +797,11 @@ function Monautoevaluation() {
   }
 
   async function handleSaveMissionAndContinue() {
+    if (isReadOnly) {
+      goToMissionStep(1);
+      return;
+    }
+
     if (String(activeMission?.comment || "").trim().length < 3) {
       setFeedbackTone("error");
       setFeedbackMessage("Le commentaire sur la mission d'au moins 3 caractères est obligatoire avant de continuer.");
@@ -922,6 +939,7 @@ function Monautoevaluation() {
 
   return (
     <div className="space-y-4">
+      <SelfEvaluationLockBanner lock={selfEvaluationLock} />
       <p className="text-xs font-semibold text-slate-400">
         {evaluationData.manager.name} - {evaluationData.manager.grade} - {evaluationData.evaluation.cycle_label}
       </p>
@@ -1147,7 +1165,7 @@ function Monautoevaluation() {
                         {theme.code}. {theme.label}
                       </p>
                       <p className="text-xs text-slate-500">{theme.statement}</p>
-                      <ScoreSelector selected={theme.score} onSelect={(score) => updateTheme(theme.theme_id, score)} />
+                      <ScoreSelector selected={theme.score} onSelect={(score) => updateTheme(theme.theme_id, score)} disabled={isReadOnly} />
                     </div>
                   ))}
                 </div>
@@ -1160,6 +1178,7 @@ function Monautoevaluation() {
                     rows={3}
                     value={activeSection.comment || ""}
                     onChange={(event) => updateComment(event.target.value)}
+                    disabled={isReadOnly}
                     placeholder="Synthèse globale de la section, points forts, axes d'amelioration..."
                     className="w-full resize-none rounded-md border border-slate-200 bg-slate-100 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
                   />
@@ -1191,14 +1210,14 @@ function Monautoevaluation() {
                         disabled={isSaving || isSubmitting}
                         className="inline-flex items-center gap-2 rounded-md bg-[#003B63] px-4 py-2 text-[12px] font-semibold text-white disabled:opacity-70"
                       >
-                        Sauvegarder et continuer
+                        {isReadOnly ? "Suivant" : "Sauvegarder et continuer"}
                         <ChevronRight size={14} />
                       </button>
                     ) : (
                       <button
                         type="button"
                         onClick={() => persistSections(sections)}
-                        disabled={isSaving || isSubmitting}
+                        disabled={isReadOnly || isSaving || isSubmitting}
                         className="rounded-md bg-[#79B742] px-8 py-2 text-xs font-semibold text-white disabled:opacity-70"
                       >
                         {isSaving ? "Sauvegarde..." : "Sauvegarder"}
@@ -1208,7 +1227,7 @@ function Monautoevaluation() {
                     <button
                       type="button"
                       onClick={handleSubmit}
-                      disabled={isSaving || isSubmitting || evaluationData.evaluation.status === "Soumis a RH"}
+                      disabled={isReadOnly || isSaving || isSubmitting || evaluationData.evaluation.status === "Soumis a RH"}
                       className="rounded-md bg-[#79B742] px-8 py-2 text-xs font-semibold text-white disabled:opacity-70"
                     >
                       {isSubmitting ? "Soumission..." : "Soumettre à la RH"}
@@ -1250,6 +1269,7 @@ function Monautoevaluation() {
                   <p className="mt-1 text-xs font-semibold text-slate-500">
                     Saisissez le nom de la mission, sa date de début et sa date de fin. Elle sera ensuite soumise à la RH et aux associés.
                   </p>
+                  <fieldset disabled={isReadOnly} className="min-w-0 disabled:opacity-60">
                   <div className="mt-4 space-y-3">
                     <input
                       value={missionTitle}
@@ -1343,6 +1363,7 @@ function Monautoevaluation() {
                   >
                     {isSaving ? "Ajout..." : "Ajouter la mission"}
                   </button>
+                  </fieldset>
                 </div>
               </article>
 
@@ -1577,6 +1598,7 @@ function Monautoevaluation() {
                           })}
                         </div>
 
+                        {!isReadOnly ? (
                         <div className="mt-3 rounded-md border border-dashed border-[#C7D6E8] bg-white p-3">
                           <p className="text-[12px] font-bold text-[#0F3A63]">{`Ajouter un titre à "${activeMissionSection?.title || ""}"`}</p>
                           <p className="mt-1 text-[11px] text-slate-500">
@@ -1623,6 +1645,7 @@ function Monautoevaluation() {
                             <InlineFeedback feedback={customCriterionFeedback} />
                           </div>
                         </div>
+                        ) : null}
                       </div>
 
                       <div className="mb-4 space-y-3">
@@ -1672,7 +1695,7 @@ function Monautoevaluation() {
                                   {criterion.themeCode ? `${criterion.themeCode}. ` : ""}
                                   {criterion.label}
                                 </p>
-                                {criterion.isCustom ? (
+                                {criterion.isCustom && !isReadOnly ? (
                                   <button
                                     type="button"
                                     onClick={() => removeCustomMissionCriterion(criterion.id)}
@@ -1683,7 +1706,7 @@ function Monautoevaluation() {
                                 ) : null}
                               </div>
                               <p className="text-xs text-slate-500">{criterion.statement}</p>
-                              <ScoreSelector selected={criterion.score} onSelect={(score) => updateMissionScore(criterion.id, score)} />
+                              <ScoreSelector selected={criterion.score} onSelect={(score) => updateMissionScore(criterion.id, score)} disabled={isReadOnly} />
                             </div>
                           ))}
                         </div>
@@ -1697,6 +1720,7 @@ function Monautoevaluation() {
                           rows={3}
                           value={activeMission.comment || ""}
                           onChange={(event) => updateMissionComment(event.target.value)}
+                          disabled={isReadOnly}
                           placeholder="Elements marquants, difficultes, impact..."
                           className="w-full resize-none rounded-md border border-slate-200 bg-slate-100 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
                         />
@@ -1720,7 +1744,7 @@ function Monautoevaluation() {
                             disabled={isSaving || isSubmitting}
                             className="inline-flex items-center gap-2 rounded-md bg-[#79B742] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
                           >
-                            Sauvegarder et continuer
+                            {isReadOnly ? "Suivant" : "Sauvegarder et continuer"}
                             <ChevronRight size={14} />
                           </button>
                         ) : (
@@ -1728,7 +1752,7 @@ function Monautoevaluation() {
                             <button
                               type="button"
                               onClick={handleSubmitMission}
-                              disabled={isSaving || isSubmitting || activeMission.status === "Soumise"}
+                              disabled={isReadOnly || isSaving || isSubmitting || activeMission.status === "Soumise"}
                               className="inline-flex items-center gap-2 rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
                             >
                               {isSubmitting ? "Soumission..." : "Soumettre la mission"}
@@ -1736,7 +1760,7 @@ function Monautoevaluation() {
                             <button
                               type="button"
                               onClick={() => persistMissionEvaluations(missionEvaluations)}
-                              disabled={isSaving || isSubmitting}
+                              disabled={isReadOnly || isSaving || isSubmitting}
                               className="inline-flex items-center gap-2 rounded-md bg-[#79B742] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
                             >
                               {isSaving ? "Sauvegarde..." : "Enregistrer la mission"}

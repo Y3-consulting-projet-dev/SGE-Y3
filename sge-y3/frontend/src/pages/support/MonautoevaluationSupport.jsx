@@ -7,6 +7,8 @@ import {
   submitSupportSelfEvaluation,
 } from "@/api/supportEvaluation";
 import { sendNotificationEmail } from "@/services/notifications";
+import { useSelfEvaluationLock } from "@/hooks/useSelfEvaluationLock";
+import SelfEvaluationLockBanner from "@/components/evaluation/SelfEvaluationLockBanner";
 
 function getSupportRoleKey(user) {
   return user?.grade || "Service support";
@@ -48,7 +50,7 @@ function InlineFeedback({ feedback }) {
   );
 }
 
-function ScoreButtons({ value, onChange }) {
+function ScoreButtons({ value, onChange, disabled = false }) {
   return (
     <div className="flex overflow-hidden rounded-md border border-slate-200">
       {[1, 2, 3, 4, 5].map((score) => (
@@ -56,7 +58,8 @@ function ScoreButtons({ value, onChange }) {
           key={score}
           type="button"
           onClick={() => onChange(score)}
-          className={`h-8 w-9 border-r border-slate-200 text-xs font-bold last:border-0 ${
+          disabled={disabled}
+          className={`h-8 w-9 border-r border-slate-200 text-xs font-bold last:border-0 disabled:cursor-not-allowed ${
             value === score ? "bg-[#0F3A63] text-white" : "bg-white text-[#0F3A63] hover:bg-slate-100"
           }`}
         >
@@ -81,6 +84,8 @@ function MonautoevaluationSupport({ user }) {
   const [customStatement, setCustomStatement] = useState("");
   const [customCriterionFeedback, setCustomCriterionFeedback] = useState(null);
   const customCriterionCounterRef = useRef(0);
+  const selfEvaluationLock = useSelfEvaluationLock();
+  const isReadOnly = selfEvaluationLock.isClosed;
 
   useEffect(() => {
     let cancelled = false;
@@ -258,6 +263,8 @@ function MonautoevaluationSupport({ user }) {
   }
 
   async function saveDraft() {
+    if (isReadOnly) return;
+
     try {
       const response = await saveSupportSelfEvaluation({ sections });
       const nextSections = response?.evaluation?.sections || sections;
@@ -276,6 +283,8 @@ function MonautoevaluationSupport({ user }) {
   }
 
   async function submitToAssociates() {
+    if (isReadOnly) return;
+
     if (!selectedAssociateIds.length) {
       setStatus("Sélectionnez au moins un associé destinataire avant de soumettre.");
       return;
@@ -344,6 +353,7 @@ function MonautoevaluationSupport({ user }) {
 
   return (
     <section className="space-y-5">
+      <SelfEvaluationLockBanner lock={selfEvaluationLock} />
       <article className="rounded-xl bg-white p-5 shadow-sm">
         <p className="text-xs font-bold uppercase text-slate-400">Département support</p>
         <h2 className="mt-1 text-2xl font-black text-[#0F3A63]">Mon auto-évaluation</h2>
@@ -389,6 +399,7 @@ function MonautoevaluationSupport({ user }) {
                       type="checkbox"
                       checked={isChecked}
                       onChange={() => toggleAssociateSelection(associate.id)}
+                      disabled={isReadOnly}
                       className="h-4 w-4 accent-[#0F3A63]"
                     />
                     <span>
@@ -477,6 +488,7 @@ function MonautoevaluationSupport({ user }) {
             ))}
           </div>
 
+          {!isReadOnly ? (
           <div className="mb-4 rounded-md border border-dashed border-[#D9E3EE] bg-[#F8FBFF] p-3">
             <p className="text-xs font-extrabold text-[#0F3A63]">Ajouter un titre</p>
             <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2">
@@ -512,6 +524,7 @@ function MonautoevaluationSupport({ user }) {
               </button>
             </div>
           </div>
+          ) : null}
 
           <div className="space-y-4">
             {activePage.themes.map((theme) => (
@@ -523,7 +536,7 @@ function MonautoevaluationSupport({ user }) {
                     </p>
                     <p className="mt-1 text-xs leading-5 text-slate-600">{theme.statement}</p>
                   </div>
-                  {theme.is_custom ? (
+                  {theme.is_custom && !isReadOnly ? (
                     <button
                       type="button"
                       onClick={() => removeCustomTheme(activePage.page_id || activePage.id, theme.theme_id || theme.id)}
@@ -533,7 +546,7 @@ function MonautoevaluationSupport({ user }) {
                     </button>
                   ) : null}
                 </div>
-                <ScoreButtons value={theme.score} onChange={(score) => updateThemeScore(theme.theme_id || theme.id, score)} />
+                <ScoreButtons value={theme.score} onChange={(score) => updateThemeScore(theme.theme_id || theme.id, score)} disabled={isReadOnly} />
               </div>
             ))}
           </div>
@@ -544,6 +557,7 @@ function MonautoevaluationSupport({ user }) {
           <textarea
             value={activeSection.comment || ""}
             onChange={(event) => updateSectionComment(event.target.value)}
+            disabled={isReadOnly}
             placeholder="Commentaire de section..."
             className="mt-2 min-h-[90px] w-full resize-none rounded-md border border-slate-200 px-3 py-2 text-sm text-[#0F3A63] outline-none"
           />
@@ -575,12 +589,16 @@ function MonautoevaluationSupport({ user }) {
         {status ? (
           <p className={`text-sm font-bold ${answeredQuestions < totalQuestions ? "text-[#B56B00]" : "text-[#4E8B1B]"}`}>{status}</p>
         ) : null}
-        <button onClick={saveDraft} className="rounded-full bg-white px-6 py-3 text-sm font-extrabold text-[#0F3A63] shadow-sm">
+        <button
+          onClick={saveDraft}
+          disabled={isReadOnly}
+          className="rounded-full bg-white px-6 py-3 text-sm font-extrabold text-[#0F3A63] shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+        >
           Enregistrer
         </button>
         <button
           onClick={submitToAssociates}
-          disabled={!selectedAssociateIds.length}
+          disabled={isReadOnly || !selectedAssociateIds.length}
           className="rounded-full bg-[#0F3A63] px-6 py-3 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           Soumettre aux associés sélectionnés

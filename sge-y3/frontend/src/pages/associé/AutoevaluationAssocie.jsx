@@ -11,6 +11,8 @@ import {
 } from "@/api/associateOverview";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
 import { sendNotificationEmail } from "@/services/notifications";
+import { useSelfEvaluationLock } from "@/hooks/useSelfEvaluationLock";
+import SelfEvaluationLockBanner from "@/components/evaluation/SelfEvaluationLockBanner";
 
 function getPageProgress(page) {
   const themes = page?.themes || [];
@@ -55,7 +57,7 @@ function clampPageIndexes(sections = [], currentIndexes = {}) {
   );
 }
 
-function ScoreSelector({ selected, onSelect }) {
+function ScoreSelector({ selected, onSelect, disabled = false }) {
   return (
     <div className="space-y-2">
       <div className="flex overflow-hidden rounded-md border border-slate-200">
@@ -64,7 +66,8 @@ function ScoreSelector({ selected, onSelect }) {
             key={score}
             type="button"
             onClick={() => onSelect(score)}
-            className={`h-8 w-10 border-r border-slate-200 text-xs font-semibold last:border-r-0 ${
+            disabled={disabled}
+            className={`h-8 w-10 border-r border-slate-200 text-xs font-semibold last:border-r-0 disabled:cursor-not-allowed ${
               score === selected ? "bg-[#003B63] text-white" : "bg-slate-100 text-[#0F3A63]"
             }`}
           >
@@ -113,6 +116,8 @@ function AutoevaluationAssocie() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const selfEvaluationLock = useSelfEvaluationLock();
+  const isReadOnly = selfEvaluationLock.isClosed;
 
   useEffect(() => {
     let cancelled = false;
@@ -292,6 +297,8 @@ function AutoevaluationAssocie() {
   }
 
   async function persistSelf(nextSections = sections, successMessage = "Auto-évaluation associé enregistrée.") {
+    if (isReadOnly) return null;
+
     try {
       setIsSaving(true);
       setErrorMessage("");
@@ -425,7 +432,7 @@ function AutoevaluationAssocie() {
   }
 
   function handleSelfNextStep() {
-    if (String(activeSection?.comment || "").trim().length < 3) {
+    if (!isReadOnly && String(activeSection?.comment || "").trim().length < 3) {
       setFeedbackTone("error");
       setFeedbackMessage("Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
       return;
@@ -499,6 +506,8 @@ function AutoevaluationAssocie() {
           {feedbackMessage}
         </div>
       ) : null}
+
+      {activeTab === "self" ? <SelfEvaluationLockBanner lock={selfEvaluationLock} /> : null}
 
       {activeTab === "self" ? (
         <section className="grid grid-cols-1 gap-4 xl:grid-cols-12">
@@ -624,7 +633,7 @@ function AutoevaluationAssocie() {
                         <p className="text-[13px] font-bold text-[#0F3A63]">{theme.code}. {theme.label}</p>
                         <p className="mt-1 text-[12px] leading-6 text-slate-600">{theme.statement}</p>
                       </div>
-                      <ScoreSelector selected={theme.score} onSelect={(score) => updateTheme(theme.theme_id, score)} />
+                      <ScoreSelector selected={theme.score} onSelect={(score) => updateTheme(theme.theme_id, score)} disabled={isReadOnly} />
                     </div>
                   ))}
 
@@ -636,6 +645,7 @@ function AutoevaluationAssocie() {
                       rows={4}
                       value={activeSection.comment || ""}
                       onChange={(event) => updateComment(event.target.value)}
+                      disabled={isReadOnly}
                       placeholder="Synthèse globale de la section..."
                       className="w-full resize-none rounded-md bg-slate-100 px-3 py-2 text-[11px] text-slate-600 outline-none"
                     />
@@ -656,7 +666,7 @@ function AutoevaluationAssocie() {
                     <button
                       type="button"
                       onClick={() => persistSelf(sections)}
-                      disabled={isSaving || isSubmitting}
+                      disabled={isReadOnly || isSaving || isSubmitting}
                       className="rounded-md bg-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600 disabled:opacity-70"
                     >
                       {isSaving ? "Sauvegarde..." : "Enregistrer"}
@@ -664,7 +674,7 @@ function AutoevaluationAssocie() {
                     <button
                       type="button"
                       onClick={handleSubmit}
-                      disabled={isSaving || isSubmitting || selfData?.evaluation?.status === "Soumis aux Associes"}
+                      disabled={isReadOnly || isSaving || isSubmitting || selfData?.evaluation?.status === "Soumis aux Associes"}
                       className="rounded-md bg-[#0B4C7A] px-4 py-2 text-[12px] font-bold text-white disabled:opacity-70"
                     >
                       {isSubmitting ? "Soumission..." : "Soumettre à l'autre associé"}

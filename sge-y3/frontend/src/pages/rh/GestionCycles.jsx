@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { createRhCycle, getRhCycles, updateRhSelfEvaluationDeadline } from "@/api/rhOverview";
-import { resetActiveEvaluationPeriod } from "@/api/evaluationPeriod";
+import { getActiveCycleInfo, resetActiveEvaluationPeriod } from "@/api/evaluationPeriod";
 import { formatCommentDate } from "@/utils/historiqueUtils";
 
 // La période évaluée va toujours du 1er octobre N au 30 septembre N+1 (règle vérifiée aussi par le serveur).
@@ -104,6 +104,9 @@ function GestionCycles() {
       const response = await updateRhSelfEvaluationDeadline(
         action === "schedule" ? { action, date: deadlineDate } : { action }
       );
+      // L'état de blocage mis en cache par les pages d'auto-évaluation est relu (ex. après une réouverture).
+      resetActiveEvaluationPeriod();
+      getActiveCycleInfo().catch(() => {});
       setDeadlineMessage({ tone: "success", text: response?.message || "Modification enregistrée." });
       setDeadlineDate("");
       const refreshed = await getRhCycles();

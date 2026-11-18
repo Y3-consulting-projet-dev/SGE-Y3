@@ -1,5 +1,7 @@
 ﻿import { useEffect, useRef, useState } from "react";
 import { saveMyDevelopmentPlan, submitMyDevelopmentPlan } from "@/api/collaboratorEvaluation";
+import { useSelfEvaluationLock } from "@/hooks/useSelfEvaluationLock";
+import SelfEvaluationLockBanner from "@/components/evaluation/SelfEvaluationLockBanner";
 
 function Mondeveloppement({ evaluationData, onDevelopmentChange }) {
   const development = evaluationData?.development || {};
@@ -20,6 +22,8 @@ function Mondeveloppement({ evaluationData, onDevelopmentChange }) {
   const [feedback, setFeedback] = useState("");
   const [feedbackType, setFeedbackType] = useState("success");
   const inputRef = useRef(null);
+  const selfEvaluationLock = useSelfEvaluationLock();
+  const isReadOnly = selfEvaluationLock.isClosed;
 
   useEffect(() => {
     setWishes(development.wishes || "");
@@ -48,7 +52,7 @@ function Mondeveloppement({ evaluationData, onDevelopmentChange }) {
   }
 
   async function handleUpdateTrainings() {
-    if (isUpdatingTrainings) return;
+    if (isReadOnly || isUpdatingTrainings) return;
     const managerId = managers.length === 1 ? managers[0].id : selectedManagerId;
     if (!managerId) {
       setFeedback("Veuillez sélectionner un Manager avant de mettre à jour.");
@@ -71,7 +75,7 @@ function Mondeveloppement({ evaluationData, onDevelopmentChange }) {
   }
 
   async function handleSave() {
-    if (isSaving || isSubmitted) return;
+    if (isReadOnly || isSaving || isSubmitted) return;
     setIsSaving(true);
     setFeedback("");
     try {
@@ -88,7 +92,7 @@ function Mondeveloppement({ evaluationData, onDevelopmentChange }) {
   }
 
   async function handleSubmit() {
-    if (isSubmitting || isSubmitted) return;
+    if (isReadOnly || isSubmitting || isSubmitted) return;
     if (!selectedManagerId) {
       setFeedback("Veuillez sélectionner un Manager avant d'envoyer.");
       setFeedbackType("error");
@@ -114,6 +118,7 @@ function Mondeveloppement({ evaluationData, onDevelopmentChange }) {
 
   return (
     <div className="space-y-4">
+      <SelfEvaluationLockBanner lock={selfEvaluationLock} />
       {/* Statut */}
       <div className="flex flex-wrap items-center gap-3">
         <span
@@ -135,6 +140,7 @@ function Mondeveloppement({ evaluationData, onDevelopmentChange }) {
         )}
       </div>
 
+      <fieldset disabled={isReadOnly} className="min-w-0 space-y-4">
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1fr]">
         {/* Souhaits d'évolution */}
         <article className="rounded-md bg-white p-4 shadow-sm">
@@ -313,6 +319,7 @@ function Mondeveloppement({ evaluationData, onDevelopmentChange }) {
           </button>
         </div>
       </div>
+      </fieldset>
     </div>
   );
 }

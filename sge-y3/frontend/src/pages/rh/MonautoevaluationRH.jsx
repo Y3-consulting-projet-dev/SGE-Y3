@@ -10,6 +10,8 @@ import {
 } from "@/api/rhOverview";
 import { clampProgress, getProgressBarClass, getProgressToneClass } from "@/utils/progressPresentation";
 import { sendNotificationEmail } from "@/services/notifications";
+import { useSelfEvaluationLock } from "@/hooks/useSelfEvaluationLock";
+import SelfEvaluationLockBanner from "@/components/evaluation/SelfEvaluationLockBanner";
 
 function getPageProgress(page) {
   const themes = page?.themes || [];
@@ -70,7 +72,7 @@ function clampPageIndexes(sections = [], currentIndexes = {}) {
   );
 }
 
-function ScoreSelector({ selected, onSelect }) {
+function ScoreSelector({ selected, onSelect, disabled = false }) {
   return (
     <div className="space-y-2">
       <div className="flex overflow-hidden rounded-md border border-slate-200">
@@ -79,7 +81,8 @@ function ScoreSelector({ selected, onSelect }) {
             key={score}
             type="button"
             onClick={() => onSelect(score)}
-            className={`h-8 w-10 border-r border-slate-200 text-xs font-semibold last:border-r-0 ${
+            disabled={disabled}
+            className={`h-8 w-10 border-r border-slate-200 text-xs font-semibold last:border-r-0 disabled:cursor-not-allowed ${
               score === selected ? "bg-[#003B63] text-white" : "bg-slate-100 text-[#0F3A63]"
             }`}
           >
@@ -153,6 +156,8 @@ function MonautoevaluationRH({ assistantMode = false }) {
   const [errorMessage, setErrorMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const selfEvaluationLock = useSelfEvaluationLock();
+  const isReadOnly = selfEvaluationLock.isClosed;
   const workflow = evaluationData?.workflow || getWorkflowDefaults(assistantMode);
 
   useEffect(() => {
@@ -265,6 +270,8 @@ function MonautoevaluationRH({ assistantMode = false }) {
   }
 
   async function persistSections(nextSections = sections, successMessage = workflow.saveMessage) {
+    if (isReadOnly) return null;
+
     try {
       setIsSaving(true);
       setFeedbackMessage("");
@@ -318,6 +325,11 @@ function MonautoevaluationRH({ assistantMode = false }) {
   }
 
   async function handleSaveAndContinue() {
+    if (isReadOnly) {
+      goToStep(1);
+      return;
+    }
+
     if (String(activeSection?.comment || "").trim().length < 3) {
       setFeedbackTone("error");
       setFeedbackMessage("Le commentaire de section d'au moins 3 caractères est obligatoire avant de continuer.");
@@ -399,6 +411,7 @@ function MonautoevaluationRH({ assistantMode = false }) {
 
   return (
     <div className="space-y-4">
+      <SelfEvaluationLockBanner lock={selfEvaluationLock} />
       <div className="rounded-sm bg-[#DCECCB] px-4 py-3 text-xs font-semibold text-[#1E5B34]">
         {workflow.introMessage}
       </div>
@@ -605,7 +618,7 @@ function MonautoevaluationRH({ assistantMode = false }) {
                     {theme.code}. {theme.label}
                   </p>
                   <p className="text-xs text-slate-500">{theme.statement}</p>
-                  <ScoreSelector selected={theme.score} onSelect={(score) => updateTheme(theme.theme_id, score)} />
+                  <ScoreSelector selected={theme.score} onSelect={(score) => updateTheme(theme.theme_id, score)} disabled={isReadOnly} />
                 </div>
               ))}
             </div>
@@ -618,6 +631,7 @@ function MonautoevaluationRH({ assistantMode = false }) {
                 rows={3}
                 value={activeSection.comment || ""}
                 onChange={(event) => updateComment(event.target.value)}
+                disabled={isReadOnly}
                 placeholder="Synthèse globale de la section, points forts, axes d'amelioration..."
                 className="w-full resize-none rounded-md border border-slate-200 bg-slate-100 px-3 py-3 text-sm text-[#0F3A63] outline-none placeholder:text-slate-400"
               />
@@ -656,7 +670,7 @@ function MonautoevaluationRH({ assistantMode = false }) {
                   <button
                     type="button"
                     onClick={() => persistSections(sections)}
-                    disabled={isSaving || isSubmitting}
+                    disabled={isReadOnly || isSaving || isSubmitting}
                     className="rounded-md bg-[#79B742] px-8 py-2 text-xs font-semibold text-white disabled:opacity-70"
                   >
                     {isSaving ? "Sauvegarde..." : "Sauvegarder"}
@@ -667,6 +681,7 @@ function MonautoevaluationRH({ assistantMode = false }) {
                   type="button"
                   onClick={handleSubmit}
                   disabled={
+                    isReadOnly ||
                     isSaving ||
                     isSubmitting ||
                     evaluationData.evaluation.status === "Soumis aux Associés" ||
