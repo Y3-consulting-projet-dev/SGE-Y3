@@ -827,7 +827,17 @@ async function syncManagerMissionReviews(review, managerUser, selfEvaluationInst
       submitted_at: existing.submitted_at || null,
       criteria: seed.criteria.map((criterion) => {
         const currentCriterion = (existing.criteria || []).find((item) => item.criterion_id === criterion.criterion_id);
-        return currentCriterion ? { ...criterion, score: currentCriterion.score ?? null } : criterion;
+        // On conserve la note ET les commentaires saisis par le manager (commentaire de section et
+        // justification des notes < 3) : sans cela, ils étaient remplacés par ceux de l'assistant
+        // à chaque synchronisation, et la soumission échouait faute de justification.
+        return currentCriterion
+          ? {
+              ...criterion,
+              score: currentCriterion.score ?? null,
+              section_comment: currentCriterion.section_comment ?? criterion.section_comment ?? '',
+              page_comment: currentCriterion.page_comment ?? criterion.page_comment ?? '',
+            }
+          : criterion;
       }),
     };
   });
