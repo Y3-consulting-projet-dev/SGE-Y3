@@ -1390,7 +1390,7 @@ module.exports = {
       instance.sections = toPersistenceSections(normalizeSections(rawSections));
     }
 
-    instance.status = instance.status === 'Soumis aux Associés' ? instance.status : 'En cours';
+    instance.status = instance.status === 'Soumis aux Associes' ? instance.status : 'En cours';
     instance.last_saved_at = new Date();
     await instance.save();
 

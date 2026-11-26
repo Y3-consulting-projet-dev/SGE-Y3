@@ -2624,7 +2624,7 @@ async function saveMyRhSelfEvaluation(request, response) {
   }
 
   instance.sections = toPersistenceSections(normalizedIncomingSections);
-  instance.status = instance.status === 'Soumis aux Associés' ? instance.status : 'En cours';
+  instance.status = instance.status === 'Soumis aux Associes' ? instance.status : 'En cours';
   instance.last_saved_at = new Date();
   await instance.save();
 
@@ -2718,7 +2718,7 @@ async function submitMyRhSelfEvaluation(request, response) {
     });
   }
 
-  instance.status = 'Soumis aux Associés';
+  instance.status = 'Soumis aux Associes';
   instance.submitted_to_role = 'associate';
   instance.submitted_to_user_ids = associateRecipients.map((recipient) => recipient._id);
   instance.submitted_to_names = associateRecipients.map((recipient) => recipient.name);
