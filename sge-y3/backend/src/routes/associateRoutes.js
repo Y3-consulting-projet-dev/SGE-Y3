@@ -13,6 +13,7 @@ const {
   getAssociateManagerEvaluations,
   getAssociateOverview,
   getAssociateSyntheses,
+  saveAssociateSynthesisComment,
   getAssociateSupportEvaluation,
   getAssociateSupportEvaluations,
   getCabinetMemberHistory,
@@ -30,6 +31,7 @@ const router = express.Router();
 
 router.get('/overview', requireAuth, requireAssociate, getAssociateOverview);
 router.get('/syntheses', requireAuth, requireAssociate, getAssociateSyntheses);
+router.put('/syntheses/:memberId/comment', requireAuth, requireAssociate, saveAssociateSynthesisComment);
 router.get('/self-evaluation', requireAuth, requireAssociate, getAssociateSelfEvaluation);
 router.get('/self-evaluation/history', requireAuth, requireAssociate, getMyAssociateEvaluationHistory);
 router.put('/self-evaluation', requireAuth, requireAssociate, requireSelfEvaluationOpen, saveAssociateSelfEvaluation);

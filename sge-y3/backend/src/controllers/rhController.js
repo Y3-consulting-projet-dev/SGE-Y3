@@ -40,6 +40,7 @@ const {
 const { activateCycle, getCurrentCycleLabel } = require('../utils/activeCycle');
 const { validateCyclePeriod } = require('../utils/evaluationPeriod');
 const { isSelfEvaluationClosed } = require('../middleware/selfEvaluationDeadline');
+const { attachSynthesisComments } = require('../utils/synthesisComments');
 const { fetchManagerCommentsForMember } = require('./collaboratorEvaluationController');
 const { fetchAssociateCommentsForManager } = require('./managerController');
 const { notifySubmissionRecipients } = require('../utils/submissionNotifications');
@@ -2237,7 +2238,8 @@ async function getRhSyntheses(request, response) {
 
   return response.json({
     cycle_label: getCurrentCycleLabel(),
-    items,
+    // Les commentaires des associés sont visibles par la RH, en lecture seule.
+    items: await attachSynthesisComments(items, getCurrentCycleLabel()),
   });
 }
 

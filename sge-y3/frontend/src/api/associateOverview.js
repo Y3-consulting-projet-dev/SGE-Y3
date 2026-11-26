@@ -37,6 +37,14 @@ export function getAssociateSyntheses() {
   return request("/associate/syntheses");
 }
 
+// Commentaire de l'associé connecté sur la synthèse d'un collaborateur (vide = suppression).
+export function saveAssociateSynthesisComment(memberId, comment) {
+  return request(`/associate/syntheses/${encodeURIComponent(memberId)}/comment`, {
+    method: "PUT",
+    body: JSON.stringify({ comment }),
+  });
+}
+
 export function getAssociateSelfEvaluation() {
   return request("/associate/self-evaluation");
 }

@@ -126,6 +126,17 @@ function SynthesesRH({ readOnly = false }) {
               <p className="mt-4 rounded-md bg-white px-3 py-2 text-xs font-bold text-slate-500">
                 Décision : RH validée, prête pour transmission
               </p>
+              {(row.associateComments || []).length ? (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs font-bold uppercase text-slate-400">Commentaires des associés</p>
+                  {row.associateComments.map((item) => (
+                    <div key={item.id} className="rounded-md bg-white px-3 py-2">
+                      <p className="text-xs font-bold text-[#0F4A72]">{item.authorName}</p>
+                      <p className="mt-1 whitespace-pre-line text-xs font-semibold text-slate-600">{item.comment}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </article>
           ))
         ) : (

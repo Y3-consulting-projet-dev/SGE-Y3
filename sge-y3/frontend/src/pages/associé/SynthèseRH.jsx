@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Bell } from "lucide-react";
-import { getAssociateSyntheses } from "@/api/associateOverview";
+import { getAssociateSyntheses, saveAssociateSynthesisComment } from "@/api/associateOverview";
 
 function formatScore(score) {
   return typeof score === "number" ? `${score.toFixed(1)}/5` : "--";
@@ -82,6 +82,110 @@ function EvaluationTrail({ items }) {
       ) : (
         <p className="mt-3 text-sm font-semibold text-slate-500">Aucun détail d'évaluation disponible pour cette synthèse.</p>
       )}
+    </section>
+  );
+}
+
+const COMMENT_MAX_LENGTH = 2000;
+
+function formatDateTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("fr-FR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+// Commentaires des associés sur une synthèse : ceux des autres associés en lecture, le sien modifiable.
+function AssociateComments({ row, onSaved }) {
+  const comments = row.associateComments || [];
+  const myComment = comments.find((item) => item.isMine) || null;
+  const otherComments = comments.filter((item) => !item.isMine);
+  const [draft, setDraft] = useState(myComment?.comment || "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const hasChanges = draft.trim() !== (myComment?.comment || "");
+
+  async function save(nextComment) {
+    try {
+      setIsSaving(true);
+      setFeedback(null);
+      const response = await saveAssociateSynthesisComment(row.memberId, nextComment);
+      setDraft(nextComment.trim());
+      onSaved(row.memberId, response.associateComments || []);
+      setFeedback({ tone: "success", text: response.message || "Commentaire enregistré." });
+    } catch (error) {
+      setFeedback({ tone: "error", text: error.message || "Enregistrement du commentaire impossible." });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <section className="rounded-lg bg-[#F8FAFC] p-4">
+      <h3 className="text-sm font-extrabold uppercase tracking-wide text-slate-500">Commentaires des associés</h3>
+
+      {otherComments.length ? (
+        <div className="mt-3 space-y-2">
+          {otherComments.map((item) => (
+            <div key={item.id} className="rounded-lg bg-white px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-extrabold text-[#0F3A63]">{item.authorName}</p>
+                <p className="text-xs font-semibold text-slate-400">{formatDateTime(item.updatedAt)}</p>
+              </div>
+              <p className="mt-1 whitespace-pre-line text-sm font-semibold text-slate-600">{item.comment}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-3 rounded-lg bg-white px-4 py-3">
+        <label htmlFor={`synthesis-comment-${row.memberId}`} className="text-sm font-extrabold text-[#0F3A63]">
+          Mon commentaire
+        </label>
+        {myComment?.updatedAt ? (
+          <span className="ml-2 text-xs font-semibold text-slate-400">modifié le {formatDateTime(myComment.updatedAt)}</span>
+        ) : null}
+        <textarea
+          id={`synthesis-comment-${row.memberId}`}
+          rows={4}
+          maxLength={COMMENT_MAX_LENGTH}
+          value={draft}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            setFeedback(null);
+          }}
+          placeholder={`Votre commentaire sur la synthèse de ${row.name}…`}
+          className="mt-2 w-full resize-none rounded-md bg-[#F8FAFC] px-3 py-2 text-sm text-[#0F3A63] outline-none ring-1 ring-[#D9E3EE] focus:ring-[#0C4B6C]"
+        />
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => save(draft)}
+            disabled={isSaving || !hasChanges || !draft.trim()}
+            className="rounded-full bg-[#0C4B6C] px-4 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isSaving ? "Enregistrement..." : myComment ? "Mettre à jour" : "Enregistrer le commentaire"}
+          </button>
+          {myComment ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm("Supprimer votre commentaire sur cette synthèse ?")) save("");
+              }}
+              disabled={isSaving}
+              className="rounded-full border border-slate-300 px-4 py-2 text-xs font-bold text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Supprimer
+            </button>
+          ) : null}
+          <span className="text-xs font-semibold text-slate-400">
+            {draft.length}/{COMMENT_MAX_LENGTH} · visible par les associés et la RH
+          </span>
+        </div>
+        {feedback ? (
+          <p className={`mt-2 text-xs font-semibold ${feedback.tone === "error" ? "text-[#C53B3B]" : "text-[#4E8B1B]"}`}>{feedback.text}</p>
+        ) : null}
+      </div>
     </section>
   );
 }
@@ -187,6 +291,13 @@ function SyntheseRH() {
   }, [gradeFilter, rows]);
 
   const selectedRow = filteredRows.find((row) => row.id === selectedId) || filteredRows[0] || null;
+
+  function handleCommentsSaved(memberId, associateComments) {
+    setData((current) => ({
+      ...current,
+      items: (current?.items || []).map((row) => (row.memberId === memberId ? { ...row, associateComments } : row)),
+    }));
+  }
 
   useEffect(() => {
     if (!filteredRows.length) {
@@ -329,6 +440,10 @@ function SyntheseRH() {
 
           <div className="mt-5">
             <EvaluationTrail items={selectedRow.evaluationTrail || []} />
+          </div>
+
+          <div className="mt-5">
+            <AssociateComments key={selectedRow.memberId} row={selectedRow} onSaved={handleCommentsSaved} />
           </div>
         </section>
       ) : null}

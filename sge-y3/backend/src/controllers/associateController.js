@@ -26,6 +26,19 @@ const {
 } = require('./rhController');
 const { getSupportRoleLabel } = require('../utils/userMapping');
 const { getCurrentCycleLabel } = require('../utils/activeCycle');
+const SynthesisComment = require('../models/SynthesisComment');
+const { SYNTHESIS_COMMENT_MAX_LENGTH, attachSynthesisComments } = require('../utils/synthesisComments');
+
+// Synthèses visibles par les associés : validées par la RH ou transmises (toutes les orthographes enregistrées).
+const ASSOCIATE_SYNTHESIS_STATUSES = new Set([
+  'Validé RH',
+  'Valide RH',
+  "Transmis à l'associé",
+  "Transmis à l'associe",
+  'Transmis a l associe',
+  'Clôture',
+  'Cloture',
+]);
 const {
   buildCyclesForInstances,
   buildPeerReviewComments,
@@ -1149,9 +1162,7 @@ async function getAssociateOverview(_request, response) {
   const combinedRows = [...reviewRows, ...assistantRhRows];
   const receivedCount = combinedRows.filter((item) => RH_RELEVANT_STATUSES.includes(item.status)).length;
   const totalPopulation = evaluatedPopulation.length;
-  const readySyntheses = combinedRows.filter(
-    (row) => row.status === 'Validé RH' || row.status === 'Valide RH' || row.status === `Transmis à l'associe` || row.status === 'Clôture'
-  );
+  const readySyntheses = combinedRows.filter((row) => ASSOCIATE_SYNTHESIS_STATUSES.has(row.status));
   const readySyntheseIds = new Set(readySyntheses.map((row) => String(row.memberId || '')).filter(Boolean));
   const latestDecisionMap = buildDecisionMap(latestDecision);
   const pendingDecisionRows = readySyntheses.filter((row) => !latestDecisionMap.has(String(row.memberId || '')));
@@ -2025,7 +2036,7 @@ module.exports = {
       ...buildAssociateSupportPayload(supportUser, selfEvaluation),
     });
   },
-  async getAssociateSyntheses(_request, response) {
+  async getAssociateSyntheses(request, response) {
     const rhUserIds = await resolveRhQueueUserIds();
     const [rows, assistantRhRows] = await Promise.all([
       loadRhReviewDataset(rhUserIds),
@@ -2033,7 +2044,7 @@ module.exports = {
     ]);
 
     const items = [...rows, ...assistantRhRows]
-      .filter((row) => row.status === 'Validé RH' || row.status === 'Valide RH' || row.status === `Transmis à l'associe` || row.status === 'Clôture')
+      .filter((row) => ASSOCIATE_SYNTHESIS_STATUSES.has(row.status))
       .map((row) => ({
         ...row,
         initials: getInitials(row.name),
@@ -2052,7 +2063,43 @@ module.exports = {
 
     return response.json({
       cycle_label: getCurrentCycleLabel(),
-      items,
+      items: await attachSynthesisComments(items, getCurrentCycleLabel(), request.user._id),
+    });
+  },
+  // Commentaire de l'associé connecté sur la synthèse d'un collaborateur ; un commentaire vide le supprime.
+  async saveAssociateSynthesisComment(request, response) {
+    const memberId = String(request.params.memberId || '').trim();
+    const comment = String(request.body?.comment || '').trim();
+
+    if (!/^[0-9a-f]{24}$/i.test(memberId) || !(await User.exists({ _id: memberId }))) {
+      return response.status(404).json({ message: 'Collaborateur introuvable.' });
+    }
+
+    if (comment.length > SYNTHESIS_COMMENT_MAX_LENGTH) {
+      return response.status(400).json({
+        message: `Le commentaire ne doit pas dépasser ${SYNTHESIS_COMMENT_MAX_LENGTH} caractères.`,
+      });
+    }
+
+    const cycleLabel = getCurrentCycleLabel();
+    const filter = { cycle_label: cycleLabel, member_id: memberId, author_id: request.user._id };
+
+    if (!comment) {
+      await SynthesisComment.deleteOne(filter);
+    } else {
+      await SynthesisComment.updateOne(
+        filter,
+        { $set: { comment, author_name: request.user.name || '' } },
+        { upsert: true, runValidators: true }
+      );
+    }
+
+    const [row] = await attachSynthesisComments([{ memberId }], cycleLabel, request.user._id);
+
+    return response.json({
+      message: comment ? 'Commentaire enregistré.' : 'Commentaire supprimé.',
+      memberId,
+      associateComments: row.associateComments,
     });
   },
   getAssociateOverview,
