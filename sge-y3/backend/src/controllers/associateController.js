@@ -1146,7 +1146,10 @@ async function getAssociateOverview(_request, response) {
       EvaluationInstance.find({
         cycle_label: getCurrentCycleLabel(),
         template_type: { $in: ['manager-self-evaluation', 'rh-self-evaluation'] },
-        status: { $in: ['Soumis à RH', 'Validé RH', 'Valide RH', 'Clôture'] },
+        // Statuts réellement enregistrés à la soumission : « Soumis à la RH » (manager), « Soumis aux Associes » (RH).
+        status: {
+          $in: ['Soumis à la RH', 'Soumis à RH', 'Soumis a RH', 'Soumis aux Associes', 'Validé RH', 'Valide RH', 'Clôture', 'Cloture'],
+        },
         submitted_at: { $ne: null },
       }).select('evalue_id submitted_at sections'),
       User.find({
