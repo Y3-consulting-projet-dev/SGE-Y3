@@ -774,17 +774,6 @@ function Monautoevaluation() {
     }));
   }
 
-  // TEMPORAIRE : suppression d'une mission de test (bouton à retirer ensuite).
-  async function handleDeleteMission() {
-    if (!activeMission || isReadOnly) return;
-    if (!window.confirm(`Supprimer définitivement la mission « ${activeMission.title} » ?`)) return;
-    const nextMissionEvaluations = missionEvaluations.filter((mission) => mission.id !== activeMission.id);
-    const response = await persistMissionEvaluations(nextMissionEvaluations, "Mission supprimée.");
-    if (response) {
-      setActiveMissionId(nextMissionEvaluations[0]?.id || "");
-    }
-  }
-
   function selectMission(item) {
     setActiveMissionId(item.id);
     setIsMissionPickerOpen(false);
@@ -1557,18 +1546,7 @@ function Monautoevaluation() {
                           <h2 className="mt-1 text-xl font-black text-[#0F3A63]">{activeMission.title}</h2>
                           <p className="mt-1 text-xs font-semibold text-slate-500">Score moyen mission : {activeMissionAverage} / 5</p>
                         </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <span className="rounded-full bg-[#E7EDF3] px-4 py-2 text-xs font-bold text-[#0F4A72]">{activeMission.status}</span>
-                          {/* TEMPORAIRE : bouton de suppression à retirer après usage. */}
-                          <button
-                            type="button"
-                            onClick={handleDeleteMission}
-                            disabled={isReadOnly || isSaving}
-                            className="rounded-full border border-[#C53B3B] px-3 py-1 text-xs font-bold text-[#C53B3B] disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            Supprimer la mission
-                          </button>
-                        </div>
+                        <span className="rounded-full bg-[#E7EDF3] px-4 py-2 text-xs font-bold text-[#0F4A72]">{activeMission.status}</span>
                       </div>
 
                       <div className="mb-4 rounded-md bg-[#F8FAFC] p-4">
