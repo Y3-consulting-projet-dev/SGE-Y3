@@ -801,6 +801,18 @@ function MonautoevaluationSenior({ user }) {
     }));
   }
 
+  // TEMPORAIRE : suppression d'une mission créée par erreur (bouton à retirer ensuite).
+  async function handleDeleteMission() {
+    if (!activeMission || isReadOnly) return;
+    if (!window.confirm(`Supprimer définitivement la mission « ${activeMission.title} » ?`)) return;
+    const nextMissionEvaluations = missionEvaluations.filter((mission) => mission.id !== activeMission.id);
+    const response = await persistMissionEvaluations(nextMissionEvaluations, { scope: "mission" });
+    if (response) {
+      setActiveMissionId(null);
+      setScopedFeedback("mission", "success", "Mission supprimée.");
+    }
+  }
+
   async function handleSaveAndContinue() {
     if (isReadOnly) {
       goToMissionStep(1);
@@ -1272,9 +1284,20 @@ function MonautoevaluationSenior({ user }) {
                       Validation : {activeMission.department} - Destinataire : {activeMission.recipients?.[0]?.name || "Manager"}
                     </p>
                   </div>
-                  <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">
-                    Moyenne {activeMissionAverage} / 5
-                  </span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className="rounded-full bg-[#DCECCB] px-3 py-1 text-xs font-bold text-[#4E8B1B]">
+                      Moyenne {activeMissionAverage} / 5
+                    </span>
+                    {/* TEMPORAIRE : bouton de suppression à retirer après usage. */}
+                    <button
+                      type="button"
+                      onClick={handleDeleteMission}
+                      disabled={isReadOnly || isSaving}
+                      className="rounded-full border border-[#C53B3B] px-3 py-1 text-xs font-bold text-[#C53B3B] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Supprimer la mission
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
